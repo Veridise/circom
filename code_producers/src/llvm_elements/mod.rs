@@ -3,13 +3,15 @@ use std::cell::RefCell;
 use std::convert::TryFrom;
 use std::rc::Rc;
 use ansi_term::Colour;
+use inkwell::attributes::AttributeLoc;
 
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::{Context, ContextRef};
 use inkwell::module::Module;
+use inkwell::passes::PassManager;
 use inkwell::types::{AnyTypeEnum, BasicType, BasicTypeEnum, IntType};
-use inkwell::values::{AnyValueEnum, ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntValue};
+use inkwell::values::{AnyValueEnum, ArrayValue, BasicMetadataValueEnum, BasicValue, BasicValueEnum, IntValue};
 use inkwell::values::FunctionValue;
 
 use template::TemplateCtx;
@@ -17,6 +19,7 @@ use template::TemplateCtx;
 use crate::llvm_elements::types::bool_type;
 pub use inkwell::types::AnyType;
 pub use inkwell::values::AnyValue;
+use inkwell::values::InstructionOpcode::GetElementPtr;
 use crate::llvm_elements::instructions::create_alloca;
 
 pub mod stdlib;
@@ -100,6 +103,9 @@ impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
 
 impl<'a> TopLevelLLVMIRProducer<'a> {
     pub fn write_to_file(&self, path: &str) -> Result<(), ()> {
+        self.current_module.verify(false)?;
+        self.current_module.run_optimization_passes();
+        self.current_module.verify(true)?;
         self.current_module.write_to_file(path)
     }
 }
@@ -188,13 +194,132 @@ impl<'a> LLVM<'a> {
         }
     }
 
-    pub fn write_to_file(&self, path: &str) -> Result<(), ()> {
+    fn unroll_loops(&self, func: FunctionValue) {
+        let fpm = PassManager::create(&self.module);
+        // The goal of this optimizations is to convert non-deterministic indexing
+        // of signals to constant indexing. Due to how circom is designed the loops
+        // must be bound and therefore we should be able to unroll them.
+        // The following optimizations must be carefully selected along with their ordering
+        // to achieve this effect. DO NOT TOUCH IF YOU DONT KNOW WHAT YOU ARE DOING
+        // HERE. BE. DRAGONS.
+
+        // FUNCTION LEVEL PASSES
+        // Breakup alloca operations to separate local variables
+        // Convert local allocations to ssa variables if possible
+        fpm.add_promote_memory_to_register_pass();
+        // In order to detect the inductive variable of the loop we need to separate them
+        fpm.add_scalar_repl_aggregates_pass_ssa();
+        // Combine operations
+        fpm.add_instruction_combining_pass();
+        // Re-associate values to help with detecting the loop inductive variable
+        fpm.add_reassociate_pass();
+        // Simplify the CFG to remove unnecessary basic blocks
+        fpm.add_cfg_simplification_pass();
+        // Run Global-Value-Numering to remove redundant instructions
+        fpm.add_new_gvn_pass();
+        // Run Sparse-Conditional-Constant-Propagation
+        fpm.add_sccp_pass();
+        // Rotate loops to helps with the next loop operations
+        fpm.add_loop_rotate_pass();
+        // Simplifies the loop induction variable to a sequence from 0 to N
+        // This helps the unrolling pass better detect the induction
+        fpm.add_ind_var_simplify_pass();
+        // Simplify the body of each loop taking invariants out.
+        // This is important to avoid duplicate code when unrolling the loops
+        // fpm.add_licm_pass();
+        // Run Global-Value-Numering to remove redundant instructions
+        fpm.add_new_gvn_pass();
+        // Combine instructions
+        fpm.add_instruction_combining_pass();
+        // Unroll the loops to achieve constant indexing
+        fpm.add_loop_unroll_pass();
+        // Simplify again the CFG after we unrolled the loops to remove unnecessary blocks
+        // fpm.add_cfg_simplification_pass();
+
+        fpm.initialize();
+
+        // Will set changed to false if any pass did not modify the code
+        // Ww assume that is because we reached a fix point
+        fpm.run_on(&func);
+    }
+
+    pub fn run_optimization_passes(&self) {
+        let mpm = PassManager::create(());
+
+        // MODULE LEVEL PASSES
+        // Inline functions to give hints to the function passes of how the operations work.
+        mpm.add_function_inlining_pass();
+
+        mpm.run_on(&self.module);
+        for function in self.module.get_functions() {
+            // Unroll any loops in the code
+            self.unroll_loops(function);
+        }
+    }
+
+    fn ensure_constant_indexing_of_subcmp_signals_in_function(&self, function: FunctionValue) -> Result<(), String> {
+        //  todo!()
+        Ok(())
+    }
+
+    fn ensure_constant_indexing_of_signals_in_function(&self, function: FunctionValue) -> Result<(), String> {
+        match function.get_nth_param(0) {
+            None => Err("Run function does not have a 1st parameter!".to_string()),
+            Some(param) => {
+                let mut users = param.get_first_use();
+                while users.is_some() {
+                    let user = users.unwrap().get_user();
+                    if user.is_pointer_value() {
+                        let user = user.into_pointer_value();
+                        if let Some(inst) = user.as_instruction() {
+                            if inst.get_opcode() != GetElementPtr {
+                                continue;
+                            }
+                            // All parameters must be constant integers except the first one that should be a pointer to %0
+                            for i in 1..inst.get_num_operands() {
+                                let op = inst.get_operand(i).unwrap();
+                                let op = op.expect_left("Can't have a BB in a GEP!");
+                                if !(op.is_int_value() && op.into_int_value().is_const()) {
+                                    return Err(format!("Non-deterministic indexing while accessing a component signal: {}", inst.to_string().to_string()));
+                                }
+                            }
+                        }
+                    }
+                    users = users.unwrap().get_next_use();
+                }
+                Ok(())
+            }
+        }
+    }
+
+    /// Checks any access to signals both component and subcomponents
+    /// and checks if the indexing value is a constant integer
+    /// If not fail the validation to avoid compiling programs with
+    /// non-deterministic indexing
+    pub fn check_abi_consistency(&self) -> Result<(), String> {
+        for function in self.module.get_functions() {
+            if function.get_string_attribute(AttributeLoc::Function, "run_component").is_some() {
+                self.ensure_constant_indexing_of_signals_in_function(function)?;
+                self.ensure_constant_indexing_of_subcmp_signals_in_function(function)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn verify(&self, check_abi: bool) -> Result<(), ()> {
         // Run module verification
         self.module.verify().map_err(|llvm_err| {
             eprintln!("{}: {}", Colour::Red.paint("LLVM Module verification failed"), llvm_err.to_string());
             eprintln!("Generated LLVM:");
             self.module.print_to_stderr();
         })?;
+        if check_abi {
+            self.check_abi_consistency().map_err(|s| {
+                eprintln!("{}: {}", Colour::Red.paint("Circom ABI consistency check failed"), s);
+                eprintln!("Generated LLVM:");
+                self.module.print_to_stderr();
+            })?;
+        }
         // Verify that bitcode can be written, parsed, and re-verified
         {
             let buff = self.module.write_bitcode_to_memory();
@@ -215,6 +340,11 @@ impl<'a> LLVM<'a> {
                 );
             })?;
         }
+        Ok(())
+    }
+
+    pub fn write_to_file(&self, path: &str) -> Result<(), ()> {
+
         // Write the output to file
         self.module.print_to_file(path).map_err(|llvm_err| {
             eprintln!("{}: {}", Colour::Red.paint("Writing LLVM Module failed"), llvm_err.to_string());

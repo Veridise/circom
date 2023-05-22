@@ -2,7 +2,7 @@ use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{build_fn_name, LLVMInstruction, LLVMIRProducer, run_fn_name, to_basic_metadata_enum, to_enum};
-use code_producers::llvm_elements::instructions::{create_add, create_call};
+use code_producers::llvm_elements::instructions::{create_add, create_call, create_load};
 use code_producers::llvm_elements::values::create_literal_u32;
 use code_producers::wasm_elements::*;
 
@@ -73,12 +73,13 @@ impl WriteLLVMIR for CreateCmpBucket {
 
         for cmp_n in 0..self.number_of_cmp {
             let add = create_add(producer, id.into_int_value(), create_literal_u32(producer, cmp_n as u64));
-            let sub_cmp_addr = ctx.load_subcmp(producer, add);
-            create_call(producer, build_fn_name(self.symbol.clone()).as_str(), &[sub_cmp_addr.into()]);
+            let sub_cmp_signals = ctx.load_subcmp_signals_ptr(producer, add);
+            let sub_cmp_counters = ctx.load_subcmp_counter(producer, add);
+            create_call(producer, build_fn_name(self.symbol.clone()).as_str(), &[sub_cmp_signals.into(), sub_cmp_counters.into()]);
             // If it has 0 inputs run directly
             if !self.has_inputs {
-                let sub_cmp = to_basic_metadata_enum(to_enum(sub_cmp_addr));
-                create_call(producer, run_fn_name(self.symbol.clone()).as_str(), &[sub_cmp]);
+                let signals = create_load(producer, sub_cmp_signals).into_pointer_value();
+                create_call(producer, run_fn_name(self.symbol.clone()).as_str(), &[signals.into()]);
             }
         }
         None // We don't return a Value from this bucket

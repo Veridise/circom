@@ -1,3 +1,4 @@
+use inkwell::attributes::{Attribute, AttributeLoc};
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::ContextRef;
@@ -104,4 +105,15 @@ impl<'a> BodyCtx<'a> for FunctionCtx<'a> {
     ) -> AnyValueEnum<'a> {
         create_gep(producer, self.arena, &[index])
     }
+}
+
+pub fn mark_as_noinline(producer: &dyn LLVMIRProducer, func: FunctionValue) {
+    let attr_id = Attribute::get_named_enum_kind_id("noinline");
+    let attr = producer.context().create_enum_attribute(attr_id, 1);
+    func.add_attribute(AttributeLoc::Function, attr);
+}
+
+pub fn mark_as_component_run_function(producer: &dyn LLVMIRProducer, func: FunctionValue, component_name: &str) {
+    let attr = producer.context().create_string_attribute("run_component", component_name);
+    func.add_attribute(AttributeLoc::Function, attr);
 }

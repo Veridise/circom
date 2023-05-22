@@ -10,6 +10,7 @@ use code_producers::llvm_elements::fr::{
     FR_LAND_FN_NAME, FR_LOR_FN_NAME, FR_LNOT_FN_NAME, FR_ADDR_CAST_FN_NAME
 };
 use code_producers::llvm_elements::instructions::{create_add_with_name, create_call, create_mul_with_name};
+use code_producers::llvm_elements::types::bool_type;
 use code_producers::wasm_elements::*;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -216,13 +217,49 @@ impl WriteLLVMIR for ComputeBucket {
                 create_call(producer,FR_NEG_FN_NAME, &args)
             }
             OperatorType::BoolOr => {
-                create_call(producer, FR_LOR_FN_NAME, &args)
+                let lhs = args[0].into_int_value();
+                let lhs = if lhs.get_type().get_bit_width() != 1 {
+                    lhs.const_truncate(bool_type(producer))
+                } else {
+                    lhs
+                };
+                let rhs = args[0].into_int_value();
+                let rhs = if rhs.get_type().get_bit_width() != 1 {
+                    rhs.const_truncate(bool_type(producer))
+                } else {
+                    rhs
+                };
+                create_call(producer, FR_LOR_FN_NAME, &[lhs.into(), rhs.into()])
             }
             OperatorType::BoolAnd => {
-                create_call(producer, FR_LAND_FN_NAME, &args)
+                let lhs = args[0].into_int_value();
+                let lhs = if lhs.get_type().get_bit_width() != 1 {
+                    lhs.const_truncate(bool_type(producer))
+                } else {
+                    lhs
+                };
+                let rhs = args[0].into_int_value();
+                let rhs = if rhs.get_type().get_bit_width() != 1 {
+                    rhs.const_truncate(bool_type(producer))
+                } else {
+                    rhs
+                };
+                create_call(producer, FR_LAND_FN_NAME, &[lhs.into(), rhs.into()])
             }
             OperatorType::BoolNot => {
-                create_call(producer, FR_LNOT_FN_NAME, &args)
+                let lhs = args[0].into_int_value();
+                let lhs = if lhs.get_type().get_bit_width() != 1 {
+                    lhs.const_truncate(bool_type(producer))
+                } else {
+                    lhs
+                };
+                let rhs = args[0].into_int_value();
+                let rhs = if rhs.get_type().get_bit_width() != 1 {
+                    rhs.const_truncate(bool_type(producer))
+                } else {
+                    rhs
+                };
+                create_call(producer, FR_LNOT_FN_NAME, &[lhs.into(), rhs.into()])
             }
             OperatorType::Complement => {
                 create_call(producer, FR_BITFLIP_FN_NAME, &args)

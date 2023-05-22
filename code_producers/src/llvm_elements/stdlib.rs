@@ -9,7 +9,7 @@ pub const ASSERT_FN_NAME: &str = "__assert";
 mod stdlib {
     use inkwell::values::AnyValue;
 
-    use crate::llvm_elements::functions::{create_bb, create_function};
+    use crate::llvm_elements::functions::{create_bb, create_function, mark_as_noinline};
     use crate::llvm_elements::instructions::{
         create_br, create_call, create_conditional_branch, create_eq, create_return_void,
         create_store,
@@ -30,6 +30,7 @@ mod stdlib {
         let void_ty = void_type(producer);
         let func =
             create_function(producer, CONSTRAINT_VALUES_FN_NAME, void_ty.fn_type(args, false));
+        mark_as_noinline(producer, func);
         let main = create_bb(producer, func, "main");
         producer.set_current_bb(main);
 
@@ -48,6 +49,7 @@ mod stdlib {
         let void_ty = void_type(producer);
         let func =
             create_function(producer, CONSTRAINT_VALUE_FN_NAME, void_ty.fn_type(args, false));
+        mark_as_noinline(producer, func);
         let main = create_bb(producer, func, "main");
         producer.set_current_bb(main);
 

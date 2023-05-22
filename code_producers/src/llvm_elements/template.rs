@@ -1,7 +1,7 @@
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::ContextRef;
-use inkwell::types::{AnyType, BasicType, PointerType};
+use inkwell::types::{AnyType, ArrayType, BasicType, PointerType};
 use inkwell::values::{AnyValue, AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
 
 use crate::llvm_elements::{BodyCtx, LLVM, LLVMIRProducer};
@@ -76,24 +76,48 @@ impl<'a, 'b> TemplateLLVMIRProducer<'a, 'b> {
     }
 }
 
+pub type SubcmpSignalsType<'a> = ArrayType<'a>;
+pub type SubcmpCountersType<'a> = ArrayType<'a>;
+
+#[inline]
+pub fn subcmp_signals_ty<'a>(producer: &dyn LLVMIRProducer<'a>, number_subcmps: usize) -> SubcmpSignalsType<'a> {
+    bigint_type(producer).array_type(0).ptr_type(Default::default()).array_type(number_subcmps as u32)
+}
+
+#[inline]
+pub fn subcmp_counters_ty<'a>(producer: &dyn LLVMIRProducer<'a>, number_subcmps: usize) -> SubcmpCountersType<'a> {
+    i32_type(producer).array_type(number_subcmps as u32)
+}
+
+pub struct SubcmpMem<'a> {
+    pub signals: PointerValue<'a>,
+    pub counters: PointerValue<'a>
+}
+
 pub struct TemplateCtx<'a> {
     pub stack: PointerValue<'a>,
-    subcmps: PointerValue<'a>,
+    subcmps: SubcmpMem<'a>,
     pub current_function: FunctionValue<'a>,
     pub template_type: PointerType<'a>,
     pub signals_arg_offset: usize,
 }
 
+///
+/// Initializes the subcomponents structures. An array of signals and an array of counters
 #[inline]
-fn setup_subcmps<'a>(producer: &dyn LLVMIRProducer<'a>, number_subcmps: usize) -> PointerValue<'a> {
-    // [{ [ 0 x i256 ]*, int} x number_subcmps]
-    let signals_ptr = bigint_type(producer).array_type(0).ptr_type(Default::default());
-    let counter_ty = i32_type(producer);
-    let subcmp_ty = producer
-        .context()
-        .struct_type(&[signals_ptr.as_basic_type_enum(), counter_ty.as_basic_type_enum()], false);
-    let subcmps_ty = subcmp_ty.array_type(number_subcmps as u32);
-    create_alloca(producer, subcmps_ty.as_any_type_enum(), "subcmps").into_pointer_value()
+fn setup_subcmps<'a>(producer: &dyn LLVMIRProducer<'a>, number_subcmps: usize) -> SubcmpMem<'a> {
+    // [ N x [ 0 x i256 ]* ]
+    let signals_ty = subcmp_signals_ty(producer, number_subcmps);
+    // [ N x i32 ]
+    let counters_ty = subcmp_counters_ty(producer, number_subcmps);
+
+    let signals = create_alloca(producer, signals_ty.into(), "subcmps.signals").into_pointer_value();
+    let counters = create_alloca(producer, counters_ty.into(), "subcmps.counters").into_pointer_value();
+
+    SubcmpMem {
+        signals,
+        counters
+    }
 }
 
 #[inline]
@@ -121,24 +145,22 @@ impl<'a> TemplateCtx<'a> {
         }
     }
 
-    /// Returns the memory address of the subcomponent
-    pub fn load_subcmp(
+    pub fn load_subcmp_signals_ptr(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         id: AnyValueEnum<'a>
     ) -> PointerValue<'a> {
-        create_gep(producer, self.subcmps, &[zero(producer), id.into_int_value()])
+        create_gep(producer, self.subcmps.signals, &[zero(producer), id.into_int_value()])
             .into_pointer_value()
     }
 
     /// Creates the necessary code to load a subcomponent given the expression used as id
-    pub fn load_subcmp_addr(
+    pub fn load_subcmp_signals(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         id: AnyValueEnum<'a>,
     ) -> PointerValue<'a> {
-        let signals = create_gep(producer, self.subcmps, &[zero(producer), id.into_int_value(), zero(producer)])
-            .into_pointer_value();
+        let signals = self.load_subcmp_signals_ptr(producer, id);
         create_load(producer, signals).into_pointer_value()
     }
 
@@ -150,8 +172,8 @@ impl<'a> TemplateCtx<'a> {
     ) -> PointerValue<'a> {
         create_gep(
             producer,
-            self.subcmps,
-            &[zero(producer), id.into_int_value(), create_literal_u32(producer, 1)],
+            self.subcmps.counters,
+            &[zero(producer), id.into_int_value()],
         )
         .into_pointer_value()
     }

@@ -3,9 +3,9 @@ use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use std::default::Default;
 use code_producers::llvm_elements::{AnyType, AnyValue, build_fn_name, LLVMInstruction, LLVMIRProducer, run_fn_name, to_basic_type_enum};
-use code_producers::llvm_elements::functions::{create_bb, create_function};
+use code_producers::llvm_elements::functions::{create_bb, create_function, mark_as_component_run_function, mark_as_noinline};
 use code_producers::llvm_elements::instructions::{create_alloca, create_br, create_gep, create_return_void, create_store, pointer_cast};
-use code_producers::llvm_elements::template::{create_template_struct, TemplateLLVMIRProducer};
+use code_producers::llvm_elements::template::{create_template_struct, subcmp_counters_ty, subcmp_signals_ty, TemplateLLVMIRProducer};
 use code_producers::llvm_elements::types::{bigint_type, i32_type, void_type};
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::wasm_elements::*;
@@ -46,36 +46,43 @@ impl ToString for TemplateCodeInfo {
 impl WriteLLVMIR for TemplateCodeInfo {
     fn produce_llvm_ir<'ctx, 'prod>(&self, producer: &'prod dyn LLVMIRProducer<'ctx>) -> Option<LLVMInstruction<'ctx>> {
         let void = void_type(producer);
-        let n_signals = self.number_of_inputs + self.number_of_outputs;
+        let n_signals = self.number_of_inputs + self.number_of_outputs + self.number_of_intermediates;
         let template_struct = create_template_struct(producer, n_signals);
+        let bigint_ptr = bigint_type(producer).array_type(0).ptr_type(Default::default());
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // Build function
-        let bigint_ptr = bigint_type(producer).array_type(0);
-        // Set the type of the component memory: signals array + signals counter
-        let component_memory = producer.context().struct_type(&[
-            to_basic_type_enum(bigint_ptr.ptr_type(Default::default())),
-            to_basic_type_enum(i32_type(producer))
-        ], false);
-        let build_function = create_function(producer, build_fn_name(self.header.clone()).as_str(), void_type(producer).fn_type(&[component_memory.ptr_type(Default::default()).into()], false));
-        let main = create_bb(producer,build_function, "main");
-        producer.set_current_bb(main);
+        {
 
-        let cmp_mem = build_function.get_nth_param(0).unwrap();
-        // Allocate memory for the component
-        let alloca = create_alloca(producer, bigint_type(producer).array_type(n_signals as u32).as_any_type_enum(), "").into_pointer_value();
-        // Get the counter as a pointer
-        let counter_ptr = create_gep(producer, cmp_mem.into_pointer_value(), &[zero(producer), create_literal_u32(producer, 1)]).into_pointer_value();
-        // Create a literal value of the initial value of the counter
-        let initial_counter_value = create_literal_u32(producer, self.number_of_inputs as u64);
-        // Write that value in the counter
-        create_store(producer, counter_ptr, initial_counter_value.as_any_value_enum());
-        let signals_mem = create_gep(producer, cmp_mem.into_pointer_value(), &[zero(producer), zero(producer)]).into_pointer_value();
-        //let signals = create_load(producer, alloca);
-        let ptr = pointer_cast(producer, alloca, bigint_ptr.ptr_type(Default::default()));
-        create_store(producer, signals_mem, ptr.into());
-        // Return that memory
-        create_return_void(producer);
+            // Set the type of the component memory: signals array + signals counter
+            let params = [
+                bigint_ptr.ptr_type(Default::default()).into(),
+                i32_type(producer).ptr_type(Default::default()).into()
+            ];
+            let fn_name = build_fn_name(self.header.clone());
+            let build_function = create_function(producer, &fn_name, void_type(producer).fn_type(&params, false));
+            mark_as_noinline(producer, build_function);
+            let main = create_bb(producer, build_function, "main");
+            producer.set_current_bb(main);
+
+            // Get pointer to signals memory
+            let signals = build_function.get_nth_param(0).unwrap().into_pointer_value();
+            // Allocate memory for the component
+            let alloca = create_alloca(producer, bigint_type(producer).array_type(n_signals as u32).as_any_type_enum(), "").into_pointer_value();
+            // Write the address of the allocation to the signals memory
+            let ptr = pointer_cast(producer, alloca, bigint_ptr);
+            create_store(producer, signals, ptr.into());
+
+            // Get the counter as a pointer
+            let counter_ptr = build_function.get_nth_param(1).unwrap().into_pointer_value();
+            // Create a literal value of the initial value of the counter
+            let initial_counter_value = create_literal_u32(producer, self.number_of_inputs as u64);
+            // Write that value in the counter
+            create_store(producer, counter_ptr, initial_counter_value.as_any_value_enum());
+
+            // Return
+            create_return_void(producer);
+        }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // Run function
@@ -84,8 +91,10 @@ impl WriteLLVMIR for TemplateCodeInfo {
         let run_function = create_function(
             producer,
             run_fn_name(self.header.clone()).as_str(),
-            void.fn_type(&[bigint_type(producer).array_type(0).ptr_type(Default::default()).into()], false)
+            void.fn_type(&[bigint_ptr.into()], false)
         );
+        mark_as_noinline(producer, run_function);
+        mark_as_component_run_function(producer, run_function, &self.header);
         let prelude = create_bb(producer, run_function, "prelude");
         producer.set_current_bb(prelude);
         let template_producer = TemplateLLVMIRProducer::new(
