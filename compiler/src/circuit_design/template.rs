@@ -41,8 +41,6 @@ impl ToString for TemplateCodeInfo {
     }
 }
 
-
-
 impl WriteLLVMIR for TemplateCodeInfo {
     fn produce_llvm_ir<'ctx, 'prod>(&self, producer: &'prod dyn LLVMIRProducer<'ctx>) -> Option<LLVMInstruction<'ctx>> {
         let void = void_type(producer);
