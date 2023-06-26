@@ -45,6 +45,7 @@ pub trait WriteCoda {
     fn produce_coda<'a, 'b>(&self, producer: &'b dyn CodaProducer<'a>) -> CodaProgram<'a>;
 
     fn write_coda<W: Write>(&self, writer: &mut W) -> Result<(), ()> {
+        println!("[WriteCoda.write_coda]");
         // TODO: construct Core producer
         // TODO: use Coda producer to generate Coda code
         // TODO: write Coda with writeer
