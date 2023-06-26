@@ -12,6 +12,7 @@ use code_producers::llvm_elements::fr::load_fr;
 use code_producers::llvm_elements::functions::{create_function, FunctionLLVMIRProducer};
 use code_producers::llvm_elements::stdlib::load_stdlib;
 use code_producers::llvm_elements::types::{bigint_type};
+use code_producers::coda_elements::*;
 
 pub struct CompilationFlags {
     pub main_inputs_log: bool,
@@ -457,6 +458,15 @@ impl WriteC for Circuit {
 
 }
 
+impl WriteCoda for Circuit {
+    fn produce_coda<'a, 'b>(&self, producer: &CodaProducer<'a>) -> CodaProgram<'a> {
+        empty_coda_program()
+    }
+    // fn produce_coda(&self, producer: &CodaProducer) {
+    //     panic!("This is an error");
+    // }
+}
+
 impl Circuit {
     pub fn build(vcp: VCP, flags: CompilationFlags, version: &str) -> Self {
         use super::build::build_circuit;
@@ -509,5 +519,8 @@ impl Circuit {
     }
     pub fn produce_llvm_ir(&mut self, _llvm_folder: &str, llvm_path: &str) -> Result<(), ()> {
         self.write_llvm_ir(llvm_path, &self.llvm_data)
+    }
+    pub fn produce_coda<W: Write>(&mut self, writer: &mut W) -> Result<(), ()> {
+        self.write_coda(writer)
     }
 }

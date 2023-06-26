@@ -1,6 +1,7 @@
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
 use code_producers::llvm_elements::*;
+use code_producers::coda_elements::*;
 use std::io::Write;
 
 
@@ -37,5 +38,16 @@ pub trait WriteLLVMIR {
         let top_level = TopLevelLLVMIRProducer::new(&context,llvm_path, data.field_tracking.clone());
         self.produce_llvm_ir(&top_level);
         top_level.write_to_file(llvm_path)
+    }
+}
+
+pub trait WriteCoda {
+    fn produce_coda<'a, 'b>(&self, producer: &CodaProducer<'a>) -> CodaProgram<'a>;
+
+    fn write_coda<W: Write>(&self, writer: &mut W) -> Result<(), ()> {
+        // TODO: construct Core producer
+        // TODO: use Coda producer to generate Coda code
+        // TODO: write Coda with writeer
+        Ok(())
     }
 }
