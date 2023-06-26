@@ -25,6 +25,7 @@ pub struct CompilerConfig {
     pub wasm_flag: bool,
     pub c_flag: bool,
     pub llvm_flag: bool,
+    pub coda_flag: bool,
     pub debug_output: bool,
     pub produce_input_log: bool,
     pub vcp: VCP,
@@ -76,6 +77,13 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
             Colour::Green.paint("Written successfully:"),
             config.llvm_file
         );
+    }
+
+    if config.coda_flag {
+        println!(
+            "{}",
+              Colour::Red.paint("TODO: implement coda compilation"),
+          );
     }
 
     match (config.wat_flag, config.wasm_flag) {
