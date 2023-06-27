@@ -25,6 +25,7 @@ pub struct Circuit {
     pub c_producer: CProducer,
     pub llvm_data: LLVMCircuitData,
     pub templates: Vec<TemplateCode>,
+    pub coda_producer: CodaProducer,
     pub functions: Vec<FunctionCode>,
 }
 
@@ -34,6 +35,7 @@ impl Default for Circuit {
             c_producer: CProducer::default(),
             wasm_producer: WASMProducer::default(),
             llvm_data: LLVMCircuitData::default(),
+            coda_producer: CodaProducer::default(),
             templates: Vec::new(),
             functions: Vec::new(),
         }
@@ -459,12 +461,12 @@ impl WriteC for Circuit {
 }
 
 impl WriteCoda for Circuit {
-    fn produce_coda<'a, 'b>(&self, producer: &CodaProducer<'a>) -> CodaProgram<'a> {
-        empty_coda_program()
+    fn produce_coda<'a, 'b>(&self, producer: &'b CodaProducer) -> CodaProgram<'a> {
+        println!("[WriteCoda.produce_coda]");
+        // TODO: here is where i use the circuit info in order to load the
+        // producer somehow
+        generate_coda_program(producer)
     }
-    // fn produce_coda(&self, producer: &CodaProducer) {
-    //     panic!("This is an error");
-    // }
 }
 
 impl Circuit {
@@ -521,6 +523,7 @@ impl Circuit {
         self.write_llvm_ir(llvm_path, &self.llvm_data)
     }
     pub fn produce_coda<W: Write>(&mut self, writer: &mut W) -> Result<(), ()> {
+        println!("[Circuit.produce_coda]");
         self.write_coda(writer)
     }
 }

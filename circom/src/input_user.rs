@@ -64,7 +64,6 @@ impl Input {
         let output_c_path = Input::build_folder(&output_path, &file_name, CPP);
         let output_js_path = Input::build_folder(&output_path, &file_name, JS);
         let output_llvm_path = Input::build_folder(&output_path, &file_name, LLVM_IR);
-        let output_coda_path = Input::build_folder(&output_path, &file_name, CODA);
         let o_style = input_processing::get_simplification_style(&matches)?;
         let link_libraries = input_processing::get_link_libraries(&matches);
         Result::Ok(Input {
@@ -79,7 +78,7 @@ impl Input {
 	        out_c_run_name: file_name.clone(),
             out_c_code: Input::build_output(&output_c_path, &file_name, CPP),
             out_llvm_code: Input::build_output(&output_llvm_path, &file_name, LLVM_IR),
-            out_coda_code: Input::build_output(&output_coda_path, &file_name, CODA),
+            out_coda_code: Input::build_output(&output_path, &file_name, CODA),
             out_llvm_folder: output_llvm_path.clone(),
             out_summary_dat: Input:: build_output(&output_llvm_path, &file_name, JSON),
             out_c_dat: Input::build_output(&output_c_path, &file_name, DAT),

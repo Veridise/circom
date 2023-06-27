@@ -91,11 +91,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
             .schedule_deterministic_subcmp_invoke_pass(prime)
             .transform_circuit(circuit);
 
-        compiler_interface::write_coda(&mut circuit, &config.coda_file)?;
-        println!(
-            "{}",
-              Colour::Red.paint("TODO: implement coda compilation"),
-          );
+        compiler_interface::write_coda(&mut circuit, &config.coda_file)?
     }
 
     match (config.wat_flag, config.wasm_flag) {
