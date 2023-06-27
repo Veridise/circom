@@ -63,8 +63,7 @@ pub fn write_coda(circuit: &mut Circuit, coda_file: &str) -> Result<(), ()> {
 
     let file = File::create(coda_file).map_err(|_err| {})?;
     let mut writer = BufWriter::new(file);
-    let result = circuit.produce_coda(&mut writer);
-    result
+    circuit.produce_coda(&mut writer)
 }
 
 fn produce_debug_output(circuit: &Circuit) -> Result<(), ()> {
