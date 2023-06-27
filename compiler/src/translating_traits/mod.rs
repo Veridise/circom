@@ -44,9 +44,9 @@ pub trait WriteLLVMIR {
 pub trait WriteCoda {
     fn produce_coda<'a, 'b>(&self, producer: &'b CodaProducer) -> CodaProgram<'a>;
 
-    fn write_coda<W: Write>(&self, writer: &mut W) -> Result<(), ()> {
+    fn write_coda<W: Write>(&self, writer: &mut W, producer: &CodaProducer) -> Result<(), ()> {
         println!("[WriteCoda.write_coda]");
-        // TODO: construct Core producer
+        // TODO: construct Coda producer
         // TODO: use Coda producer to generate Coda code
         // TODO: write Coda with writeer
         Ok(())

@@ -524,6 +524,6 @@ impl Circuit {
     }
     pub fn produce_coda<W: Write>(&mut self, writer: &mut W) -> Result<(), ()> {
         println!("[Circuit.produce_coda]");
-        self.write_coda(writer)
+        self.write_coda(writer, &self.coda_producer)
     }
 }

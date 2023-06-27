@@ -21,6 +21,7 @@ pub fn generate_coda_program<'a, 'b>(producer: &'b CodaProducer) -> CodaProgram<
 
 impl Default for CodaProducer {
     fn default() -> Self {
+        // TODO: what should the producer do?
         CodaProducer {}
     }
 }
