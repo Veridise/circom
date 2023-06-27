@@ -1,9 +1,9 @@
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CodaProducer {
-    // TODO: look at LLVMIRProducer
+    // HENRY: look at LLVMIRProducer
 }
 
-// TODO: decide on repr of Coda in rust
+// HENRY: decide on repr of Coda in rust
 pub type CodaProgram<'a> = String;
 
 pub fn empty_coda_program<'a>() -> CodaProgram<'a> {
@@ -12,7 +12,7 @@ pub fn empty_coda_program<'a>() -> CodaProgram<'a> {
 
 pub fn generate_coda_program<'a, 'b>(producer: &'b CodaProducer) -> CodaProgram<'a> {
     println!("[coda_elements::generate_coda_program]");
-    // TODO: produce actual Coda program
+    // HENRY: produce actual Coda program
     empty_coda_program()
 }
 
@@ -21,7 +21,7 @@ pub fn generate_coda_program<'a, 'b>(producer: &'b CodaProducer) -> CodaProgram<
 
 impl Default for CodaProducer {
     fn default() -> Self {
-        // TODO: what should the producer do?
+        // HENRY: what should the producer do?
         CodaProducer {}
     }
 }

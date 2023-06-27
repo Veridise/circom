@@ -463,7 +463,7 @@ impl WriteC for Circuit {
 impl WriteCoda for Circuit {
     fn produce_coda<'a, 'b>(&self, producer: &'b CodaProducer) -> CodaProgram<'a> {
         println!("[WriteCoda.produce_coda]");
-        // TODO: here is where i use the circuit info in order to load the
+        // HENRY: here is where i use the circuit info in order to load the
         // producer somehow
         generate_coda_program(producer)
     }

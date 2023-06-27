@@ -46,9 +46,9 @@ pub trait WriteCoda {
 
     fn write_coda<W: Write>(&self, writer: &mut W, producer: &CodaProducer) -> Result<(), ()> {
         println!("[WriteCoda.write_coda]");
-        // TODO: construct Coda producer
-        // TODO: use Coda producer to generate Coda code
-        // TODO: write Coda with writeer
+        // HENRY: construct Coda producer
+        // HENRY: use Coda producer to generate Coda code
+        // HENRY: write Coda with writeer
         Ok(())
     }
 }
