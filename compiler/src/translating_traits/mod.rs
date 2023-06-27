@@ -42,13 +42,5 @@ pub trait WriteLLVMIR {
 }
 
 pub trait WriteCoda {
-    fn produce_coda<'a, 'b>(&self, producer: &'b CodaProducer) -> CodaProgram<'a>;
-
-    fn write_coda<W: Write>(&self, writer: &mut W, producer: &CodaProducer) -> Result<(), ()> {
-        println!("[WriteCoda.write_coda]");
-        // HENRY: construct Coda producer
-        // HENRY: use Coda producer to generate Coda code
-        // HENRY: write Coda with writeer
-        Ok(())
-    }
+    fn write_coda<W: Write>(&self, producer: &mut CodaProducer, writer: &mut W) -> Result<(), ()>;
 }

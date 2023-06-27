@@ -1,19 +1,33 @@
+use std::io::Write;
+
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CodaProducer {
-    // HENRY: look at LLVMIRProducer
+    vars: Vec<String>,
+}
+
+impl CodaProducer {
+    // HENRY: functions to build up a coda program
+
+    fn program(&self) -> CodaProgram {
+        CodaProgram::CodaProgram
+    }
+
+    pub fn write<W: Write>(&self, writer: &mut W) -> Result<(), ()> {
+        println!("[coda_elements::CodaProducer::write]");
+        let program = self.program();
+        // HENRY: actually write with the writer
+        Ok(())
+    }
 }
 
 // HENRY: decide on repr of Coda in rust
-pub type CodaProgram<'a> = String;
-
-pub fn empty_coda_program<'a>() -> CodaProgram<'a> {
-    "<empty Coda program>".to_string()
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum CodaProgram {
+    CodaProgram,
 }
 
-pub fn generate_coda_program<'a, 'b>(producer: &'b CodaProducer) -> CodaProgram<'a> {
-    println!("[coda_elements::generate_coda_program]");
-    // HENRY: produce actual Coda program
-    empty_coda_program()
+pub fn empty_coda_program() -> CodaProgram {
+    CodaProgram::CodaProgram
 }
 
 // impl Sized for CodaProducer {
@@ -22,6 +36,6 @@ pub fn generate_coda_program<'a, 'b>(producer: &'b CodaProducer) -> CodaProgram<
 impl Default for CodaProducer {
     fn default() -> Self {
         // HENRY: what should the producer do?
-        CodaProducer {}
+        CodaProducer { vars: vec![] }
     }
 }

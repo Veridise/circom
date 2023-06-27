@@ -1,10 +1,8 @@
 pragma circom 2.0.0;
 
-template Multiplier2(){
-   //Declaration of signals
-   signal input in1;
-   signal input in2;
-   signal output out <== in1 * in2;
+template Not(){
+   signal input in;
+   signal output out <== (in + 1) - (2 * in);
 }
 
-component main {public [in1,in2]} = Multiplier2();
+component main {public [in]} = Not();
