@@ -58,7 +58,7 @@ pub fn write_coda(circuit: &mut Circuit, coda_file: &str) -> Result<(), ()> {
     println!("[compiler_interface::write_coda] coda_file: {}", coda_file);
 
     for template in &circuit.templates {
-        println!("[compiler_interface::write_coda] circuit template: {:?}", template.body);
+        println!("[compiler_interface::write_coda] circuit template body: {:?}", template);
     }
 
     let file = File::create(coda_file).map_err(|_err| {})?;

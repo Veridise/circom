@@ -1,0 +1,94 @@
+TemplateCodeInfo 
+  { id: 0
+  , header: "Multiplier2_0"
+  , name: "Multiplier2"
+  , is_parallel: false
+  , is_parallel_component: false
+  , is_not_parallel_component: true
+  , has_parallel_sub_cmp: false
+  , number_of_inputs: 2
+  , number_of_outputs: 1
+  , number_of_intermediates: 0
+  , body: 
+    [ Constraint(
+        Substitution(
+          Store(
+            StoreBucket 
+              { id: 56314479860936389222349886339189867247
+              , line: 7
+              , message_id: 0
+              , context: InstrContext { size: 1 }
+              , dest_is_output: true
+              , dest_address_type: Signal
+              , dest: Indexed 
+                { location: Value(ValueBucket { id: 209543573014824607024132630470010019376, line: 0, message_id: 0, parse_as: U32, op_aux_no: 0, value: 0 })
+                , template_header: None 
+                }
+              , src: 
+                Compute(
+                  ComputeBucket 
+                    { id: 233688832528912890623724016838726280343
+                    , line: 7
+                    , message_id: 0
+                    , op: Mul
+                    , op_aux_no: 0
+                    , stack:
+                      [ Load(
+                          LoadBucket 
+                            { id: 208691108860036176532646542601906539387
+                            , line: 7
+                            , message_id: 0
+                            , address_type: Signal
+                            , src: 
+                              Indexed 
+                                { location: 
+                                    Value(
+                                      ValueBucket 
+                                        { id: 208199398835044428913839189055320414508
+                                          , line: 0
+                                          , message_id: 0
+                                          , parse_as: U32
+                                          , op_aux_no: 1
+                                          , value: 1
+                                        }
+                                    )
+                                  , template_header: None
+                                } 
+                            }
+                        )
+                      , Load(
+                          LoadBucket 
+                            { id: 242622352517254440265745638075614269755
+                              , line: 7
+                              , message_id: 0
+                              , address_type: Signal
+                              , src: 
+                                Indexed 
+                                  { location: 
+                                      Value(
+                                        ValueBucket 
+                                          { id: 212400228183155781950013975626531531372
+                                          , line: 0
+                                          , message_id: 0
+                                          , parse_as: U32
+                                          , op_aux_no: 2
+                                          , value: 2
+                                          }
+                                      )
+                                  , template_header: None 
+                                  }
+                            }
+                        )
+                      ]
+                    }
+                )
+              }
+          )
+        )
+      )
+    ]
+  , var_stack_depth: 0
+  , expression_stack_depth: 3
+  , signal_stack_depth: 3
+  , number_of_components: 0 
+  }
