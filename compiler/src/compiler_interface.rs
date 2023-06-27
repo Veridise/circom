@@ -56,7 +56,6 @@ pub fn write_llvm_ir(circuit: &mut Circuit, llvm_folder: &str, llvm_file: &str, 
 
 pub fn write_coda(circuit: &mut Circuit, coda_file: &str) -> Result<(), ()> {
     println!("[compiler_interface::write_coda] coda_file: {}", coda_file);
-    // println!("[compiler_interface::write_coda] circuit: {}", circuit.templates);
 
     for template in &circuit.templates {
         println!("[compiler_interface::write_coda] circuit template: {:?}", template.body);
