@@ -70,6 +70,7 @@ fn start() -> Result<(), ()> {
         wat_file: user_input.wat_file().to_string(),
         wasm_file: user_input.wasm_file().to_string(),
         produce_input_log: user_input.main_inputs_flag(),
+        summary_file: user_input.summary_file().to_string(),
     };
     compilation_user::compile(compilation_config, program_archive, &user_input.prime())?;
     Result::Ok(())

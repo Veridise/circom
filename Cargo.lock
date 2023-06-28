@@ -231,6 +231,7 @@ dependencies = [
  "inkwell",
  "lz_fnv",
  "num-bigint-dig",
+ "serde",
  "serde_json",
  "uuid",
 ]

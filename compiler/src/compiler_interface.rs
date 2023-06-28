@@ -1,3 +1,5 @@
+use code_producers::coda_elements::CodaProducer;
+
 pub use crate::circuit_design::circuit::{Circuit, CompilationFlags};
 pub use crate::hir::very_concrete_program::VCP;
 use std::fs::File;
@@ -54,10 +56,17 @@ pub fn write_llvm_ir(circuit: &mut Circuit, llvm_folder: &str, llvm_file: &str, 
     circuit.produce_llvm_ir(llvm_folder, &llvm_file)
 }
 
-pub fn write_coda(circuit: &mut Circuit, coda_file: &str) -> Result<(), ()> {
+pub fn write_coda(circuit: &mut Circuit, summary_file: &str, coda_file: &str) -> Result<(), ()> {
+    println!("[compiler_interface::write_coda] summary_file: {}", summary_file);
     println!("[compiler_interface::write_coda] coda_file: {}", coda_file);
+    
+    let mut producer = CodaProducer::default();
+    println!("[compiler_interface::write_coda] summary_file: {}", summary_file);
+    producer.load_summary(summary_file)?;
+    
     let file = File::create(coda_file).map_err(|_err| {})?;
     let mut writer = BufWriter::new(file);
+    
     circuit.produce_coda(&mut writer)
 }
 

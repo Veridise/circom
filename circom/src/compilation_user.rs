@@ -29,6 +29,7 @@ pub struct CompilerConfig {
     pub coda_file: String,
     pub debug_output: bool,
     pub produce_input_log: bool,
+    pub summary_file: String,
     pub vcp: VCP,
 }
 
@@ -91,7 +92,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
             .schedule_deterministic_subcmp_invoke_pass(prime)
             .transform_circuit(circuit);
 
-        compiler_interface::write_coda(&mut circuit, &config.coda_file)?
+        compiler_interface::write_coda(&mut circuit, &config.summary_file, &config.coda_file)?
     }
 
     match (config.wat_flag, config.wasm_flag) {
