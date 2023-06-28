@@ -3,6 +3,8 @@ use super::function::{FunctionCode, FunctionCodeInfo};
 use super::template::{TemplateCode, TemplateCodeInfo};
 use super::types::*;
 use crate::hir::very_concrete_program::VCP;
+use crate::intermediate_representation::Instruction;
+use crate::intermediate_representation::ir_interface::ValueBucket;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
@@ -473,9 +475,64 @@ impl WriteC for Circuit {
 
 impl WriteCoda for Circuit {
     fn write_coda<W: Write>(&self, producer: &mut CodaProducer, writer: &mut W) -> Result<(), ()> {
-        println!("[WriteCoda.write_coda]");
+        println!("[write_coda] BEGIN");
         // HENRY: this is the main place to build the coda program
-        producer.write(writer)
+
+        for template in &self.templates {
+            println!("[write_coda] template.header: {:?}", template.header);
+            for instruction in &template.body {
+                use Instruction::*;
+                println!("[write_coda] instruction: {:?}", instruction);
+                match instruction.as_ref() {
+                    Value(_) => {
+                        println!("[write_coda] Value");
+                    }
+                    Load(_) => {
+                        println!("[write_coda] Load");
+                    }
+                    Store(_) => {
+                        println!("[write_coda] Store");
+                    }
+                    Compute(_) => {
+                        println!("[write_coda] Compute");
+                    }
+                    Call(_) => {
+                        println!("[write_coda] Call");
+                    }
+                    Branch(_) => {
+                        println!("[write_coda] Branch");
+                    }
+                    Return(_) => {
+                        println!("[write_coda] Return");
+                    }
+                    Assert(_) => {
+                        println!("[write_coda] Assert");
+                    }
+                    Log(_) => {
+                        println!("[write_coda] Log");
+                    }
+                    Loop(_) => {
+                        println!("[write_coda] Loop");
+                    }
+                    CreateCmp(_) => {
+                        println!("[write_coda] CreateCmp");
+                    }
+                    Constraint(constraint ) => {
+                        println!("[write_coda] Constraint");
+                    }
+                    Block(_) => {
+                        println!("[write_coda] Block");
+                    }
+                    Nop(_) => {
+                        println!("[write_coda] Nop");
+                    }
+                }
+            }
+        }
+
+        let result = producer.write(writer);
+        println!("[write_coda] END");
+        result
     }
 }
 

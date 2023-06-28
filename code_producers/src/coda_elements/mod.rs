@@ -1,7 +1,9 @@
+use summary::SummaryRoot;
 use std::io::Write;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct CodaProducer {
+    summaryRoot: SummaryRoot,
     vars: Vec<String>,
 }
 
@@ -15,7 +17,7 @@ impl CodaProducer {
     pub fn write<W: Write>(&self, writer: &mut W) -> Result<(), ()> {
         println!("[coda_elements::CodaProducer::write]");
         let program = self.program();
-        // HENRY: actually write with the writer
+        // HENRY: actually write the program with the writer
         Ok(())
     }
 }
