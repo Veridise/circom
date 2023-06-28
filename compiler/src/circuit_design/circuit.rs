@@ -608,7 +608,7 @@ impl Circuit {
     }
     pub fn produce_coda<W: Write>(&mut self, writer: &mut W) -> Result<(), ()> {
         println!("[Circuit.produce_coda]");
-        let mut producer = CodaProducer::default();
-        self.write_coda(&mut producer, writer)
+        // let mut producer = CodaProducer::default();
+        self.write_coda(self.coda_producer.borrow_mut(), writer)
     }
 }
