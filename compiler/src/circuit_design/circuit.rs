@@ -472,9 +472,11 @@ impl WriteC for Circuit {
 }
 
 impl WriteCoda for Circuit {
-    fn write_coda<W: Write>(&self, writer: &mut W) -> Result<(), ()> {
+    fn produce_coda_program(&self, summary_root: SummaryRoot) -> CodaProgram {
         println!("[write_coda] BEGIN");
         // HENRY: this is the main place to build the coda program
+
+        let mut program = CodaProgram::default();
 
         for template in &self.templates {
             println!("[write_coda] template.header: {:?}", template.header);
@@ -527,14 +529,8 @@ impl WriteCoda for Circuit {
                 }
             }
         }
-
-
-        // HENRY: actually write coda
-
-        // let result = producer.write(writer);
         println!("[write_coda] END");
-        // result
-        Ok(())
+        program
     }
 }
 
@@ -608,10 +604,9 @@ impl Circuit {
     pub fn produce_llvm_ir(&mut self, _llvm_folder: &str, llvm_path: &str) -> Result<(), ()> {
         self.write_llvm_ir(llvm_path, &self.llvm_data)
     }
-    pub fn produce_coda<W: Write>(&mut self, writer: &mut W) -> Result<(), ()> {
+    pub fn produce_coda<W: Write>(&mut self, summary_root: SummaryRoot, writer: &mut W) -> Result<(), ()> {
         println!("[Circuit.produce_coda]");
-        // let mut producer = CodaProducer::default();
-        // self.write_coda(self.coda_producer.borrow_mut(), writer)
-        Ok(())
+        let program = self.produce_coda_program(summary_root);
+        self.write_coda_program(writer, program)
     }
 }
