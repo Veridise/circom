@@ -4,7 +4,8 @@ use super::template::{TemplateCode, TemplateCodeInfo};
 use super::types::*;
 use crate::hir::very_concrete_program::VCP;
 use crate::intermediate_representation::Instruction;
-use crate::intermediate_representation::ir_interface::ValueBucket;
+use crate::intermediate_representation::ir_interface::{ValueBucket, ConstraintBucket};
+// use crate::circuit_design::generate_coda::generate_coda_program;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
@@ -471,65 +472,82 @@ impl WriteC for Circuit {
     }
 }
 
+pub fn process_instruction(
+    circuit: &Circuit,
+    summary_root: &SummaryRoot,
+    program: &mut CodaProgram,
+    instruction: &Box<Instruction>,
+) -> () {
+    use Instruction::*;
+    println!("[produce_coda_program] instruction: {:?}", instruction);
+    match instruction.as_ref() {
+        Value(_) => {
+            // println!("[produce_coda_program] Value");
+        }
+        Load(_) => {
+            // println!("[produce_coda_program] Load");
+        }
+        Store(_) => {
+            // println!("[produce_coda_program] Store");
+        }
+        Compute(_) => {
+            // println!("[produce_coda_program] Compute");
+        }
+        Call(_) => {
+            // println!("[produce_coda_program] Call");
+        }
+        Branch(_) => {
+            // println!("[produce_coda_program] Branch");
+        }
+        Return(_) => {
+            // println!("[produce_coda_program] Return");
+        }
+        Assert(_) => {
+            // println!("[produce_coda_program] Assert");
+        }
+        Log(_) => {
+            // println!("[produce_coda_program] Log");
+        }
+        Loop(_) => {
+            // println!("[produce_coda_program] Loop");
+        }
+        CreateCmp(_) => {
+            // println!("[produce_coda_program] CreateCmp");
+        }
+        Constraint(constraint) => {
+            // println!("[produce_coda_program] Constraint");
+            match constraint {
+                ConstraintBucket::Substitution(inst_) => {
+                    process_instruction(circuit, summary_root, program, inst_);
+                }
+                ConstraintBucket::Equality(inst_) => {
+                    process_instruction(circuit, summary_root, program, inst_);
+                }
+            }
+        }
+        Block(_) => {
+            // println!("[produce_coda_program] Block");
+        }
+        Nop(_) => {
+            // println!("[produce_coda_program] Nop");
+        }
+    }
+}
+
 impl WriteCoda for Circuit {
     fn produce_coda_program(&self, summary_root: SummaryRoot) -> CodaProgram {
-        println!("[write_coda] BEGIN");
+        println!("[produce_coda_program] BEGIN");
         // HENRY: this is the main place to build the coda program
 
         let mut program = CodaProgram::default();
 
         for template in &self.templates {
-            println!("[write_coda] template.header: {:?}", template.header);
+            println!("[produce_coda_program] template.header: {:?}", template.header);
             for instruction in &template.body {
-                use Instruction::*;
-                println!("[write_coda] instruction: {:?}", instruction);
-                match instruction.as_ref() {
-                    Value(_) => {
-                        println!("[write_coda] Value");
-                    }
-                    Load(_) => {
-                        println!("[write_coda] Load");
-                    }
-                    Store(_) => {
-                        println!("[write_coda] Store");
-                    }
-                    Compute(_) => {
-                        println!("[write_coda] Compute");
-                    }
-                    Call(_) => {
-                        println!("[write_coda] Call");
-                    }
-                    Branch(_) => {
-                        println!("[write_coda] Branch");
-                    }
-                    Return(_) => {
-                        println!("[write_coda] Return");
-                    }
-                    Assert(_) => {
-                        println!("[write_coda] Assert");
-                    }
-                    Log(_) => {
-                        println!("[write_coda] Log");
-                    }
-                    Loop(_) => {
-                        println!("[write_coda] Loop");
-                    }
-                    CreateCmp(_) => {
-                        println!("[write_coda] CreateCmp");
-                    }
-                    Constraint(constraint ) => {
-                        println!("[write_coda] Constraint");
-                    }
-                    Block(_) => {
-                        println!("[write_coda] Block");
-                    }
-                    Nop(_) => {
-                        println!("[write_coda] Nop");
-                    }
-                }
+                process_instruction(&self, &summary_root, &mut program, instruction);
             }
         }
-        println!("[write_coda] END");
+        println!("[produce_coda_program] END");
         program
     }
 }
