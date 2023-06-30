@@ -7,14 +7,37 @@ use serde::{Serialize, Deserialize};
 // `summary` package. I couldn't directly import because of cyclic dependencies.
 // But this is clearly the right place to know about (some of) the summary
 // metadata, so I'm not sure what else I should have done.
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct SummaryRoot {
-    version: String,
-    compiler: String,
-    framework: Option<String>,
-    // meta: Meta,
-    // components: Vec<TemplateSummary>,
-    // functions: Vec<FunctionSummary>,
+    pub version: String,
+    pub compiler: String,
+    pub framework: Option<String>,
+    // pub meta: Meta,
+    pub components: Vec<TemplateSummary>,
+    // pub functions: Vec<FunctionSummary>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TemplateSummary {
+    pub name: String,
+    pub main: bool,
+    pub signals: Vec<SignalSummary>,
+    pub subcmps: Vec<SubcmpSummary>,
+    pub logic_fn_name: String   
+}
+
+#[derive(Deserialize, Debug)]
+pub struct SignalSummary {
+    pub name: String,
+    pub visibility: String,
+    pub idx: usize,
+    pub public: bool
+}
+
+#[derive(Deserialize, Debug)]
+pub struct SubcmpSummary {
+    pub name: String,
+    pub idx: usize
 }
 
 pub fn load_summary(summary_file: &str) -> Result<SummaryRoot, serde_json::Error> {
@@ -22,12 +45,54 @@ pub fn load_summary(summary_file: &str) -> Result<SummaryRoot, serde_json::Error
     serde_json::from_reader(rdr)
 }
 
-// HENRY:TODO: decide on repr of Coda in rust
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct CodaProgram {}
+pub struct CodaProgram {
+    pub circuits: Vec<CodaCircuit>,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct CodaCircuit {
+    pub name: String,
+    pub inputs: Vec<CodaSignal>,
+    pub outputs: Vec<CodaSignal>,
+    pub preconditions: Vec<CodaTerm>,
+    pub postconditions: Vec<CodaTerm>,
+    pub body: CodaTerm,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct CodaSignal {
+    pub name: String,
+    pub type_: CodaType,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum CodaTerm {
+    Nop,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum CodaType {}
+
+impl Default for CodaTerm {
+    fn default() -> Self {
+        CodaTerm::Nop
+    }
+}
 
 impl Default for CodaProgram {
     fn default() -> Self {
-        CodaProgram {}
+        CodaProgram { circuits: Vec::new() }
+    }
+}
+
+pub fn empty_coda_circuit(name: String) -> CodaCircuit {
+    CodaCircuit {
+        name,
+        inputs: Vec::new(),
+        outputs: Vec::new(),
+        preconditions: Vec::new(),
+        postconditions: Vec::new(),
+        body: CodaTerm::default(),
     }
 }

@@ -472,7 +472,7 @@ impl WriteC for Circuit {
     }
 }
 
-pub fn process_instruction(
+fn coda_instruction(
     circuit: &Circuit,
     summary_root: &SummaryRoot,
     program: &mut CodaProgram,
@@ -481,54 +481,54 @@ pub fn process_instruction(
     use Instruction::*;
     println!("[produce_coda_program] instruction: {:?}", instruction);
     match instruction.as_ref() {
-        Value(_) => {
+        Value(value) => {
             // println!("[produce_coda_program] Value");
         }
-        Load(_) => {
+        Load(load) => {
             // println!("[produce_coda_program] Load");
         }
-        Store(_) => {
+        Store(store) => {
             // println!("[produce_coda_program] Store");
         }
-        Compute(_) => {
+        Compute(compute) => {
             // println!("[produce_coda_program] Compute");
         }
-        Call(_) => {
+        Call(call) => {
             // println!("[produce_coda_program] Call");
         }
-        Branch(_) => {
+        Branch(branch) => {
             // println!("[produce_coda_program] Branch");
         }
-        Return(_) => {
+        Return(return_) => {
             // println!("[produce_coda_program] Return");
         }
-        Assert(_) => {
+        Assert(assert) => {
             // println!("[produce_coda_program] Assert");
         }
-        Log(_) => {
+        Log(log) => {
             // println!("[produce_coda_program] Log");
         }
-        Loop(_) => {
+        Loop(loop_) => {
             // println!("[produce_coda_program] Loop");
         }
-        CreateCmp(_) => {
+        CreateCmp(createCmp) => {
             // println!("[produce_coda_program] CreateCmp");
         }
         Constraint(constraint) => {
             // println!("[produce_coda_program] Constraint");
             match constraint {
                 ConstraintBucket::Substitution(inst_) => {
-                    process_instruction(circuit, summary_root, program, inst_);
+                    coda_instruction(circuit, summary_root, program, inst_);
                 }
                 ConstraintBucket::Equality(inst_) => {
-                    process_instruction(circuit, summary_root, program, inst_);
+                    coda_instruction(circuit, summary_root, program, inst_);
                 }
             }
         }
-        Block(_) => {
+        Block(block) => {
             // println!("[produce_coda_program] Block");
         }
-        Nop(_) => {
+        Nop(nop) => {
             // println!("[produce_coda_program] Nop");
         }
     }
@@ -539,12 +539,27 @@ impl WriteCoda for Circuit {
         println!("[produce_coda_program] BEGIN");
         // HENRY: this is the main place to build the coda program
 
-        let mut program = CodaProgram::default();
+        // println!("self.templates {:?}", self.templates);
+        // println!("self.functions {:?}", self.functions);
 
-        for template in &self.templates {
+        println!("[produce_coda_program] summary_root");
+        println!("[produce_coda_program]   - version: {}", summary_root.version);
+        println!("[produce_coda_program]   - compiler: {}", summary_root.compiler);
+        println!("[produce_coda_program]   - framework: {:?}", summary_root.framework);
+        
+        let mut program = CodaProgram::default();
+        
+        for (template_i, template) in self.templates.iter().enumerate() {
             println!("[produce_coda_program] template.header: {:?}", template.header);
+            println!("[produce_coda_program]   - number_of_inputs: {}", template.number_of_inputs);
+            println!("[produce_coda_program]   - number_of_outputs: {}", template.number_of_outputs);
+
+            let template_summary = summary_root.components.get(template_i).unwrap();
+            println!("[produce_coda_program] template_summary: {:?}", template_summary);
+
+            let mut circuit = empty_coda_circuit(template.name.clone());
             for instruction in &template.body {
-                process_instruction(&self, &summary_root, &mut program, instruction);
+                coda_instruction(&self, &summary_root, &mut program, instruction);
             }
         }
         println!("[produce_coda_program] END");
