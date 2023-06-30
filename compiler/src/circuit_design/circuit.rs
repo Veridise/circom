@@ -27,7 +27,6 @@ pub struct Circuit {
     pub c_producer: CProducer,
     pub llvm_data: LLVMCircuitData,
     pub templates: Vec<TemplateCode>,
-    pub coda_producer: CodaProducer,
     pub functions: Vec<FunctionCode>,
 }
 
@@ -37,7 +36,6 @@ impl Default for Circuit {
             c_producer: CProducer::default(),
             wasm_producer: WASMProducer::default(),
             llvm_data: LLVMCircuitData::default(),
-            coda_producer: CodaProducer::default(),
             templates: Vec::new(),
             functions: Vec::new(),
         }
@@ -474,7 +472,7 @@ impl WriteC for Circuit {
 }
 
 impl WriteCoda for Circuit {
-    fn write_coda<W: Write>(&self, producer: &mut CodaProducer, writer: &mut W) -> Result<(), ()> {
+    fn write_coda<W: Write>(&self, writer: &mut W) -> Result<(), ()> {
         println!("[write_coda] BEGIN");
         // HENRY: this is the main place to build the coda program
 
@@ -530,9 +528,13 @@ impl WriteCoda for Circuit {
             }
         }
 
-        let result = producer.write(writer);
+
+        // HENRY: actually write coda
+
+        // let result = producer.write(writer);
         println!("[write_coda] END");
-        result
+        // result
+        Ok(())
     }
 }
 
@@ -609,6 +611,7 @@ impl Circuit {
     pub fn produce_coda<W: Write>(&mut self, writer: &mut W) -> Result<(), ()> {
         println!("[Circuit.produce_coda]");
         // let mut producer = CodaProducer::default();
-        self.write_coda(self.coda_producer.borrow_mut(), writer)
+        // self.write_coda(self.coda_producer.borrow_mut(), writer)
+        Ok(())
     }
 }

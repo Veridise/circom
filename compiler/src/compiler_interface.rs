@@ -1,5 +1,3 @@
-use code_producers::coda_elements::CodaProducer;
-
 pub use crate::circuit_design::circuit::{Circuit, CompilationFlags};
 pub use crate::hir::very_concrete_program::VCP;
 use std::fs::File;
@@ -60,9 +58,10 @@ pub fn write_coda(circuit: &mut Circuit, summary_file: &str, coda_file: &str) ->
     println!("[compiler_interface::write_coda] summary_file: {}", summary_file);
     println!("[compiler_interface::write_coda] coda_file: {}", coda_file);
     
-    let mut producer = CodaProducer::default();
+    // HENRY: use this summary file when generating coda
+    // let mut producer = CodaProducer::default();
     println!("[compiler_interface::write_coda] summary_file: {}", summary_file);
-    producer.load_summary(summary_file)?;
+    // producer.load_summary(summary_file)?;
     
     let file = File::create(coda_file).map_err(|_err| {})?;
     let mut writer = BufWriter::new(file);
