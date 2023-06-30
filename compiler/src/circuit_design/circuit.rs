@@ -4,8 +4,7 @@ use super::template::{TemplateCode, TemplateCodeInfo};
 use super::types::*;
 use crate::hir::very_concrete_program::VCP;
 use crate::intermediate_representation::Instruction;
-use crate::intermediate_representation::ir_interface::{ValueBucket, ConstraintBucket};
-// use crate::circuit_design::generate_coda::generate_coda_program;
+use crate::intermediate_representation::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
@@ -472,98 +471,278 @@ impl WriteC for Circuit {
     }
 }
 
-fn coda_instruction(
-    circuit: &Circuit,
-    summary_root: &SummaryRoot,
-    program: &mut CodaProgram,
+// -----------------------------------------------------------------------------
+// BEGIN Coda stuff
+// -----------------------------------------------------------------------------
+
+struct CodaExprContext<'a> {
+    pub circuit: &'a Circuit,
+    pub summary_root: &'a SummaryRoot,
+    pub coda_circuit: &'a CodaCircuit,
+}
+
+// fn coda_binop(circuit: &Circuit, summary_root: &SummaryRoot, coda_circuit: &CodaCircuit, compute: &ComputeBucket) -> CodaExpr {
+fn coda_binop(context: &CodaExprContext, compute: &ComputeBucket) -> CodaExpr {
+    let e1 = coda_expr(&context, &compute.stack[0]);
+    let e2 = coda_expr(&context, &compute.stack[1]);
+    CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, Box::new(e1), Box::new(e2))
+}
+
+// Compile an instruction as a CodaExpr.
+fn coda_expr(
+    context: &CodaExprContext,
+    instruction: &Box<Instruction>,
+) -> CodaExpr {
+    use Instruction::*;
+    match instruction.as_ref() {
+        Value(value) => {
+            println!("Value: {:?}", value);
+            CodaExpr::Literal(value.value)
+        },
+        Load(load) => {
+            match &load.address_type {
+                AddressType::Variable => todo!(),
+                AddressType::Signal => {
+                    match &load.src {
+                        LocationRule::Indexed { location, template_header } => {
+                            match location.as_ref() {
+                                Value(value) => {
+                                    let signal = context.coda_circuit.get_signal(value.value);
+                                    CodaExpr::Signal(signal.name.clone())
+                                }
+                                _ => todo!()
+                            }
+                            // CodaExpr::Signal(())
+                        },
+                        LocationRule::Mapped { signal_code, indexes } => todo!(),
+                    }
+                },
+                AddressType::SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information } => todo!(),
+            }
+        }
+        Store(store) => {
+            todo!()
+        }
+        Compute(compute) => {
+            match &compute.op {
+                OperatorType::Mul => { coda_binop(context, compute) },
+                OperatorType::Div => { coda_binop(context, compute) },
+                OperatorType::Add => { coda_binop(context, compute) },
+                OperatorType::Sub => { coda_binop(context, compute) },
+                OperatorType::Pow => { coda_binop(context, compute) },
+                OperatorType::IntDiv => { coda_binop(context, compute) },
+                OperatorType::Mod => { coda_binop(context, compute) },
+                OperatorType::ShiftL => { coda_binop(context, compute) },
+                OperatorType::ShiftR => { coda_binop(context, compute) },
+                OperatorType::LesserEq => todo!(),
+                OperatorType::GreaterEq => todo!(),
+                OperatorType::Lesser => todo!(),
+                OperatorType::Greater => todo!(),
+                OperatorType::Eq(_) => todo!(),
+                OperatorType::NotEq => todo!(),
+                OperatorType::BoolOr => todo!(),
+                OperatorType::BoolAnd => todo!(),
+                OperatorType::BitOr => todo!(),
+                OperatorType::BitAnd => todo!(),
+                OperatorType::BitXor => todo!(),
+                OperatorType::PrefixSub => todo!(),
+                OperatorType::BoolNot => todo!(),
+                OperatorType::Complement => todo!(),
+                OperatorType::ToAddress => todo!(),
+                OperatorType::MulAddress => todo!(),
+                OperatorType::AddAddress => todo!(),
+            }
+        }
+        Call(call) => {
+            todo!()
+        }
+        Branch(branch) => {
+            todo!()
+        }
+        Return(return_) => {
+            todo!()
+        }
+        Assert(assert) => {
+            todo!()
+        }
+        Log(log) => {
+            todo!()
+        }
+        Loop(loop_) => {
+            todo!()
+        }
+        CreateCmp(createCmp) => {
+            todo!()
+        }
+        Constraint(constraint) => {
+            todo!()
+        }
+        Block(block) => {
+            todo!()
+        }
+        Nop(nop) => {
+            todo!()
+        }
+    }
+}
+
+fn coda_type(
+    context: &CodaExprContext,
+    instruction: &Box<Instruction>,
+) -> CodaType {
+    panic!("coda_type")
+}
+
+struct CodaStatementContext<'a> {
+    circuit: &'a Circuit,
+    summary_root: &'a SummaryRoot,
+    template_summary: &'a TemplateSummary,
+    coda_circuit: &'a mut CodaCircuit,
+}
+
+impl<'a> CodaStatementContext<'a> {
+    pub fn to_coda_expr_context(&'a self) -> CodaExprContext<'a> {
+        CodaExprContext { 
+            circuit: &self.circuit,
+            summary_root: &self.summary_root,
+            coda_circuit: &self.coda_circuit
+        }
+    }
+}
+
+// Compile an instruction for as a "coda statement", which isn't actually
+// encoded, but corresponds to a component of the `Circuit` struct in Coda.
+fn coda_statement(
+    // circuit: &Circuit,
+    // summary_root: &SummaryRoot,
+    // template_summary: &TemplateSummary,
+    context: CodaStatementContext,
+    // coda_circuit: &mut CodaCircuit,
     instruction: &Box<Instruction>,
 ) -> () {
     use Instruction::*;
-    println!("[produce_coda_program] instruction: {:?}", instruction);
+    // println!("[CODA] instruction: {:?}", instruction);
     match instruction.as_ref() {
         Value(value) => {
-            // println!("[produce_coda_program] Value");
+            todo!()
         }
         Load(load) => {
-            // println!("[produce_coda_program] Load");
+            todo!()
         }
         Store(store) => {
-            // println!("[produce_coda_program] Store");
+            if store.dest_is_output && store.dest_address_type == AddressType::Signal 
+            {
+                match &store.dest {
+                    LocationRule::Indexed { location, template_header } => {
+                        match location.as_ref() {
+                            Value(value) => {
+                                let signal_i = value.value;
+                                let signal = context.coda_circuit.get_signal(signal_i);
+                                let term = coda_expr(&context.to_coda_expr_context(), &store.src);
+                                context.coda_circuit.define_output(signal_i, term)
+                            }
+                            _ => todo!(),
+                        }
+                    },
+                    _ => todo!(),
+                }
+            } else {
+                todo!()
+            }
         }
         Compute(compute) => {
-            // println!("[produce_coda_program] Compute");
+            todo!()
         }
         Call(call) => {
-            // println!("[produce_coda_program] Call");
+            todo!()
         }
         Branch(branch) => {
-            // println!("[produce_coda_program] Branch");
+            todo!()
         }
         Return(return_) => {
-            // println!("[produce_coda_program] Return");
+            todo!()
         }
         Assert(assert) => {
-            // println!("[produce_coda_program] Assert");
+            todo!()
         }
         Log(log) => {
-            // println!("[produce_coda_program] Log");
+            todo!()
         }
         Loop(loop_) => {
-            // println!("[produce_coda_program] Loop");
+            todo!()
         }
         CreateCmp(createCmp) => {
-            // println!("[produce_coda_program] CreateCmp");
+            todo!()
         }
         Constraint(constraint) => {
-            // println!("[produce_coda_program] Constraint");
             match constraint {
-                ConstraintBucket::Substitution(inst_) => {
-                    coda_instruction(circuit, summary_root, program, inst_);
+                ConstraintBucket::Substitution(nextInstruction) => {
+                    coda_statement(context, nextInstruction)
                 }
-                ConstraintBucket::Equality(inst_) => {
-                    coda_instruction(circuit, summary_root, program, inst_);
+                ConstraintBucket::Equality(nextInstruction) => {
+                    // coda_statement(context, nextInstruction)
+                    todo!()
                 }
             }
         }
         Block(block) => {
-            // println!("[produce_coda_program] Block");
+            todo!()
         }
         Nop(nop) => {
-            // println!("[produce_coda_program] Nop");
+            todo!()
         }
     }
 }
 
 impl WriteCoda for Circuit {
     fn produce_coda_program(&self, summary_root: SummaryRoot) -> CodaProgram {
-        println!("[produce_coda_program] BEGIN");
+        println!("[CODA] BEGIN");
         // HENRY: this is the main place to build the coda program
 
         // println!("self.templates {:?}", self.templates);
         // println!("self.functions {:?}", self.functions);
 
-        println!("[produce_coda_program] summary_root");
-        println!("[produce_coda_program]   - version: {}", summary_root.version);
-        println!("[produce_coda_program]   - compiler: {}", summary_root.compiler);
-        println!("[produce_coda_program]   - framework: {:?}", summary_root.framework);
+        println!("[CODA] summary_root");
+        println!("[CODA]   - version: {}", summary_root.version);
+        println!("[CODA]   - compiler: {}", summary_root.compiler);
+        println!("[CODA]   - framework: {:?}", summary_root.framework);
         
-        let mut program = CodaProgram::default();
+        let mut coda_program = CodaProgram::default();
         
         for (template_i, template) in self.templates.iter().enumerate() {
-            println!("[produce_coda_program] template.header: {:?}", template.header);
-            println!("[produce_coda_program]   - number_of_inputs: {}", template.number_of_inputs);
-            println!("[produce_coda_program]   - number_of_outputs: {}", template.number_of_outputs);
+            println!("[CODA] template.header: {:?}", template.header);
+            println!("[CODA]   - number_of_inputs: {}", template.number_of_inputs);
+            println!("[CODA]   - number_of_outputs: {}", template.number_of_outputs);
 
             let template_summary = summary_root.components.get(template_i).unwrap();
-            println!("[produce_coda_program] template_summary: {:?}", template_summary);
+            let mut coda_circuit = CodaCircuit::new(template.name.clone());
 
-            let mut circuit = empty_coda_circuit(template.name.clone());
-            for instruction in &template.body {
-                coda_instruction(&self, &summary_root, &mut program, instruction);
+            for signal in &template_summary.signals {
+                println!("[CODA] signal: {:?}", signal);
+                if signal.visibility == "input" {
+                    coda_circuit.add_input(signal.name.clone(), CodaType::Field)
+                } else if signal.visibility == "output" {
+                    coda_circuit.add_output(signal.name.clone(), CodaType::Field)
+                } else {
+                    panic!("Unknown visibility: {}", signal.visibility)
+                }
             }
+
+            for instruction in &template.body {
+                let context = CodaStatementContext {
+                    circuit: self,
+                    summary_root: &summary_root,
+                    template_summary: &template_summary,
+                    coda_circuit: &mut coda_circuit,
+                };
+                coda_statement(context, instruction)
+            }
+
+            println!("[CODA] coda_circuit: {:?}", coda_circuit);
+            coda_program.coda_circuits.push(coda_circuit)
         }
-        println!("[produce_coda_program] END");
-        program
+        println!("[CODA] END");
+        coda_program
     }
 }
 
@@ -643,3 +822,7 @@ impl Circuit {
         self.write_coda_program(writer, program)
     }
 }
+
+// -----------------------------------------------------------------------------
+// END Coda stuff
+// -----------------------------------------------------------------------------

@@ -11,47 +11,17 @@ template_summary:
     }
 
 instruction:
-  Store
-    (StoreBucket 
-      { id: 215997974288462081592608994221700342679
-      , line: 6
-      , message_id: 0
-      , context: InstrContext { size: 1 }
-      , dest_is_output: true
-      , dest_address_type: Signal
-      , dest: Indexed { location: Value(ValueBucket { id: 126467349844459859430208482880555998523, line: 0, message_id: 0, parse_as: U32, op_aux_no: 0, value: 0 }), template_header: None }
-      , src: 
-        Compute(ComputeBucket 
-          { id: 320722991542009817116842729266832028893
-          , line: 6
-          , message_id: 0
-          , op: Sub
-          , op_aux_no: 0
-          , stack: 
-            [ Compute(ComputeBucket 
-              { id: 295408937874510643762527966473618461736
-              , line: 6
-              , message_id: 0
-              , op: Add
-              , op_aux_no: 1
-              , stack: 
-                [ Load(LoadBucket { id: 125423118549993368867938478201264607703, line: 6, message_id: 0, address_type: Signal, src: Indexed { location: Value(ValueBucket { id: 107675866576126565158321838149059258901, line: 0, message_id: 0, parse_as: U32, op_aux_no: 2, value: 1 }), template_header: None } })
-                , Value(ValueBucket { id: 326357101883749780645924963671714492133, line: 6, message_id: 0, parse_as: BigInt, op_aux_no: 3, value: 0 })] 
-              }
-            )
-            , Compute(ComputeBucket 
-              { id: 262625988889814948577704749112473740061
-              , line: 6
-              , message_id: 0
-              , op: Mul
-              , op_aux_no: 2
-              , stack: 
-                [ Value(ValueBucket { id: 227863280508119245568066838725706455360, line: 6, message_id: 0, parse_as: BigInt, op_aux_no: 3, value: 1 })
-                , Load(LoadBucket { id: 324619728515148134520072180591813132657, line: 6, message_id: 0, address_type: Signal, src: Indexed { location: Value(ValueBucket { id: 316159503263982923880230100425518958425, line: 0, message_id: 0, parse_as: U32, op_aux_no: 4, value: 1 }), template_header: None } })
-                ] }
-              )
-            ] 
-          }
-        ) 
-      }
-    )
+  Constraint(Substitution(
+    Store(StoreBucket { id: 333342325364749842086557722512234191703, line: 6, message_id: 0, context: InstrContext { size: 1 }, dest_is_output: true, dest_address_type: Signal,
+      dest: Indexed { location: Value(ValueBucket { id: 148484104837653502637934361356442327159, line: 0, message_id: 0, parse_as: U32, op_aux_no: 0, value: 0 }), template_header: None },
+      src: Compute(ComputeBucket { id: 259375329846117643271424286491925097142, line: 6, message_id: 0, op: Sub, op_aux_no: 0,
+        stack: [
+          Compute(ComputeBucket { id: 218361808135042320579571120092139005760, line: 6, message_id: 0, op: Add, op_aux_no: 1, stack: [
+            Load(LoadBucket { id: 187371568262993966069315203812426455206, line: 6, message_id: 0, address_type: Signal, src: Indexed { location: Value(ValueBucket { id: 94185062614371090092938907466414475686, line: 0, message_id: 0, parse_as: U32, op_aux_no: 2, value: 1 }), template_header: None } }),
+            Value(ValueBucket { id: 202369291373681481908367974328495562982, line: 6, message_id: 0, parse_as: BigInt, op_aux_no: 3, value: 0 })
+            ] }), 
+          Compute(ComputeBucket { id: 331378190023713926435508586142584623792, line: 6, message_id: 0, op: Mul, op_aux_no: 2, stack: [
+            Value(ValueBucket { id: 297431872448553158606042206707360125707, line: 6, message_id: 0, parse_as: BigInt, op_aux_no: 3, value: 1 }),
+            Load(LoadBucket { id: 26277064528774166031485755892537975828, line: 6, message_id: 0, address_type: Signal, src: Indexed { location: Value(ValueBucket { id: 61377526340916439276789198929427197981, line: 0, message_id: 0, parse_as: U32, op_aux_no: 4, value: 1 }), template_header: None }})
+        ]})
+  ]})})))
