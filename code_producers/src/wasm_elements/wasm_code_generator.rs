@@ -793,6 +793,7 @@ pub fn init_generator(producer: &WASMProducer) -> Vec<WasmInstruction> {
     instructions.push(header);
     instructions.push(" (param $t i32)".to_string());
     instructions.push(" (local $i i32)".to_string());
+    instructions.push(format!(" (local {} i32)", producer.get_merror_tag()));
     // initialize set counter
     instructions.push(set_constant(&producer.get_remaining_input_signal_counter().to_string()));
     instructions.push(";; Number of Main inputs".to_string());
@@ -832,8 +833,18 @@ pub fn init_generator(producer: &WASMProducer) -> Vec<WasmInstruction> {
     //    instructions.push(store32(None));
     instructions.push(set_constant(&next_to_one.to_string()));
     let funcname = format!("${}_create", producer.get_main_header());
-    instructions.push(call(&funcname));
+    instructions.push(call(&funcname));    
     instructions.push(drop());
+    if producer.get_number_of_main_inputs() == 0 {
+    instructions.push(set_constant(&producer.get_component_tree_start().to_string()));
+    let funcname = format!("${}_run", producer.get_main_header());
+    instructions.push(call(&funcname));
+    instructions.push(tee_local(producer.get_merror_tag()));
+    instructions.push(add_if()); 
+    instructions.push(get_local("$merror"));    
+    instructions.push(call("$exceptionHandler"));
+    instructions.push(add_end());
+    }
     instructions.push(")".to_string());
     instructions
 }
@@ -1552,6 +1563,9 @@ pub fn fr_types(prime: &String) -> Vec<WasmInstruction> {
         "bn128" => include_str!("bn128/fr-types.wat"),
         "bls12381" => include_str!("bls12381/fr-types.wat"),
         "goldilocks" => include_str!("goldilocks/fr-types.wat"),
+        "grumpkin" => include_str!("grumpkin/fr-types.wat"),
+        "pallas" => include_str!("pallas/fr-types.wat"),
+        "vesta" => include_str!("vesta/fr-types.wat"),
         _ => unreachable!(),
     };    
     for line in file.lines() {
@@ -1566,6 +1580,9 @@ pub fn fr_data(prime: &String) -> Vec<WasmInstruction> {
         "bn128" => include_str!("bn128/fr-data.wat"),
         "bls12381" => include_str!("bls12381/fr-data.wat"),
         "goldilocks" => include_str!("goldilocks/fr-data.wat"),
+        "grumpkin" => include_str!("grumpkin/fr-data.wat"),
+        "pallas" => include_str!("pallas/fr-data.wat"),
+        "vesta" => include_str!("vesta/fr-data.wat"),
         _ => unreachable!(),
     };    
     for line in file.lines() {
@@ -1579,6 +1596,9 @@ pub fn fr_code(prime: &String) -> Vec<WasmInstruction> {
         "bn128" => include_str!("bn128/fr-code.wat"),
         "bls12381" => include_str!("bls12381/fr-code.wat"),
         "goldilocks" => include_str!("goldilocks/fr-code.wat"),
+        "grumpkin" => include_str!("grumpkin/fr-code.wat"),
+        "pallas" => include_str!("pallas/fr-code.wat"),
+        "vesta" => include_str!("vesta/fr-code.wat"),
         _ => unreachable!(),
     };    
     for line in file.lines() {

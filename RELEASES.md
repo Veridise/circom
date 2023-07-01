@@ -1,5 +1,52 @@
 # Release notes
 
+## June 22, 2023 circom 2.1.6
+
+#### Extensions
+- Improving tag propagation: array case.
+- Handling new prime numbers: pallas, vesta, grumpkin
+- Improving array access index computation in the code generated intermediate representation: using cheap addition and multiplication operations when possible.
+- Updating the documentation.
+- Added check on the name of the circom file when --C is used to avoid clashes with reserved names. When the file is called main.circom, fr.circom or calcwit.circom it is changed to main_c, fr_c and calcwit_c respectively.
+
+#### Bugs 
+- Fixing a bug while parsing anonymous components.
+- Fixing a problem in calls to anonymous components with signal names.
+- Fixing a bug in wasm witness generation that happened when doing a call inside an array index.
+- Executing the main method without inputs in wasm witness generation.
+  
+  
+## March 15, 2023 circom 2.1.5
+
+#### Extensions
+- Definition of signals and components can be done now inside if blocks IF the condition is known at compilation time. If the condition is unknown and depends on the value of signals, then the compiler throws an error. 
+- Improving the --inspect option. It now detects underconstrained signals and assignments using <-- in which <== could be used.
+- Improving the efficiency of the compiler. It does not execute the inspect and constraint generation phase only if there are not the corresponding flags.
+- Improving --O1 simplification: removing signals that do not appear in any constraint and avoiding unnecessary constraint normalizations.
+- Improving parallel: array assignments of outputs and efficiency by updating numThread while waiting and setting maxThreads to 32.
+- Handling better the parser errors and improving error messages to output more information. (parser, type checking and constraint generation errors).
+- Showing warnings when errors are found.
+- Reducing writing time for output files.
+- Updating the documentation.
+
+#### Fixed Bugs
+- Fixing a problem with the memory release of the components (in C).
+- Fixing a problem with the parallel execution during the witness generation (in C).
+- Fixing a bug: functions are executed even if they output signals when they contain logs or asserts. 
+- Fixing a bug: During the witness generation, the computation of expressions like x**x was buggy (in wasm).
+
+## February 10, 2023 circom 2.1.4
+
+ #### Extensions
+ - Improving the efficiency of the parser regarding the anonnymous components and tuples. 
+ - Improving the substitution process: better compilation times for --O1 and --O2.
+ - Improving the handling of the underscore substitution.
+ - Extending the substitution to allow the inheritance of signal tags.
+ - Removing unused signal when applying --O1. (If a signal does not appear in any constraint, it is removed).  
+
+ #### Fixed Bugs
+ - Solving bug in the release of the memory of the components.
+
 ## January 16, 2023 circom 2.1.3
  #### Extensions
  - Improving error messages: invalid access and invalid assignment.
