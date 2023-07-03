@@ -106,7 +106,7 @@ impl<'a> BucketInterpreter<'a> {
                 if (idx_value.is_unknown()) {
                     (Some(Unknown), env)
                 } else {
-                    (Some(env.get_var(idx_value.get_u32())), env)
+                    (Some(env.get_signal(idx_value.get_u32())), env)
                 }
             },
             AddressType::SubcmpSignal { cmp_address, .. } => {
