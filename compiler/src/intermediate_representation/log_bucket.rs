@@ -24,6 +24,7 @@ impl LogBucketArg{
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LogBucket {
     pub id: BucketId,
+    pub source_file: String,
     pub line: usize,
     pub message_id: usize,
     pub argsprint: Vec<LogBucketArg>,
@@ -42,6 +43,9 @@ impl Allocate for LogBucket {
 }
 
 impl ObtainMeta for LogBucket {
+    fn get_source_file(&self) -> &str {
+        &self.source_file
+    }
     fn get_line(&self) -> usize {
         self.line
     }

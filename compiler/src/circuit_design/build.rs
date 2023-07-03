@@ -373,7 +373,7 @@ pub fn build_circuit(vcp: VCP, flag: CompilationFlags, version: &str) -> Circuit
     if flag.main_inputs_log {
         write_main_inputs_log(&vcp);
     }
-    let template_database = TemplateDB::build(&vcp.templates);
+    let template_database = TemplateDB::build(&vcp.file_library, &vcp.templates);
     let mut circuit = Circuit::default();
     circuit.wasm_producer = initialize_wasm_producer(&vcp, &template_database, flag.wat_flag, version);
     circuit.c_producer = initialize_c_producer(&vcp, &template_database, version);
@@ -390,7 +390,7 @@ pub fn build_circuit(vcp: VCP, flag: CompilationFlags, version: &str) -> Circuit
     let (field_tracker, string_table) =
         build_template_instances(&mut circuit, &circuit_info, vcp.templates, field_tracker, &mut ssa);
     let (field_tracker, function_to_arena_size, table_string_to_usize) =
-        build_function_instances(&mut circuit, &circuit_info, vcp.functions, field_tracker,string_table, &mut ssa);
+        build_function_instances(&mut circuit, &circuit_info, vcp.functions, field_tracker, string_table, &mut ssa);
 
     for (scope_name, ssa) in ssa {
         circuit.llvm_data.signal_index_mapping.insert(scope_name.clone(), ssa.dump_signals());

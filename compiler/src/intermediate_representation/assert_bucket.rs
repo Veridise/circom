@@ -12,6 +12,7 @@ use crate::intermediate_representation::BucketId;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct AssertBucket {
     pub id: BucketId,
+    pub source_file: String,
     pub line: usize,
     pub message_id: usize,
     pub evaluate: InstructionPointer,
@@ -30,6 +31,9 @@ impl Allocate for AssertBucket {
 }
 
 impl ObtainMeta for AssertBucket {
+    fn get_source_file(&self) -> &str {
+        &self.source_file
+    }
     fn get_line(&self) -> usize {
         self.line
     }

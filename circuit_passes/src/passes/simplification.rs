@@ -118,6 +118,7 @@ impl CircuitTransformationPass for SimplificationPass {
         }
         ComputeBucket {
             id: new_id(),
+            source_file: bucket.source_file.clone(),
             line: bucket.line,
             message_id: bucket.message_id,
             op: bucket.op,

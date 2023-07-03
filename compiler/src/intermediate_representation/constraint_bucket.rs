@@ -35,6 +35,12 @@ impl Allocate for ConstraintBucket {
 }
 
 impl ObtainMeta for ConstraintBucket {
+    fn get_source_file(&self) -> &str {
+        match self {
+            ConstraintBucket::Substitution(i) => i,
+            ConstraintBucket::Equality(i) => i
+        }.get_source_file()
+    }
     fn get_line(&self) -> usize {
         match self {
             ConstraintBucket::Substitution(i) => i,
