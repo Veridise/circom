@@ -51,17 +51,16 @@ impl InterpreterObserver for LoopUnrollPass {
     }
 
     fn on_loop_bucket(&self, bucket: &LoopBucket, env: &Env) -> bool {
-        let env = env.clone();
         let mem = self.memory.borrow();
         let interpreter = BucketInterpreter::init(&mem.current_scope, &mem.prime, &mem.constant_fields, self, &mem.io_map);
         // First we run the loop once. If the result is None that means that the condition is unknown
-        let (_, cond_result, env_once) = interpreter.execute_loop_bucket_once(bucket, env, false);
+        let (_, cond_result, env_once) = interpreter.execute_loop_bucket_once(bucket, env.clone(), false);
         if cond_result.is_none() {
             return true;
         }
         let mut block_body = vec![];
         let mut cond_result = Some(true);
-        let mut env = env_once;
+        let mut env = env.clone();
         while cond_result.unwrap() {
             let (_, new_cond, new_env) = interpreter.execute_loop_bucket_once(bucket, env, false);
             cond_result = new_cond;
