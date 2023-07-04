@@ -74,7 +74,6 @@ impl<'a> BucketInterpreter<'a> {
     fn get_id_from_indexed_location(&self, location: &LocationRule, env: &Env) -> usize {
         match location {
             LocationRule::Indexed { location, .. } => {
-                println!("Location: {}", location.to_string());
                 let (idx, _) = self.execute_instruction(location, env.clone(), false);
                 idx.expect("LocationRule must produce a value!").get_u32()
             }

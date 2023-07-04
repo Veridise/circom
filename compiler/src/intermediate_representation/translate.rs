@@ -296,6 +296,7 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
             op_aux_no: 0,
         }
         .allocate();
+        state.ssa.insert_var(&arg.name, address, &dimensions);
         let symbol_info =
             SymbolInfo { access_instruction: address_instruction.clone(), dimensions, is_component:false };
         state.environment.add_variable(&arg.name, symbol_info);
