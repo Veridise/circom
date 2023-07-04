@@ -1,11 +1,13 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use code_producers::components::TemplateInstanceIOMap;
+use code_producers::llvm_elements::IndexMapping;
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
+use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::env::{FunctionsLibrary, TemplatesLibrary};
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 
 pub struct PassMemory {
@@ -14,7 +16,10 @@ pub struct PassMemory {
     pub prime: String,
     pub constant_fields: Vec<String>,
     pub current_scope: String,
-    pub io_map: TemplateInstanceIOMap
+    pub io_map: TemplateInstanceIOMap,
+    pub signal_index_mapping: HashMap<String, IndexMapping>,
+    pub variables_index_mapping: HashMap<String, IndexMapping>,
+    pub component_addr_index_mapping: HashMap<String, IndexMapping>
 }
 
 impl PassMemory {
@@ -25,14 +30,26 @@ impl PassMemory {
             prime: prime.to_string(),
             constant_fields: vec![],
             current_scope,
-            io_map
+            io_map,
+            signal_index_mapping: Default::default(),
+            variables_index_mapping: Default::default(),
+            component_addr_index_mapping: Default::default()
         })
     }
 
+    pub fn set_scope(&mut self, template: &TemplateCode) {
+        self.current_scope = template.header.clone();
+    }
+
     pub fn run_template(&self, observer: &dyn InterpreterObserver, template: &TemplateCode) {
-        let interpreter = BucketInterpreter::init(&template.name, &self.prime, &self.constant_fields, observer, &self.io_map);
+        assert!(!self.current_scope.is_empty());
+        let interpreter = self.build_interpreter(observer);
         let env = Env::new(&self.templates_library, &self.functions_library);
         interpreter.execute_instructions(&template.body, env, true);
+    }
+
+    pub fn build_interpreter<'a>(&'a self, observer: &'a dyn InterpreterObserver) -> BucketInterpreter {
+        BucketInterpreter::init(&self.current_scope, &self.prime, &self.constant_fields, observer, &self.io_map, &self.signal_index_mapping[&self.current_scope], &self.variables_index_mapping[&self.current_scope], &self.component_addr_index_mapping[&self.current_scope])
     }
 
     pub fn add_template(&mut self, template: &TemplateCode) {
@@ -52,5 +69,8 @@ impl PassMemory {
         }
         self.constant_fields = circuit.llvm_data.field_tracking.clone();
         self.io_map = circuit.llvm_data.io_map.clone();
+        self.variables_index_mapping = circuit.llvm_data.variable_index_mapping.clone();
+        self.signal_index_mapping = circuit.llvm_data.signal_index_mapping.clone();
+        self.component_addr_index_mapping = circuit.llvm_data.component_index_mapping.clone();
     }
 }

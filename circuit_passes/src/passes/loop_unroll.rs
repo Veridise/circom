@@ -52,7 +52,7 @@ impl InterpreterObserver for LoopUnrollPass {
 
     fn on_loop_bucket(&self, bucket: &LoopBucket, env: &Env) -> bool {
         let mem = self.memory.borrow();
-        let interpreter = BucketInterpreter::init(&mem.current_scope, &mem.prime, &mem.constant_fields, self, &mem.io_map);
+        let interpreter = mem.build_interpreter(self);
         // First we run the loop once. If the result is None that means that the condition is unknown
         let (_, cond_result, env_once) = interpreter.execute_loop_bucket_once(bucket, env.clone(), false);
         if cond_result.is_none() {
@@ -129,6 +129,7 @@ impl CircuitTransformationPass for LoopUnrollPass {
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
+        self.memory.borrow_mut().set_scope(template);
         self.memory.borrow().run_template(self, template);
     }
 

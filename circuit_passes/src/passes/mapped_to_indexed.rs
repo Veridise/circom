@@ -28,7 +28,7 @@ impl MappedToIndexedPass {
         cmp_address: &InstructionPointer, indexes: &Vec<InstructionPointer>, signal_code: usize, env: &Env) -> LocationRule {
 
         let mem = self.memory.borrow();
-        let interpreter = BucketInterpreter::init(&mem.current_scope, &mem.prime, &mem.constant_fields, self, &mem.io_map);
+        let interpreter = mem.build_interpreter(self);
 
         let (resolved_addr, acc_env) = interpreter.execute_instruction(cmp_address, env.clone(), false);
 
@@ -179,6 +179,7 @@ impl CircuitTransformationPass for MappedToIndexedPass {
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
+        self.memory.borrow_mut().set_scope(template);
         self.memory.borrow().run_template(self, template);
     }
 }
