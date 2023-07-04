@@ -1,3 +1,4 @@
+use core::panic;
 use std::collections::HashMap;
 use super::function::{FunctionCode, FunctionCodeInfo};
 use super::template::{TemplateCode, TemplateCodeInfo};
@@ -637,19 +638,13 @@ fn coda_statement(
     // circuit: &Circuit,
     // summary_root: &SummaryRoot,
     // template_summary: &TemplateSummary,
-    context: CodaStatementContext,
+    context: &mut CodaStatementContext,
     // coda_circuit: &mut CodaCircuit,
     instruction: &Box<Instruction>,
 ) -> () {
     use Instruction::*;
     // println!("[CODA] instruction: {:?}", instruction);
     match instruction.as_ref() {
-        Value(value) => {
-            todo!()
-        }
-        Load(load) => {
-            todo!()
-        }
         Store(store) => {
             if store.dest_is_output && store.dest_address_type == AddressType::Signal {
                 match &store.dest {
@@ -669,12 +664,6 @@ fn coda_statement(
             } else {
                 todo!()
             }
-        }
-        Compute(compute) => {
-            todo!()
-        }
-        Call(call) => {
-            todo!()
         }
         Branch(branch) => {
             todo!()
@@ -706,10 +695,24 @@ fn coda_statement(
             }
         }
         Block(block) => {
-            todo!()
+            for instruction in &block.body {
+                coda_statement(context, instruction)
+            }
         }
         Nop(nop) => {
-            todo!()
+            ()
+        }
+        Value(value) => {
+            panic!("shouldn't appear in statement")
+        }
+        Load(load) => {
+            panic!("shouldn't appear in statement")
+        }
+        Compute(compute) => {
+            panic!("shouldn't appear in statement")
+        }
+        Call(call) => {
+            panic!("shouldn't appear in statement")
         }
     }
 }
@@ -749,14 +752,14 @@ impl WriteCoda for Circuit {
             }
 
             for instruction in &template.body {
-                let context = CodaStatementContext {
+                let mut context = CodaStatementContext {
                     circuit: self,
                     summary_root: &summary_root,
                     template_summary: &template_summary,
                     coda_circuit: &mut coda_circuit,
                     coda_data: &self.coda_data,
                 };
-                coda_statement(context, instruction)
+                coda_statement(&mut context, instruction)
             }
 
             println!("[CODA] coda_circuit: {:?}", coda_circuit);
