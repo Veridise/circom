@@ -26,8 +26,26 @@ pub struct Circuit {
     pub wasm_producer: WASMProducer,
     pub c_producer: CProducer,
     pub llvm_data: LLVMCircuitData,
+    pub coda_data: CodaCircuitData,
     pub templates: Vec<TemplateCode>,
     pub functions: Vec<FunctionCode>,
+}
+
+#[derive(Eq, PartialEq, Debug)]
+pub struct CodaCircuitData {
+    pub field_tracking: Vec<String>,
+}
+
+impl CodaCircuitData {
+    pub fn get_constant(&self, i: usize) -> String {
+        self.field_tracking[i].clone()
+    }
+}
+
+impl Default for CodaCircuitData {
+    fn default() -> Self {
+        CodaCircuitData { field_tracking: Vec::new() }
+    }
 }
 
 impl Default for Circuit {
@@ -36,6 +54,7 @@ impl Default for Circuit {
             c_producer: CProducer::default(),
             wasm_producer: WASMProducer::default(),
             llvm_data: LLVMCircuitData::default(),
+            coda_data: CodaCircuitData::default(),
             templates: Vec::new(),
             functions: Vec::new(),
         }
@@ -475,30 +494,40 @@ impl WriteC for Circuit {
 // BEGIN Coda stuff
 // -----------------------------------------------------------------------------
 
+struct CodaStatementContext<'a> {
+    circuit: &'a Circuit,
+    summary_root: &'a SummaryRoot,
+    template_summary: &'a TemplateSummary,
+    coda_circuit: &'a mut CodaCircuit,
+    coda_data: &'a CodaCircuitData
+}
+
 struct CodaExprContext<'a> {
     pub circuit: &'a Circuit,
     pub summary_root: &'a SummaryRoot,
     pub coda_circuit: &'a CodaCircuit,
+    coda_data: &'a CodaCircuitData
 }
 
 // fn coda_binop(circuit: &Circuit, summary_root: &SummaryRoot, coda_circuit: &CodaCircuit, compute: &ComputeBucket) -> CodaExpr {
-fn coda_binop(context: &CodaExprContext, compute: &ComputeBucket) -> CodaExpr {
+fn coda_binop(op: CodaBinop, context: &CodaExprContext, compute: &ComputeBucket) -> CodaExpr {
     let e1 = coda_expr(&context, &compute.stack[0]);
     let e2 = coda_expr(&context, &compute.stack[1]);
-    CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, Box::new(e1), Box::new(e2))
+    CodaExpr::Binop(CodaBinopType::F, op, Box::new(e1), Box::new(e2))
 }
 
 // Compile an instruction as a CodaExpr.
-fn coda_expr(
-    context: &CodaExprContext,
-    instruction: &Box<Instruction>,
-) -> CodaExpr {
+fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaExpr {
     use Instruction::*;
     match instruction.as_ref() {
         Value(value) => {
+            // HENRY: also look at `values.rs`
             println!("Value: {:?}", value);
-            CodaExpr::Literal(value.value)
-        },
+            match value.parse_as {
+                ValueType::BigInt => CodaExpr::Literal(context.coda_data.get_constant(value.value), LiteralType::BigInt),
+                ValueType::U32 => CodaExpr::Literal(context.coda_data.get_constant(value.value), LiteralType::U32),
+            }
+        }
         Load(load) => {
             match &load.address_type {
                 AddressType::Variable => todo!(),
@@ -510,49 +539,52 @@ fn coda_expr(
                                     let signal = context.coda_circuit.get_signal(value.value);
                                     CodaExpr::Signal(signal.name.clone())
                                 }
-                                _ => todo!()
+                                _ => todo!(),
                             }
                             // CodaExpr::Signal(())
-                        },
+                        }
                         LocationRule::Mapped { signal_code, indexes } => todo!(),
                     }
-                },
-                AddressType::SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information } => todo!(),
+                }
+                AddressType::SubcmpSignal {
+                    cmp_address,
+                    uniform_parallel_value,
+                    is_output,
+                    input_information,
+                } => todo!(),
             }
         }
         Store(store) => {
             todo!()
         }
-        Compute(compute) => {
-            match &compute.op {
-                OperatorType::Mul => { coda_binop(context, compute) },
-                OperatorType::Div => { coda_binop(context, compute) },
-                OperatorType::Add => { coda_binop(context, compute) },
-                OperatorType::Sub => { coda_binop(context, compute) },
-                OperatorType::Pow => { coda_binop(context, compute) },
-                OperatorType::IntDiv => { coda_binop(context, compute) },
-                OperatorType::Mod => { coda_binop(context, compute) },
-                OperatorType::ShiftL => { coda_binop(context, compute) },
-                OperatorType::ShiftR => { coda_binop(context, compute) },
-                OperatorType::LesserEq => todo!(),
-                OperatorType::GreaterEq => todo!(),
-                OperatorType::Lesser => todo!(),
-                OperatorType::Greater => todo!(),
-                OperatorType::Eq(_) => todo!(),
-                OperatorType::NotEq => todo!(),
-                OperatorType::BoolOr => todo!(),
-                OperatorType::BoolAnd => todo!(),
-                OperatorType::BitOr => todo!(),
-                OperatorType::BitAnd => todo!(),
-                OperatorType::BitXor => todo!(),
-                OperatorType::PrefixSub => todo!(),
-                OperatorType::BoolNot => todo!(),
-                OperatorType::Complement => todo!(),
-                OperatorType::ToAddress => todo!(),
-                OperatorType::MulAddress => todo!(),
-                OperatorType::AddAddress => todo!(),
-            }
-        }
+        Compute(compute) => match &compute.op {
+            OperatorType::Mul => coda_binop(CodaBinop::Mul, context, compute),
+            OperatorType::Div => coda_binop(CodaBinop::Div, context, compute),
+            OperatorType::Add => coda_binop(CodaBinop::Add, context, compute),
+            OperatorType::Sub => coda_binop(CodaBinop::Sub, context, compute),
+            OperatorType::Pow => coda_binop(CodaBinop::Pow, context, compute),
+            OperatorType::Mod => coda_binop(CodaBinop::Mod, context, compute),
+            OperatorType::IntDiv => todo!(),
+            OperatorType::ShiftL => todo!(),
+            OperatorType::ShiftR => todo!(),
+            OperatorType::LesserEq => todo!(),
+            OperatorType::GreaterEq => todo!(),
+            OperatorType::Lesser => todo!(),
+            OperatorType::Greater => todo!(),
+            OperatorType::Eq(_) => todo!(),
+            OperatorType::NotEq => todo!(),
+            OperatorType::BoolOr => todo!(),
+            OperatorType::BoolAnd => todo!(),
+            OperatorType::BitOr => todo!(),
+            OperatorType::BitAnd => todo!(),
+            OperatorType::BitXor => todo!(),
+            OperatorType::PrefixSub => todo!(),
+            OperatorType::BoolNot => todo!(),
+            OperatorType::Complement => todo!(),
+            OperatorType::ToAddress => todo!(),
+            OperatorType::MulAddress => todo!(),
+            OperatorType::AddAddress => todo!(),
+        },
         Call(call) => {
             todo!()
         }
@@ -586,26 +618,17 @@ fn coda_expr(
     }
 }
 
-fn coda_type(
-    context: &CodaExprContext,
-    instruction: &Box<Instruction>,
-) -> CodaType {
+fn coda_type(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaType {
     panic!("coda_type")
-}
-
-struct CodaStatementContext<'a> {
-    circuit: &'a Circuit,
-    summary_root: &'a SummaryRoot,
-    template_summary: &'a TemplateSummary,
-    coda_circuit: &'a mut CodaCircuit,
 }
 
 impl<'a> CodaStatementContext<'a> {
     pub fn to_coda_expr_context(&'a self) -> CodaExprContext<'a> {
-        CodaExprContext { 
+        CodaExprContext {
             circuit: &self.circuit,
             summary_root: &self.summary_root,
-            coda_circuit: &self.coda_circuit
+            coda_circuit: &self.coda_circuit,
+            coda_data: &self.coda_data
         }
     }
 }
@@ -630,8 +653,7 @@ fn coda_statement(
             todo!()
         }
         Store(store) => {
-            if store.dest_is_output && store.dest_address_type == AddressType::Signal 
-            {
+            if store.dest_is_output && store.dest_address_type == AddressType::Signal {
                 match &store.dest {
                     LocationRule::Indexed { location, template_header } => {
                         match location.as_ref() {
@@ -643,7 +665,7 @@ fn coda_statement(
                             }
                             _ => todo!(),
                         }
-                    },
+                    }
                     _ => todo!(),
                 }
             } else {
@@ -706,9 +728,9 @@ impl WriteCoda for Circuit {
         println!("[CODA]   - version: {}", summary_root.version);
         println!("[CODA]   - compiler: {}", summary_root.compiler);
         println!("[CODA]   - framework: {:?}", summary_root.framework);
-        
+
         let mut coda_program = CodaProgram::default();
-        
+
         for (template_i, template) in self.templates.iter().enumerate() {
             println!("[CODA] template.header: {:?}", template.header);
             println!("[CODA]   - number_of_inputs: {}", template.number_of_inputs);
@@ -734,6 +756,7 @@ impl WriteCoda for Circuit {
                     summary_root: &summary_root,
                     template_summary: &template_summary,
                     coda_circuit: &mut coda_circuit,
+                    coda_data: &self.coda_data
                 };
                 coda_statement(context, instruction)
             }
@@ -816,7 +839,11 @@ impl Circuit {
     pub fn produce_llvm_ir(&mut self, _llvm_folder: &str, llvm_path: &str) -> Result<(), ()> {
         self.write_llvm_ir(llvm_path, &self.llvm_data)
     }
-    pub fn produce_coda<W: Write>(&mut self, summary_root: SummaryRoot, writer: &mut W) -> Result<(), ()> {
+    pub fn produce_coda<W: Write>(
+        &mut self,
+        summary_root: SummaryRoot,
+        writer: &mut W,
+    ) -> Result<(), ()> {
         println!("[Circuit.produce_coda]");
         let program = self.produce_coda_program(summary_root);
         self.write_coda_program(writer, program)

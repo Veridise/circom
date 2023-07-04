@@ -45,7 +45,9 @@ pub trait WriteCoda {
     fn produce_coda_program(&self, summary: SummaryRoot) -> CodaProgram;
     
     fn write_coda_program<W: Write>(&self, writer: &mut W, program: CodaProgram) -> Result<(), ()> {
-        // HENRY: actually write `program` with `writer`
+        let str = program.compile_string();
+        println!("write_coda_program:\n\n{}\n\n", str);
+        writer.write_all(str.as_bytes()).map_err(|_| ())?;
         Ok(())
     }
 }

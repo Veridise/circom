@@ -1,0 +1,5 @@
+circuit Not {
+    signal output out;
+    signal input in;
+    out <== ((in + 1) - (2 * in));
+}

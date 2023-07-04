@@ -1,4 +1,5 @@
 use code_producers::llvm_elements::LLVMCircuitData;
+use compiler::circuit_design::circuit::CodaCircuitData;
 use compiler::circuit_design::function::{FunctionCode, FunctionCodeInfo};
 use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
@@ -39,7 +40,8 @@ pub trait CircuitTransformationPass {
         Circuit {
             wasm_producer: circuit.wasm_producer.clone(),
             c_producer: circuit.c_producer.clone(),
-            llvm_data: LLVMCircuitData { field_tracking },
+            llvm_data: LLVMCircuitData { field_tracking: field_tracking.clone() },
+            coda_data: CodaCircuitData { field_tracking },
             templates,
             functions: circuit.functions.iter().map(|f| self.transform_function(f)).collect(),
         }

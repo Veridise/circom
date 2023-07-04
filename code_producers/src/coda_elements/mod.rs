@@ -123,8 +123,14 @@ impl Default for CodaProgram {
 #[derive(Clone, Debug)]
 pub enum CodaExpr {
     Signal(String),
-    Literal(usize),
+    Literal(String, LiteralType),
     Binop(CodaBinopType, CodaBinop, Box<CodaExpr>, Box<CodaExpr>),
+}
+
+#[derive(Clone, Debug)]
+pub enum LiteralType {
+    BigInt,
+    U32
 }
 
 #[derive(Clone, Debug)]
@@ -147,4 +153,70 @@ pub enum CodaBinop {
 #[derive(Clone, Debug)]
 pub enum CodaType {
     Field,
+}
+
+pub trait CompileString {
+    fn compile_string(&self) -> String;
+}
+
+impl CompileString for CodaProgram {
+    fn compile_string(&self) -> String {
+        let mut s = String::new();
+        for circuit in &self.coda_circuits {
+            s.push_str(&circuit.compile_string());
+        }
+        s       
+    }
+}
+
+impl CompileString for CodaCircuit {
+    fn compile_string(&self) -> String {
+        let mut s = String::new();
+        s.push_str(&format!("circuit {} {{\n", self.name));
+        for signal in &self.signals {
+            s.push_str(&format!("    signal {} {};\n", signal.visibility.compile_string(), signal.name));
+        }
+        for (name, term) in &self.definitions {
+            s.push_str(&format!("    {} <== {};\n", name, term.compile_string()));
+        }
+        for (name, term) in &self.bodies {
+            s.push_str(&format!("    {} <== {};\n", name, term.compile_string()));
+        }
+        s.push_str("}\n");
+        s
+    }
+}
+
+impl CompileString for CodaSignalVisibility {
+    fn compile_string(&self) -> String {
+        match self {
+            CodaSignalVisibility::Input => "input".to_string(),
+            CodaSignalVisibility::Output => "output".to_string(),
+        }
+    }
+}
+
+impl CompileString for CodaExpr {
+    fn compile_string(&self) -> String {
+        match self {
+            CodaExpr::Signal(name) => name.clone(),
+            CodaExpr::Literal(value, type_) => {
+                match type_ {
+                    LiteralType::BigInt => format!("{}", value),
+                    LiteralType::U32 => format!("{}", value),
+                }
+            },
+            CodaExpr::Binop(type_, op, e1, e2) => {
+                let op = match op {
+                    CodaBinop::Add => "+",
+                    CodaBinop::Sub => "-",
+                    CodaBinop::Mul => "*",
+                    CodaBinop::Pow => "**",
+                    CodaBinop::Mod => "%",
+                    CodaBinop::Div => "/",
+                };
+                format!("({} {} {})", e1.compile_string(), op, e2.compile_string())
+            },
+        }
+    }
 }
