@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use code_producers::llvm_elements::instructions::create_phi;
 
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
@@ -52,6 +53,12 @@ impl JoinSemiLattice for SubcmpEnv<'_> {
 impl<'a> SubcmpEnv<'a> {
     pub fn new(inputs: usize, name: &'a String, template_id: usize) -> Self {
         SubcmpEnv { signals: Default::default(), counter: inputs, name, template_id }
+    }
+
+    pub fn reset(self) -> Self {
+        let mut copy = self;
+        copy.signals.clear();
+        copy
     }
 
     pub fn get_signal(&self, index: usize) -> Value {
@@ -188,6 +195,14 @@ impl<'a> Env<'a> {
     pub fn set_signal(self, idx: usize, value: Value) -> Self {
         let mut copy = self;
         copy.signals.insert(idx, value);
+        copy
+    }
+
+    /// Sets all the signals of the subcmp to UNK
+    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Self {
+        let mut copy = self;
+        let subcmp_env = copy.subcmps.remove(&subcmp_idx).expect(format!("Can't set a signal of subcomponent {}", subcmp_idx).as_str());
+        copy.subcmps.insert(subcmp_idx, subcmp_env.reset());
         copy
     }
 

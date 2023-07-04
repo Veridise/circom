@@ -26,7 +26,7 @@ pub struct DeterministicSubCmpInvokePass {
 impl DeterministicSubCmpInvokePass {
     pub fn new(prime: &String) -> Self {
         DeterministicSubCmpInvokePass {
-            memory: PassMemory::new_cell(prime, "".to_string(), Default::default(), todo!(), todo!()),
+            memory: PassMemory::new_cell(prime, "".to_string(), Default::default()),
             replacements: Default::default(),
         }
     }

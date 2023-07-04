@@ -21,7 +21,7 @@ pub struct MappedToIndexedPass {
 
 impl MappedToIndexedPass {
     pub fn new(prime: &String) -> Self {
-        MappedToIndexedPass { memory: PassMemory::new_cell(prime, "".to_string(), Default::default(), todo!(), todo!()), replacements: Default::default() }
+        MappedToIndexedPass { memory: PassMemory::new_cell(prime, "".to_string(), Default::default()), replacements: Default::default() }
     }
 
     fn transform_mapped_loc_to_indexed_loc(&self,

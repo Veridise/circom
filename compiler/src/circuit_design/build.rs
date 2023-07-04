@@ -3,7 +3,7 @@ use crate::circuit_design::function::FunctionCodeInfo;
 use crate::circuit_design::template::TemplateCodeInfo;
 use crate::hir::very_concrete_program::*;
 use crate::intermediate_representation::{Instruction, translate};
-use crate::intermediate_representation::translate::{CodeInfo, FieldTracker, TemplateDB, ParallelClusters};
+use crate::intermediate_representation::translate::{CodeInfo, FieldTracker, TemplateDB, ParallelClusters, SSACollector, SSA};
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
 use program_structure::file_definition::FileLibrary;
@@ -26,6 +26,7 @@ fn build_template_instances(
     c_info: &CircuitInfo,
     ti: Vec<TemplateInstance>,
     mut field_tracker: FieldTracker,
+    ssa: &mut HashMap<String, SSACollector>
 ) -> (FieldTracker, HashMap<String,usize>) {
 
     fn compute_jump(lengths: &Vec<usize>, indexes: &[usize]) -> usize {
@@ -126,9 +127,7 @@ fn build_template_instances(
         circuit.add_template_code(template_info);
         tmp_id += 1;
 
-        circuit.llvm_data.variable_index_mapping.insert(header.clone(), out.ssa.dump_vars());
-        circuit.llvm_data.signal_index_mapping.insert(header.clone(), out.ssa.dump_signals());
-        circuit.llvm_data.component_index_mapping.insert(header.clone(), out.ssa.dump_components());
+        ssa.insert(header.clone(), out.ssa.clone());
     }
     (field_tracker, string_table)
 }
@@ -138,7 +137,8 @@ fn build_function_instances(
     c_info: &CircuitInfo,
     instances: Vec<VCF>,
     mut field_tracker: FieldTracker,
-    mut string_table : HashMap<String,usize>
+    mut string_table : HashMap<String,usize>,
+    ssa: &mut HashMap<String, SSACollector>
 ) -> (FieldTracker, HashMap<String, usize>, HashMap<String, usize>) {
     let mut function_to_arena_size = HashMap::new();
     for instance in instances {
@@ -184,9 +184,7 @@ fn build_function_instances(
         function_info.max_number_of_vars = out.stack_depth;
         function_to_arena_size.insert(header.clone(), function_info.max_number_of_vars);
         circuit.add_function_code(function_info);
-        circuit.llvm_data.variable_index_mapping.insert(header.clone(), out.ssa.dump_vars());
-        circuit.llvm_data.signal_index_mapping.insert(header.clone(), out.ssa.dump_signals());
-        circuit.llvm_data.component_index_mapping.insert(header.clone(), out.ssa.dump_components());
+        ssa.insert(header.clone(), out.ssa.clone());
     }
     (field_tracker, function_to_arena_size, string_table)
 }
@@ -388,10 +386,17 @@ pub fn build_circuit(vcp: VCP, flag: CompilationFlags, version: &str) -> Circuit
         functions: vcp.quick_knowledge,
     };
 
+    let mut ssa = HashMap::new();
     let (field_tracker, string_table) =
-        build_template_instances(&mut circuit, &circuit_info, vcp.templates, field_tracker);
+        build_template_instances(&mut circuit, &circuit_info, vcp.templates, field_tracker, &mut ssa);
     let (field_tracker, function_to_arena_size, table_string_to_usize) =
-        build_function_instances(&mut circuit, &circuit_info, vcp.functions, field_tracker,string_table);
+        build_function_instances(&mut circuit, &circuit_info, vcp.functions, field_tracker,string_table, &mut ssa);
+
+    for (scope_name, ssa) in ssa {
+        circuit.llvm_data.signal_index_mapping.insert(scope_name.clone(), ssa.dump_signals());
+        circuit.llvm_data.variable_index_mapping.insert(scope_name.clone(), ssa.dump_vars());
+        circuit.llvm_data.component_index_mapping.insert(scope_name, ssa.dump_components());
+    }
 
     let table_usize_to_string = create_table_usize_to_string(table_string_to_usize);
     circuit.wasm_producer.set_string_table(table_usize_to_string.clone());

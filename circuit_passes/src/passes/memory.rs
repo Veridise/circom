@@ -18,11 +18,12 @@ pub struct PassMemory {
     pub current_scope: String,
     pub io_map: TemplateInstanceIOMap,
     pub signal_index_mapping: HashMap<String, IndexMapping>,
-    pub variables_index_mapping: HashMap<String, IndexMapping>
+    pub variables_index_mapping: HashMap<String, IndexMapping>,
+    pub component_addr_index_mapping: HashMap<String, IndexMapping>
 }
 
 impl PassMemory {
-    pub fn new_cell(prime: &String, current_scope: String, io_map: TemplateInstanceIOMap, signal_index_mapping: IndexMapping, variables_index_mapping: IndexMapping) -> RefCell<Self> {
+    pub fn new_cell(prime: &String, current_scope: String, io_map: TemplateInstanceIOMap) -> RefCell<Self> {
         RefCell::new(PassMemory {
             templates_library: Default::default(),
             functions_library: Default::default(),
@@ -31,7 +32,8 @@ impl PassMemory {
             current_scope,
             io_map,
             signal_index_mapping: Default::default(),
-            variables_index_mapping: Default::default()
+            variables_index_mapping: Default::default(),
+            component_addr_index_mapping: Default::default()
         })
     }
 
@@ -43,7 +45,7 @@ impl PassMemory {
     }
 
     pub fn build_interpreter<'a>(&'a self, observer: &'a dyn InterpreterObserver) -> BucketInterpreter {
-        BucketInterpreter::init(&self.current_scope, &self.prime, &self.constant_fields, observer, &self.io_map, &self.signal_index_mapping[&self.current_scope], &self.variables_index_mapping[&self.current_scope])
+        BucketInterpreter::init(&self.current_scope, &self.prime, &self.constant_fields, observer, &self.io_map, &self.signal_index_mapping[&self.current_scope], &self.variables_index_mapping[&self.current_scope], &self.component_addr_index_mapping[&self.current_scope])
     }
 
     pub fn add_template(&mut self, template: &TemplateCode) {
@@ -63,5 +65,8 @@ impl PassMemory {
         }
         self.constant_fields = circuit.llvm_data.field_tracking.clone();
         self.io_map = circuit.llvm_data.io_map.clone();
+        self.variables_index_mapping = circuit.llvm_data.variable_index_mapping.clone();
+        self.signal_index_mapping = circuit.llvm_data.signal_index_mapping.clone();
+        self.component_addr_index_mapping = circuit.llvm_data.component_index_mapping.clone();
     }
 }

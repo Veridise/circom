@@ -93,6 +93,7 @@ impl TemplateDB {
     }
 }
 
+#[derive(Default, Clone)]
 struct Counter {
     value: usize
 }
@@ -112,32 +113,36 @@ impl Counter {
 }
 
 pub type SSA = (String, usize);
+pub type Name2Index<N> = HashMap<N, (usize, Vec<usize>)>;
 
-pub struct SSANamesCollector {
-    counter: RefCell<Counter>,
-    vars: RefCell<HashMap<SSA, (usize, Vec<usize>)>>,
-    signals: RefCell<HashMap<SSA, (usize, Vec<usize>)>>,
-    components: ()
+#[derive(Clone)]
+pub struct SSACollector {
+    counter: Counter,
+    // Var names can be reused in different blocks so we SSA each declaration to avoid collisions of reused var names
+    vars: Name2Index<SSA>,
+    // Signals and components are global to the template so we don't need to SSA them
+    signals: Name2Index<String>,
+    components_addrs: Name2Index<String>
 }
 
-impl SSANamesCollector {
+impl SSACollector {
     pub fn new() -> Self {
-        SSANamesCollector {
-            counter: RefCell::new(Counter::init()),
+        SSACollector {
+            counter: Default::default(),
             vars: Default::default(),
             signals: Default:: default(),
-            components: Default::default()
+            components_addrs: Default::default()
         }
     }
 
-    pub fn insert_var(&self, name: &String, addr: usize, lengths: &Vec<usize>) {
-        let ssa_name = (name.clone(), self.counter.borrow_mut().get_and_inc());
-        self.vars.borrow_mut().insert(ssa_name, (addr, lengths.clone()));
+    pub fn insert_var(&mut self, name: &String, addr: usize, lengths: &Vec<usize>) {
+        let ssa_name = (name.clone(), self.counter.get_and_inc());
+        self.vars.insert(ssa_name, (addr, lengths.clone()));
     }
 
     pub fn dump_vars(&self) -> IndexMapping {
         let mut mapping = HashMap::new();
-        for (addr, lengths) in self.vars.borrow().values() {
+        for (addr, lengths) in self.vars.values() {
             let size = lengths.iter().fold(1, |acc, i| acc * i);
             let range = (*addr)..(addr + size);
             for i in range.clone() {
@@ -147,14 +152,13 @@ impl SSANamesCollector {
         mapping
     }
 
-    pub fn insert_signal(&self, name: &String, addr: usize, lengths: &Vec<usize>) {
-        let ssa_name = (name.clone(), self.counter.borrow_mut().get_and_inc());
-        self.signals.borrow_mut().insert(ssa_name, (addr, lengths.clone()));
+    pub fn insert_signal(&mut self, name: &String, addr: usize, lengths: &Vec<usize>) {
+        self.signals.insert(name.clone(), (addr, lengths.clone()));
     }
 
     pub fn dump_signals(&self) -> IndexMapping {
         let mut mapping = HashMap::new();
-        for (addr, lengths) in self.signals.borrow().values() {
+        for (addr, lengths) in self.signals.values() {
             let size = lengths.iter().fold(1, |acc, i| acc * i);
             let range = (*addr)..(addr + size);
             for i in range.clone() {
@@ -164,13 +168,20 @@ impl SSANamesCollector {
         mapping
     }
 
-    pub fn insert_component(&self, name: &String, addr: usize, lengths: &Vec<usize>) {
-        let ssa_name = (name.clone(), self.counter.borrow_mut().get_and_inc());
-        todo!()
+    pub fn insert_component_addr(&mut self, name: &String, addr: usize, lengths: &Vec<usize>) {
+        self.components_addrs.insert(name.clone(), (addr, lengths.clone()));
     }
 
     pub fn dump_components(&self) -> IndexMapping {
-        todo!()
+        let mut mapping = HashMap::new();
+        for (addr, lengths) in self.components_addrs.values() {
+            let size = lengths.iter().fold(1, |acc, i| acc * i);
+            let range = (*addr)..(addr + size);
+            for i in range.clone() {
+                mapping.insert(i, range.clone());
+            }
+        }
+        mapping
     }
 }
 
@@ -190,7 +201,7 @@ struct State {
     code: InstructionList,
     // string_table
     string_table: HashMap<String, usize>,
-    ssa: SSANamesCollector
+    ssa: SSACollector
 }
 
 impl State {
@@ -216,7 +227,7 @@ impl State {
             max_stack_depth: 0,
             code: vec![],
             string_table : HashMap::new(),
-            ssa: SSANamesCollector::new()
+            ssa: SSACollector::new()
         }
     }
     fn reserve(fresh: &mut usize, size: usize) -> usize {
@@ -372,7 +383,7 @@ fn initialize_components(state: &mut State, components: Vec<Component>, stmt: &S
             op_aux_no: 0,
         }
         .allocate();
-        state.ssa.insert_component(&component.name, address, &component.lengths);
+        state.ssa.insert_component_addr(&component.name, address, &component.lengths);
         let info = SymbolInfo { access_instruction: instruction, dimensions: component.lengths, is_component: true };
         state.environment.add_variable(&component.name, info);
     }
@@ -607,9 +618,6 @@ fn translate_while(stmt: Statement, state: &mut State, context: &Context) {
 }
 
 fn translate_substitution(stmt: Statement, state: &mut State, context: &Context) {
-    // Add here the assign op so that the store and call instructions knows if they come from a <== or a <--
-    // Modify the instructions to have a boolean flag that is true if it was a <==, false otherwise
-    // The llvm generator will check that flag and add the appropriate code.
     use Statement::Substitution;
     let subst_stmt = stmt.clone();
     if let Substitution { meta, var, access, op, rhe,  } = stmt {
@@ -1451,7 +1459,7 @@ pub struct CodeOutput {
     pub code: InstructionList,
     pub constant_tracker: FieldTracker,
     pub string_table: HashMap<String, usize>,
-    pub ssa: SSANamesCollector
+    pub ssa: SSACollector
 }
 
 pub fn translate_code(body: Statement, code_info: CodeInfo) -> CodeOutput {

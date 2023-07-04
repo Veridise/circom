@@ -25,7 +25,7 @@ pub struct SimplificationPass {
 
 impl SimplificationPass {
     pub fn new(prime: &String) -> Self {
-        SimplificationPass { memory: PassMemory::new_cell(prime, "".to_string(), Default::default(), todo!(),todo!()), replacements: Default::default() }
+        SimplificationPass { memory: PassMemory::new_cell(prime, "".to_string(), Default::default()), replacements: Default::default() }
     }
 }
 

@@ -23,7 +23,8 @@ pub struct BucketInterpreter<'a> {
     io_map: &'a TemplateInstanceIOMap,
     p: Value,
     signal_index_mapping: &'a IndexMapping,
-    variables_index_mapping: &'a IndexMapping
+    variables_index_mapping: &'a IndexMapping,
+    component_addr_index_mapping: &'a IndexMapping
 }
 
 pub type R<'a> = (Option<Value>, Env<'a>);
@@ -53,7 +54,8 @@ impl<'a> BucketInterpreter<'a> {
         observer: &'a dyn InterpreterObserver,
         io_map: &'a TemplateInstanceIOMap,
         signal_index_mapping: &'a IndexMapping,
-        variables_index_mapping: &'a IndexMapping
+        variables_index_mapping: &'a IndexMapping,
+        component_addr_index_mapping: &'a IndexMapping
     ) -> Self {
         BucketInterpreter {
             scope,
@@ -63,7 +65,8 @@ impl<'a> BucketInterpreter<'a> {
             io_map,
             p: KnownBigInt(UsefulConstants::new(prime).get_p().clone()),
             signal_index_mapping,
-            variables_index_mapping
+            variables_index_mapping,
+            component_addr_index_mapping
         }
     }
 
@@ -80,7 +83,7 @@ impl<'a> BucketInterpreter<'a> {
     fn get_write_operations_in_store_bucket(&self, bucket: &StoreBucket,
                                             vars: &mut Vec<usize>,
                                             signals: &mut Vec<usize>,
-                                            subcmps: &mut Vec<(usize, usize)>,
+                                            subcmps: &mut Vec<usize>,
                                             env: &Env) {
         match bucket.dest_address_type {
             AddressType::Variable => {
@@ -98,7 +101,11 @@ impl<'a> BucketInterpreter<'a> {
                 }
             }
             AddressType::SubcmpSignal { .. } => {
-                todo!()
+                let idx = self.get_id_from_indexed_location(&bucket.dest, env);
+                let indices = self.component_addr_index_mapping[&idx].clone();
+                for index in indices {
+                    subcmps.push(index);
+                }
             }
         };
         // 1. Evaluate what indexing are we doing here:
@@ -114,7 +121,7 @@ impl<'a> BucketInterpreter<'a> {
         inst: &Instruction,
         vars: &mut Vec<usize>,
         signals: &mut Vec<usize>,
-        subcmps: &mut Vec<(usize, usize)>,
+        subcmps: &mut Vec<usize>,
         env: &Env
     ) {
         match inst {
@@ -154,7 +161,7 @@ impl<'a> BucketInterpreter<'a> {
         body: &InstructionList,
         vars: &mut Vec<usize>,
         signals: &mut Vec<usize>,
-        subcmps: &mut Vec<(usize, usize)>,
+        subcmps: &mut Vec<usize>,
         env: &Env
     ) {
         for inst in body {
@@ -166,7 +173,7 @@ impl<'a> BucketInterpreter<'a> {
     /// 0: Indices of variables
     /// 1: Indices of signals
     /// 2: Indices of subcmps
-    fn get_write_operations_in_body(&self, body: &InstructionList, env: &Env) -> (Vec<usize>, Vec<usize>, Vec<(usize, usize)>) {
+    fn get_write_operations_in_body(&self, body: &InstructionList, env: &Env) -> (Vec<usize>, Vec<usize>, Vec<usize>) {
         let mut vars = vec![];
         let mut signals = vec![];
         let mut subcmps = vec![];
@@ -177,7 +184,7 @@ impl<'a> BucketInterpreter<'a> {
     }
 
     pub fn clone_in_new_scope(interpreter: &Self, new_scope: &'a String) -> BucketInterpreter<'a> {
-        Self::init(new_scope, interpreter.prime, interpreter.constant_fields, interpreter.observer, interpreter.io_map, &interpreter.signal_index_mapping, &interpreter.variables_index_mapping)
+        Self::init(new_scope, interpreter.prime, interpreter.constant_fields, interpreter.observer, interpreter.io_map, &interpreter.signal_index_mapping, &interpreter.variables_index_mapping, &interpreter.component_addr_index_mapping)
     }
 
     pub fn execute_value_bucket<'env>(&self, bucket: &ValueBucket, env: Env<'env>, _observe: bool) -> R<'env> {
@@ -419,13 +426,32 @@ impl<'a> BucketInterpreter<'a> {
     }
 
     pub fn execute_branch_bucket<'env>(&self, bucket: &'env BranchBucket, env: Env<'env>, observe: bool) -> R<'env> {
-        let (value, _, env) = self.execute_conditional_bucket(
+        let (value, cond, mut env) = self.execute_conditional_bucket(
             &bucket.cond,
             &bucket.if_branch,
             &bucket.else_branch,
             env,
             observe,
         );
+        if cond.is_some() {
+            return (value, env);
+        }
+
+        // If cond is None means that the condition instruction evaluates to Unknown
+        // Thus we don't know what branch to take
+        // We take all writes in both branches and set all writes in them as Unknown
+        let (mut vars, mut signals, mut subcmps) = self.get_write_operations_in_body(&bucket.if_branch, &env);
+        self.get_write_operations_in_body_rec(&bucket.else_branch, &mut vars, &mut signals, &mut subcmps, &env);
+
+        for var in vars {
+            env = env.set_var(var, Unknown);
+        }
+        for signal in signals {
+            env = env.set_signal(signal, Unknown);
+        }
+        for subcmp_id in subcmps {
+            env = env.set_subcmp_to_unk(subcmp_id);
+        }
         (value, env)
     }
 
@@ -470,24 +496,7 @@ impl<'a> BucketInterpreter<'a> {
 
         return match cond_bool_result {
             None => {
-                // let (then_side, then_env) = self.execute_instructions(true_branch, &env, observe);
-                // let (else_side, else_env) = self.execute_instructions(false_branch, &env, observe);
-                //
-                // let value = match (then_side, else_side) {
-                //     (None, None) => None,
-                //     (Some(x), None) => Some(x),
-                //     (None, Some(x)) => Some(x),
-                //     (Some(x), Some(y)) => Some(x.join(&y))
-                // };
-                //
-                // return (value, None, then_env.join(&else_env));
-                let (ret, new_env) = self.execute_instructions(true_branch, env.clone(), observe);
-                if ret.is_none() {
-                    let (ret, new_env) = self.execute_instructions(false_branch, env, observe);
-                    (ret, None, new_env)
-                } else {
-                    (ret, None, new_env)
-                }
+                (None, None, env)
             }
             Some(true) => {
                 let (ret, env) = self.execute_instructions(&true_branch, env, observe);
@@ -519,35 +528,11 @@ impl<'a> BucketInterpreter<'a> {
         }
     }
 
-    // fn compute_while(&self, predicate: &InstructionPointer, body: &InstructionList, env: &Env, visited_states: EnvSet, observe: bool) -> R {
-    //     if visited_states.contains(env) {
-    //         return (None, env.clone());
-    //     }
-    //     let (cond, _) = self.execute_instruction(predicate, env, observe);
-    //     let cond = cond.expect("executed_cond must produce a value!");
-    //     let cond_bool_result = self.value_to_bool(&cond);
-    //     match cond_bool_result {
-    //         None => {
-    //             let r = self.execute_instructions(body, env, observe);
-    //             let rec = self.compute_while(predicate, body, &r.1, visited_states.add(env), observe);
-    //             (None, env.clone()).join(&rec)
-    //         }
-    //         Some(true) => {
-    //             let r = self.execute_instructions(body, env, observe);
-    //             self.compute_while(predicate, body, &r.1, visited_states.add(env), observe)
-    //         }
-    //         Some(false) => {
-    //             self.execute_instructions(body, env, observe)
-    //         }
-    //     }
-    // }
-
-
-
     /// Executes the loop many times. If the result of the loop condition is unknown
-    /// the interpreter assumes that the result of the loop is unknown.
-    /// In this case of unknown condition the loop is executed twice.
-    /// This logic is inspired by the logic for the AST interpreter.
+    /// the interpreter assumes that the result of the loop is `Unknown`.
+    /// In the case the condition evaluates to `Unknown` all the memory addresses
+    /// potentially written into in the loop's body are set to `Unknown` to represent
+    /// that we don't know the values after the execution of that loop.
     pub fn execute_loop_bucket<'env>(&self, bucket: &'env LoopBucket, env: Env<'env>, observe: bool) -> R<'env> {
         self.observer.on_loop_bucket(bucket, &env);
         let mut last_value = Some(Unknown);
@@ -578,8 +563,8 @@ impl<'a> BucketInterpreter<'a> {
                     for signal in signals {
                         loop_env = loop_env.set_signal(signal, Unknown);
                     }
-                    for (subcmp_id, subcmp_signal) in subcmps {
-                        loop_env = loop_env.set_subcmp_signal(subcmp_id, subcmp_signal, Unknown);
+                    for subcmp_id in subcmps {
+                        loop_env = loop_env.set_subcmp_to_unk(subcmp_id);
                     }
                     break (value, loop_env);
                 }

@@ -25,7 +25,7 @@ pub struct LoopUnrollPass {
 
 impl LoopUnrollPass {
     pub fn new(prime: &String) -> Self {
-        LoopUnrollPass { memory: PassMemory::new_cell(prime, "".to_string(), Default::default(), todo!(), todo!()), replacements: Default::default() }
+        LoopUnrollPass { memory: PassMemory::new_cell(prime, "".to_string(), Default::default()), replacements: Default::default() }
     }
 }
 
