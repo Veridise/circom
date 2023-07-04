@@ -1,9 +1,9 @@
 pragma circom 2.0.0;
 
 template Not(){
-   signal input in;
-   signal output out;
-   out <== (in + 1) - (2 * in);
+   signal input a;
+   signal output b;
+   b <== (a + 1) - (2 * a);
 }
 
-component main {public [in]} = Not();
+component main {public [a]} = Not();

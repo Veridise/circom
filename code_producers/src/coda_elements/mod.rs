@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::format};
 use std::fs::File;
 use std::io::Write;
+use inkwell::GlobalVisibility;
 use serde::{Serialize, Deserialize, de::value};
 
 // This is intended to match the `SummaryRoot` and associated structs in the
@@ -81,10 +82,10 @@ impl CodaCircuit {
         self.signals.push(CodaSignal { name, type_, visibility: CodaSignalVisibility::Output });
     }
 
-    pub fn define_output(&mut self, i: usize, term: CodaExpr) {
+    pub fn define_output(&mut self, i: usize, expr: CodaExpr) {
         let name = self.get_signal(i).name.clone();
-        println!("[CODA] define_output {} := {:?}", name, term);
-        self.bodies.insert(name, term);
+        println!("[CODA] define_output {} := {:?}", name, expr);
+        self.bodies.insert(name, expr);
         ()
     }
 
@@ -96,8 +97,8 @@ impl CodaCircuit {
         self.signals.iter().position(|s| s.name == name)
     }
 
-    pub fn add_definition(&mut self, name: String, term: CodaExpr) {
-        self.definitions.push((name, term));
+    pub fn add_definition(&mut self, name: String, expr: CodaExpr) {
+        self.definitions.push((name, expr));
     }
 }
 
@@ -108,7 +109,7 @@ pub struct CodaSignal {
     pub visibility: CodaSignalVisibility,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CodaSignalVisibility {
     Input,
     Output,
@@ -130,7 +131,7 @@ pub enum CodaExpr {
 #[derive(Clone, Debug)]
 pub enum LiteralType {
     BigInt,
-    U32
+    U32,
 }
 
 #[derive(Clone, Debug)]
@@ -164,25 +165,58 @@ impl CompileString for CodaProgram {
         let mut s = String::new();
         for circuit in &self.coda_circuits {
             s.push_str(&circuit.compile_string());
+            s.push_str("\n\n");
         }
-        s       
+        s
     }
 }
 
 impl CompileString for CodaCircuit {
     fn compile_string(&self) -> String {
         let mut s = String::new();
-        s.push_str(&format!("circuit {} {{\n", self.name));
-        for signal in &self.signals {
-            s.push_str(&format!("    signal {} {};\n", signal.visibility.compile_string(), signal.name));
+        s.push_str("let open Hoare_circuit in to_circuit @@ Hoare_circuit {");
+
+        s.push_str(&format!(" name= \"{}\"", self.name));
+
+        let input_signals: Vec<&CodaSignal> = self
+            .signals
+            .iter()
+            .filter(|&signal| signal.visibility == CodaSignalVisibility::Input)
+            .collect();
+
+        s.push_str("; inputs= BaseTyp.[");
+        for signal in input_signals {
+            s.push_str(&format!("(\"{}\", {})", signal.name, signal.type_.compile_string()))
         }
-        for (name, term) in &self.definitions {
-            s.push_str(&format!("    {} <== {};\n", name, term.compile_string()));
+        s.push_str("]");
+
+        let output_signals: Vec<&CodaSignal> = self
+            .signals
+            .iter()
+            .filter(|&signal| signal.visibility == CodaSignalVisibility::Output)
+            .collect();
+
+        s.push_str("; outputs= BaseTyp.[");
+        for signal in output_signals {
+            s.push_str(&format!("(\"{}\", {})", signal.name, signal.type_.compile_string()))
         }
-        for (name, term) in &self.bodies {
-            s.push_str(&format!("    {} <== {};\n", name, term.compile_string()));
+        s.push_str("]");
+
+        s.push_str("; preconditions= []");
+        s.push_str("; postconditions= []");
+
+        s.push_str("; body= ");
+
+        if self.bodies.len() == 0 {
+            panic!("There are no bodies in circuit {}", self.name)
+        } else if self.bodies.len() == 1 {
+            let expr = self.bodies.values().next().unwrap();
+            s.push_str(&format!("{}", expr.compile_string()))
+        } else {
+            todo!("handle multiple bodies")
         }
-        s.push_str("}\n");
+
+        s.push_str(" }");
         s
     }
 }
@@ -196,15 +230,21 @@ impl CompileString for CodaSignalVisibility {
     }
 }
 
+impl CompileString for CodaType {
+    fn compile_string(&self) -> String {
+        match self {
+            CodaType::Field => "field".to_string(),
+        }
+    }
+}
+
 impl CompileString for CodaExpr {
     fn compile_string(&self) -> String {
         match self {
             CodaExpr::Signal(name) => name.clone(),
-            CodaExpr::Literal(value, type_) => {
-                match type_ {
-                    LiteralType::BigInt => format!("{}", value),
-                    LiteralType::U32 => format!("{}", value),
-                }
+            CodaExpr::Literal(value, type_) => match type_ {
+                LiteralType::BigInt => format!("{}", value),
+                LiteralType::U32 => format!("{}", value),
             },
             CodaExpr::Binop(type_, op, e1, e2) => {
                 let op = match op {
@@ -216,7 +256,7 @@ impl CompileString for CodaExpr {
                     CodaBinop::Div => "/",
                 };
                 format!("({} {} {})", e1.compile_string(), op, e2.compile_string())
-            },
+            }
         }
     }
 }
