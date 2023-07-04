@@ -37,8 +37,11 @@ impl PassMemory {
         })
     }
 
-    pub fn run_template(&mut self, observer: &dyn InterpreterObserver, template: &TemplateCode) {
-        self.current_scope = template.name.clone();
+    pub fn set_scope(&mut self, template: &TemplateCode) {
+        self.current_scope = template.header.clone();
+    }
+
+    pub fn run_template(&self, observer: &dyn InterpreterObserver, template: &TemplateCode) {
         let interpreter = self.build_interpreter(observer);
         let env = Env::new(&self.templates_library, &self.functions_library);
         interpreter.execute_instructions(&template.body, env, true);

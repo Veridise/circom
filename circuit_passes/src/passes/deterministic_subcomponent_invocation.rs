@@ -128,7 +128,8 @@ impl CircuitTransformationPass for DeterministicSubCmpInvokePass {
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.borrow_mut().run_template(self, template);
+        self.memory.borrow_mut().set_scope(template);
+        self.memory.borrow().run_template(self, template);
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
