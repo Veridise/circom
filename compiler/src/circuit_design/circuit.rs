@@ -590,36 +590,36 @@ fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaE
         Block(block) => {
             todo!()
         }
-        Store(store) => {
+        Store(_) => {
             panic!("shouldn't appear in expression")
         }
-        Return(return_) => {
+        Return(_) => {
             panic!("shouldn't appear in expression")
         }
-        Assert(assert) => {
+        Assert(_) => {
             panic!("shouldn't appear in expression")
         }
-        Log(log) => {
+        Log(_) => {
             panic!("shouldn't appear in expression")
         }
-        Loop(loop_) => {
+        Loop(_) => {
             panic!("all loops should be unrolled")
         }
-        CreateCmp(createCmp) => {
+        CreateCmp(_) => {
             panic!("shouldn't appear in expression")
         }
-        Constraint(constraint) => {
+        Constraint(_) => {
             panic!("shouldn't appear in expression")
         }
-        Nop(nop) => {
+        Nop(_) => {
             panic!("shouldn't appear in expression")
         }
     }
 }
 
-fn coda_type(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaType {
-    panic!("coda_type")
-}
+// fn coda_type(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaType {
+//     panic!("coda_type")
+// }
 
 impl<'a> CodaStatementContext<'a> {
     pub fn to_coda_expr_context(&'a self) -> CodaExprContext<'a> {
@@ -699,19 +699,19 @@ fn coda_statement(
                 coda_statement(context, instruction)
             }
         }
-        Nop(nop) => {
+        Nop(_) => {
             ()
         }
-        Value(value) => {
+        Value(_) => {
             panic!("shouldn't appear in statement")
         }
-        Load(load) => {
+        Load(_) => {
             panic!("shouldn't appear in statement")
         }
-        Compute(compute) => {
+        Compute(_) => {
             panic!("shouldn't appear in statement")
         }
-        Call(call) => {
+        Call(_) => {
             panic!("shouldn't appear in statement")
         }
     }
