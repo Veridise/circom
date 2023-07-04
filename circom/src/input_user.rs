@@ -51,7 +51,7 @@ const DAT: &'static str = "dat";
 const SYM: &'static str = "sym";
 const JSON: &'static str = "json";
 const LLVM_IR: &'static str = "ll";
-const CODA: &'static str = "coda";
+const CODA: &'static str = "ml";
 
 
 impl Input {
