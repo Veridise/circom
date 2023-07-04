@@ -541,7 +541,6 @@ fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaE
                                 }
                                 _ => todo!(),
                             }
-                            // CodaExpr::Signal(())
                         }
                         LocationRule::Mapped { signal_code, indexes } => todo!(),
                     }
