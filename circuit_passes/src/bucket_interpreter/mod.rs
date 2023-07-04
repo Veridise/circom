@@ -109,12 +109,6 @@ impl<'a> BucketInterpreter<'a> {
                 }
             }
         };
-        // 1. Evaluate what indexing are we doing here:
-        //    What index are we trying to write into?
-        //    What kind? Var, signal or subcmp signal
-        // 2. Get the name of the thing we are trying to write into
-        // 3. Get all the possible indices for that thing
-        // 4. For each index that correspond to a possible offset of the thing write it in the list
     }
 
     fn get_write_operations_in_inst_rec(
