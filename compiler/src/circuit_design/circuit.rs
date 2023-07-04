@@ -499,14 +499,14 @@ struct CodaStatementContext<'a> {
     summary_root: &'a SummaryRoot,
     template_summary: &'a TemplateSummary,
     coda_circuit: &'a mut CodaCircuit,
-    coda_data: &'a CodaCircuitData
+    coda_data: &'a CodaCircuitData,
 }
 
 struct CodaExprContext<'a> {
     pub circuit: &'a Circuit,
     pub summary_root: &'a SummaryRoot,
     pub coda_circuit: &'a CodaCircuit,
-    coda_data: &'a CodaCircuitData
+    coda_data: &'a CodaCircuitData,
 }
 
 // fn coda_binop(circuit: &Circuit, summary_root: &SummaryRoot, coda_circuit: &CodaCircuit, compute: &ComputeBucket) -> CodaExpr {
@@ -524,38 +524,34 @@ fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaE
             // HENRY: also look at `values.rs`
             println!("Value: {:?}", value);
             match value.parse_as {
-                ValueType::BigInt => CodaExpr::Literal(context.coda_data.get_constant(value.value), LiteralType::BigInt),
-                ValueType::U32 => CodaExpr::Literal(context.coda_data.get_constant(value.value), LiteralType::U32),
-            }
-        }
-        Load(load) => {
-            match &load.address_type {
-                AddressType::Variable => todo!(),
-                AddressType::Signal => {
-                    match &load.src {
-                        LocationRule::Indexed { location, template_header } => {
-                            match location.as_ref() {
-                                Value(value) => {
-                                    let signal = context.coda_circuit.get_signal(value.value);
-                                    CodaExpr::Signal(signal.name.clone())
-                                }
-                                _ => todo!(),
-                            }
-                        }
-                        LocationRule::Mapped { signal_code, indexes } => todo!(),
-                    }
+                ValueType::BigInt => CodaExpr::Literal(
+                    context.coda_data.get_constant(value.value),
+                    LiteralType::BigInt,
+                ),
+                ValueType::U32 => {
+                    CodaExpr::Literal(context.coda_data.get_constant(value.value), LiteralType::U32)
                 }
-                AddressType::SubcmpSignal {
-                    cmp_address,
-                    uniform_parallel_value,
-                    is_output,
-                    input_information,
-                } => todo!(),
             }
         }
-        Store(store) => {
-            todo!()
-        }
+        Load(load) => match &load.address_type {
+            AddressType::Variable => todo!(),
+            AddressType::Signal => match &load.src {
+                LocationRule::Indexed { location, template_header } => match location.as_ref() {
+                    Value(value) => {
+                        let signal = context.coda_circuit.get_signal(value.value);
+                        CodaExpr::Signal(signal.name.clone())
+                    }
+                    _ => todo!(),
+                },
+                LocationRule::Mapped { signal_code, indexes } => todo!(),
+            },
+            AddressType::SubcmpSignal {
+                cmp_address,
+                uniform_parallel_value,
+                is_output,
+                input_information,
+            } => todo!(),
+        },
         Compute(compute) => match &compute.op {
             OperatorType::Mul => coda_binop(CodaBinop::Mul, context, compute),
             OperatorType::Div => coda_binop(CodaBinop::Div, context, compute),
@@ -590,29 +586,32 @@ fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaE
         Branch(branch) => {
             todo!()
         }
-        Return(return_) => {
-            todo!()
-        }
-        Assert(assert) => {
-            todo!()
-        }
-        Log(log) => {
-            todo!()
-        }
-        Loop(loop_) => {
-            todo!()
-        }
-        CreateCmp(createCmp) => {
-            todo!()
-        }
-        Constraint(constraint) => {
-            todo!()
-        }
         Block(block) => {
             todo!()
         }
+        Store(store) => {
+            panic!("shouldn't appear in expression")
+        }
+        Return(return_) => {
+            panic!("shouldn't appear in expression")
+        }
+        Assert(assert) => {
+            panic!("shouldn't appear in expression")
+        }
+        Log(log) => {
+            panic!("shouldn't appear in expression")
+        }
+        Loop(loop_) => {
+            panic!("all loops should be unrolled")
+        }
+        CreateCmp(createCmp) => {
+            panic!("shouldn't appear in expression")
+        }
+        Constraint(constraint) => {
+            panic!("shouldn't appear in expression")
+        }
         Nop(nop) => {
-            todo!()
+            panic!("shouldn't appear in expression")
         }
     }
 }
@@ -627,7 +626,7 @@ impl<'a> CodaStatementContext<'a> {
             circuit: &self.circuit,
             summary_root: &self.summary_root,
             coda_circuit: &self.coda_circuit,
-            coda_data: &self.coda_data
+            coda_data: &self.coda_data,
         }
     }
 }
@@ -755,7 +754,7 @@ impl WriteCoda for Circuit {
                     summary_root: &summary_root,
                     template_summary: &template_summary,
                     coda_circuit: &mut coda_circuit,
-                    coda_data: &self.coda_data
+                    coda_data: &self.coda_data,
                 };
                 coda_statement(context, instruction)
             }
