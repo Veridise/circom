@@ -41,6 +41,6 @@ jobs:
         run: cargo build --verbose
       - name: Unit tests
         run: cargo test --verbose
-      - run: which FileCheck
+      - run: ls $(llvm-config --bindir)
       - name: Integration tests
         run: lit -v compile-tests
