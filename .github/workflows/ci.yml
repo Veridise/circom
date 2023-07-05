@@ -18,7 +18,7 @@ jobs:
           python-version: '3.10'
           cache: 'pip' # caching pip dependencies
       - name: Install lit
-        run: pip install svn+https://llvm.org/svn/llvm-project/llvm/trunk/utils/lit
+        run: pip install lit
       - name: Build
         run: cargo build --verbose
       - name: Unit tests
