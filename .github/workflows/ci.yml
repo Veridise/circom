@@ -17,3 +17,5 @@ jobs:
         run: cargo build --verbose
       - name: Unit tests
         run: cargo test --verbose
+      - name: Integration tests
+        run: lit -v compile-tests
