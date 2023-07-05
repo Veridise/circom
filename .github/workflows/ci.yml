@@ -25,12 +25,14 @@ jobs:
         with:
           path: |
             ./llvm
-          key: llvm-3.5
+          key: llvm-13.0.1
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
         with:
-          version: "13"
+          version: "13.0.1"
           cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+      - name: Print LLVM version
+        run: llvm-config --version
       - name: Install lit
         run: pip install lit
       - name: Build
