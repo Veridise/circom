@@ -12,11 +12,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v3.5.2
-      - uses: actions/setup-python@v4
+      - name: Checkout
+        uses: actions/checkout@v3.5.2
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           cache: 'pip' # caching pip dependencies
+      - name: Cache LLVM and Clang
+        id: cache-llvm
+        uses: actions/cache@v3
+        with:
+          path: |
+            ./llvm
+          key: llvm-3.5
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: "13"
+          cached: ${{ steps.cache-llvm.outputs.cache-hit }}
       - name: Install lit
         run: pip install lit
       - name: Build
