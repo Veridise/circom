@@ -71,7 +71,13 @@ impl WriteLLVMIR for TemplateCodeInfo {
             to_basic_type_enum(bigint_ptr.ptr_type(Default::default())),
             to_basic_type_enum(i32_type(producer))
         ], false);
-        let build_function = create_function(producer, build_fn_name(self.header.clone()).as_str(), void_type(producer).fn_type(&[component_memory.ptr_type(Default::default()).into()], false));
+        let build_function = create_function(
+            producer,
+            self.get_source_file_id(),
+            self.get_line(),
+            self.name.as_str(),
+            build_fn_name(self.header.clone()).as_str(), 
+            void_type(producer).fn_type(&[component_memory.ptr_type(Default::default()).into()], false));
         let main = create_bb(producer,build_function, "main");
         producer.set_current_bb(main);
 
@@ -97,6 +103,9 @@ impl WriteLLVMIR for TemplateCodeInfo {
         // Run function prelude
         let run_function = create_function(
             producer,
+            self.get_source_file_id(),
+            self.get_line(),
+            self.name.as_str(),
             run_fn_name(self.header.clone()).as_str(),
             void.fn_type(&[bigint_type(producer).array_type(0).ptr_type(Default::default()).into()], false)
         );

@@ -1,8 +1,8 @@
-use code_producers::c_elements::*;
-use code_producers::wasm_elements::*;
-use code_producers::llvm_elements::*;
 use std::io::Write;
-
+use code_producers::c_elements::*;
+use code_producers::llvm_elements::*;
+use code_producers::wasm_elements::*;
+use program_structure::program_archive::ProgramArchive;
 
 pub trait WriteC {
     /*
@@ -32,11 +32,24 @@ pub trait WriteWasm {
 
 pub trait WriteLLVMIR {
     /// This must always return the final statement in the current BasicBlock or None if empty.
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>>;
-    fn write_llvm_ir(&self, llvm_path: &str, data: &LLVMCircuitData) -> Result<(), ()> {
+    fn produce_llvm_ir<'a, 'b>(
+        &self,
+        producer: &'b dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>>;
+    fn write_llvm_ir(
+        &self,
+        program_archive: &ProgramArchive,
+        out_path: &str,
+        data: &LLVMCircuitData,
+    ) -> Result<(), ()> {
         let context = Box::new(create_context());
-        let top_level = TopLevelLLVMIRProducer::new(&context,llvm_path, data.field_tracking.clone());
+        let top_level = TopLevelLLVMIRProducer::new(
+            &context,
+            program_archive,
+            out_path,
+            data.field_tracking.clone(),
+        );
         self.produce_llvm_ir(&top_level);
-        top_level.write_to_file(llvm_path)
+        top_level.write_to_file(out_path)
     }
 }

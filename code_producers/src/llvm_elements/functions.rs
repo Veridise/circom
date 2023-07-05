@@ -1,6 +1,7 @@
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::ContextRef;
+use inkwell::debug_info::AsDIScope;
 use inkwell::types::FunctionType;
 use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
 
@@ -10,10 +11,39 @@ use crate::llvm_elements::template::TemplateCtx;
 
 pub fn create_function<'a>(
     producer: &dyn LLVMIRProducer<'a>,
+    source_file_id: &Option<usize>,
+    source_line: usize,
+    source_fun_name: &str,
     name: &str,
     ty: FunctionType<'a>,
 ) -> FunctionValue<'a> {
-    producer.llvm().module.add_function(name, ty, None)
+    let llvm = producer.llvm();
+    let f = llvm.module.add_function(name, ty, None);
+    let di = match source_file_id {
+        None => {
+            //Compiler-generated functions will have None
+            return f;
+        }
+        Some(id) => match llvm.debug.get(&id) {
+            None => panic!("Failed to find debug info!"),
+            Some(x) => x,
+        },
+    };
+    let subroutine_type = di.0.create_subroutine_type(di.1.get_file(), None, &[], 0);
+    f.set_subprogram(di.0.create_function(
+        /* DIScope */ di.1.as_debug_info_scope(),
+        /* func_name */ source_fun_name,
+        /* linkage_name */ Some(name),
+        /* DIFile */ di.1.get_file(),
+        /* line_no */ source_line as u32,
+        /* DISubroutineType */ subroutine_type,
+        /* is_local_to_unit */ true,
+        /* is_definition */ true,
+        /* scope_line */ 0,
+        /* DIFlags */ 0,
+        /* is_optimized */ false,
+    ));
+    f
 }
 
 pub fn create_bb<'a>(

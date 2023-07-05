@@ -8,6 +8,7 @@ edition = "2018"
 ci-ignore = []
 
 [dependencies]
+program_structure = {path = "../program_structure"}
 handlebars = "4.1.3"
 lz_fnv = "0.1.2"
 num-bigint-dig = "0.6.0"

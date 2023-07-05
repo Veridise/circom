@@ -3,24 +3,26 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::Range;
 use std::rc::Rc;
+
 use ansi_term::Colour;
 
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::{Context, ContextRef};
+use inkwell::debug_info::{DebugInfoBuilder, DICompileUnit};
 use inkwell::module::Module;
 use inkwell::types::{AnyTypeEnum, BasicType, BasicTypeEnum, IntType};
 use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntValue};
 use inkwell::values::FunctionValue;
-
-use template::TemplateCtx;
-
-use crate::llvm_elements::types::bool_type;
 pub use inkwell::types::AnyType;
-use crate::components::TemplateInstanceIOMap;
-use crate::llvm_elements::instructions::create_alloca;
 pub use inkwell::values::{AnyValue, AnyValueEnum, InstructionOpcode};
-use program_structure::environment::VarEnvironment;
+
+use program_structure::program_archive::ProgramArchive;
+
+use crate::components::TemplateInstanceIOMap;
+use crate::llvm_elements::types::bool_type;
+use crate::llvm_elements::instructions::create_alloca;
+use crate::llvm_elements::template::TemplateCtx;
 
 pub mod stdlib;
 pub mod template;
@@ -31,6 +33,7 @@ pub mod fr;
 pub mod values;
 
 pub type LLVMInstruction<'a> = AnyValueEnum<'a>;
+pub type DebugCtx<'a> = (DebugInfoBuilder<'a>, DICompileUnit<'a>);
 
 pub trait BodyCtx<'a> {
     fn get_variable(
@@ -133,10 +136,15 @@ pub fn create_context() -> Context {
 }
 
 impl<'a> TopLevelLLVMIRProducer<'a> {
-    pub fn new(context: &'a Context, name: &str, field_tracking: Vec<String>) -> Self {
+    pub fn new(
+        context: &'a Context,
+        program_archive: &ProgramArchive,
+        llvm_path: &str,
+        field_tracking: Vec<String>,
+    ) -> Self {
         TopLevelLLVMIRProducer {
             context,
-            current_module: LLVM::from_context(context, name),
+            current_module: LLVM::from_context(context, program_archive, llvm_path),
             field_tracking,
         }
     }
@@ -205,14 +213,73 @@ pub fn to_basic_type_enum<'a, T: BasicType<'a>>(ty: T) -> BasicTypeEnum<'a> {
 pub struct LLVM<'a> {
     module: Module<'a>,
     builder: Builder<'a>,
+    debug: HashMap<usize, DebugCtx<'a>>, //indexed by file_id
 }
 
 impl<'a> LLVM<'a> {
-    pub fn from_context(context: &'a Context, name: &str) -> Self {
-        LLVM { module: context.create_module(name), builder: context.create_builder() }
+    pub fn from_context(
+        context: &'a Context,
+        program_archive: &ProgramArchive,
+        out_path: &str,
+    ) -> Self {
+        let m = context.create_module(out_path);
+        m.add_basic_value_flag(
+            "Debug Info Version",
+            inkwell::module::FlagBehavior::Warning,
+            context.i32_type().const_int(3, false),
+        );
+        //Pre-populate debug map
+        let files = &program_archive.file_library;
+        let mut map_id_to_name = HashMap::new();
+        for f in &program_archive.functions {
+            let id = f.1.get_file_id();
+            let name = files.get_filename_or_default(&id);
+            let old = map_id_to_name.insert(id, name);
+            //ASSERT: possible existing value must be the same as was inserted
+            assert!(old.is_none() || old.unwrap() == files.get_filename_or_default(&id));
+        }
+        for t in &program_archive.templates {
+            let id = t.1.get_file_id();
+            let name = files.get_filename_or_default(&id);
+            let old = map_id_to_name.insert(id, name);
+            //ASSERT: possible existing value must be the same as was inserted
+            assert!(old.is_none() || old.unwrap() == files.get_filename_or_default(&id));
+        }
+        let mut debug_info = HashMap::new();
+        for pair in map_id_to_name {
+            let path = pair.1;
+            //Split the file path into directory and file name. If there is no path
+            //  separator, the entire thing is used as the file name and dir is empty.
+            let (dir, name) =
+                path.split_at(path.rfind(std::path::MAIN_SEPARATOR).map_or(0, |x| x + 1));
+            //Create and store the new DebugCtx
+            let res = m.create_debug_info_builder(
+                true,
+                inkwell::debug_info::DWARFSourceLanguage::C11,
+                name,
+                dir,
+                "circom-to-llvm frontend",
+                false,
+                "",
+                0,
+                "",
+                inkwell::debug_info::DWARFEmissionKind::LineTablesOnly,
+                0,
+                true,
+                false,
+                "",
+                "llvm13-0",
+            );
+            debug_info.insert(pair.0, res);
+        }
+        LLVM { module: m, builder: context.create_builder(), debug: debug_info }
     }
 
     pub fn write_to_file(&self, path: &str) -> Result<(), ()> {
+        // Must finalize all debug info before running the verifier
+        for dbg in self.debug.values() {
+            dbg.0.finalize();
+        }
         // Run module verification
         self.module.verify().map_err(|llvm_err| {
             eprintln!(
