@@ -101,7 +101,7 @@ impl ToString for OperatorType {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct ComputeBucket {
     pub id: BucketId,
-    pub source_file: String,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub op: OperatorType,
@@ -122,8 +122,8 @@ impl Allocate for ComputeBucket {
 }
 
 impl ObtainMeta for ComputeBucket {
-    fn get_source_file(&self) -> &str {
-        &self.source_file
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
     }
     fn get_line(&self) -> usize {
         self.line

@@ -35,11 +35,11 @@ impl Allocate for ConstraintBucket {
 }
 
 impl ObtainMeta for ConstraintBucket {
-    fn get_source_file(&self) -> &str {
+    fn get_source_file_id(&self) -> &Option<usize> {
         match self {
             ConstraintBucket::Substitution(i) => i,
             ConstraintBucket::Equality(i) => i
-        }.get_source_file()
+        }.get_source_file_id()
     }
     fn get_line(&self) -> usize {
         match self {

@@ -94,7 +94,7 @@ impl Value {
             Unknown => panic!("Can't create a value bucket from an unknown value!"),
             KnownU32(n) => ValueBucket {
                 id: new_id(),
-                source_file: String::from(""),
+                source_file_id: None,
                 line: 0,
                 message_id: 0,
                 parse_as: ValueType::U32,
@@ -107,7 +107,7 @@ impl Value {
                 constant_fields.push(str_repr);
                 ValueBucket {
                     id: new_id(),
-                    source_file: String::from(""),
+                    source_file_id: None,
                     line: 0,
                     message_id: 0,
                     parse_as: ValueType::BigInt,

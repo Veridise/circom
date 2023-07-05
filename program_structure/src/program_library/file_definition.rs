@@ -32,7 +32,7 @@ impl FileLibrary {
         }
     }
     pub fn get_file(&self, file_id: &FileID) -> Option<&SimpleFile<FilePath, FileSource>> {
-        self.files.get(file_id.clone())
+        self.files.get(*file_id)
     }
     pub fn get_filename_or(&self, file_id: &FileID, default: &FilePath) -> FilePath {
         let sf_opt = self.get_file(file_id);

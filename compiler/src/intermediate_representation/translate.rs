@@ -271,7 +271,7 @@ fn initialize_parameters(state: &mut State, params: Vec<Param>, body: &Statement
         let address = state.reserve_variable(full_size);
         let address_instruction = ValueBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&body.get_meta().get_file_id()),
+            source_file_id: body.get_meta().file_id,
             line: 0,
             message_id: 0,
             parse_as: ValueType::U32,
@@ -293,7 +293,7 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
         let _address_expr = Expression::Number(stmt.get_meta().clone(), BigInt::from(address));
         let address_instruction = ValueBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&stmt.get_meta().get_file_id()),
+            source_file_id: stmt.get_meta().file_id,
             line: 0,
             message_id: 0,
             parse_as: ValueType::U32,
@@ -312,7 +312,7 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
             let _index_expr = Expression::Number(stmt.get_meta().clone(), BigInt::from(index));
             let offset_instruction = ValueBucket {
                 id: new_id(),
-                source_file: state.files.get_filename_or_default(&stmt.get_meta().get_file_id()),
+                source_file_id: stmt.get_meta().file_id,
                 line: 0,
                 message_id: 0,
                 parse_as: ValueType::U32,
@@ -322,7 +322,7 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
             .allocate();
             let full_address = ComputeBucket {
                 id: new_id(),
-                source_file: state.files.get_filename_or_default(&stmt.get_meta().get_file_id()),
+                source_file_id: stmt.get_meta().file_id,
                 line: 0,
                 message_id: 0,
                 op: OperatorType::AddAddress,
@@ -332,7 +332,7 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
             .allocate();
             let content = ValueBucket {
                 id: new_id(),
-                source_file: state.files.get_filename_or_default(&stmt.get_meta().get_file_id()),
+                source_file_id: stmt.get_meta().file_id,
                 line: 0,
                 message_id: 0,
                 parse_as: ValueType::BigInt,
@@ -342,7 +342,7 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
             .allocate();
             let store_instruction = StoreBucket {
                 id: new_id(),
-                source_file: state.files.get_filename_or_default(&stmt.get_meta().get_file_id()),
+                source_file_id: stmt.get_meta().file_id,
                 line: 0,
                 message_id: 0,
                 dest_is_output: false,
@@ -365,7 +365,7 @@ fn initialize_signals(state: &mut State, signals: Vec<Signal>, stmt: &Statement)
         let _address_expr = Expression::Number(stmt.get_meta().clone(), BigInt::from(address));
         let instruction = ValueBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&stmt.get_meta().get_file_id()),
+            source_file_id: stmt.get_meta().file_id,
             line: 0,
             message_id: state.message_id,
             parse_as: ValueType::U32,
@@ -387,7 +387,7 @@ fn initialize_components(state: &mut State, components: Vec<Component>, stmt: &S
         let _address_expr = Expression::Number(stmt.get_meta().clone(), BigInt::from(address));
         let instruction = ValueBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&stmt.get_meta().get_file_id()),
+            source_file_id: stmt.get_meta().file_id,
             line: 0,
             message_id: state.message_id,
             parse_as: ValueType::U32,
@@ -457,7 +457,7 @@ fn create_uniform_components(state: &mut State, triggers: &[Trigger], cluster: T
 
         let creation_instr = CreateCmpBucket {
             id: new_id(),
-            source_file: String::from(""),
+            source_file_id: None,
             line: 0,
             message_id: state.message_id,
             symbol: c_info.runs.clone(),
@@ -504,7 +504,7 @@ fn create_mixed_components(state: &mut State, triggers: &[Trigger], cluster: Tri
         let _jump_expr = Expression::Number(stmt.get_meta().clone(), BigInt::from(value_jump));
         let jump = ValueBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&stmt.get_meta().get_file_id()),
+            source_file_id: stmt.get_meta().file_id,
             line: 0,
             message_id: state.message_id,
             parse_as: ValueType::U32,
@@ -514,7 +514,7 @@ fn create_mixed_components(state: &mut State, triggers: &[Trigger], cluster: Tri
         .allocate();
         let location = ComputeBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&stmt.get_meta().get_file_id()),
+            source_file_id: stmt.get_meta().file_id,
             line: 0,
             op_aux_no: 0,
             message_id: state.message_id,
@@ -535,7 +535,7 @@ fn create_mixed_components(state: &mut State, triggers: &[Trigger], cluster: Tri
 
         let creation_instr = CreateCmpBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&stmt.get_meta().get_file_id()),
+            source_file_id: stmt.get_meta().file_id,
             line: 0,
             message_id: state.message_id,
             symbol: c_info.runs.clone(),
@@ -601,7 +601,7 @@ fn translate_if_then_else(stmt: Statement, state: &mut State, context: &Context)
         let else_code = std::mem::replace(&mut state.code, main_program);
         let branch_instruction = BranchBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: starts_at,
             message_id: state.message_id,
             cond: cond_translation,
@@ -624,7 +624,7 @@ fn translate_while(stmt: Statement, state: &mut State, context: &Context) {
         let loop_code = std::mem::replace(&mut state.code, main_program);
         let loop_instruction = LoopBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: starts_at,
             message_id: state.message_id,
             continue_condition: cond_translation,
@@ -701,7 +701,7 @@ fn translate_declaration(stmt: Statement, state: &mut State, context: &Context) 
         let address = state.reserve_variable(size);
         let instruction = ValueBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: starts_at,
             message_id: state.message_id,
             parse_as: ValueType::U32,
@@ -749,7 +749,7 @@ fn translate_constraint_equality(stmt: Statement, state: &mut State, context: &C
         let stack = vec![lhe_pointer, rhe_pointer];
         let equality = ComputeBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: starts_at,
             message_id: state.message_id,
             op_aux_no: 0,
@@ -759,7 +759,7 @@ fn translate_constraint_equality(stmt: Statement, state: &mut State, context: &C
         .allocate();
         let assert_instruction = AssertBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: starts_at,
             message_id: state.message_id,
             evaluate: equality 
@@ -780,7 +780,7 @@ fn translate_assert(stmt: Statement, state: &mut State, context: &Context) {
         let code = translate_expression(arg, state, context);
         let assert =  AssertBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line,
             message_id: state.message_id,
             evaluate: code 
@@ -817,7 +817,7 @@ fn translate_log(stmt: Statement, state: &mut State, context: &Context) {
         
         let log = LogBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line,
             message_id: state.message_id,
             argsprint: logbucket_args,
@@ -834,7 +834,7 @@ fn translate_return(stmt: Statement, state: &mut State, context: &Context) {
         let return_type = context.functions.get(&context.translating).unwrap();
         let return_bucket = ReturnBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             with_size: return_type.iter().fold(1, |p, c| p * (*c)),
@@ -881,7 +881,7 @@ fn translate_call(
         let args_inst = translate_call_arguments(args, state, context);
         CallBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             symbol: id,
@@ -908,7 +908,7 @@ fn translate_infix(
         let rhi = translate_expression(*rhe, state, context);
         ComputeBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             op: translate_infix_operator(infix_op),
@@ -932,7 +932,7 @@ fn translate_prefix(
         let rhi = translate_expression(*rhe, state, context);
         ComputeBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             op_aux_no: 0,
@@ -1001,7 +1001,7 @@ fn translate_number(
         let cid = bigint_to_cid(&mut state.field_tracker, &value);
         ValueBucket {
             id: new_id(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             op_aux_no: 0,
@@ -1089,7 +1089,7 @@ struct SymbolDef {
 }
 
 struct ProcessedSymbol {
-    source_file: String,
+    source_file_id: Option<usize>,
     line: usize,
     length: usize,
     message_id: usize,
@@ -1169,7 +1169,7 @@ impl ProcessedSymbol {
         });
         ProcessedSymbol {
             xtype: meta.get_type_knowledge().get_reduces_to(),
-            source_file: state.files.get_filename_or_default(&meta.get_file_id()),
+            source_file_id: meta.file_id,
             line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             length: with_length,
@@ -1220,7 +1220,7 @@ impl ProcessedSymbol {
         };
         CallBucket {
             id: new_id(),
-            source_file: self.source_file,
+            source_file_id: self.source_file_id,
             line: self.line,
             message_id: self.message_id,
             symbol: id,
@@ -1245,7 +1245,7 @@ impl ProcessedSymbol {
             };
             StoreBucket {
                 id: new_id(),
-                source_file: self.source_file,
+                source_file_id: self.source_file_id,
                 line: self.line,
                 message_id: self.message_id,
                 src,
@@ -1263,7 +1263,7 @@ impl ProcessedSymbol {
             };
             StoreBucket {
                 id: new_id(),
-                source_file: self.source_file,
+                source_file_id: self.source_file_id,
                 line: self.line,
                 message_id: self.message_id,
                 src,
@@ -1289,7 +1289,7 @@ impl ProcessedSymbol {
             };
             LoadBucket {
                 id: new_id(),
-                source_file: self.source_file,
+                source_file_id: self.source_file_id,
                 line: self.line,
                 message_id: self.message_id,
                 src: signal,
@@ -1304,7 +1304,7 @@ impl ProcessedSymbol {
             };
             LoadBucket {
                 id: new_id(),
-                source_file: self.source_file,
+                source_file_id: self.source_file_id,
                 line: self.line,
                 address_type: xtype,
                 message_id: self.message_id,
@@ -1336,7 +1336,7 @@ fn compute_full_address(
             let _linear_length_expr = Expression::Number(meta.clone(), BigInt::from(linear_length));
             let inst = ValueBucket {
                 id: new_id(),
-                source_file: at.get_source_file().to_string(),
+                source_file_id: at.get_source_file_id().clone(),
                 line: at.get_line(),
                 message_id: at.get_message_id(),
                 parse_as: ValueType::U32,
@@ -1346,7 +1346,7 @@ fn compute_full_address(
             .allocate();
             let jump = ComputeBucket {
                 id: new_id(),
-                source_file: at.get_source_file().to_string(),
+                source_file_id: at.get_source_file_id().clone(),
                 line: at.get_line(),
                 message_id: at.get_message_id(),
                 op_aux_no: 0,
@@ -1391,7 +1391,7 @@ fn indexing_instructions_filter(
             op => {
                 let to_address = ComputeBucket {
                     id: new_id(),
-                    source_file: op.get_source_file().to_string(),
+                    source_file_id: op.get_source_file_id().clone(),
                     line: op.get_line(),
                     message_id: op.get_message_id(),
                     op_aux_no: 0,
@@ -1441,7 +1441,7 @@ fn fold(using: OperatorType, mut stack: Vec<InstructionPointer>, state: &State, 
         let inner_fold = fold(using, stack, state, meta);
         ComputeBucket {
             id: new_id(),
-            source_file: instruction.get_source_file().to_string(),
+            source_file_id: instruction.get_source_file_id().clone(),
             line: instruction.get_line(),
             message_id: instruction.get_message_id(),
             op_aux_no: 0,

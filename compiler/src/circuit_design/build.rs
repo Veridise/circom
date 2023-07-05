@@ -101,11 +101,14 @@ fn build_template_instances(
             string_table,
             signals_to_tags: template.signals_to_tags,
         };
+        let meta = template.code.get_meta();
         let mut template_info = TemplateCodeInfo {
+            id: tmp_id,
+            source_file_id: meta.file_id,
+            line: c_info.file_library.get_line(meta.start, meta.get_file_id()).unwrap(),
             name,
             header: header.clone(),
             number_of_components,
-            id: tmp_id,
             is_parallel: template.is_parallel,
             is_parallel_component: template.is_parallel_component,
             is_not_parallel_component: template.is_not_parallel_component,
@@ -168,7 +171,10 @@ fn build_function_instances(
             string_table,
             signals_to_tags: BTreeMap::new(),
         };
+        let meta = instance.body.get_meta();
         let mut function_info = FunctionCodeInfo {
+            source_file_id: meta.file_id,
+            line: c_info.file_library.get_line(meta.start, meta.get_file_id()).unwrap(),
             name,
             params,
             returns,
