@@ -1,0 +1,19 @@
+name: CI
+on:
+  push:
+    branches: [ v1 ]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v3.5.2
+      - name: Build
+        run: cargo build --verbose
+      - name: Unit tests
+        run: cargo test --verbose
