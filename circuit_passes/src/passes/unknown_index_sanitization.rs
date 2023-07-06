@@ -1,17 +1,121 @@
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{InstructionPointer};
-use compiler::intermediate_representation::ir_interface::{AddressType, Allocate, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket, CreateCmpBucket, LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket, StoreBucket, ValueBucket};
+use compiler::intermediate_representation::{Instruction, InstructionPointer};
+use compiler::intermediate_representation::ir_interface::{AddressType, Allocate, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket, CreateCmpBucket, LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket, StoreBucket, ValueBucket, OperatorType, ValueType};
+use compiler::num_bigint::BigInt;
+use compiler::num_traits::{int, Zero};
+use std::ops::Range;
+use program_structure::constants::UsefulConstants;
 
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::BucketInterpreter;
+use crate::bucket_interpreter::{BucketInterpreter, value, R};
 use crate::bucket_interpreter::observer::InterpreterObserver;
-use crate::bucket_interpreter::value::Value::KnownU32;
+use crate::bucket_interpreter::value::{mod_value, resolve_operation, Value, Value::KnownU32, Value::KnownBigInt};
 use crate::passes::CircuitTransformationPass;
 use crate::passes::memory::PassMemory;
+
+
+struct ZeroingInterpreter<'a> {
+    prime: &'a String,
+    pub constant_fields: &'a Vec<String>,
+    p: Value
+}
+
+impl<'a> ZeroingInterpreter<'a> {
+
+    pub fn init(
+        prime: &'a String,
+        constant_fields: &'a Vec<String>,
+    ) -> Self {
+        ZeroingInterpreter {
+            prime,
+            constant_fields,
+            p: KnownBigInt(UsefulConstants::new(prime).get_p().clone()),
+        }
+    }
+
+    pub fn execute_value_bucket<'env>(&self, bucket: &ValueBucket, env: Env<'env>) -> R<'env> {
+        (
+            Some(match bucket.parse_as {
+                ValueType::BigInt => {
+                    let constant = &self.constant_fields[bucket.value];
+                    KnownBigInt(
+                        BigInt::parse_bytes(constant.as_bytes(), 10)
+                            .expect(format!("Cannot parse constant {}", constant).as_str()),
+                    )
+                }
+                ValueType::U32 => KnownU32(bucket.value),
+            }),
+            env
+        )
+    }
+
+    pub fn execute_load_bucket<'env>(&self, bucket: &'env LoadBucket, env: Env<'env>) -> R<'env> {
+        (Some(KnownU32(0)), env)
+    }
+
+    pub fn execute_compute_bucket<'env>(&self, bucket: &'env ComputeBucket, env: Env<'env>) -> R<'env> {
+        let mut stack = vec![];
+        let mut env = env;
+        for i in &bucket.stack {
+            let (value, new_env) = self.execute_instruction(i, env);
+            env = new_env;
+            stack.push(value.expect("Stack value in ComputeBucket must yield a value!"));
+        }
+        // If any value of the stack is unknown we just return 0
+        if stack.iter().any(|v| v.is_unknown()) {
+            return (Some(KnownU32(0)), env);
+        }
+        let p = &self.p;
+        let computed_value = Some(match bucket.op {
+            OperatorType::Mul => resolve_operation(value::mul_value, p, &stack),
+            OperatorType::Div => resolve_operation(value::div_value, p, &stack),
+            OperatorType::Add => resolve_operation(value::add_value, p, &stack),
+            OperatorType::Sub => resolve_operation(value::sub_value, p, &stack),
+            OperatorType::Pow => resolve_operation(value::pow_value, p, &stack),
+            OperatorType::IntDiv => resolve_operation(value::int_div_value, p, &stack),
+            OperatorType::Mod => resolve_operation(value::mod_value, p, &stack),
+            OperatorType::ShiftL => resolve_operation(value::shift_l_value, p, &stack),
+            OperatorType::ShiftR => resolve_operation(value::shift_r_value, p, &stack),
+            OperatorType::LesserEq => value::lesser_eq(&stack[0], &stack[1]),
+            OperatorType::GreaterEq => value::greater_eq(&stack[0], &stack[1]),
+            OperatorType::Lesser => value::lesser(&stack[0], &stack[1]),
+            OperatorType::Greater => value::greater(&stack[0], &stack[1]),
+            OperatorType::Eq(1) => value::eq1(&stack[0], &stack[1]),
+            OperatorType::Eq(_) => todo!(),
+            OperatorType::NotEq => value::not_eq(&stack[0], &stack[1]),
+            OperatorType::BoolOr => stack.iter().fold(KnownU32(0), value::bool_or_value),
+            OperatorType::BoolAnd => stack.iter().fold(KnownU32(1), value::bool_and_value),
+            OperatorType::BitOr => resolve_operation(value::bit_or_value, p, &stack),
+            OperatorType::BitAnd => resolve_operation(value::bit_and_value, p, &stack),
+            OperatorType::BitXor => resolve_operation(value::bit_xor_value, p, &stack),
+            OperatorType::PrefixSub => {
+                mod_value(&value::prefix_sub(&stack[0]), p)
+            }
+            OperatorType::BoolNot => KnownU32((!stack[0].to_bool()).into()),
+            OperatorType::Complement => {
+                mod_value(&value::complement(&stack[0]), p)
+            }
+            OperatorType::ToAddress => value::to_address(&stack[0]),
+            OperatorType::MulAddress => stack.iter().fold(KnownU32(1), value::mul_address),
+            OperatorType::AddAddress => stack.iter().fold(KnownU32(0), value::add_address),
+        });
+        (computed_value, env)
+    }
+
+    pub fn execute_instruction<'env>(&self, inst: &'env InstructionPointer, env: Env<'env>) -> R<'env> {
+        match inst.as_ref() {
+            Instruction::Value(b) => self.execute_value_bucket(b, env),
+            Instruction::Load(b) => self.execute_load_bucket(b, env),
+            Instruction::Compute(b) => self.execute_compute_bucket(b, env),
+            _ => unreachable!(),
+        }
+    }
+}
 
 pub struct UnknownIndexSanitizationPass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
@@ -28,79 +132,98 @@ impl UnknownIndexSanitizationPass {
         UnknownIndexSanitizationPass { memory: PassMemory::new_cell(prime, "".to_string(), Default::default()), replacements: Default::default() }
     }
 
-    fn transform_mapped_loc_to_indexed_loc(&self,
-        cmp_address: &InstructionPointer, indexes: &Vec<InstructionPointer>, signal_code: usize, env: &Env) -> LocationRule {
-
+    fn find_bounds(&self, address: &AddressType, location: &LocationRule, env: &Env) -> Range<usize> {
         let mem = self.memory.borrow();
-        let interpreter = BucketInterpreter::init(&mem.current_scope, &mem.prime, &mem.constant_fields, self, &mem.io_map);
+        let interpreter = ZeroingInterpreter::init(&mem.prime, &mem.constant_fields);
+        let current_scope = &mem.current_scope;
 
-        let (resolved_addr, acc_env) = interpreter.execute_instruction(cmp_address, env.clone(), false);
+        let mapping = match address {
+            AddressType::Variable => &mem.variables_index_mapping[current_scope],
+            AddressType::Signal => &mem.signal_index_mapping[current_scope],
+            AddressType::SubcmpSignal { cmp_address, .. } => &mem.component_addr_index_mapping[current_scope],
+        };
 
-        let resolved_addr = resolved_addr
-            .expect("cmp_address instruction in SubcmpSignal must produce a value!")
-            .get_u32();
+        /*
+         * We assume locations are of the form:
+         *      (base_offset + (mul_offset * UNKNOWN))
+         * So, if we set the unknown value to 0, we will compute the base offset,
+         * which will let us look up the range of the underlying array.
+         */
 
-        let name = acc_env.get_subcmp_name(resolved_addr).clone();
-        let mut indexes_values = vec![];
-        let mut acc_env = acc_env;
-        for i in indexes {
-            let (val, new_env) = interpreter.execute_instruction(i, acc_env, false);
-            indexes_values.push(val.expect("Mapped location must produce a value!").get_u32());
-            acc_env = new_env;
-        }
+        match location {
+            LocationRule::Indexed { location, .. } => {
 
-        if indexes.len() > 0 {
-            if indexes.len() == 1 {
-                let map_access = &mem.io_map[&acc_env.get_subcmp_template_id(resolved_addr)][signal_code].offset;
-                let value = map_access + indexes_values[0];
-                let mut unused = vec![];
-                LocationRule::Indexed { location: KnownU32(value).to_value_bucket(&mut unused).allocate(), template_header: Some(name) }
-            } else {
-                todo!()
-            }
-        } else {
-            unreachable!()
+                let (res, _) = interpreter.execute_instruction(location, env.clone());
+
+                let offset = match res {
+                    Some(KnownU32(base)) => base,
+                    _ => unreachable!(),
+                };
+
+                mapping[&offset].clone()
+            },
+            LocationRule::Mapped { .. } => unreachable!(),
         }
     }
 
-    fn maybe_transform_index_computation(&self, address: &AddressType, location: &LocationRule, env: &Env) -> bool {
-        // println!("\tlocation: {:?}", location);
-        true
+    fn is_location_unknown(&self, address: &AddressType, location: &LocationRule, env: &Env) -> bool {
+        let mem = self.memory.borrow();
+        let interpreter = mem.build_interpreter(self);
 
-        // match address {
-        //     AddressType::Variable | AddressType::Signal => {
-        //         match location {
-        //             LocationRule::Indexed { .. } => true,
-        //             LocationRule::Mapped { .. } => unreachable!()
-        //         }
-        //     },
-        //     AddressType::SubcmpSignal { cmp_address, .. } => {
-        //         match location {
-        //             LocationRule::Indexed { .. } => true,
-        //             LocationRule::Mapped { indexes, signal_code } => {
-        //                 let indexed_rule = self.transform_mapped_loc_to_indexed_loc(cmp_address, indexes, *signal_code, env);
-        //                 self.replacements.borrow_mut().insert(location.clone(), indexed_rule);
-        //                 true
-        //             }
-        //         }
-        //     }
-        // }
+        let resolved_addr = match location {
+            LocationRule::Indexed { location, .. } => {
+                let (r, acc_env) = interpreter.execute_instruction(location, env.clone(), false);
+                r.expect("location must produce a value!")
+            },
+            LocationRule::Mapped { .. } => unreachable!(),
+        };
+
+        resolved_addr.is_unknown()
     }
 }
 
+
+/**
+ * The goal is to replace:
+ * - loads with a function call that returns the loaded value
+ * - stores with a function call that performs the store
+ */
 impl InterpreterObserver for UnknownIndexSanitizationPass {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
 
+    /**
+     * We will replace the previous address of the LoadBucket with the address computed from a function that also checks the bounds.
+     *
+     */
     fn on_load_bucket(&self, bucket: &LoadBucket, env: &Env) -> bool {
         // println!("load bucket: {:?}", bucket);
-        self.maybe_transform_index_computation(&bucket.address_type, &bucket.src, env)
+        let address = &bucket.address_type;
+        let location = &bucket.src;
+        if !self.is_location_unknown(address, location, env) {
+            true
+        } else {
+            let index_range = self.find_bounds(address, location, env);
+            todo!();
+            true
+        }
     }
 
+    /**
+     * We will replace the previous address of the StoreBucket with the address computed from a function that also checks the bounds.
+     */
     fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> bool {
         // println!("store bucket: {:?}", bucket);
-        self.maybe_transform_index_computation(&bucket.dest_address_type, &bucket.dest, env)
+        let address = &bucket.dest_address_type;
+        let location = &bucket.dest;
+        if !self.is_location_unknown(address, location, env) {
+            true
+        } else {
+            let index_range = self.find_bounds(address, location, env);
+            todo!();
+            true
+        }
     }
 
     fn on_compute_bucket(&self, _bucket: &ComputeBucket, _env: &Env) -> bool {
@@ -188,6 +311,7 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass {
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
+        self.memory.borrow_mut().set_scope(template);
         self.memory.borrow().run_template(self, template);
     }
 }
