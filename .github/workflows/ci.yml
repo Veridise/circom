@@ -30,4 +30,4 @@ jobs:
       - name: Unit tests
         run: cargo test --verbose
       - name: Integration tests
-        run: lit -v compile-tests
+        run: lit -v compiler-tests
