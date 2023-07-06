@@ -6,7 +6,7 @@ use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use crate::bucket_interpreter::BucketInterpreter;
-use crate::bucket_interpreter::env::{FunctionsLibrary, TemplatesLibrary};
+use crate::bucket_interpreter::env::{ContextSwitcher, FunctionsLibrary, TemplatesLibrary};
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 
@@ -44,12 +44,16 @@ impl PassMemory {
     pub fn run_template(&self, observer: &dyn InterpreterObserver, template: &TemplateCode) {
         assert!(!self.current_scope.is_empty());
         let interpreter = self.build_interpreter(observer);
-        let env = Env::new(&self.templates_library, &self.functions_library);
+        let env = Env::new(&self.templates_library, &self.functions_library, self);
         interpreter.execute_instructions(&template.body, env, true);
     }
 
     pub fn build_interpreter<'a>(&'a self, observer: &'a dyn InterpreterObserver) -> BucketInterpreter {
-        BucketInterpreter::init(&self.current_scope, &self.prime, &self.constant_fields, observer, &self.io_map, &self.signal_index_mapping[&self.current_scope], &self.variables_index_mapping[&self.current_scope], &self.component_addr_index_mapping[&self.current_scope])
+        self.build_interpreter_with_scope(observer, &self.current_scope)
+    }
+
+    fn build_interpreter_with_scope<'a>(&'a self, observer: &'a dyn InterpreterObserver, scope: &'a String) -> BucketInterpreter {
+        BucketInterpreter::init(scope, &self.prime, &self.constant_fields, observer, &self.io_map, &self.signal_index_mapping[scope], &self.variables_index_mapping[scope], &self.component_addr_index_mapping[scope])
     }
 
     pub fn add_template(&mut self, template: &TemplateCode) {
@@ -72,5 +76,11 @@ impl PassMemory {
         self.variables_index_mapping = circuit.llvm_data.variable_index_mapping.clone();
         self.signal_index_mapping = circuit.llvm_data.signal_index_mapping.clone();
         self.component_addr_index_mapping = circuit.llvm_data.component_index_mapping.clone();
+    }
+}
+
+impl ContextSwitcher for PassMemory {
+    fn switch<'a>(&'a self, interpreter: &'a BucketInterpreter<'a>, scope: &'a String) -> BucketInterpreter<'a> {
+        self.build_interpreter_with_scope(interpreter.observer, scope)
     }
 }
