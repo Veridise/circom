@@ -75,7 +75,7 @@ impl ToString for CreateCmpBucket {
 
 impl WriteLLVMIR for CreateCmpBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
-        Self::manage_debug_location(producer, self);
+        Self::manage_debug_loc_from_curr(producer, self);
 
         let id = self.sub_cmp_id.produce_llvm_ir(producer).expect("sub_cmp_id must produce a value!");
         let ctx = producer.template_ctx();

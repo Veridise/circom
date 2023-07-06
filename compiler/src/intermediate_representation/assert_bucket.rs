@@ -53,7 +53,7 @@ impl ToString for AssertBucket {
 
 impl WriteLLVMIR for AssertBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
-        Self::manage_debug_location(producer, self);
+        Self::manage_debug_loc_from_curr(producer, self);
 
         let bool = self.evaluate.produce_llvm_ir(producer)
             .expect("An assert bucket needs a value to assert!").into_int_value();

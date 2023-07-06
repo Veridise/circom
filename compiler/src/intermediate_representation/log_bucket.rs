@@ -72,7 +72,7 @@ impl ToString for LogBucket {
 
 impl WriteLLVMIR for LogBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
-        Self::manage_debug_location(producer, self);
+        Self::manage_debug_loc_from_curr(producer, self);
 
         todo!()
     }

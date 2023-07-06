@@ -77,7 +77,9 @@ impl WriteLLVMIR for TemplateCodeInfo {
             self.get_line(),
             self.name.as_str(),
             build_fn_name(self.header.clone()).as_str(), 
-            void_type(producer).fn_type(&[component_memory.ptr_type(Default::default()).into()], false));
+            void_type(producer).fn_type(&[component_memory.ptr_type(Default::default()).into()], false)
+        );
+        Self::manage_debug_loc(producer, self, || build_function);
         let main = create_bb(producer,build_function, "main");
         producer.set_current_bb(main);
 
@@ -109,6 +111,7 @@ impl WriteLLVMIR for TemplateCodeInfo {
             run_fn_name(self.header.clone()).as_str(),
             void.fn_type(&[bigint_type(producer).array_type(0).ptr_type(Default::default()).into()], false)
         );
+        Self::manage_debug_loc(producer, self, || run_function);
         let prelude = create_bb(producer, run_function, "prelude");
         producer.set_current_bb(prelude);
         let template_producer = TemplateLLVMIRProducer::new(

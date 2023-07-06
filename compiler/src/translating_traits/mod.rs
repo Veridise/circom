@@ -55,22 +55,33 @@ pub trait WriteLLVMIR {
         top_level.write_to_file(out_path)
     }
 
-    fn manage_debug_location<'a, 'b>(producer: &'b dyn LLVMIRProducer<'a>, obj: &dyn ObtainMeta) {
+    fn manage_debug_loc_from_curr<'a, 'b>(
+        producer: &'b dyn LLVMIRProducer<'a>,
+        obj: &dyn ObtainMeta,
+    ) {
+        Self::manage_debug_loc(producer, obj, || producer.current_function())
+    }
+
+    fn manage_debug_loc<'a, 'b>(
+        producer: &'b dyn LLVMIRProducer<'a>,
+        obj: &dyn ObtainMeta,
+        get_current: impl Fn() -> FunctionValue<'a>,
+    ) {
         match obj.get_source_file_id().and_then(|i| producer.llvm().get_debug_info(&i).ok()) {
+            // Set active debug location based on the ObtainMeta location information
             Some((dib, _)) => producer.builder().set_current_debug_location(
                 dib.create_debug_location(
                     producer.context(),
                     obj.get_line() as u32,
                     0,
-                    producer
-                        .current_function()
+                    get_current()
                         .get_subprogram()
                         .expect("Couldn't find debug info for containing method!")
                         .as_debug_info_scope(),
                     None,
                 ),
             ),
-            //clear current debug location if there is no file associated or not DebugInfo for that file
+            // Clear active debug location if no associated file or no DebugInfo for that file
             None => producer.builder().unset_current_debug_location(),
         };
     }

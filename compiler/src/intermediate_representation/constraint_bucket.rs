@@ -69,7 +69,7 @@ impl ToString for ConstraintBucket {
 
 impl WriteLLVMIR for ConstraintBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
-        Self::manage_debug_location(producer, self);
+        Self::manage_debug_loc_from_curr(producer, self);
 
         // TODO: Create the constraint call
         let prev = match self {

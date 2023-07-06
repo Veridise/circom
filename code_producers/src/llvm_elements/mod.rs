@@ -13,9 +13,8 @@ use inkwell::debug_info::{DebugInfoBuilder, DICompileUnit};
 use inkwell::module::Module;
 use inkwell::types::{AnyTypeEnum, BasicType, BasicTypeEnum, IntType};
 use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntValue};
-use inkwell::values::FunctionValue;
 pub use inkwell::types::AnyType;
-pub use inkwell::values::{AnyValue, AnyValueEnum, InstructionOpcode};
+pub use inkwell::values::{AnyValue, AnyValueEnum, FunctionValue, InstructionOpcode};
 pub use inkwell::debug_info::AsDIScope;
 
 use program_structure::program_archive::ProgramArchive;

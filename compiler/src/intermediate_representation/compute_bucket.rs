@@ -152,7 +152,7 @@ impl ToString for ComputeBucket {
 
 impl WriteLLVMIR for ComputeBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
-        Self::manage_debug_location(producer, self);
+        Self::manage_debug_loc_from_curr(producer, self);
 
         let mut stack = vec![];
         for i in &self.stack {
