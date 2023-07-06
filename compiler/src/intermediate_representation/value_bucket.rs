@@ -58,7 +58,7 @@ impl ToString for ValueBucket {
 
 impl WriteLLVMIR for ValueBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
-        Self::manage_debug_loc_from_curr(producer, self);
+        // NOTE: do not change debug location for a value because it is not a top-level source statement
 
         // Represents a literal value
         match self.parse_as {

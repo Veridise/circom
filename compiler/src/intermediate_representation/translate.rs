@@ -419,13 +419,13 @@ fn create_components(state: &mut State, triggers: &[Trigger], clusters: Vec<Trig
     }
     for cluster in clusters {
         match cluster.xtype.clone() {
-            Mixed { .. } => create_mixed_components(state, triggers, cluster, stmt),
-            Uniform { .. } => create_uniform_components(state, triggers, cluster),
+            Mixed { .. } => create_mixed_components(state, triggers, cluster, stmt.get_meta()),
+            Uniform { .. } => create_uniform_components(state, triggers, cluster, stmt.get_meta()),
         }
     }
 }
 
-fn create_uniform_components(state: &mut State, triggers: &[Trigger], cluster: TriggerCluster) {
+fn create_uniform_components(state: &mut State, triggers: &[Trigger], cluster: TriggerCluster, meta: &Meta) {
     fn compute_number_cmp(lengths: &Vec<usize>) -> usize {
         lengths.iter().fold(1, |p, c| p * (*c))
     }
@@ -457,8 +457,8 @@ fn create_uniform_components(state: &mut State, triggers: &[Trigger], cluster: T
 
         let creation_instr = CreateCmpBucket {
             id: new_id(),
-            source_file_id: None,
-            line: 0,
+            source_file_id: meta.file_id,
+            line: meta.get_start(),
             message_id: state.message_id,
             symbol: c_info.runs.clone(),
             name_subcomponent: c_info.component_name.clone(),
@@ -483,7 +483,7 @@ fn create_uniform_components(state: &mut State, triggers: &[Trigger], cluster: T
     }
 }
 
-fn create_mixed_components(state: &mut State, triggers: &[Trigger], cluster: TriggerCluster, stmt: &Statement) {
+fn create_mixed_components(state: &mut State, triggers: &[Trigger], cluster: TriggerCluster, meta: &Meta) {
     fn compute_jump(lengths: &Vec<usize>, indexes: &[usize]) -> usize {
         let mut jump = 0;
         let mut full_length = lengths.iter().fold(1, |p, c| p * (*c));
@@ -501,11 +501,11 @@ fn create_mixed_components(state: &mut State, triggers: &[Trigger], cluster: Tri
         let c_info = &triggers[index];
         let symbol = state.environment.get_variable(&c_info.component_name).unwrap().clone();
         let value_jump = compute_jump(&symbol.dimensions, &c_info.indexed_with);
-        let _jump_expr = Expression::Number(stmt.get_meta().clone(), BigInt::from(value_jump));
+        let _jump_expr = Expression::Number(meta.clone(), BigInt::from(value_jump));
         let jump = ValueBucket {
             id: new_id(),
-            source_file_id: stmt.get_meta().file_id,
-            line: 0,
+            source_file_id: meta.file_id,
+            line: meta.get_start(),
             message_id: state.message_id,
             parse_as: ValueType::U32,
             value: value_jump,
@@ -514,8 +514,8 @@ fn create_mixed_components(state: &mut State, triggers: &[Trigger], cluster: Tri
         .allocate();
         let location = ComputeBucket {
             id: new_id(),
-            source_file_id: stmt.get_meta().file_id,
-            line: 0,
+            source_file_id: meta.file_id,
+            line: meta.get_start(),
             op_aux_no: 0,
             message_id: state.message_id,
             op: OperatorType::AddAddress,
@@ -535,8 +535,8 @@ fn create_mixed_components(state: &mut State, triggers: &[Trigger], cluster: Tri
 
         let creation_instr = CreateCmpBucket {
             id: new_id(),
-            source_file_id: stmt.get_meta().file_id,
-            line: 0,
+            source_file_id: meta.file_id,
+            line: meta.get_start(),
             message_id: state.message_id,
             symbol: c_info.runs.clone(),
             name_subcomponent: format!("{}{}",c_info.component_name.clone(), c_info.indexed_with.iter().fold(String::new(), |acc, &num| format!("{}[{}]", acc, &num.to_string()))),
