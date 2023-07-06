@@ -105,7 +105,7 @@ fn build_template_instances(
         let mut template_info = TemplateCodeInfo {
             id: tmp_id,
             source_file_id: meta.file_id,
-            line: c_info.file_library.get_line(meta.start, meta.get_file_id()).unwrap(),
+            line: c_info.file_library.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             name,
             header: header.clone(),
             number_of_components,
@@ -174,7 +174,7 @@ fn build_function_instances(
         let meta = instance.body.get_meta();
         let mut function_info = FunctionCodeInfo {
             source_file_id: meta.file_id,
-            line: c_info.file_library.get_line(meta.start, meta.get_file_id()).unwrap(),
+            line: c_info.file_library.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             name,
             params,
             returns,

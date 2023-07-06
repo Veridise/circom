@@ -398,7 +398,7 @@ fn initialize_components(state: &mut State, components: Vec<Component>, stmt: &S
 }
 
 // Start of component creation utils
-fn create_components(state: &mut State, triggers: &[Trigger], clusters: Vec<TriggerCluster>, stmt: &Statement) {
+fn create_components(state: &mut State, context: &Context, triggers: &[Trigger], clusters: Vec<TriggerCluster>, stmt: &Statement) {
     use ClusterType::*;
     for trigger in triggers {
         let component_info = state.component_to_instance.get_mut(&trigger.component_name);
@@ -415,13 +415,13 @@ fn create_components(state: &mut State, triggers: &[Trigger], clusters: Vec<Trig
     }
     for cluster in clusters {
         match cluster.xtype.clone() {
-            Mixed { .. } => create_mixed_components(state, triggers, cluster, stmt.get_meta()),
-            Uniform { .. } => create_uniform_components(state, triggers, cluster, stmt.get_meta()),
+            Mixed { .. } => create_mixed_components(state, context, triggers, cluster, stmt.get_meta()),
+            Uniform { .. } => create_uniform_components(state, context, triggers, cluster, stmt.get_meta()),
         }
     }
 }
 
-fn create_uniform_components(state: &mut State, triggers: &[Trigger], cluster: TriggerCluster, meta: &Meta) {
+fn create_uniform_components(state: &mut State, context: &Context, triggers: &[Trigger], cluster: TriggerCluster, meta: &Meta) {
     fn compute_number_cmp(lengths: &Vec<usize>) -> usize {
         lengths.iter().fold(1, |p, c| p * (*c))
     }
@@ -454,7 +454,7 @@ fn create_uniform_components(state: &mut State, triggers: &[Trigger], cluster: T
         let creation_instr = CreateCmpBucket {
             id: new_id(),
             source_file_id: meta.file_id,
-            line: meta.get_start(),
+            line: context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             symbol: c_info.runs.clone(),
             name_subcomponent: c_info.component_name.clone(),
@@ -479,7 +479,7 @@ fn create_uniform_components(state: &mut State, triggers: &[Trigger], cluster: T
     }
 }
 
-fn create_mixed_components(state: &mut State, triggers: &[Trigger], cluster: TriggerCluster, meta: &Meta) {
+fn create_mixed_components(state: &mut State, context: &Context, triggers: &[Trigger], cluster: TriggerCluster, meta: &Meta) {
     fn compute_jump(lengths: &Vec<usize>, indexes: &[usize]) -> usize {
         let mut jump = 0;
         let mut full_length = lengths.iter().fold(1, |p, c| p * (*c));
@@ -532,7 +532,7 @@ fn create_mixed_components(state: &mut State, triggers: &[Trigger], cluster: Tri
         let creation_instr = CreateCmpBucket {
             id: new_id(),
             source_file_id: meta.file_id,
-            line: meta.get_start(),
+            line: context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             symbol: c_info.runs.clone(),
             name_subcomponent: format!("{}{}",c_info.component_name.clone(), c_info.indexed_with.iter().fold(String::new(), |acc, &num| format!("{}[{}]", acc, &num.to_string()))),
@@ -586,7 +586,7 @@ fn translate_if_then_else(stmt: Statement, state: &mut State, context: &Context)
     use Statement::IfThenElse;
     let _if_then_else_stmt = stmt.clone();
     if let IfThenElse { meta, cond, if_case, else_case, .. } = stmt {
-        let starts_at = context.files.get_line(meta.start, meta.get_file_id()).unwrap();
+        let starts_at = context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap();
         let main_program = std::mem::replace(&mut state.code, vec![]);
         let cond_translation = translate_expression(cond, state, context);
         translate_statement(*if_case, state, context);
@@ -613,7 +613,7 @@ fn translate_while(stmt: Statement, state: &mut State, context: &Context) {
     use Statement::While;
     let _while_stmt = stmt.clone();
     if let While { meta, cond, stmt, .. } = stmt {
-        let starts_at = context.files.get_line(meta.start, meta.get_file_id()).unwrap();
+        let starts_at = context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap();
         let main_program = std::mem::replace(&mut state.code, vec![]);
         let cond_translation = translate_expression(cond, state, context);
         translate_statement(*stmt, state, context);
@@ -691,7 +691,7 @@ fn translate_declaration(stmt: Statement, state: &mut State, context: &Context) 
     use Statement::Declaration;
     let _declr_stmt = stmt.clone();
     if let Declaration { name, meta, .. } = stmt {
-        let starts_at = context.files.get_line(meta.start, meta.get_file_id()).unwrap();
+        let starts_at = context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap();
         let dimensions = meta.get_memory_knowledge().get_concrete_dimensions().to_vec();
         let size = dimensions.iter().fold(1, |p, c| p * (*c));
         let address = state.reserve_variable(size);
@@ -733,7 +733,7 @@ fn translate_constraint_equality(stmt: Statement, state: &mut State, context: &C
     use Expression::Variable;
     let _assert_stmt = stmt.clone();
     if let ConstraintEquality { meta, lhe, rhe } = stmt {
-        let starts_at = context.files.get_line(meta.start, meta.get_file_id()).unwrap();
+        let starts_at = context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap();
 
         let length = if let Variable { meta, name, access} = lhe.clone() {
             let def = SymbolDef { meta, symbol: name, acc: access };
@@ -772,7 +772,7 @@ fn translate_assert(stmt: Statement, state: &mut State, context: &Context) {
     use Statement::Assert;
     let _assert_stmt = stmt.clone();
     if let Assert { meta, arg, .. } = stmt {
-        let line = context.files.get_line(meta.start, meta.get_file_id()).unwrap();
+        let line = context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap();
         let code = translate_expression(arg, state, context);
         let assert =  AssertBucket {
             id: new_id(),
@@ -790,7 +790,7 @@ fn translate_log(stmt: Statement, state: &mut State, context: &Context) {
     use Statement::LogCall;
     let _log_stmt = stmt.clone();
     if let LogCall { meta, args, .. } = stmt {
-        let line = context.files.get_line(meta.start, meta.get_file_id()).unwrap();
+        let line = context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap();
         let mut logbucket_args = Vec::new();
         for arglog in args {
             match arglog {
@@ -831,7 +831,7 @@ fn translate_return(stmt: Statement, state: &mut State, context: &Context) {
         let return_bucket = ReturnBucket {
             id: new_id(),
             source_file_id: meta.file_id,
-            line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
+            line: context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             with_size: return_type.iter().fold(1, |p, c| p * (*c)),
             value: translate_expression(value, state, context),
@@ -878,7 +878,7 @@ fn translate_call(
         CallBucket {
             id: new_id(),
             source_file_id: meta.file_id,
-            line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
+            line: context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             symbol: id,
             argument_types: args_inst.argument_data,
@@ -905,7 +905,7 @@ fn translate_infix(
         ComputeBucket {
             id: new_id(),
             source_file_id: meta.file_id,
-            line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
+            line: context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             op: translate_infix_operator(infix_op),
             op_aux_no: 0,
@@ -929,7 +929,7 @@ fn translate_prefix(
         ComputeBucket {
             id: new_id(),
             source_file_id: meta.file_id,
-            line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
+            line: context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             op_aux_no: 0,
             op: translate_prefix_operator(prefix_op),
@@ -998,7 +998,7 @@ fn translate_number(
         ValueBucket {
             id: new_id(),
             source_file_id: meta.file_id,
-            line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
+            line: context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             op_aux_no: 0,
             parse_as: ValueType::BigInt,
@@ -1166,7 +1166,7 @@ impl ProcessedSymbol {
         ProcessedSymbol {
             xtype: meta.get_type_knowledge().get_reduces_to(),
             source_file_id: meta.file_id,
-            line: context.files.get_line(meta.start, meta.get_file_id()).unwrap(),
+            line: context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             message_id: state.message_id,
             length: with_length,
             symbol: symbol_info,
@@ -1531,7 +1531,7 @@ pub fn translate_code(body: Statement, code_info: CodeInfo) -> CodeOutput {
         tmp_database: code_info.template_database,
     };
 
-    create_components(&mut state, &code_info.triggers, code_info.clusters, &body);
+    create_components(&mut state, &context, &code_info.triggers, code_info.clusters, &body);
     translate_statement(body, &mut state, &context);
 
     ir_processing::build_inputs_info(&mut state.code);
