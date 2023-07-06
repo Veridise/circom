@@ -62,6 +62,8 @@ impl ToString for StoreBucket {
 
 impl WriteLLVMIR for StoreBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_location(producer, self);
+
         // A store instruction has a source instruction that states the origin of the value that is going to be stored
         let index =  self.dest.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
         // From the index of the source extract the actual type of destination

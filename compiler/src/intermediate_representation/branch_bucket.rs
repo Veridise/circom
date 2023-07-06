@@ -67,6 +67,8 @@ impl ToString for BranchBucket {
 
 impl WriteLLVMIR for BranchBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_location(producer, self);
+
         // Necessary basic blocks
         let current_function = producer.current_function();
         let then_bb = create_bb(producer, current_function, "if.then");

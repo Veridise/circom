@@ -78,6 +78,8 @@ impl WriteLLVMIR for CallBucket {
     /// Any signal is copied previously to an arena and the function uses that arena
     /// as a set of local variables.
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_location(producer, self);
+
         // Create array with arena_size size
         let bigint_arr = bigint_type(producer).array_type(self.arena_size as u32);
         let arena = create_alloca(producer, bigint_arr.into(), format!("{}_arena", self.symbol).as_str());

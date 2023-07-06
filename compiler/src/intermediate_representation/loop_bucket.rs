@@ -60,6 +60,8 @@ impl WriteLLVMIR for LoopBucket {
         &self,
         producer: &'b dyn LLVMIRProducer<'a>,
     ) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_location(producer, self);
+
         let current_function = producer.current_function();
         let cond_bb = create_bb(producer, current_function, "loop.cond");
         let body_bb = create_bb(producer, current_function, "loop.body");

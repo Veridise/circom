@@ -3,6 +3,7 @@ use code_producers::c_elements::*;
 use code_producers::llvm_elements::*;
 use code_producers::wasm_elements::*;
 use program_structure::program_archive::ProgramArchive;
+use crate::intermediate_representation::ir_interface::ObtainMeta;
 
 pub trait WriteC {
     /*
@@ -36,6 +37,7 @@ pub trait WriteLLVMIR {
         &self,
         producer: &'b dyn LLVMIRProducer<'a>,
     ) -> Option<LLVMInstruction<'a>>;
+
     fn write_llvm_ir(
         &self,
         program_archive: &ProgramArchive,
@@ -51,5 +53,25 @@ pub trait WriteLLVMIR {
         );
         self.produce_llvm_ir(&top_level);
         top_level.write_to_file(out_path)
+    }
+
+    fn manage_debug_location<'a, 'b>(producer: &'b dyn LLVMIRProducer<'a>, obj: &dyn ObtainMeta) {
+        match obj.get_source_file_id().and_then(|i| producer.llvm().get_debug_info(&i).ok()) {
+            Some((dib, _)) => producer.builder().set_current_debug_location(
+                dib.create_debug_location(
+                    producer.context(),
+                    obj.get_line() as u32,
+                    0,
+                    producer
+                        .current_function()
+                        .get_subprogram()
+                        .expect("Couldn't find debug info for containing method!")
+                        .as_debug_info_scope(),
+                    None,
+                ),
+            ),
+            //clear current debug location if there is no file associated or not DebugInfo for that file
+            None => producer.builder().unset_current_debug_location(),
+        };
     }
 }

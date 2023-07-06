@@ -16,6 +16,7 @@ use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntVal
 use inkwell::values::FunctionValue;
 pub use inkwell::types::AnyType;
 pub use inkwell::values::{AnyValue, AnyValueEnum, InstructionOpcode};
+pub use inkwell::debug_info::AsDIScope;
 
 use program_structure::program_archive::ProgramArchive;
 

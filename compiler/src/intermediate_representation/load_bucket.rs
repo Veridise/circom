@@ -57,6 +57,8 @@ impl ToString for LoadBucket {
 
 impl WriteLLVMIR for LoadBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_location(producer, self);
+
         // Generate the code of the location and use the last value as the reference
         let index = self.src.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
         let gep = match &self.address_type {
