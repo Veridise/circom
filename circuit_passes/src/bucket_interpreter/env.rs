@@ -9,7 +9,12 @@ pub type TemplatesLibrary = HashMap<String, TemplateCode>;
 pub type FunctionsLibrary = HashMap<String, FunctionCode>;
 
 use crate::bucket_interpreter::BucketInterpreter;
+use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
+
+pub trait ContextSwitcher {
+    fn switch<'a>(&'a self, interpreter: &'a BucketInterpreter<'a>, scope: &'a String) -> BucketInterpreter<'a>;
+}
 
 impl<L: JoinSemiLattice + Clone> JoinSemiLattice for HashMap<usize, L> {
     fn join(&self, other: &Self) -> Self {
@@ -124,13 +129,14 @@ impl<'a> SubcmpEnv<'a> {
 // }
 
 // An immutable env that returns a new copy when modified
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct Env<'a> {
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
     subcmps: HashMap<usize, SubcmpEnv<'a>>,
     templates_library: &'a TemplatesLibrary,
     functions_library: &'a FunctionsLibrary,
+    context_switcher: &'a dyn ContextSwitcher
 }
 
 impl Display for Env<'_> {
@@ -140,13 +146,14 @@ impl Display for Env<'_> {
 }
 
 impl<'a> Env<'a> {
-    pub fn new(templates_library: &'a TemplatesLibrary, functions_library: &'a FunctionsLibrary) -> Self {
+    pub fn new(templates_library: &'a TemplatesLibrary, functions_library: &'a FunctionsLibrary, context_switcher: &'a dyn ContextSwitcher) -> Self {
         Env {
             vars: Default::default(),
             signals: Default::default(),
             subcmps: Default::default(),
             templates_library,
             functions_library,
+            context_switcher
         }
     }
 
@@ -258,11 +265,11 @@ impl<'a> Env<'a> {
                         args: Vec<Value>,
                         observe: bool) -> Value {
         let code = &self.functions_library[name].body;
-        let mut function_env = Env::new(self.templates_library, self.functions_library);
+        let mut function_env = Env::new(self.templates_library, self.functions_library, self.context_switcher);
         for (id, arg) in args.iter().enumerate() {
             function_env = function_env.set_var(id, arg.clone());
         }
-        let interpreter = BucketInterpreter::clone_in_new_scope(interpreter, name);
+        let interpreter = self.context_switcher.switch(interpreter, name);
         let r = interpreter.execute_instructions(
             &code,
             function_env,
@@ -276,7 +283,8 @@ impl<'a> Env<'a> {
             signals: self.signals.join(&other.signals),
             subcmps: self.subcmps.join(&other.subcmps),
             templates_library: self.templates_library,
-            functions_library: self.functions_library
+            functions_library: self.functions_library,
+            context_switcher: self.context_switcher
         }
     }
 }

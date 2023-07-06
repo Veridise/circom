@@ -20,7 +20,7 @@ pub struct BucketInterpreter<'a> {
     scope: &'a String,
     prime: &'a String,
     pub constant_fields: &'a Vec<String>,
-    observer: &'a dyn InterpreterObserver,
+    pub(crate) observer: &'a dyn InterpreterObserver,
     io_map: &'a TemplateInstanceIOMap,
     p: Value,
     signal_index_mapping: &'a IndexMapping,
