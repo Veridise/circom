@@ -33,6 +33,7 @@ jobs:
 #        with:
 #          version: "13.0.1"
 #          cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+      - run: apt search llvm
       - name: Print LLVM version
         run: llvm-config --version
       - name: Install lit
