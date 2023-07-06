@@ -130,7 +130,7 @@ impl CircuitTransformationPass for ConditionalFlattening {
             let code = if *side { &bucket.if_branch } else { &bucket.else_branch };
             let block = BlockBucket {
                 id: new_id(),
-                source_file_id: bucket.source_file_id.clone(),
+                source_file_id: bucket.source_file_id,
                 line: bucket.line,
                 message_id: bucket.message_id,
                 body: code.clone(),
@@ -139,7 +139,7 @@ impl CircuitTransformationPass for ConditionalFlattening {
         }
         BranchBucket {
             id: new_id(),
-            source_file_id: bucket.source_file_id.clone(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             cond: self.transform_instruction(&bucket.cond),

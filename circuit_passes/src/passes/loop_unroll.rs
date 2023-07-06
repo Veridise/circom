@@ -74,7 +74,7 @@ impl InterpreterObserver for LoopUnrollPass {
         let block =
             BlockBucket {
                 id: new_id(),
-                source_file_id: bucket.source_file_id.clone(),
+                source_file_id: bucket.source_file_id,
                 line: bucket.line,
                 message_id: bucket.message_id,
                 body: block_body
@@ -148,7 +148,7 @@ impl CircuitTransformationPass for LoopUnrollPass {
         }
         LoopBucket {
             id: new_id(),
-            source_file_id: bucket.source_file_id.clone(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             continue_condition: self.transform_instruction(&bucket.continue_condition),
