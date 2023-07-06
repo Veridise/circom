@@ -68,6 +68,7 @@ impl WriteLLVMIR for Circuit {
         // Code for the functions
         for f in &self.functions {
             let function_producer = FunctionLLVMIRProducer::new(producer, funcs[f.header.as_str()]);
+            Self::manage_debug_loc_from_curr(&function_producer, f.as_ref());
             f.produce_llvm_ir(&function_producer);
         }
 

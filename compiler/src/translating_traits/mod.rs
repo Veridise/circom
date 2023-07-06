@@ -56,14 +56,14 @@ pub trait WriteLLVMIR {
     }
 
     fn manage_debug_loc_from_curr<'a, 'b>(
-        producer: &'b dyn LLVMIRProducer<'a>,
+        producer: &'b (impl LLVMIRProducer<'a> + ?Sized),
         obj: &dyn ObtainMeta,
     ) {
         Self::manage_debug_loc(producer, obj, || producer.current_function())
     }
 
     fn manage_debug_loc<'a, 'b>(
-        producer: &'b dyn LLVMIRProducer<'a>,
+        producer: &'b (impl LLVMIRProducer<'a> + ?Sized),
         obj: &dyn ObtainMeta,
         get_current: impl Fn() -> FunctionValue<'a>,
     ) {
