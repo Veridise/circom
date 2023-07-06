@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use super::ir_interface::*;
 use crate::hir::very_concrete_program::*;
 use crate::intermediate_representation::log_bucket::LogBucketArg;
@@ -43,7 +42,7 @@ pub struct TemplateDB {
     pub signals_id: Vec<HashMap<String, usize>>,
 }
 impl TemplateDB {
-    pub fn build(templates: &[TemplateInstance]) -> TemplateDB {
+    pub fn build(file_lib: &FileLibrary, templates: &[TemplateInstance]) -> TemplateDB {
         let mut database = TemplateDB {
             indexes: HashMap::with_capacity(templates.len()),
             signal_addresses: Vec::with_capacity(templates.len()),
@@ -51,7 +50,7 @@ impl TemplateDB {
             signals_id: Vec::with_capacity(templates.len()),
         };
         for tmp in templates {
-            TemplateDB::add_instance(&mut database, tmp);
+            TemplateDB::add_instance(file_lib, &mut database, tmp);
         }
         database
     }
@@ -65,7 +64,7 @@ impl TemplateDB {
         &db.signal_addresses[instance_id]
     }
 
-    fn add_instance(db: &mut TemplateDB, instance: &TemplateInstance) {
+    fn add_instance(file_lib: &FileLibrary, db: &mut TemplateDB, instance: &TemplateInstance) {
         if !db.indexes.contains_key(&instance.template_name) {
             let index = db.signals_id.len();
             db.indexes.insert(instance.template_name.clone(), index);
@@ -87,7 +86,7 @@ impl TemplateDB {
             let info = SignalInfo{ signal_type: signal.xtype, lengths: signal.lengths};
             signal_info.insert(signal.name, info);
         }
-        initialize_signals(&mut state, instance.signals.clone(), &instance.code);
+        initialize_signals(&mut state, file_lib, instance.signals.clone(), &instance.code);
         db.signal_addresses.push(state.environment);
         db.signal_info.push(signal_info);
     }
@@ -260,15 +259,17 @@ struct Context<'a> {
     cmp_to_type: HashMap<String, ClusterType>,
 }
 
-fn initialize_parameters(state: &mut State, params: Vec<Param>, body: &Statement) {
+fn initialize_parameters(state: &mut State, file_lib: &FileLibrary, params: Vec<Param>, body: &Statement) {
+    let meta = body.get_meta();
+    let line_num = file_lib.get_line(meta.get_start(), meta.get_file_id()).unwrap();
     for p in params {
         let lengths = p.length;
         let full_size = lengths.iter().fold(1, |p, s| p * (*s));
         let address = state.reserve_variable(full_size);
         let address_instruction = ValueBucket {
             id: new_id(),
-            source_file_id: body.get_meta().file_id,
-            line: 0,
+            source_file_id: meta.file_id,
+            line: line_num,
             message_id: 0,
             parse_as: ValueType::U32,
             value: address,
@@ -281,16 +282,18 @@ fn initialize_parameters(state: &mut State, params: Vec<Param>, body: &Statement
     }
 }
 
-fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Statement) {
+fn initialize_constants(state: &mut State, file_lib: &FileLibrary, constants: Vec<Argument>, body: &Statement) {
+    let meta = body.get_meta();
+    let line_num = file_lib.get_line(meta.get_start(), meta.get_file_id()).unwrap();
     for arg in constants {
         let dimensions = arg.lengths;
         let size = dimensions.iter().fold(1, |p, c| p * (*c));
         let address = state.reserve_variable(size);
-        let _address_expr = Expression::Number(stmt.get_meta().clone(), BigInt::from(address));
+        let _address_expr = Expression::Number(meta.clone(), BigInt::from(address));
         let address_instruction = ValueBucket {
             id: new_id(),
-            source_file_id: stmt.get_meta().file_id,
-            line: 0,
+            source_file_id: meta.file_id,
+            line: line_num,
             message_id: 0,
             parse_as: ValueType::U32,
             value: address,
@@ -304,12 +307,12 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
         let mut index = 0;
         for value in arg.values {
             let cid = bigint_to_cid(&mut state.field_tracker, &value);
-            let _cid_expr = Expression::Number(stmt.get_meta().clone(), value);
-            let _index_expr = Expression::Number(stmt.get_meta().clone(), BigInt::from(index));
+            let _cid_expr = Expression::Number(meta.clone(), value);
+            let _index_expr = Expression::Number(meta.clone(), BigInt::from(index));
             let offset_instruction = ValueBucket {
                 id: new_id(),
-                source_file_id: stmt.get_meta().file_id,
-                line: 0,
+                source_file_id: meta.file_id,
+                line: line_num,
                 message_id: 0,
                 parse_as: ValueType::U32,
                 value: index,
@@ -318,8 +321,8 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
             .allocate();
             let full_address = ComputeBucket {
                 id: new_id(),
-                source_file_id: stmt.get_meta().file_id,
-                line: 0,
+                source_file_id: meta.file_id,
+                line: line_num,
                 message_id: 0,
                 op: OperatorType::AddAddress,
                 stack: vec![address_instruction.clone(), offset_instruction],
@@ -328,8 +331,8 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
             .allocate();
             let content = ValueBucket {
                 id: new_id(),
-                source_file_id: stmt.get_meta().file_id,
-                line: 0,
+                source_file_id: meta.file_id,
+                line: line_num,
                 message_id: 0,
                 parse_as: ValueType::BigInt,
                 value: cid,
@@ -338,8 +341,8 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
             .allocate();
             let store_instruction = StoreBucket {
                 id: new_id(),
-                source_file_id: stmt.get_meta().file_id,
-                line: 0,
+                source_file_id: meta.file_id,
+                line: line_num,
                 message_id: 0,
                 dest_is_output: false,
                 dest_address_type: AddressType::Variable,
@@ -354,15 +357,17 @@ fn initialize_constants(state: &mut State, constants: Vec<Argument>, stmt: &Stat
     }
 }
 
-fn initialize_signals(state: &mut State, signals: Vec<Signal>, stmt: &Statement) {
+fn initialize_signals(state: &mut State, file_lib: &FileLibrary, signals: Vec<Signal>, body: &Statement) {
+    let meta = body.get_meta();
+    let line_num = file_lib.get_line(meta.get_start(), meta.get_file_id()).unwrap();
     for signal in signals {
         let size = signal.lengths.iter().fold(1, |p, c| p * (*c));
         let address = state.reserve_signal(size);
-        let _address_expr = Expression::Number(stmt.get_meta().clone(), BigInt::from(address));
+        let _address_expr = Expression::Number(meta.clone(), BigInt::from(address));
         let instruction = ValueBucket {
             id: new_id(),
-            source_file_id: stmt.get_meta().file_id,
-            line: 0,
+            source_file_id: meta.file_id,
+            line: line_num,
             message_id: state.message_id,
             parse_as: ValueType::U32,
             value: address,
@@ -376,15 +381,17 @@ fn initialize_signals(state: &mut State, signals: Vec<Signal>, stmt: &Statement)
     }
 }
 
-fn initialize_components(state: &mut State, components: Vec<Component>, stmt: &Statement) {
+fn initialize_components(state: &mut State, file_lib: &FileLibrary, components: Vec<Component>, body: &Statement) {
+    let meta = body.get_meta();
+    let line_num = file_lib.get_line(meta.get_start(), meta.get_file_id()).unwrap();
     for component in components {
         let size = component.size();
         let address = state.reserve_component_address(size);
-        let _address_expr = Expression::Number(stmt.get_meta().clone(), BigInt::from(address));
+        let _address_expr = Expression::Number(meta.clone(), BigInt::from(address));
         let instruction = ValueBucket {
             id: new_id(),
-            source_file_id: stmt.get_meta().file_id,
-            line: 0,
+            source_file_id: meta.file_id,
+            line: line_num,
             message_id: state.message_id,
             parse_as: ValueType::U32,
             value: address,
@@ -398,7 +405,7 @@ fn initialize_components(state: &mut State, components: Vec<Component>, stmt: &S
 }
 
 // Start of component creation utils
-fn create_components(state: &mut State, context: &Context, triggers: &[Trigger], clusters: Vec<TriggerCluster>, stmt: &Statement) {
+fn create_components(state: &mut State, context: &Context, triggers: &[Trigger], clusters: Vec<TriggerCluster>, body: &Statement) {
     use ClusterType::*;
     for trigger in triggers {
         let component_info = state.component_to_instance.get_mut(&trigger.component_name);
@@ -415,8 +422,8 @@ fn create_components(state: &mut State, context: &Context, triggers: &[Trigger],
     }
     for cluster in clusters {
         match cluster.xtype.clone() {
-            Mixed { .. } => create_mixed_components(state, context, triggers, cluster, stmt.get_meta()),
-            Uniform { .. } => create_uniform_components(state, context, triggers, cluster, stmt.get_meta()),
+            Mixed { .. } => create_mixed_components(state, context, triggers, cluster, body.get_meta()),
+            Uniform { .. } => create_uniform_components(state, context, triggers, cluster, body.get_meta()),
         }
     }
 }
@@ -1518,10 +1525,10 @@ pub fn translate_code(body: Statement, code_info: CodeInfo) -> CodeOutput {
         code_info.signals_to_tags,
     );
     state.string_table = code_info.string_table;
-    initialize_components(&mut state, code_info.components, &body);
-    initialize_signals(&mut state, code_info.signals, &body);
-    initialize_constants(&mut state, code_info.constants, &body);
-    initialize_parameters(&mut state, code_info.params, &body);
+    initialize_components(&mut state, code_info.files, code_info.components, &body);
+    initialize_signals(&mut state, code_info.files, code_info.signals, &body);
+    initialize_constants(&mut state, code_info.files, code_info.constants, &body);
+    initialize_parameters(&mut state, code_info.files, code_info.params, &body);
 
     let context = Context {
         files: code_info.files,
