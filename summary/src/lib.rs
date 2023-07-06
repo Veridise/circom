@@ -130,7 +130,7 @@ impl SummaryRoot {
             subcmps_data.insert(i.template_name.clone(), &i.components);
         }
 
-        let template_database = TemplateDB::build(&vcp.file_library, &vcp.templates);
+        let template_database = TemplateDB::build(&vcp.templates);
         for (template_name, template_id) in template_database.indexes {
             let mut signals = vec![];
 

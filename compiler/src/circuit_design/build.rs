@@ -379,7 +379,7 @@ pub fn build_circuit(vcp: VCP, flag: CompilationFlags, version: &str) -> Circuit
     if flag.main_inputs_log {
         write_main_inputs_log(&vcp);
     }
-    let template_database = TemplateDB::build(&vcp.file_library, &vcp.templates);
+    let template_database = TemplateDB::build(&vcp.templates);
     let mut circuit = Circuit::default();
     circuit.wasm_producer = initialize_wasm_producer(&vcp, &template_database, flag.wat_flag, version);
     circuit.c_producer = initialize_c_producer(&vcp, &template_database, version);

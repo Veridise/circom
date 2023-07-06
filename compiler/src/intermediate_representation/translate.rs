@@ -43,7 +43,7 @@ pub struct TemplateDB {
     pub signals_id: Vec<HashMap<String, usize>>,
 }
 impl TemplateDB {
-    pub fn build(files: &FileLibrary, templates: &[TemplateInstance]) -> TemplateDB {
+    pub fn build(templates: &[TemplateInstance]) -> TemplateDB {
         let mut database = TemplateDB {
             indexes: HashMap::with_capacity(templates.len()),
             signal_addresses: Vec::with_capacity(templates.len()),
@@ -51,7 +51,7 @@ impl TemplateDB {
             signals_id: Vec::with_capacity(templates.len()),
         };
         for tmp in templates {
-            TemplateDB::add_instance(files, &mut database, tmp);
+            TemplateDB::add_instance(&mut database, tmp);
         }
         database
     }
@@ -65,7 +65,7 @@ impl TemplateDB {
         &db.signal_addresses[instance_id]
     }
 
-    fn add_instance(files: &FileLibrary, db: &mut TemplateDB, instance: &TemplateInstance) {
+    fn add_instance(db: &mut TemplateDB, instance: &TemplateInstance) {
         if !db.indexes.contains_key(&instance.template_name) {
             let index = db.signals_id.len();
             db.indexes.insert(instance.template_name.clone(), index);
@@ -76,7 +76,6 @@ impl TemplateDB {
             db.signals_id.push(correspondence);
         }
         let mut state = State::new(
-            files,
             instance.template_id,
             0,
             ConstantTracker::new(),
@@ -186,8 +185,7 @@ impl SSACollector {
     }
 }
 
-struct State<'a> {
-    files: &'a FileLibrary,
+struct State {
     field_tracker: FieldTracker,
     environment: E,
     component_to_parallel:  HashMap<String, ParallelClusters>,
@@ -205,9 +203,8 @@ struct State<'a> {
     ssa: SSACollector
 }
 
-impl<'a> State<'a> {
+impl State {
     fn new(
-        files: &'a FileLibrary,
         msg_id: usize,
         cmp_id_offset: usize,
         field_tracker: FieldTracker,
@@ -215,7 +212,6 @@ impl<'a> State<'a> {
         signal_to_tags: BTreeMap<String, TagInfo>
     ) -> State {
         State {
-            files,
             field_tracker,
             component_to_parallel,
             signal_to_type: HashMap::new(),
@@ -1515,7 +1511,6 @@ pub struct CodeOutput {
 pub fn translate_code(body: Statement, code_info: CodeInfo) -> CodeOutput {
     use crate::ir_processing;
     let mut state = State::new(
-        code_info.files,
         code_info.message_id,
         code_info.fresh_cmp_id,
         code_info.field_tracker,
