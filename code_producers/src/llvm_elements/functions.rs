@@ -24,20 +24,19 @@ pub fn create_function<'a>(
             //Compiler-generated functions will have None
             return f;
         }
-        Some(id) => match llvm.debug.get(&id) {
-            None => panic!("Failed to find debug info!"),
-            Some(x) => x,
+        Some(id) => match llvm.get_debug_info(&id) {
+            Err(x) => panic!("{}", x),
+            Ok(x) => x,
         },
     };
-    let subroutine_type = di.0.create_subroutine_type(di.1.get_file(), None, &[], 0);
     f.set_subprogram(di.0.create_function(
         /* DIScope */ di.1.as_debug_info_scope(),
         /* func_name */ source_fun_name,
         /* linkage_name */ Some(name),
         /* DIFile */ di.1.get_file(),
         /* line_no */ source_line as u32,
-        /* DISubroutineType */ subroutine_type,
-        /* is_local_to_unit */ true,
+        /* DISubroutineType */ di.0.create_subroutine_type(di.1.get_file(), None, &[], 0),
+        /* is_local_to_unit */ false,
         /* is_definition */ true,
         /* scope_line */ 0,
         /* DIFlags */ 0,

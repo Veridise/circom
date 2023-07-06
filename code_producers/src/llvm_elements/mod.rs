@@ -275,6 +275,12 @@ impl<'a> LLVM<'a> {
         LLVM { module: m, builder: context.create_builder(), debug: debug_info }
     }
 
+    pub fn get_debug_info(&self, file_id: &usize) -> Result<&DebugCtx, String> {
+        self.debug
+            .get(&file_id)
+            .ok_or(format!("Could not find debug info for file with ID={}", file_id))
+    }
+
     pub fn write_to_file(&self, path: &str) -> Result<(), ()> {
         // Must finalize all debug info before running the verifier
         for dbg in self.debug.values() {
