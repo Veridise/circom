@@ -19,29 +19,26 @@ pub fn create_function<'a>(
 ) -> FunctionValue<'a> {
     let llvm = producer.llvm();
     let f = llvm.module.add_function(name, ty, None);
-    let di = match source_file_id {
-        None => {
-            //Compiler-generated functions will have None
-            return f;
+    if let Some(file_id) = source_file_id {
+        match llvm.get_debug_info(&file_id) {
+            Err(msg) => panic!("{}", msg),
+            Ok((dib, dcu)) => {
+                f.set_subprogram(dib.create_function(
+                    /* DIScope */ dcu.as_debug_info_scope(),
+                    /* func_name */ source_fun_name,
+                    /* linkage_name */ Some(name),
+                    /* DIFile */ dcu.get_file(),
+                    /* line_no */ source_line as u32,
+                    dib.create_subroutine_type(dcu.get_file(), None, &[], 0),
+                    /* is_local_to_unit */ false,
+                    /* is_definition */ true,
+                    /* scope_line */ 0,
+                    /* DIFlags */ 0,
+                    /* is_optimized */ false,
+                ));
+            }
         }
-        Some(id) => match llvm.get_debug_info(&id) {
-            Err(x) => panic!("{}", x),
-            Ok(x) => x,
-        },
     };
-    f.set_subprogram(di.0.create_function(
-        /* DIScope */ di.1.as_debug_info_scope(),
-        /* func_name */ source_fun_name,
-        /* linkage_name */ Some(name),
-        /* DIFile */ di.1.get_file(),
-        /* line_no */ source_line as u32,
-        /* DISubroutineType */ di.0.create_subroutine_type(di.1.get_file(), None, &[], 0),
-        /* is_local_to_unit */ false,
-        /* is_definition */ true,
-        /* scope_line */ 0,
-        /* DIFlags */ 0,
-        /* is_optimized */ false,
-    ));
     f
 }
 
