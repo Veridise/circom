@@ -226,9 +226,9 @@ mod test {
                             parse_as: ValueType::U32,
                             op_aux_no: 0,
                             value: 0,
-                        },
-                        bounded_fn: None,
+                        }
                         .allocate(),
+                        bounded_fn: None,
                     }
                     .allocate(),
                     // (store 1 0)
