@@ -1,8 +1,5 @@
-use std::{collections::HashMap, fmt::format};
 use std::fs::File;
-use std::io::Write;
-use inkwell::GlobalVisibility;
-use serde::{Serialize, Deserialize, de::value};
+use serde::Deserialize;
 
 // -----------------------------------------------------------------------------
 // Summaries
@@ -57,162 +54,94 @@ pub fn load_summary(summary_file: &str) -> Result<SummaryRoot, serde_json::Error
 // -----------------------------------------------------------------------------
 // CodaProgram
 // -----------------------------------------------------------------------------
+//
+// A __CodaCircuit__ for a corresponding Circom Template is the Coda encoding of the circuit.
+//
+// A __CodaGenerator__ for a corresponding CodaCircuit is an OCaml function that inputs the input signals of the circuit and outputs the tuple of output signals of that circuit. It is used to define subcomponents within other CodaCircuits.
+//
 
 #[derive(Clone, Debug)]
 pub struct CodaProgram {
     pub coda_circuits: Vec<CodaCircuit>,
 }
 
-// A subcomponent instance is translated into a function definition that preceeds the main Coda circuit. The function inputs the subcomponent's input signals, and outputs the subcomponent's output signals as a tuple.
-#[derive(Clone, Debug)]
-pub struct CodaSubcomponentInstance {
-    pub name: String,
-    pub signals: Vec<CodaSignal>,
-    pub output_definitions: HashMap<String, CodaExpr>,
-}
-
-impl CodaSubcomponentInstance {
-    pub fn new(name: String, signals: Vec<CodaSignal>) -> Self {
-        Self { name, signals, output_definitions: HashMap::new() }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct CodaCircuit {
     pub name: String,
     pub signals: Vec<CodaSignal>,
-    // pub preconditions: Vec<CodaExpr>,
-    // pub postconditions: Vec<CodaExpr>,
-    pub subcomponents: Vec<CodaSubcomponentInstance>,
-    pub subcomponents_map: HashMap<String, CodaSubcomponentInstance>,
-    pub subcomponent_inputs: HashMap<String, HashMap<String, CodaExpr>>,
-    pub intermediate_definitions: HashMap<String, CodaExpr>,
-    pub output_definitions: HashMap<String, CodaExpr>,
-}
-
-impl CodaCircuit {
-    pub fn new(name: String) -> Self {
-        CodaCircuit {
-            name,
-            signals: Vec::new(),
-            // preconditions: Vec::new(),
-            // postconditions: Vec::new(),
-            subcomponents: Vec::new(),
-            subcomponents_map: HashMap::new(),
-            subcomponent_inputs: HashMap::new(),
-            intermediate_definitions: HashMap::new(),
-            output_definitions: HashMap::new(),
-        }
-    }
-
-    pub fn add_subcomponent(&mut self, subcomponent: CodaSubcomponentInstance) {
-        self.subcomponents.push(subcomponent.clone());
-        self.subcomponent_inputs.insert(subcomponent.name, HashMap::new());
-    }
-
-    pub fn add_input(&mut self, name: String, type_: CodaType) {
-        // println!("[CE] add_input {}", name);
-        self.signals.push(CodaSignal { name, type_, visibility: CodaSignalVisibility::Input });
-    }
-
-    pub fn add_intermediate(&mut self, name: String, type_: CodaType) {
-        // println!("[CE] add_inter {}", name);
-        self.signals.push(CodaSignal {
-            name,
-            type_,
-            visibility: CodaSignalVisibility::Intermediate,
-        });
-    }
-
-    pub fn add_output(&mut self, name: String, type_: CodaType) {
-        // println!("[CE] add_output {}", name);
-        self.signals.push(CodaSignal { name, type_, visibility: CodaSignalVisibility::Output });
-    }
-
-    pub fn define_output(&mut self, name: String, expr: CodaExpr) {
-        // println!("[CE] define_output {} := {:?}", name, expr);
-        self.output_definitions.insert(name, expr);
-        ()
-    }
-
-    pub fn define_subcomponent_input(&mut self, cmp_name: String, name: String, expr: CodaExpr) {
-        let inputs = self.subcomponent_inputs.get_mut(cmp_name.as_str()).unwrap();
-        inputs.insert(name, expr);
-    }
-
-    pub fn define_intermediate(&mut self, name: String, expr: CodaExpr) {
-        // println!("[CE] define_intermediate {} := {:?}", name, expr);
-        self.intermediate_definitions.insert(name, expr);
-    }
-
-    pub fn get_subcomponent_signal(&self, cmp_i: usize, i: usize) -> &CodaSignal {
-        // let cmp = self.subcomponents[cmp_i];
-        // &cmp.signals[i]
-        todo!()
-    }
-
-    pub fn get_signal(&self, i: usize) -> &CodaSignal {
-        &self.signals[i]
-    }
-
-    pub fn index_signal(&self, name: &str) -> usize {
-        self.signals.iter().position(|s| s.name == name).unwrap()
-    }
+    pub body: CodaStatement,
 }
 
 #[derive(Clone, Debug)]
 pub struct CodaSignal {
-    pub name: String,
-    pub type_: CodaType,
-    pub visibility: CodaSignalVisibility,
+    name: String,
+    visibility: CodaSignalVisibility,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum CodaSignalVisibility {
     Input,
     Output,
     Intermediate,
 }
 
-impl CodaSignalVisibility {
-    pub fn parse(str: &str) -> CodaSignalVisibility {
-        if str == "input" {
-            CodaSignalVisibility::Input
-        } else if str == "output" {
-            CodaSignalVisibility::Output
-        } else if str == "inter" {
-            CodaSignalVisibility::Intermediate
-        } else {
-            panic!("Unrecognized CodaSignalVisibility string: {}", str)
-        }
-    }
+#[derive(Clone, Debug)]
+pub enum CodaStatement {
+    // Assign target to source.
+    Assignment {
+        target: CodaAssignmentTarget,
+        value: CodaExpr,
+        next: Box<CodaStatement>,
+    },
+    // Instantiate a template as a subcomponent.
+    Instantiate {
+        output_names: Vec<CodaSignalName>,
+        subcomponent_name: CodaSubcomponentName,
+        template_name: CodaTemplateName,
+        args: Vec<String>, // HENRY: these are Strings because they must be literal values (?)
+        next: Box<CodaStatement>,
+    },
+    // Branch on a condition.
+    Branch {
+        condition: CodaExpr,
+        then_: Box<CodaStatement>,
+        else_: Box<CodaStatement>,
+    },
+    End,
 }
 
-impl Default for CodaProgram {
-    fn default() -> Self {
-        CodaProgram { coda_circuits: Vec::new() }
-    }
+#[derive(Clone, Debug)]
+pub struct CodaSubcomponentName {
+    value: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct CodaGeneratorName {
+    value: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct CodaTemplateName {
+    value: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct CodaSignalName {
+    value: String,
+}
+
+#[derive(Clone, Debug)]
+pub enum CodaAssignmentTarget {
+    Signal { signal_name: CodaSignalName },
+    SubcomponentSignal { subcomponent_name: CodaSubcomponentName, signal_name: CodaSignalName },
 }
 
 #[derive(Clone, Debug)]
 pub enum CodaExpr {
-    Signal(String),
-    SubcomponentSignal(String, String),
-    Literal(String, LiteralType),
-    Binop(CodaBinopType, CodaBinop, Box<CodaExpr>, Box<CodaExpr>),
-}
-
-#[derive(Clone, Debug)]
-pub enum LiteralType {
-    BigInt,
-    U32,
-}
-
-#[derive(Clone, Debug)]
-pub enum CodaBinopType {
-    N,
-    Z,
-    F,
+    Signal { signal_name: CodaSignalName },
+    SubcomponentSignal { subcomponent_name: CodaSubcomponentName, signal_name: CodaSignalName },
+    Constant(String),
+    Binop(CodaBinop, Box<CodaExpr>, Box<CodaExpr>),
 }
 
 #[derive(Clone, Debug)]
@@ -225,113 +154,194 @@ pub enum CodaBinop {
     Div,
 }
 
-#[derive(Clone, Debug)]
-pub enum CodaType {
-    Field,
-}
-
 // -----------------------------------------------------------------------------
-// Coda
+// CodaCompile
 // -----------------------------------------------------------------------------
 
-pub trait CompileCodaString {
-    fn compile_coda_string(&self) -> String;
+trait CodaCompile {
+    fn coda_compile(&self, is_generator: bool) -> String;
 }
 
-impl CompileCodaString for CodaProgram {
-    fn compile_coda_string(&self) -> String {
-        let mut s = String::new();
-        for circuit in &self.coda_circuits {
-            s.push_str(&circuit.compile_coda_string());
-            s.push_str("\n\n");
-        }
+impl CodaCompile for CodaProgram {
+    fn coda_compile(&self, is_generator: bool) -> String {
+        assert!(is_generator == false);
+        let mut s: String = String::new();
+        self.coda_circuits.iter().for_each(|circuit| {
+            s.push_str(&format!("{}\n\n", circuit.coda_compile(false)));
+            s.push_str(&format!("{}\n\n", circuit.coda_compile(true)));
+        });
         s
     }
 }
 
-impl CompileCodaString for CodaCircuit {
-    fn compile_coda_string(&self) -> String {
-        let mut s = String::new();
-        s.push_str("let open Hoare_circuit in to_circuit @@ Hoare_circuit {");
+impl CodaCompile for CodaSignal {
+    fn coda_compile(&self, _is_generator: bool) -> String {
+        format!("({}, {})", self.name, "field")
+    }
+}
 
-        s.push_str(&format!(" name= \"{}\"", self.name));
+impl CodaCompile for CodaGeneratorName {
+    fn coda_compile(&self, _is_generator: bool) -> String {
+        self.value.clone()
+    }
+}
 
-        let input_signals: Vec<&CodaSignal> = self
-            .signals
-            .iter()
-            .filter(|&signal| signal.visibility == CodaSignalVisibility::Input)
-            .collect();
-
-        s.push_str("; inputs= BaseTyp.[");
-        for signal in input_signals {
-            s.push_str(&format!("(\"{}\", {})", signal.name, signal.type_.compile_coda_string()))
-        }
-        s.push_str("]");
-
-        let output_signals: Vec<&CodaSignal> = self
-            .signals
-            .iter()
-            .filter(|&signal| signal.visibility == CodaSignalVisibility::Output)
-            .collect();
-
-        s.push_str("; outputs= BaseTyp.[");
-        for signal in output_signals {
-            s.push_str(&format!("(\"{}\", {})", signal.name, signal.type_.compile_coda_string()))
-        }
-        s.push_str("]");
-
-        s.push_str("; preconditions= []");
-        s.push_str("; postconditions= []");
-
-        s.push_str("; body= ");
-
-        // let-define each intermediate
-        for (name, expr) in &self.intermediate_definitions {
-            s.push_str(&format!("let {} = {} in ", name, expr.compile_coda_string()));
-        }
-
-        if self.output_definitions.len() == 0 {
-            panic!("There are no output_definitions in circuit {}", self.name)
-        } else if self.output_definitions.len() == 1 {
-            let expr = self.output_definitions.values().next().unwrap();
-            s.push_str(&format!("{}", expr.compile_coda_string()))
+impl CodaCompile for CodaCircuit {
+    fn coda_compile(&self, is_generator: bool) -> String {
+        if !is_generator {
+            let template_name_string =
+                CodaTemplateName { value: self.name.clone() }.coda_compile(is_generator);
+            let mut inputs_strings: Vec<String> = Vec::new();
+            let mut outputs_strings: Vec<String> = Vec::new();
+            self.signals.iter().for_each(|signal| match signal.visibility {
+                CodaSignalVisibility::Input => {
+                    inputs_strings.push(signal.coda_compile(is_generator))
+                }
+                CodaSignalVisibility::Output => {
+                    outputs_strings.push(signal.coda_compile(is_generator))
+                }
+                // Intermediate values are not reflected in the Coda interface, they will appear as local definitions within the body.
+                CodaSignalVisibility::Intermediate => (),
+            });
+            let inputs_string = inputs_strings.join("; ");
+            let outputs_string = outputs_strings.join("; ");
+            let body_string = self.body.coda_compile(is_generator);
+            format!("let {} = Hoare_circuit {{ name= {}; inputs= {}; outputs= {}; preconditions= []; postcondition= []; body= {} }}", template_name_string, &self.name, &inputs_string, &outputs_string, &body_string)
         } else {
-            todo!("handle multiple output_definitions")
+            let generator_name_string =
+                CodaGeneratorName { value: self.name.clone() }.coda_compile(is_generator);
+            let mut input_name_strings: Vec<String> = Vec::new();
+            self.signals.iter().for_each(|signal| match signal.visibility {
+                CodaSignalVisibility::Input => input_name_strings.push(signal.name.clone()),
+                CodaSignalVisibility::Output => (),
+                CodaSignalVisibility::Intermediate => (),
+            });
+            let inputs_string = input_name_strings.join(" ");
+            let body_string = self.body.coda_compile(is_generator);
+            format!("let {} {} = {}", generator_name_string, inputs_string, body_string)
         }
-
-        s.push_str(" }");
-        s
     }
 }
 
-impl CompileCodaString for CodaType {
-    fn compile_coda_string(&self) -> String {
+impl CodaCompile for CodaSignalName {
+    fn coda_compile(&self, _is_generator: bool) -> String {
+        self.value.clone()
+    }
+}
+
+impl CodaCompile for CodaAssignmentTarget {
+    fn coda_compile(&self, is_generator: bool) -> String {
         match self {
-            CodaType::Field => "field".to_string(),
+            CodaAssignmentTarget::Signal { signal_name } => signal_name.coda_compile(is_generator),
+            CodaAssignmentTarget::SubcomponentSignal { subcomponent_name, signal_name } => format!(
+                "{}__{}",
+                subcomponent_name.coda_compile(is_generator),
+                signal_name.coda_compile(is_generator)
+            ),
         }
     }
 }
 
-impl CompileCodaString for CodaExpr {
-    fn compile_coda_string(&self) -> String {
+impl CodaCompile for CodaTemplateName {
+    fn coda_compile(&self, _is_generator: bool) -> String {
+        format!("template_{}", self.value)
+    }
+}
+
+impl CodaCompile for CodaSubcomponentName {
+    fn coda_compile(&self, _is_generator: bool) -> String {
+        format!("subcomponent_{}", self.value)
+    }
+}
+
+impl CodaCompile for CodaStatement {
+    fn coda_compile(&self, is_generator: bool) -> String {
         match self {
-            CodaExpr::Signal(name) => name.clone(),
-            CodaExpr::SubcomponentSignal(subcmp_name, name) => format!("{}__{}", subcmp_name, name),
-            CodaExpr::Literal(value, type_) => match type_ {
-                LiteralType::BigInt => format!("{}", value),
-                LiteralType::U32 => format!("{}", value),
-            },
-            CodaExpr::Binop(type_, op, e1, e2) => {
-                let op = match op {
-                    CodaBinop::Add => "+",
-                    CodaBinop::Sub => "-",
-                    CodaBinop::Mul => "*",
-                    CodaBinop::Pow => "**",
-                    CodaBinop::Mod => "%",
-                    CodaBinop::Div => "/",
-                };
-                format!("({} {} {})", e1.compile_coda_string(), op, e2.compile_coda_string())
+            CodaStatement::Assignment { target, value, next } => {
+                format!(
+                    "let {} = {} in {}",
+                    target.coda_compile(is_generator),
+                    value.coda_compile(is_generator),
+                    next.coda_compile(is_generator)
+                )
             }
+            CodaStatement::Instantiate {
+                output_names,
+                subcomponent_name,
+                template_name,
+                args,
+                next,
+            } => {
+                let output_string = output_names
+                    .iter()
+                    .map(|signal_name| {
+                        CodaAssignmentTarget::SubcomponentSignal {
+                            subcomponent_name: subcomponent_name.clone(),
+                            signal_name: signal_name.clone(),
+                        }
+                        .coda_compile(is_generator)
+                    })
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                format!(
+                    "let ({}) = {} {} in {}",
+                    output_string,
+                    template_name.coda_compile(is_generator),
+                    args.join(" "),
+                    next.coda_compile(is_generator)
+                )
+            }
+            CodaStatement::Branch { condition, then_, else_ } => format!(
+                "if ({}) then ({}) else ({})",
+                condition.coda_compile(is_generator),
+                then_.coda_compile(is_generator),
+                else_.coda_compile(is_generator)
+            ),
+            CodaStatement::End => String::new(),
         }
+    }
+}
+
+impl CodaCompile for CodaExpr {
+    fn coda_compile(&self, is_generator: bool) -> String {
+        match self {
+            CodaExpr::Signal { signal_name } => {
+                if !is_generator {
+                    // Coda-abstracted signal
+                    format!("(var \"{}\")", signal_name.coda_compile(is_generator))
+                } else {
+                    // Generator input
+                    signal_name.coda_compile(is_generator)
+                }
+            }
+            CodaExpr::SubcomponentSignal { subcomponent_name, signal_name } => {
+                CodaAssignmentTarget::SubcomponentSignal {
+                    subcomponent_name: subcomponent_name.clone(),
+                    signal_name: signal_name.clone(),
+                }
+                .coda_compile(is_generator)
+            }
+            CodaExpr::Constant(string) => string.clone(),
+            CodaExpr::Binop(op, e1, e2) => format!(
+                "({} {} {})",
+                e1.coda_compile(is_generator),
+                op.coda_compile(is_generator),
+                e2.coda_compile(is_generator)
+            ),
+        }
+    }
+}
+
+impl CodaCompile for CodaBinop {
+    fn coda_compile(&self, _is_generator: bool) -> String {
+        match self {
+            CodaBinop::Add => "+",
+            CodaBinop::Sub => "-",
+            CodaBinop::Mul => "*",
+            CodaBinop::Pow => "^",
+            CodaBinop::Mod => "%",
+            CodaBinop::Div => "/",
+        }
+        .to_string()
     }
 }
