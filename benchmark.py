@@ -13,7 +13,7 @@ import subprocess
 import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Tuple, List, Match, Union
+from typing import Tuple, List, Match, Union, Optional
 
 import click
 
@@ -99,7 +99,9 @@ class Report:
 
     @property
     def stderr(self):
-        return escape_ansi(self.execution.stderr.decode("utf-8"))
+        if self.execution.stderr:
+            return escape_ansi(self.execution.stderr.decode("utf-8"))
+        return ""
 
     @property
     def error_class(self):
@@ -140,25 +142,25 @@ def escape_ansi(line: str) -> str:
     return ansi_escape.sub('', line)
 
 
-def run_test(src: str, circom: str, debug: bool, cwd: str, libs_path: str) -> Report:
+def run_test(src: str, circom: str, debug: bool, cwd: str, libs_path: Optional[str], timeout: int) -> Report:
     src = os.path.realpath(src)
     tmp = TemporaryDirectory()
     cmd = [
         circom,
         '--llvm',
-        '-o', tmp.name,
-        '-l', libs_path,
-        src
+        '-o', tmp.name
     ]
+    if libs_path:
+        cmd.extend(['-l', libs_path])
+    cmd.append(src)
     if debug:
         print("Source file:", src)
         print("CMD:", ' '.join(cmd))
     try:
         start = time.time()
-        execution = subprocess.run(cmd, capture_output=True, cwd=cwd, timeout=5)
+        execution = subprocess.run(cmd, capture_output=True, cwd=cwd, timeout=timeout)
         end = time.time()
         if debug:
-
             if execution.returncode == 0:
                 print("Success!")
             else:
@@ -173,17 +175,36 @@ def run_test(src: str, circom: str, debug: bool, cwd: str, libs_path: str) -> Re
     except subprocess.TimeoutExpired as e:
         if debug:
             print("Test timed out!")
-            return Report(src, cmd, TimedOutExecution(e), 30)
+        return Report(src, cmd, TimedOutExecution(e), timeout)
 
 
-def evaluate_test(test_path: str, circom: str, debug: bool, libs_path: str) -> List[Report]:
+def check_link_libraries(data: dict) -> bool:
+    """The link_libraries is an optional field that defaults to True."""
+    if 'link_libraries' in data:
+        return data['link_libraries']
+    return True
+
+
+def run_setup(data: dict):
+    if 'setup' in data:
+        for cmd in data['setup']:
+            os.system(cmd)
+
+
+def evaluate_test(test_path: str, circom: str, debug: bool, libs_path: str, timeout: int) -> List[Report]:
     reports = []
     with open(test_path) as f:
         test_data = json.load(f)
     test_cwd = Path(test_path).parent
+    if not check_link_libraries(test_data):
+        libs_path = None
+    cwd = os.getcwd()
+    os.chdir(test_cwd)
+    run_setup(test_data)
+    os.chdir(cwd)
     for n, test in enumerate(test_data['tests']):
         main_circom_file = test_cwd.joinpath(test['main'])
-        report = run_test(str(main_circom_file), circom, debug, str(test_cwd), libs_path)
+        report = run_test(str(main_circom_file), circom, debug, str(test_cwd), libs_path, timeout)
         report.test_id = f"{test_data['id']}_{n}"
         reports.append(report)
     return reports
@@ -194,12 +215,13 @@ def evaluate_test(test_path: str, circom: str, debug: bool, libs_path: str) -> L
 @click.option('--out', help='Location of the output report.')
 @click.option('--circom', help="Optional path to circom binary", default=os.path.realpath("target/release/circom"))
 @click.option('--debug', help="Print debug information", is_flag=True)
-def main(src, out, circom, debug):
+@click.option('--timeout', help="Timeout for stopping the compilation", default=600)
+def main(src, out, circom, debug, timeout):
     reports = []
     src = Path(src)
     tests = glob.glob(str(src.joinpath(GLOB)), recursive=True)
     for test in tests:
-        reports.extend(evaluate_test(test, circom, debug, str(src.joinpath("tests/libs"))))
+        reports.extend(evaluate_test(test, circom, debug, str(src.joinpath("tests/libs")), timeout))
 
     with open(out, 'w') as out_csv:
         print('test_id,successful,error_class,message,file,line,column', file=out_csv)
