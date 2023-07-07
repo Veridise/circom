@@ -24,6 +24,7 @@ impl LogBucketArg{
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LogBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub argsprint: Vec<LogBucketArg>,
@@ -42,6 +43,9 @@ impl Allocate for LogBucket {
 }
 
 impl ObtainMeta for LogBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -67,7 +71,9 @@ impl ToString for LogBucket {
 }
 
 impl WriteLLVMIR for LogBucket {
-    fn produce_llvm_ir<'a, 'b>(&self, _producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         todo!()
     }
 }

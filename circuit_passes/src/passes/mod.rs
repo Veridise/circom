@@ -56,6 +56,8 @@ pub trait CircuitTransformationPass {
         self.pre_hook_template(template);
         Box::new(TemplateCodeInfo {
             id: template.id,
+            source_file_id: template.source_file_id,
+            line: template.line.clone(),
             header: template.header.clone(),
             name: template.name.clone(),
             is_parallel: template.is_parallel,
@@ -76,6 +78,8 @@ pub trait CircuitTransformationPass {
     fn transform_function(&self, function: &FunctionCode) -> FunctionCode {
         self.pre_hook_function(function);
         Box::new(FunctionCodeInfo {
+            source_file_id: function.source_file_id,
+            line: function.line.clone(),
             header: function.header.clone(),
             name: function.name.clone(),
             params: function.params.clone(),
@@ -136,6 +140,7 @@ pub trait CircuitTransformationPass {
     fn transform_value_bucket(&self, bucket: &ValueBucket) -> InstructionPointer {
         ValueBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             parse_as: bucket.parse_as,
@@ -177,6 +182,7 @@ pub trait CircuitTransformationPass {
     fn transform_load_bucket(&self, bucket: &LoadBucket) -> InstructionPointer {
         LoadBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             address_type: self.transform_address_type(&bucket.address_type),
@@ -189,6 +195,7 @@ pub trait CircuitTransformationPass {
     fn transform_store_bucket(&self, bucket: &StoreBucket) -> InstructionPointer {
         StoreBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             context: bucket.context.clone(),
@@ -204,6 +211,7 @@ pub trait CircuitTransformationPass {
     fn transform_compute_bucket(&self, bucket: &ComputeBucket) -> InstructionPointer {
         ComputeBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             op: bucket.op,
@@ -232,6 +240,7 @@ pub trait CircuitTransformationPass {
     fn transform_call_bucket(&self, bucket: &CallBucket) -> InstructionPointer {
         CallBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             symbol: bucket.symbol.to_string(),
@@ -246,6 +255,7 @@ pub trait CircuitTransformationPass {
     fn transform_branch_bucket(&self, bucket: &BranchBucket) -> InstructionPointer {
         BranchBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             cond: self.transform_instruction(&bucket.cond),
@@ -258,6 +268,7 @@ pub trait CircuitTransformationPass {
     fn transform_return_bucket(&self, bucket: &ReturnBucket) -> InstructionPointer {
         ReturnBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             with_size: bucket.with_size,
@@ -269,6 +280,7 @@ pub trait CircuitTransformationPass {
     fn transform_assert_bucket(&self, bucket: &AssertBucket) -> InstructionPointer {
         AssertBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             evaluate: self.transform_instruction(&bucket.evaluate),
@@ -288,6 +300,7 @@ pub trait CircuitTransformationPass {
     fn transform_log_bucket(&self, bucket: &LogBucket) -> InstructionPointer {
         LogBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             argsprint: self.transform_log_bucket_arg(&bucket.argsprint),
@@ -298,6 +311,7 @@ pub trait CircuitTransformationPass {
     fn transform_loop_bucket(&self, bucket: &LoopBucket) -> InstructionPointer {
         LoopBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             continue_condition: self.transform_instruction(&bucket.continue_condition),
@@ -309,6 +323,7 @@ pub trait CircuitTransformationPass {
     fn transform_create_cmp_bucket(&self, bucket: &CreateCmpBucket) -> InstructionPointer {
         CreateCmpBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             template_id: bucket.template_id,
@@ -346,6 +361,7 @@ pub trait CircuitTransformationPass {
     fn transform_block_bucket(&self, bucket: &BlockBucket) -> InstructionPointer {
         BlockBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             body: self.transform_instructions(&bucket.body),

@@ -14,6 +14,7 @@ use crate::intermediate_representation::BucketId;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BranchBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub cond: InstructionPointer,
@@ -33,6 +34,9 @@ impl Allocate for BranchBucket {
 }
 
 impl ObtainMeta for BranchBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -63,6 +67,8 @@ impl ToString for BranchBucket {
 
 impl WriteLLVMIR for BranchBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         // Necessary basic blocks
         let current_function = producer.current_function();
         let then_bb = create_bb(producer, current_function, "if.then");

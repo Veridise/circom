@@ -1,4 +1,4 @@
-use codespan_reporting::files::{Files, SimpleFiles};
+use codespan_reporting::files::{Files, SimpleFile, SimpleFiles};
 use std::ops::Range;
 
 pub type FileSource = String;
@@ -26,10 +26,23 @@ impl FileLibrary {
         self.get_mut_files().add(file_name, file_source)
     }
     pub fn get_line(&self, start: usize, file_id: FileID) -> Option<usize> {
-        match self.files.line_index(file_id, start) {
-            Some(lines) => Some(lines + 1),
-            None => None,
+        self.files.location(file_id, start).and_then(|loc| Some(loc.line_number))
+    }
+    pub fn get_column(&self, start: usize, file_id: FileID) -> Option<usize> {
+        self.files.location(file_id, start).and_then(|loc| Some(loc.column_number))
+    }
+    pub fn get_file(&self, file_id: &FileID) -> Option<&SimpleFile<FilePath, FileSource>> {
+        self.files.get(*file_id)
+    }
+    pub fn get_filename_or(&self, file_id: &FileID, default: &FilePath) -> FilePath {
+        let sf_opt = self.get_file(file_id);
+        match sf_opt {
+            Some(sf) => sf.name().replace("\"", ""),
+            None => default.clone(),
         }
+    }
+    pub fn get_filename_or_default(&self, file_id: &FileID) -> FilePath {
+        self.get_filename_or(file_id, &String::from(""))
     }
     pub fn to_storage(&self) -> &FileStorage {
         &self.get_files()

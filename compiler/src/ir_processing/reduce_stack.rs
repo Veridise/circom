@@ -60,6 +60,7 @@ pub fn reduce_compute(mut bucket: ComputeBucket) -> Instruction {
     if let Some(value) = res {
         let v_bucket = ValueBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             parse_as: ValueType::U32,

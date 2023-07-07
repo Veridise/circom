@@ -11,6 +11,7 @@ use crate::intermediate_representation::BucketId;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LoadBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub address_type: AddressType,
@@ -31,6 +32,9 @@ impl Allocate for LoadBucket {
 }
 
 impl ObtainMeta for LoadBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -54,6 +58,8 @@ impl ToString for LoadBucket {
 
 impl WriteLLVMIR for LoadBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         // Generate the code of the location and use the last value as the reference
         let index = self.src.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
 

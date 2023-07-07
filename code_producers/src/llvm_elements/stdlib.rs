@@ -28,8 +28,14 @@ mod stdlib {
             bool_type(producer).ptr_type(Default::default()).into(),
         ];
         let void_ty = void_type(producer);
-        let func =
-            create_function(producer, CONSTRAINT_VALUES_FN_NAME, void_ty.fn_type(args, false));
+        let func = create_function(
+            producer,
+            &None,
+            0,
+            "",
+            CONSTRAINT_VALUES_FN_NAME,
+            void_ty.fn_type(args, false),
+        );
         let main = create_bb(producer, func, "main");
         producer.set_current_bb(main);
 
@@ -46,8 +52,14 @@ mod stdlib {
         let args =
             &[bool_type(producer).into(), bool_type(producer).ptr_type(Default::default()).into()];
         let void_ty = void_type(producer);
-        let func =
-            create_function(producer, CONSTRAINT_VALUE_FN_NAME, void_ty.fn_type(args, false));
+        let func = create_function(
+            producer,
+            &None,
+            0,
+            "",
+            CONSTRAINT_VALUE_FN_NAME,
+            void_ty.fn_type(args, false),
+        );
         let main = create_bb(producer, func, "main");
         producer.set_current_bb(main);
 
@@ -61,6 +73,9 @@ mod stdlib {
     pub fn assert_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
         let func = create_function(
             producer,
+            &None,
+            0,
+            "",
             ASSERT_FN_NAME,
             void_type(producer).fn_type(&[bool_type(producer).into()], false),
         );
@@ -78,7 +93,7 @@ mod stdlib {
     }
 
     pub fn abort_declared_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
-        create_function(producer, "__abort", void_type(producer).fn_type(&[], false));
+        create_function(producer, &None, 0, "", "__abort", void_type(producer).fn_type(&[], false));
     }
 }
 

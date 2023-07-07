@@ -101,6 +101,7 @@ impl ToString for OperatorType {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct ComputeBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub op: OperatorType,
@@ -121,6 +122,9 @@ impl Allocate for ComputeBucket {
 }
 
 impl ObtainMeta for ComputeBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -148,6 +152,8 @@ impl ToString for ComputeBucket {
 
 impl WriteLLVMIR for ComputeBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         let mut stack = vec![];
         for i in &self.stack {
             let inst = i.produce_llvm_ir(producer);

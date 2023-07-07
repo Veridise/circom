@@ -10,6 +10,7 @@ use crate::intermediate_representation::BucketId;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct ReturnBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub with_size: usize,
@@ -29,6 +30,9 @@ impl Allocate for ReturnBucket {
 }
 
 impl ObtainMeta for ReturnBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -48,6 +52,8 @@ impl ToString for ReturnBucket {
 
 impl WriteLLVMIR for ReturnBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         let ret_value = self.value.produce_llvm_ir(producer)
             .expect("Return instruction must produce a value to return");
         Some(create_return_from_any_value(producer, ret_value))

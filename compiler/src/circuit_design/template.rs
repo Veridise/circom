@@ -1,4 +1,5 @@
 use crate::intermediate_representation::InstructionList;
+use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use std::default::Default;
@@ -16,6 +17,8 @@ pub type TemplateCode = Box<TemplateCodeInfo>;
 #[derive(Default, Clone, Eq, PartialEq, Debug)]
 pub struct TemplateCodeInfo {
     pub id: TemplateID,
+    pub source_file_id: Option<usize>,
+    pub line: usize,
     pub header: String,
     pub name: String,
     pub is_parallel: bool,
@@ -31,6 +34,19 @@ pub struct TemplateCodeInfo {
     pub signal_stack_depth: usize, // Not used now
     pub number_of_components: usize,
 }
+
+impl ObtainMeta for TemplateCodeInfo {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
+    fn get_line(&self) -> usize {
+        self.line
+    }
+    fn get_message_id(&self) -> usize {
+        0
+    }
+}
+
 impl ToString for TemplateCodeInfo {
     fn to_string(&self) -> String {
         let mut body = "".to_string();
@@ -40,8 +56,6 @@ impl ToString for TemplateCodeInfo {
         format!("TEMPLATE({})(\n{})", self.header, body)
     }
 }
-
-
 
 impl WriteLLVMIR for TemplateCodeInfo {
     fn produce_llvm_ir<'ctx, 'prod>(&self, producer: &'prod dyn LLVMIRProducer<'ctx>) -> Option<LLVMInstruction<'ctx>> {
@@ -57,7 +71,15 @@ impl WriteLLVMIR for TemplateCodeInfo {
             to_basic_type_enum(bigint_ptr.ptr_type(Default::default())),
             to_basic_type_enum(i32_type(producer))
         ], false);
-        let build_function = create_function(producer, build_fn_name(self.header.clone()).as_str(), void_type(producer).fn_type(&[component_memory.ptr_type(Default::default()).into()], false));
+        let build_function = create_function(
+            producer,
+            self.get_source_file_id(),
+            self.get_line(),
+            self.name.as_str(),
+            build_fn_name(self.header.clone()).as_str(), 
+            void_type(producer).fn_type(&[component_memory.ptr_type(Default::default()).into()], false)
+        );
+        Self::manage_debug_loc(producer, self, || build_function);
         let main = create_bb(producer,build_function, "main");
         producer.set_current_bb(main);
 
@@ -83,9 +105,13 @@ impl WriteLLVMIR for TemplateCodeInfo {
         // Run function prelude
         let run_function = create_function(
             producer,
+            self.get_source_file_id(),
+            self.get_line(),
+            self.name.as_str(),
             run_fn_name(self.header.clone()).as_str(),
             void.fn_type(&[bigint_type(producer).array_type(0).ptr_type(Default::default()).into()], false)
         );
+        Self::manage_debug_loc(producer, self, || run_function);
         let prelude = create_bb(producer, run_function, "prelude");
         producer.set_current_bb(prelude);
         let template_producer = TemplateLLVMIRProducer::new(
