@@ -239,6 +239,7 @@ mod test {
                             value: 0,
                         }
                         .allocate(),
+                        bounded_fn: None,
                     }
                     .allocate(),
                     // (store 1 0)
@@ -273,6 +274,7 @@ mod test {
                             value: 0,
                         }
                         .allocate(),
+                        bounded_fn: None,
                     }
                     .allocate(),
                     // (loop (compute le (load 1) 5) (
@@ -308,6 +310,7 @@ mod test {
                                         .allocate(),
                                         template_header: Some("test_0".to_string()),
                                     },
+                                    bounded_fn: None,
                                 }
                                 .allocate(),
                                 ValueBucket {
@@ -373,6 +376,7 @@ mod test {
                                                 .allocate(),
                                                 template_header: Some("test_0".to_string()),
                                             },
+                                            bounded_fn: None,
                                         }
                                         .allocate(),
                                         ValueBucket {
@@ -388,6 +392,7 @@ mod test {
                                     ],
                                 }
                                 .allocate(),
+                                bounded_fn: None,
                             }
                             .allocate(),
                             //   (store 1 (compute add (load 1) 1))
@@ -439,6 +444,7 @@ mod test {
                                                 .allocate(),
                                                 template_header: Some("test_0".to_string()),
                                             },
+                                            bounded_fn: None,
                                         }
                                         .allocate(),
                                         ValueBucket {
@@ -454,6 +460,7 @@ mod test {
                                     ],
                                 }
                                 .allocate(),
+                                bounded_fn: None,
                             }
                             .allocate(),
                         ],

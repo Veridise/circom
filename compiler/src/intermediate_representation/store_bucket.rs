@@ -1,8 +1,9 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
+use code_producers::llvm_elements::array_switch::array_ptr_ty;
 use code_producers::llvm_elements::{LLVMInstruction, to_enum, LLVMIRProducer};
-use code_producers::llvm_elements::instructions::{create_call, create_gep, create_load_with_name, create_store, create_sub_with_name};
+use code_producers::llvm_elements::instructions::{create_call, create_gep, create_load_with_name, create_store, create_sub_with_name, pointer_cast};
 use code_producers::llvm_elements::run_fn_name;
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::wasm_elements::*;
@@ -20,6 +21,7 @@ pub struct StoreBucket {
     pub dest_address_type: AddressType,
     pub dest: LocationRule,
     pub src: InstructionPointer,
+    pub bounded_fn: Option<String>,
 }
 
 impl IntoInstruction for StoreBucket {
@@ -66,19 +68,38 @@ impl WriteLLVMIR for StoreBucket {
 
         // A store instruction has a source instruction that states the origin of the value that is going to be stored
         let index =  self.dest.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
-        // From the index of the source extract the actual type of destination
-        let gep = match &self.dest_address_type {
-            AddressType::Variable => producer.body_ctx().get_variable(producer, index),
-            AddressType::Signal => producer.template_ctx().get_signal(producer, index),
-            AddressType::SubcmpSignal { cmp_address, .. } => {
-                let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                create_gep(producer, subcmp, &[zero(producer), index])
-            }
-        }.into_pointer_value();
+
         // Extract the source and store the result in the destination
         let source = to_enum(self.src.produce_llvm_ir(producer).unwrap());
-        let store = create_store(producer,gep, source);
+
+        // If we have bounds for an unknown index, we will get the base address and let the function check the bounds
+        let store = match &self.bounded_fn {
+            Some(name) => {
+                let arr_ptr = match &self.dest_address_type {
+                    AddressType::Variable => producer.body_ctx().get_variable_array(producer),
+                    AddressType::Signal => producer.template_ctx().get_signal_array(producer),
+                    AddressType::SubcmpSignal { cmp_address, .. } => {
+                        let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
+                        let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
+                        create_gep(producer, subcmp, &[zero(producer)])
+                    }
+                }.into_pointer_value();
+                let arr_ptr = pointer_cast(producer, arr_ptr, array_ptr_ty(producer));
+                create_call(producer, name.as_str(), &[arr_ptr.into(), index.into(), source.into_int_value().into()])
+            },
+            None => {
+                let gep = match &self.dest_address_type {
+                    AddressType::Variable => producer.body_ctx().get_variable(producer, index),
+                    AddressType::Signal => producer.template_ctx().get_signal(producer, index),
+                    AddressType::SubcmpSignal { cmp_address, .. } => {
+                        let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
+                        let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
+                        create_gep(producer, subcmp, &[zero(producer), index])
+                    }
+                }.into_pointer_value();
+                create_store(producer,gep, source)
+            },
+        };
 
         // If we have a subcomponent storage decrement the counter
         if let AddressType::SubcmpSignal { cmp_address, .. } = &self.dest_address_type {

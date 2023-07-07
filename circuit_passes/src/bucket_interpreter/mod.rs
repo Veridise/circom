@@ -276,8 +276,14 @@ impl<'a> BucketInterpreter<'a> {
                     LocationRule::Indexed { location, .. } => self.execute_instruction(location, env, continue_observing),
                     LocationRule::Mapped { .. } => unreachable!()
                 };
-                let idx = idx.expect("Indexed location must produce a value!").get_u32();
-                env.set_var(idx, value)
+
+                let idx_value = idx.expect("Indexed location must produce a value!");
+                if !idx_value.is_unknown() {
+                    let idx = idx_value.get_u32();
+                    env.set_var(idx, value)
+                } else {
+                    env
+                }
             },
             AddressType::Signal => {
                 let continue_observing =
@@ -286,8 +292,14 @@ impl<'a> BucketInterpreter<'a> {
                     LocationRule::Indexed { location, .. } => self.execute_instruction(location, env, continue_observing),
                     LocationRule::Mapped { .. } => unreachable!()
                 };
-                let idx = idx.expect("Indexed location must produce a value!").get_u32();
-                env.set_signal(idx, value)
+
+                let idx_value = idx.expect("Indexed location must produce a value!");
+                if !idx_value.is_unknown() {
+                    let idx = idx_value.get_u32();
+                    env.set_signal(idx, value)
+                } else {
+                    env
+                }
             },
             AddressType::SubcmpSignal { cmp_address, input_information, .. } => {
                 let (addr, env) = self.execute_instruction(cmp_address, env, observe);

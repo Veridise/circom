@@ -695,3 +695,12 @@ pub fn pointer_cast<'a>(
 ) -> PointerValue<'a> {
     producer.builder().build_pointer_cast(from, to, "")
 }
+
+pub fn create_switch<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    value: IntValue<'a>,
+    else_block: BasicBlock<'a>,
+    cases: &[(IntValue<'a>, BasicBlock<'a>)],
+) -> InstructionValue<'a> {
+    producer.builder().build_switch(value, else_block, cases)
+}
