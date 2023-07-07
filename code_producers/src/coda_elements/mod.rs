@@ -60,19 +60,26 @@ pub struct CodaProgram {
 pub struct CodaSubcomponentInstance {
     pub name: String,
     pub signals: Vec<CodaSignal>,
-    pub output_intermediate_definitions: HashMap<String, CodaExpr>,
+    pub output_definitions: HashMap<String, CodaExpr>,
+}
+
+impl CodaSubcomponentInstance {
+    pub fn new(name: String, signals: Vec<CodaSignal>) -> Self {
+        Self { name, signals, output_definitions: HashMap::new() }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct CodaCircuit {
     pub name: String,
     pub signals: Vec<CodaSignal>,
-    pub preconditions: Vec<CodaExpr>,
-    pub postconditions: Vec<CodaExpr>,
-    pub subcomponents: HashMap<String, CodaSubcomponentInstance>,
+    // pub preconditions: Vec<CodaExpr>,
+    // pub postconditions: Vec<CodaExpr>,
+    pub subcomponents: Vec<CodaSubcomponentInstance>,
+    pub subcomponents_map: HashMap<String, CodaSubcomponentInstance>,
     pub subcomponent_inputs: HashMap<String, HashMap<String, CodaExpr>>,
     pub intermediate_definitions: HashMap<String, CodaExpr>,
-    pub output_intermediate_definitions: HashMap<String, CodaExpr>,
+    pub output_definitions: HashMap<String, CodaExpr>,
 }
 
 impl CodaCircuit {
@@ -80,18 +87,19 @@ impl CodaCircuit {
         CodaCircuit {
             name,
             signals: Vec::new(),
-            preconditions: Vec::new(),
-            postconditions: Vec::new(),
-            subcomponents: HashMap::new(),
+            // preconditions: Vec::new(),
+            // postconditions: Vec::new(),
+            subcomponents: Vec::new(),
+            subcomponents_map: HashMap::new(),
             subcomponent_inputs: HashMap::new(),
             intermediate_definitions: HashMap::new(),
-            output_intermediate_definitions: HashMap::new(),
+            output_definitions: HashMap::new(),
         }
     }
 
-    pub fn add_subcomponent(&mut self, name: String, subcomponent: CodaSubcomponentInstance) {
-        self.subcomponents.insert(name.clone(), subcomponent);
-        self.subcomponent_inputs.insert(name, HashMap::new());
+    pub fn add_subcomponent(&mut self, subcomponent: CodaSubcomponentInstance) {
+        self.subcomponents.push(subcomponent.clone());
+        self.subcomponent_inputs.insert(subcomponent.name, HashMap::new());
     }
 
     pub fn add_input(&mut self, name: String, type_: CodaType) {
@@ -115,17 +123,24 @@ impl CodaCircuit {
 
     pub fn define_output(&mut self, name: String, expr: CodaExpr) {
         // println!("[CE] define_output {} := {:?}", name, expr);
-        self.output_intermediate_definitions.insert(name, expr);
+        self.output_definitions.insert(name, expr);
         ()
     }
 
-    pub fn define_subcomponent_input(&mut self, cmp_name: String, i: usize, expr: CodaExpr) {
-        // let
+    pub fn define_subcomponent_input(&mut self, cmp_name: String, name: String, expr: CodaExpr) {
+        let inputs = self.subcomponent_inputs.get_mut(cmp_name.as_str()).unwrap();
+        inputs.insert(name, expr);
     }
 
     pub fn define_intermediate(&mut self, name: String, expr: CodaExpr) {
         // println!("[CE] define_intermediate {} := {:?}", name, expr);
         self.intermediate_definitions.insert(name, expr);
+    }
+
+    pub fn get_subcomponent_signal(&self, cmp_i: usize, i: usize) -> &CodaSignal {
+        // let cmp = self.subcomponents[cmp_i];
+        // &cmp.signals[i]
+        todo!()
     }
 
     pub fn get_signal(&self, i: usize) -> &CodaSignal {
@@ -149,6 +164,20 @@ pub enum CodaSignalVisibility {
     Input,
     Output,
     Intermediate,
+}
+
+impl CodaSignalVisibility {
+    pub fn parse(str: &str) -> CodaSignalVisibility {
+        if str == "input" {
+            CodaSignalVisibility::Input
+        } else if str == "output" {
+            CodaSignalVisibility::Output
+        } else if str == "inter" {
+            CodaSignalVisibility::Intermediate
+        } else {
+            panic!("Unrecognized CodaSignalVisibility string: {}", str)
+        }
+    }
 }
 
 impl Default for CodaProgram {
@@ -249,13 +278,13 @@ impl CompileString for CodaCircuit {
             s.push_str(&format!("let {} = {} in ", name, expr.compile_string()));
         }
 
-        if self.output_intermediate_definitions.len() == 0 {
-            panic!("There are no output_intermediate_definitions in circuit {}", self.name)
-        } else if self.output_intermediate_definitions.len() == 1 {
-            let expr = self.output_intermediate_definitions.values().next().unwrap();
+        if self.output_definitions.len() == 0 {
+            panic!("There are no output_definitions in circuit {}", self.name)
+        } else if self.output_definitions.len() == 1 {
+            let expr = self.output_definitions.values().next().unwrap();
             s.push_str(&format!("{}", expr.compile_string()))
         } else {
-            todo!("handle multiple output_intermediate_definitions")
+            todo!("handle multiple output_definitions")
         }
 
         s.push_str(" }");

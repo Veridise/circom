@@ -519,6 +519,8 @@ impl<'a> CodaStatementContext<'a> {
             coda_data: &self.coda_data,
         }
     }
+
+    // pub fn get_te
 }
 
 /*
@@ -721,14 +723,15 @@ fn coda_statement(
 
 fn coda_location_string(context: &CodaExprContext, location_rule: &LocationRule) -> String {
     use Instruction::*;
+    use LocationRule::*;
     match &location_rule {
-        LocationRule::Indexed { location, template_header } => {
+        Indexed { location, template_header } => {
             match location.as_ref() {
                 Value(value) => format!("Location/Value({}, template_header: {:?})", value.value, template_header),
                 _ => panic!("If `location_rule` = `Indexed{{location}}`, then `location` should be a `Value`: {:?}", location_rule)
             }
         },
-        LocationRule::Mapped { signal_code, indexes } => {
+        Mapped { signal_code, indexes } => {
             let mut indexes_strings: Vec<String> = Vec::new();
             for index in indexes {
                 indexes_strings.push(index.to_string())
@@ -798,18 +801,17 @@ fn coda_statement_print(context: &mut CodaStatementContext, instruction: &Box<In
             );
             println!("  • src: {}", coda_expr_string(&context.to_coda_expr_context(), &store.src));
         }
-        Constraint(constraint) => match constraint {
-            ConstraintBucket::Substitution(next_instruction) => {
-                println!("BEGIN Constraint");
-                coda_statement_print(context, next_instruction);
-                println!("END Constraint");
-            }
-            ConstraintBucket::Equality(next_instruction) => {
-                println!("BEGIN Constraint");
-                coda_statement_print(context, next_instruction);
-                println!("END Constraint");
-            }
-        },
+        Constraint(_constraint) =>
+            // match constraint {
+            // println!("BEGIN Constraint");
+            // ConstraintBucket::Substitution(next_instruction) => {
+            //     coda_statement_print(context, next_instruction);
+            // }
+            // ConstraintBucket::Equality(next_instruction) => {
+            //     coda_statement_print(context, next_instruction);
+            // println!("END Constraint");
+            // }
+            (),
         CreateCmp(create_cmp) => {
             println!("CreateCmp:");
             println!("   • name: {}", create_cmp.name_subcomponent);
@@ -827,6 +829,142 @@ fn coda_statement_print(context: &mut CodaStatementContext, instruction: &Box<In
         Log(_) => panic!("Coda ignores this"),
         Assert(_) => panic!("Coda ignores this"),
         Return(_) => panic!("Coda ignores this because it should only appear in witness generator"),
+    }
+}
+
+fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaExpr {
+    use Instruction::*;
+    match instruction.as_ref() {
+        Value(value) => CodaExpr::Literal(
+            context.coda_data.get_constant(value.value),
+            match &value.parse_as {
+                ValueType::BigInt => LiteralType::BigInt,
+                ValueType::U32 => LiteralType::U32,
+            },
+        ),
+        Load(load) => {
+            use AddressType::*;
+            match &load.address_type {
+                Variable => todo!(),
+                Signal => {
+                    let i = get_location_rule_signal_index(&load.src);
+                    let name = context.coda_circuit.get_signal(i).name.clone();
+                    CodaExpr::Signal(name)
+                }
+                SubcmpSignal { cmp_address, .. } => {
+                    let cmp_i = match cmp_address.as_ref() {
+                        Instruction::Value(value) => value.value,
+                        _ => todo!(),
+                    };
+                    let cmp = &context.coda_circuit.subcomponents[cmp_i];
+                    let cmp_name = cmp.name.clone();
+                    let i = get_location_rule_signal_index(&load.src);
+                    let signal = &cmp.signals[i];
+                    let name = signal.name.clone();
+                    CodaExpr::SubcomponentSignal(cmp_name, name)
+                }
+            }
+        }
+        Compute(compute) => {
+            use OperatorType::*;
+            let e0 = Box::new(coda_expr(context, &compute.stack[0]));
+            let e1 = Box::new(coda_expr(context, &compute.stack[1]));
+            match compute.op {
+                Mul => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
+                Div => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
+                Add => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
+                Sub => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
+                Pow => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
+                Mod => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
+                op => panic!("Operator not handled by Coda: {:?}", op),
+            }
+        }
+        Call(call) => todo!(),
+        Branch(branch) => todo!(),
+        Block(block) => todo!(),
+        _ => panic!("should not appear in expression: {:?}", instruction),
+    }
+}
+
+fn get_location_rule_signal_index(location_rule: &LocationRule) -> usize {
+    match &location_rule {
+        LocationRule::Indexed { location, template_header } => match location.as_ref() {
+            Instruction::Value(value) => value.value,
+            loc => panic!("Expected LocationRule's value to be a Value: {:?}", loc),
+        },
+        LocationRule::Mapped { signal_code, indexes } => todo!(),
+    }
+}
+
+fn coda_statement(context: &mut CodaStatementContext, instruction: &Box<Instruction>) -> () {
+    use Instruction::*;
+    coda_statement_print(context, instruction);
+    match instruction.as_ref() {
+        Constraint(constraint) => match constraint {
+            // Just skip over this wrapper
+            ConstraintBucket::Substitution(instruction) => coda_statement(context, instruction),
+            ConstraintBucket::Equality(instruction) => coda_statement(context, instruction),
+        },
+        Store(store) => match &store.dest_address_type {
+            AddressType::Variable => todo!("store into a local variable"),
+            AddressType::Signal => {
+                let i = get_location_rule_signal_index(&store.dest);
+                let name = context.coda_circuit.get_signal(i).name.clone();
+                let expr = coda_expr(&context.to_coda_expr_context(), &store.src);
+                if store.dest_is_output {
+                    context.coda_circuit.define_output(name, expr)
+                } else {
+                    context.coda_circuit.define_intermediate(name, expr)
+                }
+            }
+            AddressType::SubcmpSignal {
+                cmp_address,
+                uniform_parallel_value,
+                is_output,
+                input_information,
+            } => {
+                let cmp_i = match cmp_address.as_ref() {
+                    Instruction::Value(value) => value.value,
+                    _ => todo!(),
+                };
+                let cmp = &context.coda_circuit.subcomponents[cmp_i];
+                let cmp_name = cmp.name.clone();
+                let i = get_location_rule_signal_index(&store.dest);
+                let signal = &cmp.signals[i];
+                let name = signal.name.clone();
+                let expr = coda_expr(&context.to_coda_expr_context(), &store.src);
+                context.coda_circuit.define_subcomponent_input(cmp_name, name, expr)
+            }
+        },
+        CreateCmp(create_cmp) => {
+            let cmp_i = create_cmp.template_id;
+            let template_summary = &context.summary_root.components[cmp_i];
+            let name: String = template_summary.name.clone();
+            let mut signals: Vec<CodaSignal> = Vec::new();
+            for signal in &template_summary.signals {
+                signals.push(CodaSignal {
+                    name: signal.name.clone(),
+                    type_: CodaType::Field,
+                    visibility: CodaSignalVisibility::parse(&signal.visibility),
+                });
+            }
+            let subcomponent = CodaSubcomponentInstance::new(name, signals);
+            println!("subcomponent: {:?}", subcomponent);
+            context.coda_circuit.add_subcomponent(subcomponent)
+        }
+        Branch(_) => todo!("I will need to modify how CodaCircuit is represented, since currently is doesn't allow for branching assignment to signals"),
+        Block(_) => todo!("what exaclty is the significance of blocks? do they only exist for the sake of scoping, so I can ignore them for compiling to Coda?"),
+        Nop(_) => (),
+        // These cases are not handled by Coda
+        Loop(_) => panic!("Coda doesn't handle this because all loops should be unrolled"),
+        Log(_) => panic!("Coda ignores this"),
+        Assert(_) => panic!("Coda ignores this"),
+        Return(_) => panic!("Coda ignores this because it should only appear in witness generator"),
+        // These cases should not appear in a circuit-level statement.
+        Value(_) => panic!("Should not appear in statement: {:?}", instruction),
+        Load(_) => panic!("Should not appear in statement: {:?}", instruction),
+        Compute(_) => panic!("Should not appear in statement: {:?}", instruction),
+        Call(_) => panic!("Should not appear in statement: {:?}", instruction),
     }
 }
 
@@ -854,16 +992,18 @@ impl WriteCoda for Circuit {
             let mut coda_circuit = CodaCircuit::new(template.name.clone());
 
             for signal in &template_summary.signals {
-                println!("signal: {:?}", signal);
-                if signal.visibility == "input" {
-                    coda_circuit.add_input(signal.name.clone(), CodaType::Field)
-                } else if signal.visibility == "output" {
-                    coda_circuit.add_output(signal.name.clone(), CodaType::Field)
-                } else if signal.visibility == "intermediate" {
-                    coda_circuit.add_intermediate(signal.name.clone(), CodaType::Field)
-                } else {
-                    panic!("Unknown visibility: {}", signal.visibility)
+                match CodaSignalVisibility::parse(&signal.visibility) {
+                    CodaSignalVisibility::Input => {
+                        coda_circuit.add_input(signal.name.clone(), CodaType::Field)
+                    }
+                    CodaSignalVisibility::Output => {
+                        coda_circuit.add_output(signal.name.clone(), CodaType::Field)
+                    }
+                    CodaSignalVisibility::Intermediate => {
+                        coda_circuit.add_intermediate(signal.name.clone(), CodaType::Field)
+                    }
                 }
+                println!("Signal {} {}", signal.visibility, signal.name);
             }
 
             for instruction in &template.body {
@@ -874,8 +1014,7 @@ impl WriteCoda for Circuit {
                     coda_circuit: &mut coda_circuit,
                     coda_data: &self.coda_data,
                 };
-                // coda_statement(&mut context, instruction)
-                coda_statement_print(&mut context, instruction)
+                coda_statement(&mut context, instruction);
             }
 
             println!("========================================================");
