@@ -510,13 +510,18 @@ struct CodaExprContext<'a> {
     coda_data: &'a CodaCircuitData,
 }
 
-// fn coda_binop(circuit: &Circuit, summary_root: &SummaryRoot, coda_circuit: &CodaCircuit, compute: &ComputeBucket) -> CodaExpr {
-fn coda_binop(op: CodaBinop, context: &CodaExprContext, compute: &ComputeBucket) -> CodaExpr {
-    let e1 = coda_expr(&context, &compute.stack[0]);
-    let e2 = coda_expr(&context, &compute.stack[1]);
-    CodaExpr::Binop(CodaBinopType::F, op, Box::new(e1), Box::new(e2))
+impl<'a> CodaStatementContext<'a> {
+    pub fn to_coda_expr_context(&'a self) -> CodaExprContext<'a> {
+        CodaExprContext {
+            circuit: &self.circuit,
+            summary_root: &self.summary_root,
+            coda_circuit: &self.coda_circuit,
+            coda_data: &self.coda_data,
+        }
+    }
 }
 
+/*
 // Compile an instruction as a CodaExpr.
 fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaExpr {
     use Instruction::*;
@@ -617,21 +622,6 @@ fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaE
     }
 }
 
-// fn coda_type(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaType {
-//     panic!("coda_type")
-// }
-
-impl<'a> CodaStatementContext<'a> {
-    pub fn to_coda_expr_context(&'a self) -> CodaExprContext<'a> {
-        CodaExprContext {
-            circuit: &self.circuit,
-            summary_root: &self.summary_root,
-            coda_circuit: &self.coda_circuit,
-            coda_data: &self.coda_data,
-        }
-    }
-}
-
 // Compile an instruction for as a "coda statement", which isn't actually
 // encoded, but corresponds to a component of the `Circuit` struct in Coda.
 fn coda_statement(
@@ -646,42 +636,53 @@ fn coda_statement(
     // println!("[CODA] instruction: {:?}", instruction);
     match instruction.as_ref() {
         Store(store) => {
-            if store.dest_is_output && store.dest_address_type == AddressType::Signal {
-                match &store.dest {
-                    LocationRule::Indexed { location, template_header } => {
-                        match location.as_ref() {
-                            Value(value) => {
-                                let signal_i = value.value;
-                                let signal = context.coda_circuit.get_signal(signal_i);
-                                let term = coda_expr(&context.to_coda_expr_context(), &store.src);
-                                context.coda_circuit.define_output(signal_i, term)
+            match &store.dest_address_type {
+                AddressType::Variable => todo!("where does this come from? does circom allow local definitions?"),
+                AddressType::Signal => {
+                    match &store.dest {
+                        LocationRule::Indexed { location, template_header } => {
+                            match location.as_ref() {
+                                Value(value) => {
+                                    let signal_i = value.value;
+                                    // let signal = context.coda_circuit.get_signal(signal_i);
+                                    let term = coda_expr(&context.to_coda_expr_context(), &store.src);
+                                    if store.dest_is_output {
+                                        context.coda_circuit.define_output(signal_i, term)
+                                    } else {
+                                        context.coda_circuit.define_intermediate(signal_i, term)
+                                    }
+                                }
+                                _ => todo!(),
                             }
-                            _ => todo!(),
                         }
+                        _ => todo!(),
                     }
-                    _ => todo!(),
-                }
-            } else {
-                todo!()
+                },
+                AddressType::SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information } => {
+                    println!("{:?}", instruction);
+                    todo!()
+                    // CodaExpr::SubcomponentSignal((), ())
+                },
             }
         }
         Branch(branch) => {
             todo!()
         }
         Return(return_) => {
-            todo!()
+            () // ignore, only appears in witness generator
         }
         Assert(assert) => {
-            todo!()
+            () // ignore
         }
         Log(log) => {
-            todo!()
+            () // ignore
         }
         Loop(loop_) => {
-            todo!()
+            panic!("all loops should be unrolled")
         }
         CreateCmp(createCmp) => {
-            todo!()
+            let name: String = createCmp.name_subcomponent.to_string();
+            context.coda_circuit.add_subcomponent(name.clone(), CodaSubcomponentInstance { name  })
         }
         Constraint(constraint) => {
             match constraint {
@@ -716,14 +717,112 @@ fn coda_statement(
         }
     }
 }
+*/
+
+fn coda_location_string(context: &CodaExprContext, location_rule: &LocationRule) -> String {
+    use Instruction::*;
+    match &location_rule {
+        LocationRule::Indexed { location, template_header } => {
+            match location.as_ref() {
+                Value(value) => format!("Location/Value({}, template_header: {:?})", value.value, template_header),
+                _ => panic!("If `location_rule` = `Indexed{{location}}`, then `location` should be a `Value`: {:?}", location_rule)
+            }
+        },
+        LocationRule::Mapped { signal_code, indexes } => {
+            let mut indexes_strings: Vec<String> = Vec::new();
+            for index in indexes {
+                indexes_strings.push(index.to_string())
+            }
+            format!("Location/Mapped(signal_coda: {}, location.indexes: {})", signal_code, indexes_strings.join("."))
+        }
+    }
+}
+
+fn coda_address_type_string(context: &CodaExprContext, address_type: &AddressType) -> String {
+    match &address_type {
+        AddressType::Variable => format!("Variable"),
+        AddressType::Signal => format!("Signal"),
+        AddressType::SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information } => format!("SubcmpSignal({})", coda_expr_string(context, cmp_address))
+    }
+}
+
+fn coda_expr_string(context: &CodaExprContext, instruction: &Box<Instruction>) -> String {
+    use Instruction::*;
+    match instruction.as_ref() {
+        Value(value) => format!("Value(parse_as: {}, value: {})", value.parse_as.to_string(), value.value),
+        Load(load) => format!("Load({})", coda_location_string(context, &load.src)),
+        Compute(compute) => {
+            let mut op_string = "<unhandled op>";
+            match compute.op {
+                OperatorType::Mul => op_string = "*",
+                OperatorType::Div => op_string = "/",
+                OperatorType::Add => op_string = "+",
+                OperatorType::Sub => op_string = "-",
+                OperatorType::Pow => op_string = "^",
+                OperatorType::Mod => op_string = "%",
+                _ => (),
+            }
+            format!("({} {} {})", 
+                coda_expr_string(&context, compute.stack.get(0).unwrap()), op_string, coda_expr_string(&context, compute.stack.get(1).unwrap()))
+        },
+        Call(call) => todo!(),
+        Branch(branch) => todo!(),
+        Block(block) => todo!(),
+        _ => panic!("should not appear in expression: {:?}", instruction)
+    }
+}
+
+fn coda_statement_print(context: &mut CodaStatementContext, instruction: &Box<Instruction>) -> () {
+    use Instruction::*;
+    match instruction.as_ref() {
+        Store(store) => {
+            println!("Store:");
+            println!("  • dest_address_type: {}", coda_address_type_string(&context.to_coda_expr_context(), &store.dest_address_type));
+            println!("  • dest: {}", coda_location_string(&context.to_coda_expr_context(), &store.dest));
+            println!("  • src: {}", coda_expr_string(&context.to_coda_expr_context(), &store.src));
+        }
+        Constraint(constraint) => {
+            match constraint {
+                ConstraintBucket::Substitution(next_instruction) => {
+                    println!("BEGIN Constraint");
+                    coda_statement_print(context, next_instruction);
+                    println!("END Constraint");
+                },
+                ConstraintBucket::Equality(next_instruction) => {
+                    println!("BEGIN Constraint");
+                    coda_statement_print(context, next_instruction);
+                    println!("END Constraint");
+                }
+            }
+        },
+        CreateCmp(create_cmp) => {
+            println!("CreateCmp:");
+            println!("   • name: {}", create_cmp.name_subcomponent);
+        }
+        Branch(_) => todo!(),
+        Block(_) => todo!(),
+        Nop(_) => (),
+        
+        Value(_) => panic!("Should not appear in statement: {:?}", instruction),
+        Load(_) => panic!("Should not appear in statement: {:?}", instruction),
+        Compute(_) => panic!("Should not appear in statement: {:?}", instruction),
+        Call(_) => panic!("Should not appear in statement: {:?}", instruction),
+
+        Loop(_) => panic!("Coda doesn't handle this because all loops should be unrolled"),
+        Log(_) => panic!("Coda ignores this"),
+        Assert(_) => panic!("Coda ignores this"),
+        Return(_) => panic!("Coda ignores this because it should only appear in witness generator"),
+    }
+}
 
 impl WriteCoda for Circuit {
     fn produce_coda_program(&self, summary_root: SummaryRoot) -> CodaProgram {
         println!("[CODA] BEGIN");
         // HENRY: this is the main place to build the coda program
 
-        // println!("self.templates {:?}", self.templates);
-        // println!("self.functions {:?}", self.functions);
+        println!("self.templates {:?}", self.templates);
+        println!("self.functions {:?}", self.functions);
+        // println!("self.functions {:?}", self);
 
         println!("[CODA] summary_root");
         println!("[CODA]   - version: {}", summary_root.version);
@@ -737,15 +836,21 @@ impl WriteCoda for Circuit {
             println!("[CODA]   - number_of_inputs: {}", template.number_of_inputs);
             println!("[CODA]   - number_of_outputs: {}", template.number_of_outputs);
 
+            println!("[CODA] BEGIN Printing Template");
+            println!("========================================================");
+
             let template_summary = summary_root.components.get(template_i).unwrap();
             let mut coda_circuit = CodaCircuit::new(template.name.clone());
 
+            // HENRY: actually figure out the types somehow, or maybe that has to be delayed until they are used??
             for signal in &template_summary.signals {
-                println!("[CODA] signal: {:?}", signal);
+                println!("signal: {:?}", signal);
                 if signal.visibility == "input" {
                     coda_circuit.add_input(signal.name.clone(), CodaType::Field)
                 } else if signal.visibility == "output" {
                     coda_circuit.add_output(signal.name.clone(), CodaType::Field)
+                } else if signal.visibility == "intermediate" {
+                    coda_circuit.add_intermediate(signal.name.clone(), CodaType::Field)
                 } else {
                     panic!("Unknown visibility: {}", signal.visibility)
                 }
@@ -759,8 +864,12 @@ impl WriteCoda for Circuit {
                     coda_circuit: &mut coda_circuit,
                     coda_data: &self.coda_data,
                 };
-                coda_statement(&mut context, instruction)
+                // coda_statement(&mut context, instruction)
+                coda_statement_print(&mut context, instruction)
             }
+
+            println!("========================================================");
+            println!("[CODA] END Printing Template");
 
             println!("[CODA] coda_circuit: {:?}", coda_circuit);
             coda_program.coda_circuits.push(coda_circuit)
@@ -769,6 +878,10 @@ impl WriteCoda for Circuit {
         coda_program
     }
 }
+
+// -----------------------------------------------------------------------------
+// END Coda stuff
+// -----------------------------------------------------------------------------
 
 impl Circuit {
     pub fn build(vcp: VCP, flags: CompilationFlags, version: &str) -> Self {
@@ -851,6 +964,3 @@ impl Circuit {
     }
 }
 
-// -----------------------------------------------------------------------------
-// END Coda stuff
-// -----------------------------------------------------------------------------

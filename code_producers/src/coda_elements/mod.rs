@@ -16,6 +16,12 @@ pub struct SummaryRoot {
     pub components: Vec<TemplateSummary>,
 }
 
+impl SummaryRoot {
+    pub fn get_component(&self, name: &str) -> &TemplateSummary {
+        self.components.iter().find(|c| c.name == name).unwrap()
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct TemplateSummary {
     pub name: String,
@@ -49,15 +55,24 @@ pub struct CodaProgram {
     pub coda_circuits: Vec<CodaCircuit>,
 }
 
+// A subcomponent instance is translated into a function definition that preceeds the main Coda circuit. The function inputs the subcomponent's input signals, and outputs the subcomponent's output signals as a tuple.
+#[derive(Clone, Debug)]
+pub struct CodaSubcomponentInstance {
+    pub name: String,
+    pub signals: Vec<CodaSignal>,
+    pub output_intermediate_definitions: HashMap<String, CodaExpr>,
+}
+
 #[derive(Clone, Debug)]
 pub struct CodaCircuit {
     pub name: String,
     pub signals: Vec<CodaSignal>,
     pub preconditions: Vec<CodaExpr>,
     pub postconditions: Vec<CodaExpr>,
-    pub definitions: Vec<(String, CodaExpr)>,
-    // A body for each output, in order of outputs
-    pub bodies: HashMap<String, CodaExpr>,
+    pub subcomponents: HashMap<String, CodaSubcomponentInstance>,
+    pub subcomponent_inputs: HashMap<String, HashMap<String, CodaExpr>>,
+    pub intermediate_definitions: HashMap<String, CodaExpr>,
+    pub output_intermediate_definitions: HashMap<String, CodaExpr>,
 }
 
 impl CodaCircuit {
@@ -67,38 +82,58 @@ impl CodaCircuit {
             signals: Vec::new(),
             preconditions: Vec::new(),
             postconditions: Vec::new(),
-            definitions: Vec::new(),
-            bodies: HashMap::new(),
+            subcomponents: HashMap::new(),
+            subcomponent_inputs: HashMap::new(),
+            intermediate_definitions: HashMap::new(),
+            output_intermediate_definitions: HashMap::new(),
         }
     }
 
+    pub fn add_subcomponent(&mut self, name: String, subcomponent: CodaSubcomponentInstance) {
+        self.subcomponents.insert(name.clone(), subcomponent);
+        self.subcomponent_inputs.insert(name, HashMap::new());
+    }
+
     pub fn add_input(&mut self, name: String, type_: CodaType) {
-        println!("[CODA] add_input {}", name);
+        // println!("[CE] add_input {}", name);
         self.signals.push(CodaSignal { name, type_, visibility: CodaSignalVisibility::Input });
     }
 
+    pub fn add_intermediate(&mut self, name: String, type_: CodaType) {
+        // println!("[CE] add_inter {}", name);
+        self.signals.push(CodaSignal {
+            name,
+            type_,
+            visibility: CodaSignalVisibility::Intermediate,
+        });
+    }
+
     pub fn add_output(&mut self, name: String, type_: CodaType) {
-        println!("[CODA] add_output {}", name);
+        // println!("[CE] add_output {}", name);
         self.signals.push(CodaSignal { name, type_, visibility: CodaSignalVisibility::Output });
     }
 
-    pub fn define_output(&mut self, i: usize, expr: CodaExpr) {
-        let name = self.get_signal(i).name.clone();
-        println!("[CODA] define_output {} := {:?}", name, expr);
-        self.bodies.insert(name, expr);
+    pub fn define_output(&mut self, name: String, expr: CodaExpr) {
+        // println!("[CE] define_output {} := {:?}", name, expr);
+        self.output_intermediate_definitions.insert(name, expr);
         ()
+    }
+
+    pub fn define_subcomponent_input(&mut self, cmp_name: String, i: usize, expr: CodaExpr) {
+        // let
+    }
+
+    pub fn define_intermediate(&mut self, name: String, expr: CodaExpr) {
+        // println!("[CE] define_intermediate {} := {:?}", name, expr);
+        self.intermediate_definitions.insert(name, expr);
     }
 
     pub fn get_signal(&self, i: usize) -> &CodaSignal {
         &self.signals[i]
     }
 
-    pub fn index_signal(&self, name: &str) -> Option<usize> {
-        self.signals.iter().position(|s| s.name == name)
-    }
-
-    pub fn add_definition(&mut self, name: String, expr: CodaExpr) {
-        self.definitions.push((name, expr));
+    pub fn index_signal(&self, name: &str) -> usize {
+        self.signals.iter().position(|s| s.name == name).unwrap()
     }
 }
 
@@ -113,6 +148,7 @@ pub struct CodaSignal {
 pub enum CodaSignalVisibility {
     Input,
     Output,
+    Intermediate,
 }
 
 impl Default for CodaProgram {
@@ -124,6 +160,7 @@ impl Default for CodaProgram {
 #[derive(Clone, Debug)]
 pub enum CodaExpr {
     Signal(String),
+    SubcomponentSignal(String, String),
     Literal(String, LiteralType),
     Binop(CodaBinopType, CodaBinop, Box<CodaExpr>, Box<CodaExpr>),
 }
@@ -207,26 +244,22 @@ impl CompileString for CodaCircuit {
 
         s.push_str("; body= ");
 
-        if self.bodies.len() == 0 {
-            panic!("There are no bodies in circuit {}", self.name)
-        } else if self.bodies.len() == 1 {
-            let expr = self.bodies.values().next().unwrap();
+        // let-define each intermediate
+        for (name, expr) in &self.intermediate_definitions {
+            s.push_str(&format!("let {} = {} in ", name, expr.compile_string()));
+        }
+
+        if self.output_intermediate_definitions.len() == 0 {
+            panic!("There are no output_intermediate_definitions in circuit {}", self.name)
+        } else if self.output_intermediate_definitions.len() == 1 {
+            let expr = self.output_intermediate_definitions.values().next().unwrap();
             s.push_str(&format!("{}", expr.compile_string()))
         } else {
-            todo!("handle multiple bodies")
+            todo!("handle multiple output_intermediate_definitions")
         }
 
         s.push_str(" }");
         s
-    }
-}
-
-impl CompileString for CodaSignalVisibility {
-    fn compile_string(&self) -> String {
-        match self {
-            CodaSignalVisibility::Input => "input".to_string(),
-            CodaSignalVisibility::Output => "output".to_string(),
-        }
     }
 }
 
@@ -242,6 +275,7 @@ impl CompileString for CodaExpr {
     fn compile_string(&self) -> String {
         match self {
             CodaExpr::Signal(name) => name.clone(),
+            CodaExpr::SubcomponentSignal(subcmp_name, name) => format!("{}__{}", subcmp_name, name),
             CodaExpr::Literal(value, type_) => match type_ {
                 LiteralType::BigInt => format!("{}", value),
                 LiteralType::U32 => format!("{}", value),
