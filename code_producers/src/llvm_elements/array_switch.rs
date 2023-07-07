@@ -40,7 +40,7 @@ mod array_switch {
             i32_ty.into(),
         ];
 
-        let func = create_function(producer, &get_load_symbol(index_range), bigint_ty.fn_type(args, false));
+        let func = create_function(producer, &None, 0, "", &get_load_symbol(index_range), bigint_ty.fn_type(args, false));
         let main = create_bb(producer, func, "main");
 
         let arr = func.get_nth_param(0).unwrap().into_pointer_value();
@@ -85,7 +85,7 @@ mod array_switch {
         ];
         let void_ty = void_type(producer);
 
-        let func = create_function(producer, &get_store_symbol(index_range), void_ty.fn_type(args, false));
+        let func = create_function(producer, &None, 0, "", &get_store_symbol(index_range), void_ty.fn_type(args, false));
         let main = create_bb(producer, func, "main");
 
         let arr = func.get_nth_param(0).unwrap().into_pointer_value();

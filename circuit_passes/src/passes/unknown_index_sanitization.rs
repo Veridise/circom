@@ -283,6 +283,7 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass {
         };
         LoadBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id.clone(),
             line: bucket.line,
             message_id: bucket.message_id,
             address_type: self.transform_address_type(&bucket.address_type),
@@ -299,6 +300,7 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass {
         };
         StoreBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id.clone(),
             line: bucket.line,
             message_id: bucket.message_id,
             context: bucket.context.clone(),
