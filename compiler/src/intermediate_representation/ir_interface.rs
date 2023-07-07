@@ -31,6 +31,7 @@ pub trait Allocate {
 }
 
 pub trait ObtainMeta {
+    fn get_source_file_id(&self) -> &Option<usize>;
     fn get_line(&self) -> usize;
     fn get_message_id(&self) -> usize;
 }
@@ -67,6 +68,26 @@ impl Allocate for Instruction {
 }
 
 impl ObtainMeta for Instruction {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        use Instruction::*;
+        match self {
+            Value(v) => v.get_source_file_id(),
+            Load(v) => v.get_source_file_id(),
+            Store(v) => v.get_source_file_id(),
+            Compute(v) => v.get_source_file_id(),
+            Call(v) => v.get_source_file_id(),
+            Branch(v) => v.get_source_file_id(),
+            Return(v) => v.get_source_file_id(),
+            Loop(v) => v.get_source_file_id(),
+            Assert(v) => v.get_source_file_id(),
+            CreateCmp(v) => v.get_source_file_id(),
+            Log(v) => v.get_source_file_id(),
+            Constraint(v) => v.get_source_file_id(),
+            Block(v) => v.get_source_file_id(),
+            Nop(v) => v.get_source_file_id()
+        }
+    }
+
     fn get_line(&self) -> usize {
         use Instruction::*;
         match self {

@@ -21,6 +21,9 @@ impl Allocate for NopBucket {
 }
 
 impl ObtainMeta for NopBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &None
+    }
     fn get_line(&self) -> usize {
         0
     }

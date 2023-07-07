@@ -1,17 +1,19 @@
 use std::collections::HashMap;
+use std::io::Write;
 use super::function::{FunctionCode, FunctionCodeInfo};
 use super::template::{TemplateCode, TemplateCodeInfo};
 use super::types::*;
 use crate::hir::very_concrete_program::VCP;
+use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
 use code_producers::llvm_elements::*;
-use std::io::Write;
 use code_producers::llvm_elements::fr::load_fr;
 use code_producers::llvm_elements::functions::{create_function, FunctionLLVMIRProducer};
 use code_producers::llvm_elements::stdlib::load_stdlib;
-use code_producers::llvm_elements::types::{bigint_type};
+use code_producers::llvm_elements::types::bigint_type;
+use program_structure::program_archive::ProgramArchive;
 
 pub struct CompilationFlags {
     pub main_inputs_log: bool,
@@ -53,13 +55,20 @@ impl WriteLLVMIR for Circuit {
         for f in &self.functions {
             let name = f.header.as_str();
             let arena_ty = bigint_type(producer).ptr_type(Default::default());
-            let function = create_function(producer, name, bigint_type(producer).fn_type(&[arena_ty.into()], false));
+            let function = create_function(
+                producer,
+                f.get_source_file_id(),
+                f.get_line(),
+                f.name.as_str(),
+                name,
+                bigint_type(producer).fn_type(&[arena_ty.into()], false));
             funcs.insert(name, function);
         }
 
         // Code for the functions
         for f in &self.functions {
             let function_producer = FunctionLLVMIRProducer::new(producer, funcs[f.header.as_str()]);
+            Self::manage_debug_loc_from_curr(&function_producer, f.as_ref());
             f.produce_llvm_ir(&function_producer);
         }
 
@@ -507,7 +516,7 @@ impl Circuit {
         wasm_code_generator::generate_witness_calculator_js_file(&js_folder_path).map_err(|_err| {})?;
         self.write_wasm(writer, &self.wasm_producer)
     }
-    pub fn produce_llvm_ir(&mut self, _llvm_folder: &str, llvm_path: &str) -> Result<(), ()> {
-        self.write_llvm_ir(llvm_path, &self.llvm_data)
+    pub fn produce_llvm_ir(&mut self, program_archive: &ProgramArchive, out_path: &str) -> Result<(), ()> {
+        self.write_llvm_ir(program_archive, out_path, &self.llvm_data)
     }
 }

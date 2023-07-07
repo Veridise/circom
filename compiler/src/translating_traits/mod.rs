@@ -1,8 +1,9 @@
-use code_producers::c_elements::*;
-use code_producers::wasm_elements::*;
-use code_producers::llvm_elements::*;
 use std::io::Write;
-
+use code_producers::c_elements::*;
+use code_producers::llvm_elements::*;
+use code_producers::wasm_elements::*;
+use program_structure::program_archive::ProgramArchive;
+use crate::intermediate_representation::ir_interface::ObtainMeta;
 
 pub trait WriteC {
     /*
@@ -32,11 +33,56 @@ pub trait WriteWasm {
 
 pub trait WriteLLVMIR {
     /// This must always return the final statement in the current BasicBlock or None if empty.
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>>;
-    fn write_llvm_ir(&self, llvm_path: &str, data: &LLVMCircuitData) -> Result<(), ()> {
+    fn produce_llvm_ir<'a, 'b>(
+        &self,
+        producer: &'b dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>>;
+
+    fn write_llvm_ir(
+        &self,
+        program_archive: &ProgramArchive,
+        out_path: &str,
+        data: &LLVMCircuitData,
+    ) -> Result<(), ()> {
         let context = Box::new(create_context());
-        let top_level = TopLevelLLVMIRProducer::new(&context,llvm_path, data.field_tracking.clone());
+        let top_level = TopLevelLLVMIRProducer::new(
+            &context,
+            program_archive,
+            out_path,
+            data.field_tracking.clone(),
+        );
         self.produce_llvm_ir(&top_level);
-        top_level.write_to_file(llvm_path)
+        top_level.write_to_file(out_path)
+    }
+
+    fn manage_debug_loc_from_curr<'a, 'b>(
+        producer: &'b (impl LLVMIRProducer<'a> + ?Sized),
+        obj: &dyn ObtainMeta,
+    ) {
+        Self::manage_debug_loc(producer, obj, || producer.current_function())
+    }
+
+    fn manage_debug_loc<'a, 'b>(
+        producer: &'b (impl LLVMIRProducer<'a> + ?Sized),
+        obj: &dyn ObtainMeta,
+        get_current: impl Fn() -> FunctionValue<'a>,
+    ) {
+        match obj.get_source_file_id().and_then(|i| producer.llvm().get_debug_info(&i).ok()) {
+            // Set active debug location based on the ObtainMeta location information
+            Some((dib, _)) => producer.builder().set_current_debug_location(
+                dib.create_debug_location(
+                    producer.context(),
+                    obj.get_line() as u32,
+                    0,
+                    get_current()
+                        .get_subprogram()
+                        .expect("Couldn't find debug info for containing method!")
+                        .as_debug_info_scope(),
+                    None,
+                ),
+            ),
+            // Clear active debug location if no associated file or no DebugInfo for that file
+            None => producer.builder().unset_current_debug_location(),
+        };
     }
 }

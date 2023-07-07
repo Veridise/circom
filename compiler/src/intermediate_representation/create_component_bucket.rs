@@ -11,6 +11,7 @@ use crate::intermediate_representation::BucketId;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct CreateCmpBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub template_id: usize,
@@ -49,6 +50,9 @@ impl Allocate for CreateCmpBucket {
 }
 
 impl ObtainMeta for CreateCmpBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -71,6 +75,8 @@ impl ToString for CreateCmpBucket {
 
 impl WriteLLVMIR for CreateCmpBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         let id = self.sub_cmp_id.produce_llvm_ir(producer).expect("sub_cmp_id must produce a value!");
         let ctx = producer.template_ctx();
 

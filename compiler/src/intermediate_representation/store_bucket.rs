@@ -12,6 +12,7 @@ use crate::intermediate_representation::BucketId;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct StoreBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub context: InstrContext,
@@ -34,6 +35,9 @@ impl Allocate for StoreBucket {
 }
 
 impl ObtainMeta for StoreBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -58,6 +62,8 @@ impl ToString for StoreBucket {
 
 impl WriteLLVMIR for StoreBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         // A store instruction has a source instruction that states the origin of the value that is going to be stored
         let index =  self.dest.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
         // From the index of the source extract the actual type of destination

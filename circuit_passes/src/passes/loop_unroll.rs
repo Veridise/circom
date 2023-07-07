@@ -25,7 +25,7 @@ pub struct LoopUnrollPass {
 
 impl LoopUnrollPass {
     pub fn new(prime: &String) -> Self {
-        LoopUnrollPass { memory: PassMemory::new_cell(prime, "".to_string(), Default::default()), replacements: Default::default() }
+        LoopUnrollPass { memory: PassMemory::new_cell(prime, String::from(""), Default::default()), replacements: Default::default() }
     }
 }
 
@@ -72,8 +72,13 @@ impl InterpreterObserver for LoopUnrollPass {
             }
         }
         let block =
-            BlockBucket { id: new_id(), line: bucket.line, message_id: bucket.message_id, body: block_body }
-                .allocate();
+            BlockBucket {
+                id: new_id(),
+                source_file_id: bucket.source_file_id,
+                line: bucket.line,
+                message_id: bucket.message_id,
+                body: block_body
+            }.allocate();
         self.replacements.borrow_mut().insert(bucket.clone(), block);
         true
     }
@@ -143,6 +148,7 @@ impl CircuitTransformationPass for LoopUnrollPass {
         }
         LoopBucket {
             id: new_id(),
+            source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             continue_condition: self.transform_instruction(&bucket.continue_condition),
@@ -189,6 +195,8 @@ mod test {
             llvm_data: Default::default(),
             templates: vec![Box::new(TemplateCodeInfo {
                 id: 0,
+                source_file_id: None,
+                line: 0,
                 header: "test_0".to_string(),
                 name: "test".to_string(),
                 is_parallel: false,
@@ -202,6 +210,7 @@ mod test {
                     // (store 0 0)
                     StoreBucket {
                         id: new_id(),
+                        source_file_id: None,
                         line: 0,
                         message_id: 0,
                         context: InstrContext { size: 0 },
@@ -210,6 +219,7 @@ mod test {
                         dest: LocationRule::Indexed {
                             location: ValueBucket {
                                 id: new_id(),
+                                source_file_id: None,
                                 line: 0,
                                 message_id: 0,
                                 parse_as: ValueType::U32,
@@ -221,6 +231,7 @@ mod test {
                         },
                         src: ValueBucket {
                             id: new_id(),
+                            source_file_id: None,
                             line: 0,
                             message_id: 0,
                             parse_as: ValueType::U32,
@@ -233,6 +244,7 @@ mod test {
                     // (store 1 0)
                     StoreBucket {
                         id: new_id(),
+                        source_file_id: None,
                         line: 0,
                         message_id: 0,
                         context: InstrContext { size: 0 },
@@ -241,6 +253,7 @@ mod test {
                         dest: LocationRule::Indexed {
                             location: ValueBucket {
                                 id: new_id(),
+                                source_file_id: None,
                                 line: 0,
                                 message_id: 0,
                                 parse_as: ValueType::U32,
@@ -252,6 +265,7 @@ mod test {
                         },
                         src: ValueBucket {
                             id: new_id(),
+                            source_file_id: None,
                             line: 0,
                             message_id: 0,
                             parse_as: ValueType::U32,
@@ -264,10 +278,12 @@ mod test {
                     // (loop (compute le (load 1) 5) (
                     LoopBucket {
                         id: new_id(),
+                        source_file_id: None,
                         line: 0,
                         message_id: 0,
                         continue_condition: ComputeBucket {
                             id: new_id(),
+                            source_file_id: None,
                             line: 0,
                             message_id: 0,
                             op: OperatorType::Lesser,
@@ -275,12 +291,14 @@ mod test {
                             stack: vec![
                                 LoadBucket {
                                     id: new_id(),
+                                    source_file_id: None,
                                     line: 0,
                                     message_id: 0,
                                     address_type: AddressType::Variable,
                                     src: LocationRule::Indexed {
                                         location: ValueBucket {
                                             id: new_id(),
+                                            source_file_id: None,
                                             line: 0,
                                             message_id: 0,
                                             parse_as: ValueType::U32,
@@ -294,6 +312,7 @@ mod test {
                                 .allocate(),
                                 ValueBucket {
                                     id: new_id(),
+                                    source_file_id: None,
                                     line: 0,
                                     message_id: 0,
                                     parse_as: ValueType::U32,
@@ -308,6 +327,7 @@ mod test {
                             //   (store 0 (compute add (load 0) 2))
                             StoreBucket {
                                 id: new_id(),
+                                source_file_id: None,
                                 line: 0,
                                 message_id: 0,
                                 context: InstrContext { size: 0 },
@@ -316,6 +336,7 @@ mod test {
                                 dest: LocationRule::Indexed {
                                     location: ValueBucket {
                                         id: new_id(),
+                                        source_file_id: None,
                                         line: 0,
                                         message_id: 0,
                                         parse_as: ValueType::U32,
@@ -327,6 +348,7 @@ mod test {
                                 },
                                 src: ComputeBucket {
                                     id: new_id(),
+                                    source_file_id: None,
                                     line: 0,
                                     message_id: 0,
                                     op: OperatorType::Add,
@@ -334,12 +356,14 @@ mod test {
                                     stack: vec![
                                         LoadBucket {
                                             id: new_id(),
+                                            source_file_id: None,
                                             line: 0,
                                             message_id: 0,
                                             address_type: AddressType::Variable,
                                             src: LocationRule::Indexed {
                                                 location: ValueBucket {
                                                     id: new_id(),
+                                                    source_file_id: None,
                                                     line: 0,
                                                     message_id: 0,
                                                     parse_as: ValueType::U32,
@@ -353,6 +377,7 @@ mod test {
                                         .allocate(),
                                         ValueBucket {
                                             id: new_id(),
+                                            source_file_id: None,
                                             line: 0,
                                             message_id: 0,
                                             parse_as: ValueType::U32,
@@ -368,6 +393,7 @@ mod test {
                             //   (store 1 (compute add (load 1) 1))
                             StoreBucket {
                                 id: new_id(),
+                                source_file_id: None,
                                 line: 0,
                                 message_id: 0,
                                 context: InstrContext { size: 0 },
@@ -376,6 +402,7 @@ mod test {
                                 dest: LocationRule::Indexed {
                                     location: ValueBucket {
                                         id: new_id(),
+                                        source_file_id: None,
                                         line: 0,
                                         message_id: 0,
                                         parse_as: ValueType::U32,
@@ -387,6 +414,7 @@ mod test {
                                 },
                                 src: ComputeBucket {
                                     id: new_id(),
+                                    source_file_id: None,
                                     line: 0,
                                     message_id: 0,
                                     op: OperatorType::Add,
@@ -394,12 +422,14 @@ mod test {
                                     stack: vec![
                                         LoadBucket {
                                             id: new_id(),
+                                            source_file_id: None,
                                             line: 0,
                                             message_id: 0,
                                             address_type: AddressType::Variable,
                                             src: LocationRule::Indexed {
                                                 location: ValueBucket {
                                                     id: new_id(),
+                                                    source_file_id: None,
                                                     line: 0,
                                                     message_id: 0,
                                                     parse_as: ValueType::U32,
@@ -413,6 +443,7 @@ mod test {
                                         .allocate(),
                                         ValueBucket {
                                             id: new_id(),
+                                            source_file_id: None,
                                             line: 0,
                                             message_id: 0,
                                             parse_as: ValueType::U32,

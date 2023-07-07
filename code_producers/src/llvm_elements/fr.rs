@@ -39,7 +39,7 @@ pub const FR_ADDR_CAST_FN_NAME: &str = "fr_cast_to_addr";
 macro_rules! fr_unary_op_base {
     ($name: expr, $producer: expr, $argTy: expr, $retTy: expr) => {{
         let args = &[$argTy.into()];
-        let func = create_function($producer, $name, $retTy.fn_type(args, false));
+        let func = create_function($producer, &None, 0, "", $name, $retTy.fn_type(args, false));
         let main = create_bb($producer, func, $name);
         $producer.set_current_bb(main);
 
@@ -57,7 +57,7 @@ macro_rules! fr_unary_op {
 macro_rules! fr_binary_op_base {
     ($name: expr, $producer: expr, $argTy: expr, $retTy: expr) => {{
         let args = &[$argTy.into(), $argTy.into()];
-        let func = create_function($producer, $name, $retTy.fn_type(args, false));
+        let func = create_function($producer, &None, 0, "", $name, $retTy.fn_type(args, false));
         let main = create_bb($producer, func, $name);
         $producer.set_current_bb(main);
 
