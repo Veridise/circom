@@ -1,10 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use super::function::{FunctionCode, FunctionCodeInfo};
 use super::template::{TemplateCode, TemplateCodeInfo};
 use super::types::*;
 use crate::hir::very_concrete_program::VCP;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
+use code_producers::llvm_elements::array_switch::load_array_switch;
 use code_producers::wasm_elements::*;
 use code_producers::llvm_elements::*;
 use std::io::Write;
@@ -43,10 +44,25 @@ impl WriteLLVMIR for Circuit {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         // Code for prelude
 
-
         // Code for standard library?
         load_fr(producer);
         load_stdlib(producer);
+
+        // Generate all the switch functions
+        let mut ranges = HashSet::new();
+        let mappings = [&self.llvm_data.signal_index_mapping, &self.llvm_data.variable_index_mapping, &self.llvm_data.component_index_mapping];
+
+        for mapping in mappings {
+            for range_mapping in mapping.values() {
+                for range in range_mapping.values() {
+                    ranges.insert(range);
+                }
+            }
+        }
+
+        for range in ranges {
+            load_array_switch(producer, range);
+        }
 
         // Declare all the functions
         let mut funcs = HashMap::new();

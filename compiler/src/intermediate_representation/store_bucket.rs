@@ -19,6 +19,7 @@ pub struct StoreBucket {
     pub dest_address_type: AddressType,
     pub dest: LocationRule,
     pub src: InstructionPointer,
+    pub bounded_fn: Option<String>,
 }
 
 impl IntoInstruction for StoreBucket {
@@ -60,19 +61,31 @@ impl WriteLLVMIR for StoreBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         // A store instruction has a source instruction that states the origin of the value that is going to be stored
         let index =  self.dest.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
-        // From the index of the source extract the actual type of destination
+
+        // If we have bounds for an unknown index, we will get the base address and let the function check the bounds
+        let gep_index = match self.bounded_fn {
+            Some(_) => zero(producer),
+            None => index,
+        };
+
+        // Extract the source and store the result in the destination
+        let source = to_enum(self.src.produce_llvm_ir(producer).unwrap());
+
         let gep = match &self.dest_address_type {
-            AddressType::Variable => producer.body_ctx().get_variable(producer, index),
-            AddressType::Signal => producer.template_ctx().get_signal(producer, index),
+            AddressType::Variable => producer.body_ctx().get_variable(producer, gep_index),
+            AddressType::Signal => producer.template_ctx().get_signal(producer, gep_index),
             AddressType::SubcmpSignal { cmp_address, .. } => {
                 let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
                 let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                create_gep(producer, subcmp, &[zero(producer), index])
+                create_gep(producer, subcmp, &[zero(producer), gep_index])
             }
         }.into_pointer_value();
-        // Extract the source and store the result in the destination
-        let source = to_enum(self.src.produce_llvm_ir(producer).unwrap());
-        let store = create_store(producer,gep, source);
+
+        // If we have bounds to check, wrap the store in a switch function
+        let store = match &self.bounded_fn {
+            Some(name) => create_call(producer, name.as_str(), &[gep.into(), index.into(), source.into_int_value().into()]),
+            None => create_store(producer,gep, source),
+        };
 
         // If we have a subcomponent storage decrement the counter
         if let AddressType::SubcmpSignal { cmp_address, .. } = &self.dest_address_type {

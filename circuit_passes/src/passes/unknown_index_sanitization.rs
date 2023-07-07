@@ -1,15 +1,16 @@
 use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{Instruction, InstructionPointer};
-use compiler::intermediate_representation::ir_interface::{AddressType, Allocate, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket, CreateCmpBucket, LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket, StoreBucket, ValueBucket, OperatorType, ValueType};
+use compiler::intermediate_representation::{Instruction, InstructionPointer, new_id, BucketId};
+use compiler::intermediate_representation::ir_interface::{AddressType, Allocate, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket, CreateCmpBucket, LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket, StoreBucket, ValueBucket, OperatorType, ValueType, ReturnType};
 use compiler::num_bigint::BigInt;
 use compiler::num_traits::{int, Zero};
 use std::ops::Range;
 use program_structure::constants::UsefulConstants;
+use code_producers::llvm_elements::array_switch::{load_array_switch, get_array_load_symbol, get_array_store_symbol};
 
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::{BucketInterpreter, value, R};
@@ -120,7 +121,8 @@ impl<'a> ZeroingInterpreter<'a> {
 pub struct UnknownIndexSanitizationPass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     memory: RefCell<PassMemory>,
-    replacements: RefCell<BTreeMap<LocationRule, LocationRule>>,
+    load_replacements: RefCell<BTreeMap<LoadBucket, Range<usize>>>,
+    store_replacements: RefCell<BTreeMap<StoreBucket, Range<usize>>>,
 }
 
 
@@ -129,7 +131,11 @@ pub struct UnknownIndexSanitizationPass {
  */
 impl UnknownIndexSanitizationPass {
     pub fn new(prime: &String) -> Self {
-        UnknownIndexSanitizationPass { memory: PassMemory::new_cell(prime, "".to_string(), Default::default()), replacements: Default::default() }
+        UnknownIndexSanitizationPass {
+            memory: PassMemory::new_cell(prime, "".to_string(), Default::default()),
+            load_replacements: Default::default(),
+            store_replacements: Default::default(),
+        }
     }
 
     fn find_bounds(&self, address: &AddressType, location: &LocationRule, env: &Env) -> Range<usize> {
@@ -149,10 +155,8 @@ impl UnknownIndexSanitizationPass {
          * So, if we set the unknown value to 0, we will compute the base offset,
          * which will let us look up the range of the underlying array.
          */
-
         match location {
             LocationRule::Indexed { location, .. } => {
-
                 let (res, _) = interpreter.execute_instruction(location, env.clone());
 
                 let offset = match res {
@@ -193,37 +197,24 @@ impl InterpreterObserver for UnknownIndexSanitizationPass {
         true
     }
 
-    /**
-     * We will replace the previous address of the LoadBucket with the address computed from a function that also checks the bounds.
-     *
-     */
     fn on_load_bucket(&self, bucket: &LoadBucket, env: &Env) -> bool {
-        // println!("load bucket: {:?}", bucket);
         let address = &bucket.address_type;
         let location = &bucket.src;
-        if !self.is_location_unknown(address, location, env) {
-            true
-        } else {
+        if self.is_location_unknown(address, location, env) {
             let index_range = self.find_bounds(address, location, env);
-            todo!();
-            true
+            self.load_replacements.borrow_mut().insert(bucket.clone(), index_range);
         }
+        true
     }
 
-    /**
-     * We will replace the previous address of the StoreBucket with the address computed from a function that also checks the bounds.
-     */
     fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> bool {
-        // println!("store bucket: {:?}", bucket);
         let address = &bucket.dest_address_type;
         let location = &bucket.dest;
-        if !self.is_location_unknown(address, location, env) {
-            true
-        } else {
+        if self.is_location_unknown(address, location, env) {
             let index_range = self.find_bounds(address, location, env);
-            todo!();
-            true
+            self.store_replacements.borrow_mut().insert(bucket.clone(), index_range);
         }
+        true
     }
 
     fn on_compute_bucket(&self, _bucket: &ComputeBucket, _env: &Env) -> bool {
@@ -275,35 +266,53 @@ impl InterpreterObserver for UnknownIndexSanitizationPass {
     }
 
     fn ignore_function_calls(&self) -> bool {
-        true
+        false
     }
 
     fn ignore_subcmp_calls(&self) -> bool {
-        true
+        false
     }
 }
 
 impl CircuitTransformationPass for UnknownIndexSanitizationPass {
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.borrow().constant_fields.clone()
+
+    fn transform_load_bucket(&self, bucket: &LoadBucket) -> InstructionPointer {
+        let bounded_fn_symbol = match self.load_replacements.borrow().get(bucket) {
+            Some(index_range) => Some(get_array_load_symbol(index_range)),
+            None => bucket.bounded_fn.clone(),
+        };
+        LoadBucket {
+            id: new_id(),
+            line: bucket.line,
+            message_id: bucket.message_id,
+            address_type: self.transform_address_type(&bucket.address_type),
+            src: self.transform_location_rule(&bucket.src),
+            bounded_fn: bounded_fn_symbol,
+        }
+        .allocate()
     }
 
-    /*
-        iangneal: Let the interpreter run to see if we can find any replacements.
-        If so, yield the replacement. Else, just give the default transformation
-    */
-    fn transform_location_rule(&self, location_rule: &LocationRule) -> LocationRule {
-        // If the interpreter found a viable transformation, do that.
-        if let Some(indexed_rule) = self.replacements.borrow().get(&location_rule) {
-            return indexed_rule.clone();
+    fn transform_store_bucket(&self, bucket: &StoreBucket) -> InstructionPointer {
+        let bounded_fn_symbol = match self.store_replacements.borrow().get(bucket) {
+            Some(index_range) => Some(get_array_store_symbol(index_range)),
+            None => bucket.bounded_fn.clone(),
+        };
+        StoreBucket {
+            id: new_id(),
+            line: bucket.line,
+            message_id: bucket.message_id,
+            context: bucket.context.clone(),
+            dest_is_output: bucket.dest_is_output,
+            dest_address_type: self.transform_address_type(&bucket.dest_address_type),
+            dest: self.transform_location_rule(&bucket.dest),
+            src: self.transform_instruction(&bucket.src),
+            bounded_fn: bounded_fn_symbol,
         }
-        match location_rule {
-            LocationRule::Indexed { location, template_header } => LocationRule::Indexed {
-                location: self.transform_instruction(location),
-                template_header: template_header.clone(),
-            },
-            LocationRule::Mapped { .. } => unreachable!()
-        }
+        .allocate()
+    }
+
+    fn get_updated_field_constants(&self) -> Vec<String> {
+        self.memory.borrow().constant_fields.clone()
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {

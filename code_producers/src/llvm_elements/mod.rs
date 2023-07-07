@@ -29,6 +29,7 @@ pub mod functions;
 pub mod instructions;
 pub mod fr;
 pub mod values;
+pub mod array_switch;
 
 pub type LLVMInstruction<'a> = AnyValueEnum<'a>;
 
@@ -61,7 +62,7 @@ pub struct LLVMCircuitData {
     pub io_map: TemplateInstanceIOMap,
     pub signal_index_mapping: HashMap<String, IndexMapping>,
     pub variable_index_mapping: HashMap<String, IndexMapping>,
-    pub component_index_mapping: HashMap<String, IndexMapping>
+    pub component_index_mapping: HashMap<String, IndexMapping>,
 }
 
 impl LLVMCircuitData {

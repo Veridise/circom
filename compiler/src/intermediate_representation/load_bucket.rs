@@ -2,7 +2,7 @@ use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use code_producers::llvm_elements::instructions::{create_gep, create_load};
+use code_producers::llvm_elements::instructions::{create_gep, create_load, create_call};
 use code_producers::llvm_elements::values::zero;
 use code_producers::wasm_elements::*;
 use crate::intermediate_representation::BucketId;
@@ -15,6 +15,7 @@ pub struct LoadBucket {
     pub message_id: usize,
     pub address_type: AddressType,
     pub src: LocationRule,
+    pub bounded_fn: Option<String>,
 }
 
 impl IntoInstruction for LoadBucket {
@@ -55,18 +56,28 @@ impl WriteLLVMIR for LoadBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         // Generate the code of the location and use the last value as the reference
         let index = self.src.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
+
+        // If we have bounds for an unknown index, we will get the base address and let the function check the bounds
+        let gep_index = match self.bounded_fn {
+            Some(_) => zero(producer),
+            None => index,
+        };
+
         let gep = match &self.address_type {
-            AddressType::Variable => producer.body_ctx().get_variable(producer, index),
+            AddressType::Variable => producer.body_ctx().get_variable(producer, gep_index),
             AddressType::Signal => {
-                producer.template_ctx().get_signal(producer, index)
+                producer.template_ctx().get_signal(producer, gep_index)
             },
             AddressType::SubcmpSignal { cmp_address, ..  } => {
                 let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
                 let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                create_gep(producer, subcmp, &[zero(producer), index])
+                create_gep(producer, subcmp, &[zero(producer), gep_index])
             }
         };
-        let load = create_load(producer, gep.into_pointer_value());
+        let load = match &self.bounded_fn {
+            Some(name) => create_call(producer, name.as_str(), &[gep.into_pointer_value().into(), index.into()]),
+            None => create_load(producer, gep.into_pointer_value()),
+        };
         Some(load)
     }
 }
