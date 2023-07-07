@@ -925,7 +925,7 @@ fn coda_statement(context: &mut CodaStatementContext, instruction: &Box<Instruct
             } => {
                 let cmp_i = match cmp_address.as_ref() {
                     Instruction::Value(value) => value.value,
-                    _ => todo!(),
+                    _ => panic!("The `cmp_address` of an `AddressType::SubcmpSignal` should be a Value: {:?}", cmp_address),
                 };
                 let cmp = &context.coda_circuit.subcomponents[cmp_i];
                 let cmp_name = cmp.name.clone();
