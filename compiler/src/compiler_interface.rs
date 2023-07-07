@@ -1,7 +1,10 @@
-pub use crate::circuit_design::circuit::{Circuit, CompilationFlags};
-pub use crate::hir::very_concrete_program::VCP;
 use std::fs::File;
 use std::io::BufWriter;
+
+use program_structure::program_archive::ProgramArchive;
+
+pub use crate::circuit_design::circuit::{Circuit, CompilationFlags};
+pub use crate::hir::very_concrete_program::VCP;
 
 pub struct Config {
     pub debug_output: bool,
@@ -42,7 +45,7 @@ pub fn write_c(circuit: &Circuit, c_folder: &str, c_run_name: &str, c_file: &str
     circuit.produce_c(c_folder, c_run_name, &mut c_file, &mut dat_file)
 }
 
-pub fn write_llvm_ir(circuit: &mut Circuit, llvm_folder: &str, llvm_file: &str, clean_llvm: bool) -> Result<(), ()> {
+pub fn write_llvm_ir(circuit: &mut Circuit, program_archive: &ProgramArchive, llvm_folder: &str, llvm_file: &str, clean_llvm: bool) -> Result<(), ()> {
     use std::path::Path;
     if clean_llvm {
         if Path::new(llvm_folder).is_dir() {
@@ -57,7 +60,7 @@ pub fn write_llvm_ir(circuit: &mut Circuit, llvm_folder: &str, llvm_file: &str, 
     let _ = File::create(llvm_file).map_err(|err| {
         eprintln!("Error creating the LLVM file {}: {}", llvm_file, err)
     })?;
-    circuit.produce_llvm_ir(llvm_folder, &llvm_file)
+    circuit.produce_llvm_ir(program_archive, &llvm_file)
 }
 
 fn produce_debug_output(circuit: &Circuit) -> Result<(), ()> {

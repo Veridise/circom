@@ -12,6 +12,7 @@ use crate::intermediate_representation::BucketId;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct AssertBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub evaluate: InstructionPointer,
@@ -30,6 +31,9 @@ impl Allocate for AssertBucket {
 }
 
 impl ObtainMeta for AssertBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -49,6 +53,8 @@ impl ToString for AssertBucket {
 
 impl WriteLLVMIR for AssertBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         let bool = self.evaluate.produce_llvm_ir(producer)
             .expect("An assert bucket needs a value to assert!").into_int_value();
         let bool = if bool.get_type().get_bit_width() > 1 {

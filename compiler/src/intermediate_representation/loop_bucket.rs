@@ -11,6 +11,7 @@ use crate::intermediate_representation::BucketId;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LoopBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub continue_condition: InstructionPointer,
@@ -30,6 +31,9 @@ impl Allocate for LoopBucket {
 }
 
 impl ObtainMeta for LoopBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -56,6 +60,8 @@ impl WriteLLVMIR for LoopBucket {
         &self,
         producer: &'b dyn LLVMIRProducer<'a>,
     ) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         let current_function = producer.current_function();
         let cond_bb = create_bb(producer, current_function, "loop.cond");
         let body_bb = create_bb(producer, current_function, "loop.body");

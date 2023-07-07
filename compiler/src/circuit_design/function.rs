@@ -1,6 +1,7 @@
 use super::types::*;
 use crate::hir::very_concrete_program::Param;
 use crate::intermediate_representation::InstructionList;
+use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
@@ -13,6 +14,8 @@ use code_producers::wasm_elements::*;
 pub type FunctionCode = Box<FunctionCodeInfo>;
 #[derive(Default, Clone, Eq, PartialEq, Debug)]
 pub struct FunctionCodeInfo {
+    pub source_file_id: Option<usize>,
+    pub line: usize,
     pub header: String,
     pub name: String,
     pub params: Vec<Param>,
@@ -20,6 +23,18 @@ pub struct FunctionCodeInfo {
     pub body: InstructionList,
     pub max_number_of_vars: usize,
     pub max_number_of_ops_in_expression: usize,
+}
+
+impl ObtainMeta for FunctionCodeInfo {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
+    fn get_line(&self) -> usize {
+        self.line
+    }
+    fn get_message_id(&self) -> usize {
+        0
+    }
 }
 
 impl ToString for FunctionCodeInfo {

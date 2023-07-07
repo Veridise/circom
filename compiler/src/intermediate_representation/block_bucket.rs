@@ -6,6 +6,7 @@ use crate::translating_traits::WriteLLVMIR;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BlockBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub body: InstructionList
@@ -24,6 +25,9 @@ impl Allocate for BlockBucket {
 }
 
 impl ObtainMeta for BlockBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -48,6 +52,8 @@ impl ToString for BlockBucket {
 
 impl WriteLLVMIR for BlockBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         let mut last = None;
         for inst in &self.body {
             last = inst.produce_llvm_ir(producer);

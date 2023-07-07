@@ -35,6 +35,12 @@ impl Allocate for ConstraintBucket {
 }
 
 impl ObtainMeta for ConstraintBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        match self {
+            ConstraintBucket::Substitution(i) => i,
+            ConstraintBucket::Equality(i) => i
+        }.get_source_file_id()
+    }
     fn get_line(&self) -> usize {
         match self {
             ConstraintBucket::Substitution(i) => i,
@@ -63,6 +69,8 @@ impl ToString for ConstraintBucket {
 
 impl WriteLLVMIR for ConstraintBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+
         // TODO: Create the constraint call
         let prev = match self {
             ConstraintBucket::Substitution(i) => i,

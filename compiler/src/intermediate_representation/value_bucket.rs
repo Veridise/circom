@@ -10,6 +10,7 @@ use crate::intermediate_representation::BucketId;
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct ValueBucket {
     pub id: BucketId,
+    pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
     pub parse_as: ValueType,
@@ -30,6 +31,9 @@ impl Allocate for ValueBucket {
 }
 
 impl ObtainMeta for ValueBucket {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
     fn get_line(&self) -> usize {
         self.line
     }
@@ -54,6 +58,8 @@ impl ToString for ValueBucket {
 
 impl WriteLLVMIR for ValueBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        // NOTE: do not change debug location for a value because it is not a top-level source statement
+
         // Represents a literal value
         match self.parse_as {
             ValueType::BigInt =>
