@@ -154,6 +154,9 @@ impl UnknownIndexSanitizationPass {
          *      (base_offset + (mul_offset * UNKNOWN))
          * So, if we set the unknown value to 0, we will compute the base offset,
          * which will let us look up the range of the underlying array.
+         *
+         * This specifically tackles 1-D arrays (what we currently deal with), but could be
+         * extended to arbitrary dimensions if needed.
          */
         match location {
             LocationRule::Indexed { location, .. } => {

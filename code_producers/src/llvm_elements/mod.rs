@@ -42,6 +42,11 @@ pub trait BodyCtx<'a> {
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
     ) -> AnyValueEnum<'a>;
+
+    fn get_variable_array(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+    ) -> AnyValueEnum<'a>;
 }
 
 pub trait LLVMIRProducer<'a> {

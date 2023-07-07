@@ -1,5 +1,9 @@
+use inkwell::types::PointerType;
+
 use crate::llvm_elements::LLVMIRProducer;
 use std::ops::Range;
+
+use super::types::bigint_type;
 
 mod array_switch {
     use std::borrow::Borrow;
@@ -19,6 +23,7 @@ mod array_switch {
     };
     use crate::llvm_elements::LLVMIRProducer;
     use crate::llvm_elements::types::{bigint_type, bool_type, i32_type, void_type};
+    use crate::llvm_elements::values::zero;
 
 
     pub fn get_load_symbol(index_range: &Range<usize>) -> String {
@@ -36,7 +41,7 @@ mod array_switch {
         let bigint_ty = bigint_type(producer);
         let i32_ty = i32_type(producer);
         let args = &[
-            bigint_ty.ptr_type(Default::default()).into(),
+            bigint_ty.array_type(0).ptr_type(Default::default()).into(),
             i32_ty.into(),
         ];
 
@@ -53,7 +58,7 @@ mod array_switch {
             let case_bb = create_bb(producer, func, format!("case_{}", idx).as_str());
             producer.set_current_bb(case_bb);
 
-            let ptr = create_gep(producer, arr, &[case_val]).into_pointer_value();
+            let ptr = create_gep(producer, arr, &[zero(producer), case_val]).into_pointer_value();
             let val = create_load(producer, ptr).into_int_value();
             create_return(producer, val);
 
@@ -79,7 +84,7 @@ mod array_switch {
         let i32_ty = i32_type(producer);
         let void_ty = void_type(producer);
         let args = &[
-            bigint_ty.ptr_type(Default::default()).into(),
+            bigint_ty.array_type(0).ptr_type(Default::default()).into(),
             i32_ty.into(),
             bigint_ty.into(),
         ];
@@ -99,7 +104,7 @@ mod array_switch {
             let case_bb = create_bb(producer, func, format!("case_{}", idx).as_str());
             producer.set_current_bb(case_bb);
 
-            let ptr = create_gep(producer, arr, &[case_val]).into_pointer_value();
+            let ptr = create_gep(producer, arr, &[zero(producer), case_val]).into_pointer_value();
             create_store(producer, ptr, val.into());
             create_return_void(producer);
 
@@ -117,6 +122,11 @@ mod array_switch {
     }
 
 
+}
+
+pub fn array_ptr_ty<'a>(producer: &dyn LLVMIRProducer<'a>) -> PointerType<'a> {
+    let bigint_ty = bigint_type(producer);
+    bigint_ty.array_type(0).ptr_type(Default::default())
 }
 
 pub fn load_array_switch<'a>(producer: &dyn LLVMIRProducer<'a>, index_range: &Range<usize>) {

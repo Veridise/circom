@@ -1,8 +1,9 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
+use code_producers::llvm_elements::array_switch::array_ptr_ty;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use code_producers::llvm_elements::instructions::{create_gep, create_load, create_call};
+use code_producers::llvm_elements::instructions::{create_gep, create_load, create_call, pointer_cast};
 use code_producers::llvm_elements::values::zero;
 use code_producers::wasm_elements::*;
 use crate::intermediate_representation::BucketId;
@@ -69,20 +70,34 @@ impl WriteLLVMIR for LoadBucket {
             None => index,
         };
 
-        let gep = match &self.address_type {
-            AddressType::Variable => producer.body_ctx().get_variable(producer, gep_index),
-            AddressType::Signal => {
-                producer.template_ctx().get_signal(producer, gep_index)
-            },
-            AddressType::SubcmpSignal { cmp_address, ..  } => {
-                let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                create_gep(producer, subcmp, &[zero(producer), gep_index])
-            }
-        };
         let load = match &self.bounded_fn {
-            Some(name) => create_call(producer, name.as_str(), &[gep.into_pointer_value().into(), index.into()]),
-            None => create_load(producer, gep.into_pointer_value()),
+            Some(name) => {
+                let arr_ptr = match &self.address_type {
+                    AddressType::Variable => producer.body_ctx().get_variable_array(producer),
+                    AddressType::Signal => producer.template_ctx().get_signal_array(producer),
+                    AddressType::SubcmpSignal { cmp_address, .. } => {
+                        let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
+                        let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
+                        create_gep(producer, subcmp, &[zero(producer)])
+                    },
+                }.into_pointer_value();
+                let arr_ptr = pointer_cast(producer, arr_ptr, array_ptr_ty(producer));
+                create_call(producer, name.as_str(), &[arr_ptr.into(), index.into()])
+            },
+            None => {
+                let gep = match &self.address_type {
+                    AddressType::Variable => producer.body_ctx().get_variable(producer, index),
+                    AddressType::Signal => {
+                        producer.template_ctx().get_signal(producer, index)
+                    },
+                    AddressType::SubcmpSignal { cmp_address, ..  } => {
+                        let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
+                        let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
+                        create_gep(producer, subcmp, &[zero(producer), index])
+                    }
+                }.into_pointer_value();
+                create_load(producer, gep)
+            },
         };
         Some(load)
     }
