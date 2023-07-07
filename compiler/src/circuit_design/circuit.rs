@@ -742,14 +742,21 @@ fn coda_address_type_string(context: &CodaExprContext, address_type: &AddressTyp
     match &address_type {
         AddressType::Variable => format!("Variable"),
         AddressType::Signal => format!("Signal"),
-        AddressType::SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information } => format!("SubcmpSignal({})", coda_expr_string(context, cmp_address))
+        AddressType::SubcmpSignal {
+            cmp_address,
+            uniform_parallel_value,
+            is_output,
+            input_information,
+        } => format!("SubcmpSignal({})", coda_expr_string(context, cmp_address)),
     }
 }
 
 fn coda_expr_string(context: &CodaExprContext, instruction: &Box<Instruction>) -> String {
     use Instruction::*;
     match instruction.as_ref() {
-        Value(value) => format!("Value(parse_as: {}, value: {})", value.parse_as.to_string(), value.value),
+        Value(value) => {
+            format!("Value(parse_as: {}, value: {})", value.parse_as.to_string(), value.value)
+        }
         Load(load) => format!("Load({})", coda_location_string(context, &load.src)),
         Compute(compute) => {
             let mut op_string = "<unhandled op>";
@@ -762,13 +769,17 @@ fn coda_expr_string(context: &CodaExprContext, instruction: &Box<Instruction>) -
                 OperatorType::Mod => op_string = "%",
                 _ => (),
             }
-            format!("({} {} {})", 
-                coda_expr_string(&context, compute.stack.get(0).unwrap()), op_string, coda_expr_string(&context, compute.stack.get(1).unwrap()))
-        },
+            format!(
+                "({} {} {})",
+                coda_expr_string(&context, compute.stack.get(0).unwrap()),
+                op_string,
+                coda_expr_string(&context, compute.stack.get(1).unwrap())
+            )
+        }
         Call(call) => todo!(),
         Branch(branch) => todo!(),
         Block(block) => todo!(),
-        _ => panic!("should not appear in expression: {:?}", instruction)
+        _ => panic!("should not appear in expression: {:?}", instruction),
     }
 }
 
@@ -777,22 +788,26 @@ fn coda_statement_print(context: &mut CodaStatementContext, instruction: &Box<In
     match instruction.as_ref() {
         Store(store) => {
             println!("Store:");
-            println!("  • dest_address_type: {}", coda_address_type_string(&context.to_coda_expr_context(), &store.dest_address_type));
-            println!("  • dest: {}", coda_location_string(&context.to_coda_expr_context(), &store.dest));
+            println!(
+                "  • dest_address_type: {}",
+                coda_address_type_string(&context.to_coda_expr_context(), &store.dest_address_type)
+            );
+            println!(
+                "  • dest: {}",
+                coda_location_string(&context.to_coda_expr_context(), &store.dest)
+            );
             println!("  • src: {}", coda_expr_string(&context.to_coda_expr_context(), &store.src));
         }
-        Constraint(constraint) => {
-            match constraint {
-                ConstraintBucket::Substitution(next_instruction) => {
-                    println!("BEGIN Constraint");
-                    coda_statement_print(context, next_instruction);
-                    println!("END Constraint");
-                },
-                ConstraintBucket::Equality(next_instruction) => {
-                    println!("BEGIN Constraint");
-                    coda_statement_print(context, next_instruction);
-                    println!("END Constraint");
-                }
+        Constraint(constraint) => match constraint {
+            ConstraintBucket::Substitution(next_instruction) => {
+                println!("BEGIN Constraint");
+                coda_statement_print(context, next_instruction);
+                println!("END Constraint");
+            }
+            ConstraintBucket::Equality(next_instruction) => {
+                println!("BEGIN Constraint");
+                coda_statement_print(context, next_instruction);
+                println!("END Constraint");
             }
         },
         CreateCmp(create_cmp) => {
@@ -802,7 +817,7 @@ fn coda_statement_print(context: &mut CodaStatementContext, instruction: &Box<In
         Branch(_) => todo!(),
         Block(_) => todo!(),
         Nop(_) => (),
-        
+
         Value(_) => panic!("Should not appear in statement: {:?}", instruction),
         Load(_) => panic!("Should not appear in statement: {:?}", instruction),
         Compute(_) => panic!("Should not appear in statement: {:?}", instruction),
@@ -818,12 +833,8 @@ fn coda_statement_print(context: &mut CodaStatementContext, instruction: &Box<In
 impl WriteCoda for Circuit {
     fn produce_coda_program(&self, summary_root: SummaryRoot) -> CodaProgram {
         println!("[CODA] BEGIN");
-        // HENRY: this is the main place to build the coda program
-
-        println!("self.templates {:?}", self.templates);
-        println!("self.functions {:?}", self.functions);
-        // println!("self.functions {:?}", self);
-
+        // println!("self.templates {:?}", self.templates);
+        // println!("self.functions {:?}", self.functions);
         println!("[CODA] summary_root");
         println!("[CODA]   - version: {}", summary_root.version);
         println!("[CODA]   - compiler: {}", summary_root.compiler);
@@ -842,7 +853,6 @@ impl WriteCoda for Circuit {
             let template_summary = summary_root.components.get(template_i).unwrap();
             let mut coda_circuit = CodaCircuit::new(template.name.clone());
 
-            // HENRY: actually figure out the types somehow, or maybe that has to be delayed until they are used??
             for signal in &template_summary.signals {
                 println!("signal: {:?}", signal);
                 if signal.visibility == "input" {
@@ -963,4 +973,3 @@ impl Circuit {
         self.write_coda_program(writer, program)
     }
 }
-
