@@ -4,6 +4,10 @@ use std::io::Write;
 use inkwell::GlobalVisibility;
 use serde::{Serialize, Deserialize, de::value};
 
+// -----------------------------------------------------------------------------
+// Summaries
+// -----------------------------------------------------------------------------
+
 // This is intended to match the `SummaryRoot` and associated structs in the
 // `summary` package. I couldn't directly import because of cyclic dependencies.
 // But this is clearly the right place to know about (some of) the summary
@@ -49,6 +53,10 @@ pub fn load_summary(summary_file: &str) -> Result<SummaryRoot, serde_json::Error
     let rdr = File::open(summary_file).unwrap();
     serde_json::from_reader(rdr)
 }
+
+// -----------------------------------------------------------------------------
+// CodaProgram
+// -----------------------------------------------------------------------------
 
 #[derive(Clone, Debug)]
 pub struct CodaProgram {
@@ -222,23 +230,27 @@ pub enum CodaType {
     Field,
 }
 
-pub trait CompileString {
-    fn compile_string(&self) -> String;
+// -----------------------------------------------------------------------------
+// Coda
+// -----------------------------------------------------------------------------
+
+pub trait CompileCodaString {
+    fn compile_coda_string(&self) -> String;
 }
 
-impl CompileString for CodaProgram {
-    fn compile_string(&self) -> String {
+impl CompileCodaString for CodaProgram {
+    fn compile_coda_string(&self) -> String {
         let mut s = String::new();
         for circuit in &self.coda_circuits {
-            s.push_str(&circuit.compile_string());
+            s.push_str(&circuit.compile_coda_string());
             s.push_str("\n\n");
         }
         s
     }
 }
 
-impl CompileString for CodaCircuit {
-    fn compile_string(&self) -> String {
+impl CompileCodaString for CodaCircuit {
+    fn compile_coda_string(&self) -> String {
         let mut s = String::new();
         s.push_str("let open Hoare_circuit in to_circuit @@ Hoare_circuit {");
 
@@ -252,7 +264,7 @@ impl CompileString for CodaCircuit {
 
         s.push_str("; inputs= BaseTyp.[");
         for signal in input_signals {
-            s.push_str(&format!("(\"{}\", {})", signal.name, signal.type_.compile_string()))
+            s.push_str(&format!("(\"{}\", {})", signal.name, signal.type_.compile_coda_string()))
         }
         s.push_str("]");
 
@@ -264,7 +276,7 @@ impl CompileString for CodaCircuit {
 
         s.push_str("; outputs= BaseTyp.[");
         for signal in output_signals {
-            s.push_str(&format!("(\"{}\", {})", signal.name, signal.type_.compile_string()))
+            s.push_str(&format!("(\"{}\", {})", signal.name, signal.type_.compile_coda_string()))
         }
         s.push_str("]");
 
@@ -275,14 +287,14 @@ impl CompileString for CodaCircuit {
 
         // let-define each intermediate
         for (name, expr) in &self.intermediate_definitions {
-            s.push_str(&format!("let {} = {} in ", name, expr.compile_string()));
+            s.push_str(&format!("let {} = {} in ", name, expr.compile_coda_string()));
         }
 
         if self.output_definitions.len() == 0 {
             panic!("There are no output_definitions in circuit {}", self.name)
         } else if self.output_definitions.len() == 1 {
             let expr = self.output_definitions.values().next().unwrap();
-            s.push_str(&format!("{}", expr.compile_string()))
+            s.push_str(&format!("{}", expr.compile_coda_string()))
         } else {
             todo!("handle multiple output_definitions")
         }
@@ -292,16 +304,16 @@ impl CompileString for CodaCircuit {
     }
 }
 
-impl CompileString for CodaType {
-    fn compile_string(&self) -> String {
+impl CompileCodaString for CodaType {
+    fn compile_coda_string(&self) -> String {
         match self {
             CodaType::Field => "field".to_string(),
         }
     }
 }
 
-impl CompileString for CodaExpr {
-    fn compile_string(&self) -> String {
+impl CompileCodaString for CodaExpr {
+    fn compile_coda_string(&self) -> String {
         match self {
             CodaExpr::Signal(name) => name.clone(),
             CodaExpr::SubcomponentSignal(subcmp_name, name) => format!("{}__{}", subcmp_name, name),
@@ -318,7 +330,7 @@ impl CompileString for CodaExpr {
                     CodaBinop::Mod => "%",
                     CodaBinop::Div => "/",
                 };
-                format!("({} {} {})", e1.compile_string(), op, e2.compile_string())
+                format!("({} {} {})", e1.compile_coda_string(), op, e2.compile_coda_string())
             }
         }
     }
