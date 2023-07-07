@@ -213,7 +213,7 @@ def evaluate_test(test_path: str, circom: str, debug: bool, libs_path: str, time
 @click.command()
 @click.option('--src', help='Path where the benchmark is located.')
 @click.option('--out', help='Location of the output report.')
-@click.option('--circom', help="Optional path to circom binary", default=os.path.realpath("target/release/circom"))
+@click.option('--circom', help="Optional path to circom binary", default=os.path.realpath("../target/release/circom"))
 @click.option('--debug', help="Print debug information", is_flag=True)
 @click.option('--timeout', help="Timeout for stopping the compilation", default=600)
 def main(src, out, circom, debug, timeout):

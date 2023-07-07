@@ -15,3 +15,4 @@ ir_log
 report.csv
 out.stacks
 flamegraph.svg
+result
