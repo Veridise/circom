@@ -496,18 +496,20 @@ impl WriteC for Circuit {
 // -----------------------------------------------------------------------------
 
 struct CodaStatementContext<'a> {
-    circuit: &'a Circuit,
-    summary_root: &'a SummaryRoot,
-    template_summary: &'a TemplateSummary,
-    coda_circuit: &'a mut CodaCircuit,
-    coda_data: &'a CodaCircuitData,
+    pub circuit: &'a Circuit,
+    pub summary_root: &'a SummaryRoot,
+    pub template_summary: &'a TemplateSummary,
+    pub signals: &'a Vec<CodaSignal>,
+    pub code_subcomponent_outputs: &'a Vec<(CodaSubcomponentName, Vec<CodaSignal>)>,
+    pub coda_data: &'a CodaCircuitData,
 }
 
 struct CodaExprContext<'a> {
     pub circuit: &'a Circuit,
     pub summary_root: &'a SummaryRoot,
     pub coda_circuit: &'a CodaCircuit,
-    coda_data: &'a CodaCircuitData,
+    pub code_subcomponents: &'a CodaSubcomponent,
+    pub coda_data: &'a CodaCircuitData,
 }
 
 impl<'a> CodaStatementContext<'a> {
@@ -835,33 +837,37 @@ fn coda_statement_print(context: &mut CodaStatementContext, instruction: &Box<In
 fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaExpr {
     use Instruction::*;
     match instruction.as_ref() {
-        Value(value) => CodaExpr::Literal(
-            context.coda_data.get_constant(value.value),
-            match &value.parse_as {
-                ValueType::BigInt => LiteralType::BigInt,
-                ValueType::U32 => LiteralType::U32,
-            },
-        ),
+        // Value(value) => CodaExpr::Literal(
+        //     context.coda_data.get_constant(value.value),
+        //     match &value.parse_as {
+        //         BigInt => LiteralType::BigInt,
+        //         U32 => LiteralType::U32,
+        //     },
+        // ),
+        Value(value) => {
+            let str = context.coda_data.get_constant(value.value);
+            CodaExpr::Constant(str)
+        }
         Load(load) => {
             use AddressType::*;
             match &load.address_type {
                 Variable => todo!(),
                 Signal => {
                     let i = get_location_rule_signal_index(&load.src);
-                    let name = context.coda_circuit.get_signal(i).name.clone();
-                    CodaExpr::Signal(name)
+                    let signal_name = context.coda_circuit.signals[i].name.clone();
+                    CodaExpr::Signal { signal_name }
                 }
                 SubcmpSignal { cmp_address, .. } => {
                     let cmp_i = match cmp_address.as_ref() {
                         Instruction::Value(value) => value.value,
                         _ => todo!(),
                     };
-                    let cmp = &context.coda_circuit.subcomponents[cmp_i];
-                    let cmp_name = cmp.name.clone();
+                    let subcomponent = &context.code_subcomponents[cmp_i];
+                    let subcomponent_name = subcomponent.name.clone();
                     let i = get_location_rule_signal_index(&load.src);
-                    let signal = &cmp.signals[i];
-                    let name = signal.name.clone();
-                    CodaExpr::SubcomponentSignal(cmp_name, name)
+                    let signal = &subcomponent.signals[i];
+                    let signal_name = signal.name.clone();
+                    CodaExpr::SubcomponentSignal { subcomponent_name, signal_name }
                 }
             }
         }
@@ -870,12 +876,12 @@ fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaE
             let e0 = Box::new(coda_expr(context, &compute.stack[0]));
             let e1 = Box::new(coda_expr(context, &compute.stack[1]));
             match compute.op {
-                Mul => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
-                Div => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
-                Add => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
-                Sub => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
-                Pow => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
-                Mod => CodaExpr::Binop(CodaBinopType::F, CodaBinop::Mul, e0, e1),
+                Mul => CodaExpr::Binop(CodaBinop::Mul, e0, e1),
+                Div => CodaExpr::Binop(CodaBinop::Div, e0, e1),
+                Add => CodaExpr::Binop(CodaBinop::Add, e0, e1),
+                Sub => CodaExpr::Binop(CodaBinop::Sub, e0, e1),
+                Pow => CodaExpr::Binop(CodaBinop::Pow, e0, e1),
+                Mod => CodaExpr::Binop(CodaBinop::Mod, e0, e1),
                 op => panic!("Operator not handled by Coda: {:?}", op),
             }
         }
@@ -896,7 +902,10 @@ fn get_location_rule_signal_index(location_rule: &LocationRule) -> usize {
     }
 }
 
-fn coda_statement(context: &mut CodaStatementContext, instruction: &Box<Instruction>) -> () {
+fn coda_statement(
+    context: &mut CodaStatementContext,
+    instruction: &Box<Instruction>,
+) -> CodaStatement {
     use Instruction::*;
     coda_statement_print(context, instruction);
     match instruction.as_ref() {
@@ -909,10 +918,11 @@ fn coda_statement(context: &mut CodaStatementContext, instruction: &Box<Instruct
             AddressType::Variable => todo!("store into a local variable"),
             AddressType::Signal => {
                 let i = get_location_rule_signal_index(&store.dest);
-                let name = context.coda_circuit.get_signal(i).name.clone();
+                let name = context.coda_circuit.signals[i].name.clone();
                 let expr = coda_expr(&context.to_coda_expr_context(), &store.src);
                 if store.dest_is_output {
-                    context.coda_circuit.define_output(name, expr)
+                    // context.coda_circuit.define_output(name, expr)
+                    context.coda_circuit.body
                 } else {
                     context.coda_circuit.define_intermediate(name, expr)
                 }

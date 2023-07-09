@@ -74,8 +74,8 @@ pub struct CodaCircuit {
 
 #[derive(Clone, Debug)]
 pub struct CodaSignal {
-    name: String,
-    visibility: CodaSignalVisibility,
+    pub name: CodaSignalName,
+    pub visibility: CodaSignalVisibility,
 }
 
 #[derive(Clone, Debug)]
@@ -112,22 +112,22 @@ pub enum CodaStatement {
 
 #[derive(Clone, Debug)]
 pub struct CodaSubcomponentName {
-    value: String,
+    pub value: String,
 }
 
 #[derive(Clone, Debug)]
 pub struct CodaGeneratorName {
-    value: String,
+    pub value: String,
 }
 
 #[derive(Clone, Debug)]
 pub struct CodaTemplateName {
-    value: String,
+    pub value: String,
 }
 
 #[derive(Clone, Debug)]
 pub struct CodaSignalName {
-    value: String,
+    pub value: String,
 }
 
 #[derive(Clone, Debug)]
@@ -175,8 +175,8 @@ impl CodaCompile for CodaProgram {
 }
 
 impl CodaCompile for CodaSignal {
-    fn coda_compile(&self, _is_generator: bool) -> String {
-        format!("({}, {})", self.name, "field")
+    fn coda_compile(&self, is_generator: bool) -> String {
+        format!("({}, {})", self.name.coda_compile(is_generator), "field")
     }
 }
 
@@ -212,7 +212,9 @@ impl CodaCompile for CodaCircuit {
                 CodaGeneratorName { value: self.name.clone() }.coda_compile(is_generator);
             let mut input_name_strings: Vec<String> = Vec::new();
             self.signals.iter().for_each(|signal| match signal.visibility {
-                CodaSignalVisibility::Input => input_name_strings.push(signal.name.clone()),
+                CodaSignalVisibility::Input => {
+                    input_name_strings.push(signal.name.coda_compile(is_generator))
+                }
                 CodaSignalVisibility::Output => (),
                 CodaSignalVisibility::Intermediate => (),
             });
