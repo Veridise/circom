@@ -495,39 +495,18 @@ impl WriteC for Circuit {
 // BEGIN Coda stuff
 // -----------------------------------------------------------------------------
 
-struct CodaStatementContext<'a> {
+struct CodaContext<'a> {
     pub circuit: &'a Circuit,
     pub summary_root: &'a SummaryRoot,
     pub template_summary: &'a TemplateSummary,
-    pub signals: &'a Vec<CodaSignal>,
-    pub code_subcomponent_outputs: &'a Vec<(CodaSubcomponentName, Vec<CodaSignal>)>,
+    pub coda_signals: &'a Vec<CodaSignal>,
+    pub coda_subcomponent_instances: Vec<CodaSubcomponentInstance>,
     pub coda_data: &'a CodaCircuitData,
-}
-
-struct CodaExprContext<'a> {
-    pub circuit: &'a Circuit,
-    pub summary_root: &'a SummaryRoot,
-    pub coda_circuit: &'a CodaCircuit,
-    pub code_subcomponents: &'a CodaSubcomponent,
-    pub coda_data: &'a CodaCircuitData,
-}
-
-impl<'a> CodaStatementContext<'a> {
-    pub fn to_coda_expr_context(&'a self) -> CodaExprContext<'a> {
-        CodaExprContext {
-            circuit: &self.circuit,
-            summary_root: &self.summary_root,
-            coda_circuit: &self.coda_circuit,
-            coda_data: &self.coda_data,
-        }
-    }
-
-    // pub fn get_te
 }
 
 /*
 // Compile an instruction as a CodaExpr.
-fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaExpr {
+fn coda_expr(context: &CodaContext, instruction: &Box<Instruction>) -> CodaExpr {
     use Instruction::*;
     match instruction.as_ref() {
         Value(value) => {
@@ -632,7 +611,7 @@ fn coda_statement(
     // circuit: &Circuit,
     // summary_root: &SummaryRoot,
     // template_summary: &TemplateSummary,
-    context: &mut CodaStatementContext,
+    context: &mut CodaContext,
     // coda_circuit: &mut CodaCircuit,
     instruction: &Box<Instruction>,
 ) -> () {
@@ -649,7 +628,7 @@ fn coda_statement(
                                 Value(value) => {
                                     let signal_i = value.value;
                                     // let signal = context.coda_circuit.get_signal(signal_i);
-                                    let term = coda_expr(&context.to_coda_expr_context(), &store.src);
+                                    let term = coda_expr(&context, &store.src);
                                     if store.dest_is_output {
                                         context.coda_circuit.define_output(signal_i, term)
                                     } else {
@@ -723,7 +702,7 @@ fn coda_statement(
 }
 */
 
-fn coda_location_string(context: &CodaExprContext, location_rule: &LocationRule) -> String {
+fn coda_location_string(_context: &CodaContext, location_rule: &LocationRule) -> String {
     use Instruction::*;
     use LocationRule::*;
     match &location_rule {
@@ -743,20 +722,17 @@ fn coda_location_string(context: &CodaExprContext, location_rule: &LocationRule)
     }
 }
 
-fn coda_address_type_string(context: &CodaExprContext, address_type: &AddressType) -> String {
+fn coda_address_type_string(context: &CodaContext, address_type: &AddressType) -> String {
     match &address_type {
         AddressType::Variable => format!("Variable"),
         AddressType::Signal => format!("Signal"),
-        AddressType::SubcmpSignal {
-            cmp_address,
-            uniform_parallel_value,
-            is_output,
-            input_information,
-        } => format!("SubcmpSignal({})", coda_expr_string(context, cmp_address)),
+        AddressType::SubcmpSignal { cmp_address, .. } => {
+            format!("SubcmpSignal({})", coda_expr_string(context, cmp_address))
+        }
     }
 }
 
-fn coda_expr_string(context: &CodaExprContext, instruction: &Box<Instruction>) -> String {
+fn coda_expr_string(context: &CodaContext, instruction: &Box<Instruction>) -> String {
     use Instruction::*;
     match instruction.as_ref() {
         Value(value) => {
@@ -781,27 +757,27 @@ fn coda_expr_string(context: &CodaExprContext, instruction: &Box<Instruction>) -
                 coda_expr_string(&context, compute.stack.get(1).unwrap())
             )
         }
-        Call(call) => todo!(),
-        Branch(branch) => todo!(),
-        Block(block) => todo!(),
+        Call(_call) => todo!(),
+        Branch(_branch) => todo!(),
+        Block(_block) => todo!(),
         _ => panic!("should not appear in expression: {:?}", instruction),
     }
 }
 
-fn coda_statement_print(context: &mut CodaStatementContext, instruction: &Box<Instruction>) -> () {
+fn coda_statement_print(context: &CodaContext, instruction: &Box<Instruction>) -> () {
     use Instruction::*;
     match instruction.as_ref() {
         Store(store) => {
             println!("Store:");
             println!(
                 "  • dest_address_type: {}",
-                coda_address_type_string(&context.to_coda_expr_context(), &store.dest_address_type)
+                coda_address_type_string(&context, &store.dest_address_type)
             );
             println!(
                 "  • dest: {}",
-                coda_location_string(&context.to_coda_expr_context(), &store.dest)
+                coda_location_string(&context, &store.dest)
             );
-            println!("  • src: {}", coda_expr_string(&context.to_coda_expr_context(), &store.src));
+            println!("  • src: {}", coda_expr_string(&context, &store.src));
         }
         Constraint(_constraint) =>
             // match constraint {
@@ -834,7 +810,7 @@ fn coda_statement_print(context: &mut CodaStatementContext, instruction: &Box<In
     }
 }
 
-fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaExpr {
+fn coda_expr(context: &CodaContext, instruction: &Box<Instruction>) -> CodaExpr {
     use Instruction::*;
     match instruction.as_ref() {
         // Value(value) => CodaExpr::Literal(
@@ -854,7 +830,7 @@ fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaE
                 Variable => todo!(),
                 Signal => {
                     let i = get_location_rule_signal_index(&load.src);
-                    let signal_name = context.coda_circuit.signals[i].name.clone();
+                    let signal_name = context.coda_signals[i].name.clone();
                     CodaExpr::Signal { signal_name }
                 }
                 SubcmpSignal { cmp_address, .. } => {
@@ -862,12 +838,14 @@ fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaE
                         Instruction::Value(value) => value.value,
                         _ => todo!(),
                     };
-                    let subcomponent = &context.code_subcomponents[cmp_i];
-                    let subcomponent_name = subcomponent.name.clone();
+
+                    let cmp = &context.coda_subcomponent_instances[cmp_i];
                     let i = get_location_rule_signal_index(&load.src);
-                    let signal = &subcomponent.signals[i];
-                    let signal_name = signal.name.clone();
-                    CodaExpr::SubcomponentSignal { subcomponent_name, signal_name }
+                    let signal = &cmp.signals[i];
+                    CodaExpr::SubcomponentSignal {
+                        subcomponent_name: cmp.name.clone(),
+                        signal_name: signal.name.clone(),
+                    }
                 }
             }
         }
@@ -885,27 +863,25 @@ fn coda_expr(context: &CodaExprContext, instruction: &Box<Instruction>) -> CodaE
                 op => panic!("Operator not handled by Coda: {:?}", op),
             }
         }
-        Call(call) => todo!(),
-        Branch(branch) => todo!(),
-        Block(block) => todo!(),
+        Call(_call) => todo!(),
+        Branch(_branch) => todo!(),
+        Block(_block) => todo!(),
         _ => panic!("should not appear in expression: {:?}", instruction),
     }
 }
 
 fn get_location_rule_signal_index(location_rule: &LocationRule) -> usize {
     match &location_rule {
-        LocationRule::Indexed { location, template_header } => match location.as_ref() {
+        LocationRule::Indexed { location, .. } => match location.as_ref() {
             Instruction::Value(value) => value.value,
             loc => panic!("Expected LocationRule's value to be a Value: {:?}", loc),
         },
-        LocationRule::Mapped { signal_code, indexes } => todo!(),
+        LocationRule::Mapped { .. } => todo!(),
     }
 }
 
-fn coda_statement(
-    context: &mut CodaStatementContext,
-    instruction: &Box<Instruction>,
-) -> CodaStatement {
+/*
+fn coda_statement(context: &mut CodaContext, instruction: &Box<Instruction>) -> CodaStatement {
     use Instruction::*;
     coda_statement_print(context, instruction);
     match instruction.as_ref() {
@@ -919,7 +895,7 @@ fn coda_statement(
             AddressType::Signal => {
                 let i = get_location_rule_signal_index(&store.dest);
                 let name = context.coda_circuit.signals[i].name.clone();
-                let expr = coda_expr(&context.to_coda_expr_context(), &store.src);
+                let expr = coda_expr(&context, &store.src);
                 if store.dest_is_output {
                     // context.coda_circuit.define_output(name, expr)
                     context.coda_circuit.body
@@ -942,7 +918,7 @@ fn coda_statement(
                 let i = get_location_rule_signal_index(&store.dest);
                 let signal = &cmp.signals[i];
                 let name = signal.name.clone();
-                let expr = coda_expr(&context.to_coda_expr_context(), &store.src);
+                let expr = coda_expr(&context, &store.src);
                 context.coda_circuit.define_subcomponent_input(cmp_name, name, expr)
             }
         },
@@ -953,8 +929,7 @@ fn coda_statement(
             let mut signals: Vec<CodaSignal> = Vec::new();
             for signal in &template_summary.signals {
                 signals.push(CodaSignal {
-                    name: signal.name.clone(),
-                    type_: CodaType::Field,
+                    name: CodaSignalName { value: signal.name.clone() },
                     visibility: CodaSignalVisibility::parse(&signal.visibility),
                 });
             }
@@ -975,6 +950,98 @@ fn coda_statement(
         Load(_) => panic!("Should not appear in statement: {:?}", instruction),
         Compute(_) => panic!("Should not appear in statement: {:?}", instruction),
         Call(_) => panic!("Should not appear in statement: {:?}", instruction),
+    }
+}
+*/
+
+fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> CodaStatement {
+    if instructions.len() == 0 {
+        CodaStatement::End {
+            output_names: context
+                .coda_signals
+                .iter()
+                .filter_map(|signal| match signal.visibility {
+                    CodaSignalVisibility::Input => {
+                        println!("not output signal: {:?}", signal);
+                        None
+                    }
+                    CodaSignalVisibility::Output => Some(signal.name.clone()),
+                    CodaSignalVisibility::Intermediate => None,
+                })
+                .collect(),
+        }
+    } else {
+        use Instruction::*;
+        let instruction = &instructions[0];
+        let next_instructions = &instructions[1..];
+        coda_statement_print(context, instruction);
+        match instruction.as_ref() {
+            Constraint(constraint) => match constraint {
+                // Just skip over this wrapper
+                ConstraintBucket::Substitution(instruction) => coda_statement(context, std::slice::from_ref(instruction)),
+                ConstraintBucket::Equality(instruction) => coda_statement(context, std::slice::from_ref(instruction)),
+            },
+            Store(store) => match &store.dest_address_type {
+                AddressType::Variable => todo!("store into a local variable"),
+                AddressType::Signal => {
+                    let i = get_location_rule_signal_index(&store.dest);
+                    let signal_name = context.coda_signals[i].name.clone();
+                    let expr = coda_expr(&context, &store.src);
+                    let next = coda_statement(context, next_instructions);
+                    CodaStatement::Assignment { target:  CodaAssignmentTarget::Signal { signal_name }, value: expr, next: Box::new(next) }
+                }
+                AddressType::SubcmpSignal {
+                    cmp_address, ..
+                } => {
+                    let cmp_i = match cmp_address.as_ref() {
+                        Instruction::Value(value) => value.value,
+                        _ => panic!("The `cmp_address` of an `AddressType::SubcmpSignal` should be a Value: {:?}", cmp_address),
+                    };
+                    let instance = &context.coda_subcomponent_instances[cmp_i];
+                    let signal_i = get_location_rule_signal_index(&store.dest);
+                    let signal = &instance.signals[signal_i];
+                    let name = signal.name.clone();
+                    let expr = coda_expr(&context, &store.src);
+                    let next = coda_statement(context, next_instructions);
+                    CodaStatement::Assignment { target: CodaAssignmentTarget::SubcomponentSignal { subcomponent_name: instance.name.clone(), signal_name: name  }, value: expr , next: Box::new(next) }
+                }
+            },
+            CreateCmp(create_cmp) => {
+                let cmp_i = create_cmp.template_id;
+                let template_summary = &context.summary_root.components[cmp_i];
+                let template_name = CodaTemplateName { value : template_summary.name.clone() };
+                let instance_name = CodaSubcomponentName{ value: create_cmp.name_subcomponent.clone() };
+                let mut signals: Vec<CodaSignal> = Vec::new();
+                for signal in &template_summary.signals {
+                    signals.push(CodaSignal {
+                        name: CodaSignalName { value: signal.name.clone() },
+                        visibility: CodaSignalVisibility::parse(&signal.visibility),
+                    });
+                }
+                // TODO: what about args?
+                let instance = CodaSubcomponentInstance {name: instance_name, template_name, signals, args: Vec::new() };
+
+                let next_context = &CodaContext { coda_subcomponent_instances: [context.coda_subcomponent_instances.clone(), vec![instance.clone()]].concat(), ..*context.clone() };
+
+                let next = coda_statement(next_context, next_instructions);
+
+                CodaStatement::Instantiate { instance, next: Box::new(next) }
+            }
+
+            Branch(_) => todo!("I will need to modify how CodaCircuit is represented, since currently is doesn't allow for branching assignment to signals"),
+            Block(_) => todo!("what exaclty is the significance of blocks? do they only exist for the sake of scoping, so I can ignore them for compiling to Coda?"),
+            Nop(_) => coda_statement(context, next_instructions),
+            // These cases are not handled by Coda
+            Loop(_) => panic!("Coda doesn't handle this because all loops should be unrolled"),
+            Log(_) => panic!("Coda ignores this"),
+            Assert(_) => panic!("Coda ignores this"),
+            Return(_) => panic!("Coda ignores this because it should only appear in witness generator"),
+            // These cases should not appear in a circuit-level statement.
+            Value(_) => panic!("Should not appear in statement: {:?}", instruction),
+            Load(_) => panic!("Should not appear in statement: {:?}", instruction),
+            Compute(_) => panic!("Should not appear in statement: {:?}", instruction),
+            Call(_) => panic!("Should not appear in statement: {:?}", instruction),
+        }
     }
 }
 
@@ -999,36 +1066,34 @@ impl WriteCoda for Circuit {
             println!("========================================================");
 
             let template_summary = summary_root.components.get(template_i).unwrap();
-            let mut coda_circuit = CodaCircuit::new(template.name.clone());
+
+            let mut coda_signals: Vec<CodaSignal> = Vec::new();
 
             for signal in &template_summary.signals {
-                match CodaSignalVisibility::parse(&signal.visibility) {
-                    CodaSignalVisibility::Input => {
-                        coda_circuit.add_input(signal.name.clone(), CodaType::Field)
-                    }
-                    CodaSignalVisibility::Output => {
-                        coda_circuit.add_output(signal.name.clone(), CodaType::Field)
-                    }
-                    CodaSignalVisibility::Intermediate => {
-                        coda_circuit.add_intermediate(signal.name.clone(), CodaType::Field)
-                    }
-                }
-                println!("Signal {} {}", signal.visibility, signal.name);
+                let visibility = CodaSignalVisibility::parse(&signal.visibility);
+                coda_signals.push(CodaSignal {
+                    name: CodaSignalName { value: signal.name.clone() },
+                    visibility,
+                });
+                // println!("Signal {} {}", signal.visibility, signal.name);
             }
 
-            for instruction in &template.body {
-                let mut context = CodaStatementContext {
-                    circuit: self,
-                    summary_root: &summary_root,
-                    template_summary: &template_summary,
-                    coda_circuit: &mut coda_circuit,
-                    coda_data: &self.coda_data,
-                };
-                coda_statement(&mut context, instruction);
-            }
+            let context = CodaContext {
+                circuit: self,
+                summary_root: &summary_root,
+                template_summary: &template_summary,
+                coda_subcomponent_instances: Vec::new(),
+                coda_signals: &coda_signals,
+                coda_data: &self.coda_data,
+            };
+            // let instructions: LinkedList<&Box<Instruction>> = template.body.iter().collect();
+            let coda_body = coda_statement(&context, &template.body);
 
             println!("========================================================");
             println!("[CODA] END Printing Template");
+
+            let coda_circuit =
+                CodaCircuit { name: template.name.clone(), signals: coda_signals, body: coda_body };
 
             println!("[CODA] coda_circuit: {:?}", coda_circuit);
             coda_program.coda_circuits.push(coda_circuit)

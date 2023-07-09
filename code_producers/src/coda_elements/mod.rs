@@ -65,6 +65,12 @@ pub struct CodaProgram {
     pub coda_circuits: Vec<CodaCircuit>,
 }
 
+impl Default for CodaProgram {
+    fn default() -> CodaProgram {
+        CodaProgram { coda_circuits: Vec::new() }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct CodaCircuit {
     pub name: String,
@@ -85,34 +91,43 @@ pub enum CodaSignalVisibility {
     Intermediate,
 }
 
+impl CodaSignalVisibility {
+    pub fn parse(s: &str) -> CodaSignalVisibility {
+        use CodaSignalVisibility::*;
+        if s == "input" {
+            Input
+        } else if s == "output" {
+            Output
+        } else if s == "inter" {
+            Input
+        } else {
+            panic!("Failed to parse CodaSignalVisibility: \"{}\"", s)
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum CodaStatement {
     // Assign target to source.
-    Assignment {
-        target: CodaAssignmentTarget,
-        value: CodaExpr,
-        next: Box<CodaStatement>,
-    },
+    Assignment { target: CodaAssignmentTarget, value: CodaExpr, next: Box<CodaStatement> },
     // Instantiate a template as a subcomponent.
-    Instantiate {
-        output_names: Vec<CodaSignalName>,
-        subcomponent_name: CodaSubcomponentName,
-        template_name: CodaTemplateName,
-        args: Vec<String>, // HENRY: these are Strings because they must be literal values (?)
-        next: Box<CodaStatement>,
-    },
+    Instantiate { instance: CodaSubcomponentInstance, next: Box<CodaStatement> },
     // Branch on a condition.
-    Branch {
-        condition: CodaExpr,
-        then_: Box<CodaStatement>,
-        else_: Box<CodaStatement>,
-    },
-    End,
+    Branch { condition: CodaExpr, then_: Box<CodaStatement>, else_: Box<CodaStatement> },
+    End { output_names: Vec<CodaSignalName> },
 }
 
 #[derive(Clone, Debug)]
 pub struct CodaSubcomponentName {
     pub value: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct CodaSubcomponentInstance {
+    pub name: CodaSubcomponentName,
+    pub template_name: CodaTemplateName,
+    pub signals: Vec<CodaSignal>,
+    pub args: Vec<String>, // must be literals
 }
 
 #[derive(Clone, Debug)]
@@ -158,6 +173,10 @@ pub enum CodaBinop {
 // CodaCompile
 // -----------------------------------------------------------------------------
 
+pub fn coda_compile_program(program: &CodaProgram) -> String {
+    program.coda_compile(false)
+}
+
 trait CodaCompile {
     fn coda_compile(&self, is_generator: bool) -> String;
 }
@@ -176,13 +195,13 @@ impl CodaCompile for CodaProgram {
 
 impl CodaCompile for CodaSignal {
     fn coda_compile(&self, is_generator: bool) -> String {
-        format!("({}, {})", self.name.coda_compile(is_generator), "field")
+        format!("(\"{}\", {})", self.name.coda_compile(is_generator), "field")
     }
 }
 
 impl CodaCompile for CodaGeneratorName {
     fn coda_compile(&self, _is_generator: bool) -> String {
-        self.value.clone()
+        format!("generator___{}", self.value.clone())
     }
 }
 
@@ -206,7 +225,7 @@ impl CodaCompile for CodaCircuit {
             let inputs_string = inputs_strings.join("; ");
             let outputs_string = outputs_strings.join("; ");
             let body_string = self.body.coda_compile(is_generator);
-            format!("let {} = Hoare_circuit {{ name= {}; inputs= {}; outputs= {}; preconditions= []; postcondition= []; body= {} }}", template_name_string, &self.name, &inputs_string, &outputs_string, &body_string)
+            format!("let {} = Hoare_circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; preconditions= []; postcondition= []; body= {} }}", template_name_string, &self.name, &inputs_string, &outputs_string, &body_string)
         } else {
             let generator_name_string =
                 CodaGeneratorName { value: self.name.clone() }.coda_compile(is_generator);
@@ -236,7 +255,7 @@ impl CodaCompile for CodaAssignmentTarget {
         match self {
             CodaAssignmentTarget::Signal { signal_name } => signal_name.coda_compile(is_generator),
             CodaAssignmentTarget::SubcomponentSignal { subcomponent_name, signal_name } => format!(
-                "{}__{}",
+                "{}___{}",
                 subcomponent_name.coda_compile(is_generator),
                 signal_name.coda_compile(is_generator)
             ),
@@ -246,13 +265,13 @@ impl CodaCompile for CodaAssignmentTarget {
 
 impl CodaCompile for CodaTemplateName {
     fn coda_compile(&self, _is_generator: bool) -> String {
-        format!("template_{}", self.value)
+        format!("template___{}", self.value)
     }
 }
 
 impl CodaCompile for CodaSubcomponentName {
     fn coda_compile(&self, _is_generator: bool) -> String {
-        format!("subcomponent_{}", self.value)
+        format!("subcomponent___{}", self.value)
     }
 }
 
@@ -261,35 +280,33 @@ impl CodaCompile for CodaStatement {
         match self {
             CodaStatement::Assignment { target, value, next } => {
                 format!(
-                    "let {} = {} in {}",
+                    "let {} = ({}) in ({})",
                     target.coda_compile(is_generator),
                     value.coda_compile(is_generator),
                     next.coda_compile(is_generator)
                 )
             }
-            CodaStatement::Instantiate {
-                output_names,
-                subcomponent_name,
-                template_name,
-                args,
-                next,
-            } => {
-                let output_string = output_names
+            CodaStatement::Instantiate { instance, next } => {
+                let output_string = instance
+                    .signals
                     .iter()
-                    .map(|signal_name| {
-                        CodaAssignmentTarget::SubcomponentSignal {
-                            subcomponent_name: subcomponent_name.clone(),
-                            signal_name: signal_name.clone(),
-                        }
-                        .coda_compile(is_generator)
+                    .filter_map(|signal| match signal.visibility {
+                        CodaSignalVisibility::Output => Some(
+                            CodaAssignmentTarget::SubcomponentSignal {
+                                subcomponent_name: instance.name.clone(),
+                                signal_name: signal.name.clone(),
+                            }
+                            .coda_compile(is_generator),
+                        ),
+                        _ => None,
                     })
                     .collect::<Vec<String>>()
                     .join(", ");
                 format!(
                     "let ({}) = {} {} in {}",
                     output_string,
-                    template_name.coda_compile(is_generator),
-                    args.join(" "),
+                    instance.template_name.coda_compile(is_generator),
+                    instance.args.join(" "),
                     next.coda_compile(is_generator)
                 )
             }
@@ -299,7 +316,13 @@ impl CodaCompile for CodaStatement {
                 then_.coda_compile(is_generator),
                 else_.coda_compile(is_generator)
             ),
-            CodaStatement::End => String::new(),
+            CodaStatement::End { output_names } => {
+                let names: Vec<String> = output_names
+                    .iter()
+                    .map(|signal_name| signal_name.coda_compile(is_generator))
+                    .collect();
+                format!("({})", names.join(", "))
+            }
         }
     }
 }
