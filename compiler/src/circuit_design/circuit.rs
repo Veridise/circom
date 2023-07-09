@@ -978,8 +978,8 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
         match instruction.as_ref() {
             Constraint(constraint) => match constraint {
                 // Just skip over this wrapper
-                ConstraintBucket::Substitution(instruction) => coda_statement(context, std::slice::from_ref(instruction)),
-                ConstraintBucket::Equality(instruction) => coda_statement(context, std::slice::from_ref(instruction)),
+                ConstraintBucket::Substitution(instruction) => coda_statement(context, [std::slice::from_ref(instruction), next_instructions].concat().as_slice()),
+                ConstraintBucket::Equality(instruction) => coda_statement(context, [std::slice::from_ref(instruction), next_instructions].concat().as_slice()),
             },
             Store(store) => match &store.dest_address_type {
                 AddressType::Variable => todo!("store into a local variable"),

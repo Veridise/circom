@@ -98,8 +98,8 @@ impl CodaSignalVisibility {
             Input
         } else if s == "output" {
             Output
-        } else if s == "inter" {
-            Input
+        } else if s == "intermediate" {
+            Intermediate
         } else {
             panic!("Failed to parse CodaSignalVisibility: \"{}\"", s)
         }
