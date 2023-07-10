@@ -2,7 +2,8 @@ use std::fmt::{Display, Formatter};
 use compiler::intermediate_representation::ir_interface::{ValueBucket, ValueType};
 use compiler::num_bigint::BigInt;
 use compiler::num_traits::{One, ToPrimitive, Zero};
-use std::ops::{Add, Div, Mul, Sub};
+use circom_algebra::modular_arithmetic;
+use circom_algebra::modular_arithmetic::ArithmeticError;
 use compiler::intermediate_representation::new_id;
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
 
@@ -69,18 +70,12 @@ impl Value {
         }
     }
 
-    pub fn to_bool(&self) -> bool {
+    pub fn to_bool(&self, field: &BigInt) -> bool {
         match self {
             KnownU32(0) => false,
             KnownU32(1) => true,
             KnownBigInt(n) => {
-                if n.is_zero() {
-                    return false;
-                }
-                if n.is_one() {
-                    return true;
-                }
-                panic!("Attempted to convert a bigint that does not have the value either 0 or 1!")
+                modular_arithmetic::as_bool(n, field)
             }
             _ => panic!(
                 "Attempted to convert a value that cannot be converted to boolean! {:?}",
@@ -119,53 +114,59 @@ impl Value {
     }
 }
 
-pub fn add_value(lhs: &Value, rhs: &Value) -> Value {
+#[inline]
+fn wrap_op(
+    lhs: &Value,
+    rhs: &Value,
+    field: &BigInt,
+    u32_op: impl Fn(&usize, &usize) -> usize,
+    bigint_op: impl Fn(&BigInt, &BigInt, &BigInt) -> BigInt
+) -> Value {
     match (lhs, rhs) {
         (Unknown, _) => Unknown,
         (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(lhs + rhs),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(BigInt::from(*lhs).add(rhs)),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(lhs.add(rhs)),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(lhs.add(BigInt::from(*rhs))),
+        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(u32_op(lhs, rhs)),
+        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(bigint_op(&BigInt::from(*lhs), rhs, field)),
+        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(bigint_op(lhs, rhs, field)),
+        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(bigint_op(lhs, &BigInt::from(*rhs), field)),
     }
 }
 
-pub fn sub_value(lhs: &Value, rhs: &Value) -> Value {
+#[inline]
+fn wrap_op_result(
+    lhs: &Value,
+    rhs: &Value,
+    field: &BigInt,
+    u32_op: impl Fn(&usize, &usize) -> usize,
+    bigint_op: impl Fn(&BigInt, &BigInt, &BigInt) -> Result<BigInt, ArithmeticError>
+) -> Value {
     match (lhs, rhs) {
         (Unknown, _) => Unknown,
         (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(lhs - rhs),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(BigInt::from(*lhs).sub(rhs)),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(lhs.sub(rhs)),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(lhs.sub(BigInt::from(*rhs))),
+        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(u32_op(lhs, rhs)),
+        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(bigint_op(&BigInt::from(*lhs), rhs, field).ok().unwrap()),
+        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(bigint_op(lhs, rhs, field).ok().unwrap()),
+        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(bigint_op(lhs, &BigInt::from(*rhs), field).ok().unwrap()),
     }
 }
 
-pub fn mul_value(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(lhs * rhs),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(BigInt::from(*lhs).mul(rhs)),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(lhs.mul(rhs)),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(lhs.mul(BigInt::from(*rhs))),
-    }
+pub fn add_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| x + y, modular_arithmetic::add)
 }
 
-fn fr_div(lhs: &BigInt, rhs: &BigInt) -> BigInt {
-    let inv = BigInt::from(1).div(rhs);
-    lhs.mul(inv)
+pub fn sub_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| x - y, modular_arithmetic::sub)
+
 }
 
-pub fn div_value(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(lhs / rhs),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(fr_div(&BigInt::from(*lhs), rhs)),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(fr_div(lhs, rhs)),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(fr_div(lhs, &BigInt::from(*rhs))),
-    }
+pub fn mul_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| x * y, modular_arithmetic::mul)
+
+}
+
+pub fn div_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op_result(lhs, rhs, field, |x, y| x / y, modular_arithmetic::div)
+
 }
 
 fn fr_pow(lhs: &BigInt, rhs: &BigInt) -> BigInt {
@@ -182,197 +183,84 @@ fn fr_pow(lhs: &BigInt, rhs: &BigInt) -> BigInt {
     res
 }
 
-pub fn pow_value(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(lhs.pow(*rhs as u32)),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(fr_pow(&BigInt::from(*lhs), rhs)),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(fr_pow(lhs, rhs)),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(fr_pow(lhs, &BigInt::from(*rhs))),
-    }
+pub fn pow_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| x.pow(*y as u32), modular_arithmetic::pow)
 }
 
-pub fn int_div_value(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(lhs / rhs),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(BigInt::from(*lhs).div(rhs)),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(lhs.div(rhs)),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(lhs.div(BigInt::from(*rhs))),
-    }
+pub fn int_div_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op_result(lhs, rhs, field, |x, y| x / y, modular_arithmetic::idiv)
 }
 
-pub fn mod_value(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(lhs % rhs),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(BigInt::from(*lhs) % (rhs)),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(lhs % (rhs)),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(lhs % (BigInt::from(*rhs))),
-    }
+pub fn mod_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op_result(lhs, rhs, field, |x, y| x % y, modular_arithmetic::mod_op)
 }
 
-pub fn shift_l_value(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(lhs << rhs),
-        (KnownU32(lhs), KnownBigInt(rhs)) => {
-            KnownBigInt(BigInt::from(*lhs) << rhs.to_u64().unwrap() as usize)
-        }
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => {
-            KnownBigInt(lhs << (rhs.to_u64().unwrap() as usize))
-        }
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(lhs << *rhs),
-    }
+pub fn shift_l_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op_result(lhs, rhs, field, |x, y| x << y, modular_arithmetic::shift_l)
 }
 
-pub fn shift_r_value(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(lhs >> rhs),
-        (KnownU32(lhs), KnownBigInt(rhs)) => {
-            KnownBigInt(BigInt::from(*lhs) >> (rhs.to_u64().unwrap() as usize))
-        }
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => {
-            KnownBigInt(lhs >> (rhs.to_u64().unwrap() as usize))
-        }
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(lhs >> *rhs),
-    }
+pub fn shift_r_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op_result(lhs, rhs, field, |x, y| x >> y, modular_arithmetic::shift_r)
 }
 
-pub fn lesser_eq(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32((lhs <= rhs).into()),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownU32((BigInt::from(*lhs) <= *rhs).into()),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownU32((lhs <= rhs).into()),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownU32((lhs <= &BigInt::from(*rhs)).into()),
-    }
+pub fn lesser_eq(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| (x <= y).into(), modular_arithmetic::lesser_eq)
 }
 
-pub fn greater_eq(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32((lhs >= rhs).into()),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownU32((BigInt::from(*lhs) >= *rhs).into()),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownU32((lhs >= rhs).into()),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownU32((lhs >= &BigInt::from(*rhs)).into()),
-    }
+pub fn greater_eq(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| (x >= y).into(), modular_arithmetic::greater_eq)
 }
 
-pub fn lesser(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32((lhs < rhs).into()),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownU32((BigInt::from(*lhs) < *rhs).into()),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownU32((lhs < rhs).into()),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownU32((lhs < &BigInt::from(*rhs)).into()),
-    }
+pub fn lesser(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| (x < y).into(), modular_arithmetic::lesser)
 }
 
-pub fn greater(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32((lhs > rhs).into()),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownU32((BigInt::from(*lhs) > *rhs).into()),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownU32((lhs > rhs).into()),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownU32((lhs > &BigInt::from(*rhs)).into()),
-    }
+pub fn greater(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| (x > y).into(), modular_arithmetic::greater)
+
 }
 
-pub fn eq1(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32((lhs == rhs).into()),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownU32((BigInt::from(*lhs) == *rhs).into()),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownU32((lhs == rhs).into()),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownU32((lhs == &BigInt::from(*rhs)).into()),
-    }
+pub fn eq1(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| (x == y).into(), modular_arithmetic::eq)
 }
 
-pub fn not_eq(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32((lhs != rhs).into()),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownU32((BigInt::from(*lhs) != *rhs).into()),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownU32((lhs != rhs).into()),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownU32((lhs != &BigInt::from(*rhs)).into()),
-    }
+pub fn not_eq(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| (x != y).into(), modular_arithmetic::not_eq)
 }
 
-pub fn bool_or_value(lhs: Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (lhs, rhs) => KnownU32((lhs.to_bool() || rhs.to_bool()).into()),
-    }
+pub fn bool_or_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| (*x != 0 || *y != 0).into(), modular_arithmetic::bool_or)
 }
 
-pub fn bool_and_value(lhs: Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (lhs, rhs) => KnownU32((lhs.to_bool() && rhs.to_bool()).into()),
-    }
+pub fn bool_and_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| (*x != 0 && *y != 0).into(), modular_arithmetic::bool_and)
 }
 
-pub fn bit_or_value(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32(lhs | rhs),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(BigInt::from(*lhs) | rhs),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(lhs | rhs),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(lhs | &BigInt::from(*rhs)),
-    }
+pub fn bit_or_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| x | y, modular_arithmetic::bit_or)
 }
 
-pub fn bit_and_value(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32((lhs & rhs).into()),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(BigInt::from(*lhs) & rhs),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(lhs & rhs),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(lhs & &BigInt::from(*rhs)),
-    }
+pub fn bit_and_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| x & y, modular_arithmetic::bit_and)
 }
 
-pub fn bit_xor_value(lhs: &Value, rhs: &Value) -> Value {
-    match (lhs, rhs) {
-        (Unknown, _) => Unknown,
-        (_, Unknown) => Unknown,
-        (KnownU32(lhs), KnownU32(rhs)) => KnownU32((lhs ^ rhs).into()),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(BigInt::from(*lhs) ^ rhs),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(lhs ^ rhs),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(lhs ^ &BigInt::from(*rhs)),
-    }
+pub fn bit_xor_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
+    wrap_op(lhs, rhs, field, |x, y| x ^ y, modular_arithmetic::bit_xor)
 }
 
-pub fn prefix_sub(v: &Value) -> Value {
+pub fn prefix_sub(v: &Value, field: &BigInt) -> Value {
     match v {
         Unknown => Unknown,
         KnownU32(_n) => panic!("We cannot get the negative of an unsigned integer!"),
-        KnownBigInt(n) => KnownBigInt(-n.clone()),
+        KnownBigInt(n) => KnownBigInt(modular_arithmetic::prefix_sub(n, field))
     }
 }
 
-pub fn complement(v: &Value) -> Value {
+pub fn complement(v: &Value, field: &BigInt) -> Value {
     match v {
         Unknown => Unknown,
         KnownU32(n) => KnownU32(!(*n)),
-        KnownBigInt(n) => KnownBigInt(!n.clone()),
+        KnownBigInt(n) => KnownBigInt(modular_arithmetic::complement_256(n, field)),
     }
 }
 
@@ -410,11 +298,11 @@ impl Default for &Value {
     }
 }
 
-pub fn resolve_operation(op: fn(&Value, &Value) -> Value, p: &Value, stack: &[Value]) -> Value {
+pub fn resolve_operation(op: fn(&Value, &Value, &BigInt) -> Value, p: &BigInt, stack: &[Value]) -> Value {
     assert!(stack.len() > 0);
     let mut acc = stack[0].clone();
     for i in &stack[1..] {
-        let result = mod_value(&op(&acc, i), p);
+        let result = op(&acc, i, p);
         acc = result.clone();
     }
     acc.clone()
