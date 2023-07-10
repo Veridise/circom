@@ -9,20 +9,30 @@
     utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        llvmPackages_13 = pkgs.llvmPackages_13;
         naersk-lib = pkgs.callPackage naersk { };
-      in
-      {
-        defaultPackage = naersk-lib.buildPackage {
+      in rec {
+        defaultPackage = with pkgs; naersk-lib.buildPackage {
+           name = "circom";
            pname = "circom";
            src = ./.;
 
-           buildInputs = [ llvmPackages_13.libllvm pkgs.libffi pkgs.libiconv pkgs.libxml2 pkgs.zlib ]
-                ++ pkgs.lib.optional pkgs.stdenv.isDarwin [ pkgs.darwin.apple_sdk.frameworks.Security ];
+           buildInputs = [ llvmPackages_13.libllvm libffi libiconv libxml2 zlib  ];
+           installCheckInputs = [ lit ];
+
+           installCheckPhase = ''
+               runHook preCheck
+               export PATH="$out"/bin:"$PATH"
+               lit -v --no-progress tests
+               runHook postCheck
+             '';
+
+           doCheck = true;
+
            LLVM_SYS_130_PREFIX = "${llvmPackages_13.libllvm.dev}";
          };
+
         devShell = with pkgs; mkShell {
-          buildInputs = [ cargo rustc rustfmt pre-commit rustPackages.clippy ];
+          buildInputs = [ cargo rustc rustfmt pre-commit rustPackages.clippy lit ];
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
         };
       });
