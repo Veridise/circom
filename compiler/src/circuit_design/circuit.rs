@@ -1005,18 +1005,18 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
                     let expr = coda_expr(&context, &store.src);
                     let next = coda_statement(context, next_instructions);
                     match input_information {
-                        InputInformation::Input { status } if *status == StatusInput::Last => CodaStatement::Assignment { target: CodaAssignmentTarget::SubcomponentSignal { subcomponent_name: instance.name.clone(), signal_name: name }, value: expr, next: Box::new(next) },
-                        _  => CodaStatement::Assignment { target: CodaAssignmentTarget::SubcomponentSignal { subcomponent_name: instance.name.clone(), signal_name: name }, value: expr, next: Box::new(CodaStatement::Instantiate { instance: instance.clone(), next: Box::new(next) }) },
+                        InputInformation::Input { status } if *status == StatusInput::Last => CodaStatement::Assignment { target: CodaAssignmentTarget::SubcomponentSignal { subcomponent_name: instance.name.clone(), signal_name: name }, value: expr, next: Box::new(CodaStatement::Instantiate { instance: instance.clone(), next: Box::new(next) }) },
+                        _  => CodaStatement::Assignment { target: CodaAssignmentTarget::SubcomponentSignal { subcomponent_name: instance.name.clone(), signal_name: name }, value: expr, next: Box::new(next) },
                     }
                 }
             },
             CreateCmp(create_cmp) => {
-                println!("create_cmp: {:?}", create_cmp);
-                let cmp_i = match create_cmp.sub_cmp_id.as_ref() {
-                    Instruction::Value(ValueBucket { value, .. }) => value.clone(),
-                    _ => panic!("`create_cmp.sub_cmp_id` must be a `Value`: {:?}", create_cmp)
-                };
-                let template_summary = &context.summary_root.components[cmp_i];
+                // println!("create_cmp: {:?}", create_cmp);
+                // println!("components: {:?}", &context.summary_root.components.iter().map(|cmp| &cmp.name).collect::<Vec<&String>>());
+
+                // HENRY: this is a temporary hack, since I can't figure out why the order of the components in the summary_root is in a random order.
+                let template_summary = &context.summary_root.components.iter().find(|cmp| create_cmp.symbol.starts_with::<&String>(&cmp.name)).unwrap();
+
                 let template_name = CodaTemplateName { value : template_summary.name.clone() };
                 let instance_name = CodaSubcomponentName{ value: create_cmp.name_subcomponent.clone() };
                 let mut signals: Vec<CodaSignal> = Vec::new();
@@ -1033,7 +1033,8 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
 
                 let next = coda_statement(next_context, next_instructions);
 
-                CodaStatement::Instantiate { instance, next: Box::new(next) }
+                // CodaStatement::Instantiate { instance, next: Box::new(next) }
+                next
             }
 
             Branch(_) => todo!("I will need to modify how CodaCircuit is represented, since currently is doesn't allow for branching assignment to signals"),

@@ -358,7 +358,7 @@ impl CodaCompile for CodaStatement {
                     .collect::<Vec<String>>()
                     .join(", ");
                 format!(
-                    "\n  let ({}) = {} {} {} in {}",
+                    "\n  let (* component *) ({}) = {} {} {} in {}",
                     outputs_string,
                     instance.template_name.to_coda_body_name().coda_compile(),
                     instance.args.join(" "),
