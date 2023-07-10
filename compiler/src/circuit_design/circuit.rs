@@ -991,8 +991,9 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
                     CodaStatement::Assignment { target:  CodaAssignmentTarget::Signal { signal_name }, value: expr, next: Box::new(next) }
                 }
                 AddressType::SubcmpSignal {
-                    cmp_address, ..
+                    cmp_address, input_information, ..
                 } => {
+
                     let cmp_i = match cmp_address.as_ref() {
                         Instruction::Value(value) => value.value,
                         _ => panic!("The `cmp_address` of an `AddressType::SubcmpSignal` should be a Value: {:?}", cmp_address),
@@ -1003,11 +1004,20 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
                     let name = signal.name.clone();
                     let expr = coda_expr(&context, &store.src);
                     let next = coda_statement(context, next_instructions);
-                    CodaStatement::Assignment { target: CodaAssignmentTarget::SubcomponentSignal { subcomponent_name: instance.name.clone(), signal_name: name  }, value: expr , next: Box::new(next) }
+                    let next_next = CodaStatement::Assignment
+                        { target: CodaAssignmentTarget::SubcomponentSignal { subcomponent_name: instance.name.clone(), signal_name: name  }, value: expr , next: Box::new(next) };
+                    match input_information {
+                        InputInformation::Input { status } if *status == StatusInput::Last => CodaStatement::Instantiate { instance: instance.clone(), next: Box::new(next_next) },
+                        _  => next_next,
+                    }
                 }
             },
             CreateCmp(create_cmp) => {
-                let cmp_i = create_cmp.template_id;
+                println!("create_cmp: {:?}", create_cmp);
+                let cmp_i = match create_cmp.sub_cmp_id.as_ref() {
+                    Instruction::Value(ValueBucket { value, .. }) => value.clone(),
+                    _ => panic!("`create_cmp.sub_cmp_id` must be a `Value`: {:?}", create_cmp)
+                };
                 let template_summary = &context.summary_root.components[cmp_i];
                 let template_name = CodaTemplateName { value : template_summary.name.clone() };
                 let instance_name = CodaSubcomponentName{ value: create_cmp.name_subcomponent.clone() };

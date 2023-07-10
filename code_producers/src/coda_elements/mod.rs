@@ -254,18 +254,24 @@ impl CodaCompile for CodaAssignmentTarget {
     fn coda_compile(&self, is_generator: bool) -> String {
         match self {
             CodaAssignmentTarget::Signal { signal_name } => signal_name.coda_compile(is_generator),
-            CodaAssignmentTarget::SubcomponentSignal { subcomponent_name, signal_name } => format!(
-                "{}___{}",
-                subcomponent_name.coda_compile(is_generator),
-                signal_name.coda_compile(is_generator)
-            ),
+            CodaAssignmentTarget::SubcomponentSignal { subcomponent_name, signal_name } => {
+                format!(
+                    "{}___{}",
+                    subcomponent_name.coda_compile(is_generator),
+                    signal_name.coda_compile(is_generator)
+                )
+            }
         }
     }
 }
 
 impl CodaCompile for CodaTemplateName {
-    fn coda_compile(&self, _is_generator: bool) -> String {
-        format!("template___{}", self.value)
+    fn coda_compile(&self, is_generator: bool) -> String {
+        if !is_generator {
+            format!("template___{}", self.value)
+        } else {
+            format!("generator___{}", self.value)
+        }
     }
 }
 
@@ -280,14 +286,14 @@ impl CodaCompile for CodaStatement {
         match self {
             CodaStatement::Assignment { target, value, next } => {
                 format!(
-                    "let {} = ({}) in ({})",
+                    "let {} = {} in {}",
                     target.coda_compile(is_generator),
                     value.coda_compile(is_generator),
                     next.coda_compile(is_generator)
                 )
             }
             CodaStatement::Instantiate { instance, next } => {
-                let output_string = instance
+                let outputs_string = instance
                     .signals
                     .iter()
                     .filter_map(|signal| match signal.visibility {
@@ -302,16 +308,32 @@ impl CodaCompile for CodaStatement {
                     })
                     .collect::<Vec<String>>()
                     .join(", ");
+                let inputs_string = instance
+                    .signals
+                    .iter()
+                    .filter_map(|signal| match signal.visibility {
+                        CodaSignalVisibility::Input => Some(
+                            CodaAssignmentTarget::SubcomponentSignal {
+                                subcomponent_name: instance.name.clone(),
+                                signal_name: signal.name.clone(),
+                            }
+                            .coda_compile(is_generator),
+                        ),
+                        _ => None,
+                    })
+                    .collect::<Vec<String>>()
+                    .join(", ");
                 format!(
-                    "let ({}) = {} {} in {}",
-                    output_string,
-                    instance.template_name.coda_compile(is_generator),
+                    "let ({}) = {} {} {} in {}",
+                    outputs_string,
+                    instance.template_name.coda_compile(true),
                     instance.args.join(" "),
+                    inputs_string,
                     next.coda_compile(is_generator)
                 )
             }
             CodaStatement::Branch { condition, then_, else_ } => format!(
-                "if ({}) then ({}) else ({})",
+                "if {} then {} else {}",
                 condition.coda_compile(is_generator),
                 then_.coda_compile(is_generator),
                 else_.coda_compile(is_generator)
@@ -333,7 +355,7 @@ impl CodaCompile for CodaExpr {
             CodaExpr::Signal { signal_name } => {
                 if !is_generator {
                     // Coda-abstracted signal
-                    format!("(var \"{}\")", signal_name.coda_compile(is_generator))
+                    format!("var \"{}\"", signal_name.coda_compile(is_generator))
                 } else {
                     // Generator input
                     signal_name.coda_compile(is_generator)
