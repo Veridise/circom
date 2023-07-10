@@ -1026,6 +1026,7 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
                         visibility: CodaSignalVisibility::parse(&signal.visibility),
                     });
                 }
+
                 // TODO: what about args?
                 let instance = CodaSubcomponentInstance {name: instance_name, template_name, signals, args: Vec::new() };
 
