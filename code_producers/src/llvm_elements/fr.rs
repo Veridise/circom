@@ -261,10 +261,7 @@ pub fn array_copy_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     );
     let main = create_bb(producer, func, FR_ARRAY_COPY_FN_NAME);
     producer.set_current_bb(main);
-    // let lhs = func.get_nth_param(0).unwrap();
-    // let rhs = func.get_nth_param(1).unwrap();
-    // let add = create_add(producer, lhs.into_int_value(), rhs.into_int_value());
-    // create_return(producer, add.into_int_value());
+    //TODO: may need to implement the body of this method
     create_return_void(producer);
 }
 
