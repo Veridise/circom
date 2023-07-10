@@ -63,6 +63,9 @@ impl InterpreterObserver for LoopUnrollPass {
         let mut env = env.clone();
         while cond_result.unwrap() {
             let (_, new_cond, new_env) = interpreter.execute_loop_bucket_once(bucket, env, false);
+            if new_cond.is_none() {
+                return true; // If the conditional becomes Unknown mid way just give up.
+            }
             cond_result = new_cond;
             env = new_env;
             if let Some(true) = new_cond {
