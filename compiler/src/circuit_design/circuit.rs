@@ -1004,11 +1004,9 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
                     let name = signal.name.clone();
                     let expr = coda_expr(&context, &store.src);
                     let next = coda_statement(context, next_instructions);
-                    let next_next = CodaStatement::Assignment
-                        { target: CodaAssignmentTarget::SubcomponentSignal { subcomponent_name: instance.name.clone(), signal_name: name  }, value: expr , next: Box::new(next) };
                     match input_information {
-                        InputInformation::Input { status } if *status == StatusInput::Last => CodaStatement::Instantiate { instance: instance.clone(), next: Box::new(next_next) },
-                        _  => next_next,
+                        InputInformation::Input { status } if *status == StatusInput::Last => CodaStatement::Assignment { target: CodaAssignmentTarget::SubcomponentSignal { subcomponent_name: instance.name.clone(), signal_name: name }, value: expr, next: Box::new(next) },
+                        _  => CodaStatement::Assignment { target: CodaAssignmentTarget::SubcomponentSignal { subcomponent_name: instance.name.clone(), signal_name: name }, value: expr, next: Box::new(CodaStatement::Instantiate { instance: instance.clone(), next: Box::new(next) }) },
                     }
                 }
             },
@@ -1097,13 +1095,22 @@ impl WriteCoda for Circuit {
                 coda_data: &self.coda_data,
             };
             // let instructions: LinkedList<&Box<Instruction>> = template.body.iter().collect();
-            let coda_body = coda_statement(&context, &template.body);
+            let coda_body = CodaBody {
+                name: CodaBodyName { value: template.name.clone() },
+                params: Vec::new(),
+                signals: coda_signals.clone(),
+                statement: coda_statement(&context, &template.body),
+            };
 
             println!("========================================================");
             println!("[CODA] END Printing Template");
 
-            let coda_circuit =
-                CodaCircuit { name: template.name.clone(), signals: coda_signals, body: coda_body };
+            let coda_circuit = CodaCircuit {
+                name: template.name.clone(),
+                args: Vec::new(),
+                signals: coda_signals.clone(),
+                body: coda_body,
+            };
 
             println!("[CODA] coda_circuit: {:?}", coda_circuit);
             coda_program.coda_circuits.push(coda_circuit)
