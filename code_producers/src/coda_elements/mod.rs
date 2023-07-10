@@ -74,7 +74,6 @@ impl Default for CodaProgram {
 #[derive(Clone, Debug)]
 pub struct CodaCircuit {
     pub name: String,
-    pub args: Vec<String>,
     pub signals: Vec<CodaSignal>,
     pub body: CodaBody,
 }
@@ -147,7 +146,6 @@ pub struct CodaSubcomponentInstance {
     pub name: CodaSubcomponentName,
     pub template_name: CodaTemplateName,
     pub signals: Vec<CodaSignal>,
-    pub args: Vec<String>, // must be literals
 }
 
 #[derive(Clone, Debug)]
@@ -240,7 +238,6 @@ impl CodaCompile for CodaSignal {
 impl CodaCompile for CodaCircuit {
     fn coda_compile(&self) -> String {
         let template_name_string = CodaTemplateName { value: self.name.clone() }.coda_compile();
-        let args_string = self.args.join(" ");
         let mut inputs_strings: Vec<String> = Vec::new();
         let mut inputs_as_args_strings: Vec<String> = Vec::new();
         let mut outputs_strings: Vec<String> = Vec::new();
@@ -265,8 +262,7 @@ impl CodaCompile for CodaCircuit {
         let body_def_string = self.body.coda_compile();
 
         // applies the abstracted body definition to the inputs in Coda variable form `var "NAME"`
-        let template_def_body_string =
-            format!("{} {} {}", body_name_string, args_string, inputs_as_args_string);
+        let template_def_body_string = format!("{} {}", body_name_string, inputs_as_args_string);
 
         let template_def_string = format!("let {} = Hoare_circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; preconditions= []; postcondition= []; body= {} }}",
             template_name_string,
@@ -372,10 +368,9 @@ impl CodaCompile for CodaStatement {
                     .collect::<Vec<String>>()
                     .join(", ");
                 format!(
-                    "\n  let (* component *) ({}) = {} {} {} in {}",
+                    "\n  let (* component *) ({}) = {} {} in {}",
                     outputs_string,
                     instance.template_name.to_coda_body_name().coda_compile(),
-                    instance.args.join(" "),
                     inputs_string,
                     next.coda_compile()
                 )

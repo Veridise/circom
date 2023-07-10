@@ -1043,8 +1043,7 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
                     });
                 }
 
-                // TODO: what about args?
-                let instance = CodaSubcomponentInstance {name: instance_name, template_name, signals, args: Vec::new() };
+                let instance = CodaSubcomponentInstance {name: instance_name, template_name, signals };
 
                 let next_context = &CodaContext { coda_subcomponent_instances: [context.coda_subcomponent_instances.clone(), vec![instance.clone()]].concat(), ..*context.clone() };
 
@@ -1126,7 +1125,6 @@ impl WriteCoda for Circuit {
 
             let coda_circuit = CodaCircuit {
                 name: template.name.clone(),
-                args: Vec::new(),
                 signals: coda_signals.clone(),
                 body: coda_body,
             };
