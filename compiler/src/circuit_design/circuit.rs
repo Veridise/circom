@@ -795,7 +795,13 @@ fn coda_statement_print(context: &CodaContext, instruction: &Box<Instruction>) -
             println!("   • name: {}", create_cmp.name_subcomponent);
         }
         Branch(_) => todo!(),
-        Block(_) => todo!(),
+        Block(block) => {
+            println!("Begin Block");
+            for next_instruction in &block.body {
+                coda_statement_print(context, &next_instruction)
+            }
+            println!("End Block");
+        },
         Nop(_) => (),
 
         Value(_) => panic!("Should not appear in statement: {:?}", instruction),
@@ -827,7 +833,11 @@ fn coda_expr(context: &CodaContext, instruction: &Box<Instruction>) -> CodaExpr 
         Load(load) => {
             use AddressType::*;
             match &load.address_type {
-                Variable => todo!(),
+                Variable => {
+                    let variable_name =
+                        CodaVariableName { value: get_location_rule_signal_index(&load.src) };
+                    CodaExpr::Variable { variable_name }
+                }
                 Signal => {
                     let i = get_location_rule_signal_index(&load.src);
                     let signal_name = context.coda_signals[i].name.clone();
@@ -864,8 +874,8 @@ fn coda_expr(context: &CodaContext, instruction: &Box<Instruction>) -> CodaExpr 
             }
         }
         Call(_call) => todo!(),
-        Branch(_branch) => todo!(),
-        Block(_block) => todo!(),
+        Branch(_branch) => panic!(),
+        Block(_block) => panic!(),
         _ => panic!("should not appear in expression: {:?}", instruction),
     }
 }
@@ -982,7 +992,13 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
                 ConstraintBucket::Equality(instruction) => coda_statement(context, [std::slice::from_ref(instruction), next_instructions].concat().as_slice()),
             },
             Store(store) => match &store.dest_address_type {
-                AddressType::Variable => todo!("store into a local variable"),
+                AddressType::Variable => {
+                    // println!("Store(store) where &store.dest_address_type == AddressType::Variable: {:?}", &store);
+                    let variable_name = CodaVariableName { value: get_location_rule_signal_index(&store.dest)};
+                    let expr = coda_expr(&context, &store.src);
+                    let next = coda_statement(context, next_instructions);
+                    CodaStatement::Assignment { target:  CodaAssignmentTarget::Variable { variable_name }, value: expr, next: Box::new(next) }
+                },
                 AddressType::Signal => {
                     let i = get_location_rule_signal_index(&store.dest);
                     let signal_name = context.coda_signals[i].name.clone();
@@ -1039,7 +1055,8 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
             }
 
             Branch(_) => todo!("I will need to modify how CodaCircuit is represented, since currently is doesn't allow for branching assignment to signals"),
-            Block(_) => todo!("what exaclty is the significance of blocks? do they only exist for the sake of scoping, so I can ignore them for compiling to Coda?"),
+            // Block(_) => todo!("what exaclty is the significance of blocks? do they only exist for the sake of scoping, so I can ignore them for compiling to Coda?"),
+            Block(block) => coda_statement(context, vec![block.body.clone(), next_instructions.to_vec()].concat().as_slice()),
             Nop(_) => coda_statement(context, next_instructions),
             // These cases are not handled by Coda
             Loop(_) => panic!("Coda doesn't handle this because all loops should be unrolled"),

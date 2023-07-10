@@ -167,14 +167,27 @@ pub struct CodaSignalName {
 }
 
 #[derive(Clone, Debug)]
+pub struct CodaVariableName {
+    pub value: usize,
+}
+
+impl CodaVariableName {
+    fn coda_compile(&self) -> String {
+        format!("var___{}", self.value)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum CodaAssignmentTarget {
     Signal { signal_name: CodaSignalName },
+    Variable { variable_name: CodaVariableName },
     SubcomponentSignal { subcomponent_name: CodaSubcomponentName, signal_name: CodaSignalName },
 }
 
 #[derive(Clone, Debug)]
 pub enum CodaExpr {
     Signal { signal_name: CodaSignalName },
+    Variable { variable_name: CodaVariableName },
     SubcomponentSignal { subcomponent_name: CodaSubcomponentName, signal_name: CodaSignalName },
     Constant(String),
     Binop(CodaBinop, Box<CodaExpr>, Box<CodaExpr>),
@@ -296,6 +309,7 @@ impl CodaCompile for CodaAssignmentTarget {
     fn coda_compile(&self) -> String {
         match self {
             CodaAssignmentTarget::Signal { signal_name } => signal_name.coda_compile(),
+            CodaAssignmentTarget::Variable { variable_name } => variable_name.coda_compile(),
             CodaAssignmentTarget::SubcomponentSignal { subcomponent_name, signal_name } => {
                 format!("{}___{}", subcomponent_name.coda_compile(), signal_name.coda_compile())
             }
@@ -385,6 +399,7 @@ impl CodaCompile for CodaExpr {
     fn coda_compile(&self) -> String {
         match self {
             CodaExpr::Signal { signal_name } => signal_name.coda_compile(),
+            CodaExpr::Variable { variable_name } => variable_name.coda_compile(),
             CodaExpr::SubcomponentSignal { subcomponent_name, signal_name } => {
                 CodaAssignmentTarget::SubcomponentSignal {
                     subcomponent_name: subcomponent_name.clone(),
