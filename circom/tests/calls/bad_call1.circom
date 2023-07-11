@@ -1,6 +1,6 @@
 pragma circom 2.0.0;
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && not circom --llvm -o %t %s 2>&1 | FileCheck %s
+// RUN: rm -rf %t && mkdir %t && not %circom --llvm -o %t %s 2>&1 | FileCheck %s
 
 template A() {
     signal input a;

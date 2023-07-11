@@ -24,9 +24,9 @@ fn main() {
         {}
 
         #[test]
-        fn {}() -> Result<(), Box<dyn std::error::Error>> {{
-            lit_test(include_str!(\"{}\"))
-        }}", test_code, test_name, path.to_str().unwrap());
+        fn {}() -> LitResult<()> {{
+            lit_test(include_str!(\"{}\"), \"{}\")
+        }}", test_code, test_name, path.to_str().unwrap(), test_name);
     }
 
     generate_file(&dest_path, test_code.as_bytes());

@@ -1,6 +1,6 @@
 pragma circom 2.0.0;
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && circom --llvm -o %t %s
+// RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s
 //
 // XFAIL: *
 // TODO: Failure occurs in https://github.com/Veridise/circom/pull/15

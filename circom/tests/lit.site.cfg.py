@@ -1,8 +1,3 @@
-# This is the lit test configuration for end-to-end tests.
-# - pyul must be on path
-# - yul2llvm must be on path
-# - Vanguard must be on path
-
 import os
 import shutil
 import subprocess
