@@ -11,3 +11,4 @@ compiler = {path = "../compiler"}
 program_structure = {path = "../program_structure"}
 code_producers = {path = "../code_producers"}
 intervallum = "1.4.0"
+circom_algebra = {path = "../circom_algebra"}

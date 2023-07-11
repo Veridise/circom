@@ -23,7 +23,7 @@ use crate::passes::memory::PassMemory;
 struct ZeroingInterpreter<'a> {
     prime: &'a String,
     pub constant_fields: &'a Vec<String>,
-    p: Value
+    p: BigInt
 }
 
 impl<'a> ZeroingInterpreter<'a> {
@@ -35,7 +35,7 @@ impl<'a> ZeroingInterpreter<'a> {
         ZeroingInterpreter {
             prime,
             constant_fields,
-            p: KnownBigInt(UsefulConstants::new(prime).get_p().clone()),
+            p: UsefulConstants::new(prime).get_p().clone()
         }
     }
 
@@ -82,24 +82,24 @@ impl<'a> ZeroingInterpreter<'a> {
             OperatorType::Mod => resolve_operation(value::mod_value, p, &stack),
             OperatorType::ShiftL => resolve_operation(value::shift_l_value, p, &stack),
             OperatorType::ShiftR => resolve_operation(value::shift_r_value, p, &stack),
-            OperatorType::LesserEq => value::lesser_eq(&stack[0], &stack[1]),
-            OperatorType::GreaterEq => value::greater_eq(&stack[0], &stack[1]),
-            OperatorType::Lesser => value::lesser(&stack[0], &stack[1]),
-            OperatorType::Greater => value::greater(&stack[0], &stack[1]),
-            OperatorType::Eq(1) => value::eq1(&stack[0], &stack[1]),
+            OperatorType::LesserEq => value::lesser_eq(&stack[0], &stack[1], p),
+            OperatorType::GreaterEq => value::greater_eq(&stack[0], &stack[1], p),
+            OperatorType::Lesser => value::lesser(&stack[0], &stack[1], p),
+            OperatorType::Greater => value::greater(&stack[0], &stack[1], p),
+            OperatorType::Eq(1) => value::eq1(&stack[0], &stack[1], p),
             OperatorType::Eq(_) => todo!(),
-            OperatorType::NotEq => value::not_eq(&stack[0], &stack[1]),
-            OperatorType::BoolOr => stack.iter().fold(KnownU32(0), value::bool_or_value),
-            OperatorType::BoolAnd => stack.iter().fold(KnownU32(1), value::bool_and_value),
+            OperatorType::NotEq => value::not_eq(&stack[0], &stack[1], p),
+            OperatorType::BoolOr => resolve_operation(value::bool_or_value, p, &stack),
+            OperatorType::BoolAnd => resolve_operation(value::bool_and_value, p, &stack),
             OperatorType::BitOr => resolve_operation(value::bit_or_value, p, &stack),
             OperatorType::BitAnd => resolve_operation(value::bit_and_value, p, &stack),
             OperatorType::BitXor => resolve_operation(value::bit_xor_value, p, &stack),
             OperatorType::PrefixSub => {
-                mod_value(&value::prefix_sub(&stack[0]), p)
+                value::prefix_sub(&stack[0], p)
             }
-            OperatorType::BoolNot => KnownU32((!stack[0].to_bool()).into()),
+            OperatorType::BoolNot => KnownU32((!stack[0].to_bool(p)).into()),
             OperatorType::Complement => {
-                mod_value(&value::complement(&stack[0]), p)
+                value::complement(&stack[0], p)
             }
             OperatorType::ToAddress => value::to_address(&stack[0]),
             OperatorType::MulAddress => stack.iter().fold(KnownU32(1), value::mul_address),

@@ -224,6 +224,7 @@ impl<'a> Env<'a> {
     pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Self {
         let mut copy = self;
         let subcmp_env = copy.subcmps.remove(&subcmp_idx).expect(format!("Can't decrease counter of subcomponent {}", subcmp_idx).as_str());
+        println!("Decreasing counter of {} (id={}): {} - 1", subcmp_env.name, subcmp_idx, subcmp_env.counter);
         copy.subcmps.insert(subcmp_idx, subcmp_env.decrease_counter());
         copy
     }
