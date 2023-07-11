@@ -4,7 +4,7 @@ pub mod observer;
 
 use std::collections::HashMap;
 use std::ops::{Range, RangeInclusive};
-use std::process::id;
+use circom_algebra::modular_arithmetic;
 use code_producers::components::TemplateInstanceIOMap;
 use code_producers::llvm_elements::IndexMapping;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
@@ -22,7 +22,7 @@ pub struct BucketInterpreter<'a> {
     pub constant_fields: &'a Vec<String>,
     pub(crate) observer: &'a dyn InterpreterObserver,
     io_map: &'a TemplateInstanceIOMap,
-    p: Value,
+    p: BigInt,
     signal_index_mapping: &'a IndexMapping,
     variables_index_mapping: &'a IndexMapping,
     component_addr_index_mapping: &'a IndexMapping
@@ -64,7 +64,7 @@ impl<'a> BucketInterpreter<'a> {
             constant_fields,
             observer,
             io_map,
-            p: KnownBigInt(UsefulConstants::new(prime).get_p().clone()),
+            p: UsefulConstants::new(prime).get_p().clone(),
             signal_index_mapping,
             variables_index_mapping,
             component_addr_index_mapping
@@ -276,8 +276,15 @@ impl<'a> BucketInterpreter<'a> {
                     LocationRule::Indexed { location, .. } => self.execute_instruction(location, env, continue_observing),
                     LocationRule::Mapped { .. } => unreachable!()
                 };
-                let idx = idx.expect("Indexed location must produce a value!").get_u32();
-                env.set_var(idx, value)
+
+                let idx_value = idx.expect("Indexed location must produce a value!");
+                if !idx_value.is_unknown() {
+                    let idx = idx_value.get_u32();
+                    println!("Setting variable #{} with value {:?}", idx, value);
+                    env.set_var(idx, value)
+                } else {
+                    env
+                }
             },
             AddressType::Signal => {
                 let continue_observing =
@@ -286,8 +293,14 @@ impl<'a> BucketInterpreter<'a> {
                     LocationRule::Indexed { location, .. } => self.execute_instruction(location, env, continue_observing),
                     LocationRule::Mapped { .. } => unreachable!()
                 };
-                let idx = idx.expect("Indexed location must produce a value!").get_u32();
-                env.set_signal(idx, value)
+
+                let idx_value = idx.expect("Indexed location must produce a value!");
+                if !idx_value.is_unknown() {
+                    let idx = idx_value.get_u32();
+                    env.set_signal(idx, value)
+                } else {
+                    env
+                }
             },
             AddressType::SubcmpSignal { cmp_address, input_information, .. } => {
                 let (addr, env) = self.execute_instruction(cmp_address, env, observe);
@@ -382,24 +395,24 @@ impl<'a> BucketInterpreter<'a> {
             OperatorType::Mod => resolve_operation(value::mod_value, p, &stack),
             OperatorType::ShiftL => resolve_operation(value::shift_l_value, p, &stack),
             OperatorType::ShiftR => resolve_operation(value::shift_r_value, p, &stack),
-            OperatorType::LesserEq => value::lesser_eq(&stack[0], &stack[1]),
-            OperatorType::GreaterEq => value::greater_eq(&stack[0], &stack[1]),
-            OperatorType::Lesser => value::lesser(&stack[0], &stack[1]),
-            OperatorType::Greater => value::greater(&stack[0], &stack[1]),
-            OperatorType::Eq(1) => value::eq1(&stack[0], &stack[1]),
+            OperatorType::LesserEq => value::lesser_eq(&stack[0], &stack[1], p),
+            OperatorType::GreaterEq => value::greater_eq(&stack[0], &stack[1], p),
+            OperatorType::Lesser => value::lesser(&stack[0], &stack[1], p),
+            OperatorType::Greater => value::greater(&stack[0], &stack[1], p),
+            OperatorType::Eq(1) => value::eq1(&stack[0], &stack[1], p),
             OperatorType::Eq(_) => todo!(),
-            OperatorType::NotEq => value::not_eq(&stack[0], &stack[1]),
-            OperatorType::BoolOr => stack.iter().fold(KnownU32(0), value::bool_or_value),
-            OperatorType::BoolAnd => stack.iter().fold(KnownU32(1), value::bool_and_value),
+            OperatorType::NotEq => value::not_eq(&stack[0], &stack[1], p),
+            OperatorType::BoolOr => resolve_operation(value::bool_or_value, p, &stack),
+            OperatorType::BoolAnd => resolve_operation(value::bool_and_value, p, &stack),
             OperatorType::BitOr => resolve_operation(value::bit_or_value, p, &stack),
             OperatorType::BitAnd => resolve_operation(value::bit_and_value, p, &stack),
             OperatorType::BitXor => resolve_operation(value::bit_xor_value, p, &stack),
             OperatorType::PrefixSub => {
-                mod_value(&value::prefix_sub(&stack[0]), p)
+                value::prefix_sub(&stack[0], p)
             }
-            OperatorType::BoolNot => KnownU32((!stack[0].to_bool()).into()),
+            OperatorType::BoolNot => KnownU32((!stack[0].to_bool(p)).into()),
             OperatorType::Complement => {
-                mod_value(&value::complement(&stack[0]), p)
+                value::complement(&stack[0], p)
             }
             OperatorType::ToAddress => value::to_address(&stack[0]),
             OperatorType::MulAddress => stack.iter().fold(KnownU32(1), value::mul_address),
@@ -468,7 +481,7 @@ impl<'a> BucketInterpreter<'a> {
         let (cond, env) = self.execute_instruction(&bucket.evaluate, env, observe);
         let cond = cond.expect("cond in AssertBucket must produce a value!");
         if !cond.is_unknown() {
-            assert!(cond.to_bool());
+            assert!(cond.to_bool(&self.p));
         }
         (None, env)
     }
@@ -493,6 +506,7 @@ impl<'a> BucketInterpreter<'a> {
         env: Env<'env>,
         observe: bool,
     ) -> (Option<Value>, Option<bool>, Env<'env>) {
+        println!("COND: {}", cond.to_string());
         let (executed_cond, env) = self.execute_instruction(cond, env, observe);
         let executed_cond = executed_cond.expect("executed_cond must produce a value!");
         let cond_bool_result = self.value_to_bool(&executed_cond);
@@ -524,10 +538,8 @@ impl<'a> BucketInterpreter<'a> {
     fn value_to_bool(&self, value: &Value) -> Option<bool> {
         match value {
             Unknown => None,
-            KnownU32(1) => Some(true),
-            KnownU32(0) => Some(false),
-            KnownU32(_) => todo!(),
-            KnownBigInt(_) => todo!(),
+            KnownU32(x) => Some(*x != 0),
+            KnownBigInt(b) => Some(modular_arithmetic::as_bool(b, &self.p)),
         }
     }
 

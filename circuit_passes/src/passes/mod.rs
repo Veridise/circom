@@ -13,11 +13,14 @@ use compiler::intermediate_representation::ir_interface::{
     StoreBucket, BlockBucket, ValueBucket, AddressType, ReturnType, FinalData, LogBucketArg,
 };
 
-use crate::passes::loop_unroll::LoopUnrollPass;
-use crate::passes::conditional_flattening::ConditionalFlattening;
-use crate::passes::deterministic_subcomponent_invocation::DeterministicSubCmpInvokePass;
-use crate::passes::simplification::SimplificationPass;
-use crate::passes::mapped_to_indexed::MappedToIndexedPass;
+use crate::passes::{
+    conditional_flattening::ConditionalFlattening,
+    deterministic_subcomponent_invocation::DeterministicSubCmpInvokePass,
+    loop_unroll::LoopUnrollPass,
+    mapped_to_indexed::MappedToIndexedPass,
+    simplification::SimplificationPass,
+    unknown_index_sanitization::UnknownIndexSanitizationPass,
+};
 
 mod conditional_flattening;
 mod loop_unroll;
@@ -25,6 +28,7 @@ mod memory;
 mod simplification;
 mod deterministic_subcomponent_invocation;
 mod mapped_to_indexed;
+mod unknown_index_sanitization;
 
 macro_rules! pre_hook {
     ($name: ident, $bucket_ty: ty) => {
@@ -183,6 +187,7 @@ pub trait CircuitTransformationPass {
             message_id: bucket.message_id,
             address_type: self.transform_address_type(&bucket.address_type),
             src: self.transform_location_rule(&bucket.src),
+            bounded_fn: bucket.bounded_fn.clone(),
         }
         .allocate()
     }
@@ -198,6 +203,7 @@ pub trait CircuitTransformationPass {
             dest_address_type: self.transform_address_type(&bucket.dest_address_type),
             dest: self.transform_location_rule(&bucket.dest),
             src: self.transform_instruction(&bucket.src),
+            bounded_fn: bucket.bounded_fn.clone(),
         }
         .allocate()
     }
@@ -422,6 +428,11 @@ impl PassManager {
 
     pub fn schedule_mapped_to_indexed_pass(&self, prime: &String) -> &Self {
         self.passes.borrow_mut().push(Box::new(MappedToIndexedPass::new(prime)));
+        self
+    }
+
+    pub fn schedule_unknown_index_sanitization_pass(&self, prime: &String) -> &Self {
+        self.passes.borrow_mut().push(Box::new(UnknownIndexSanitizationPass::new(prime)));
         self
     }
 
