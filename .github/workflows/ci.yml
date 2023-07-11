@@ -22,4 +22,4 @@ jobs:
           name: veridise-public
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - name: Build
-        run: nix-build --print-build-logs
+        run: nix --print-build-logs build
