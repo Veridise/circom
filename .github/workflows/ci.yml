@@ -14,20 +14,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3.5.2
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: cachix/install-nix-action@v21
         with:
-          python-version: '3.10'
-          cache: 'pip' # caching pip dependencies
-      - name: Install LLVM
-        run: sudo apt-get install -y llvm-13 llvm-13-tools llvm-13-dev llvm-13-runtime
-      - name: Link llvm-config-13 to llvm-config
-        run: sudo ln -s /usr/bin/llvm-config-13 /usr/bin/llvm-config
-      - name: Install lit
-        run: pip install lit
+          install_url: https://releases.nixos.org/nix/nix-2.13.3/install
+      - uses: cachix/cachix-action@v12
+        with:
+          name: veridise-public
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - name: Build
-        run: cargo build --verbose
-      - name: Unit tests
-        run: cargo test --verbose
-      - name: Integration tests
-        run: lit -v compiler-tests
+        run: nix --print-build-logs build
