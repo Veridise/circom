@@ -1,7 +1,7 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer, to_enum, run_fn_name, fr::FR_ARRAY_COPY_FN_NAME};
+use code_producers::llvm_elements::{AnyValueEnum, LLVMInstruction, LLVMIRProducer, to_enum, run_fn_name, fr::FR_ARRAY_COPY_FN_NAME};
 use code_producers::llvm_elements::array_switch::array_ptr_ty;
 use code_producers::llvm_elements::instructions::{
     create_call, create_gep, create_load_with_name, create_store, create_sub_with_name,
@@ -63,15 +63,11 @@ impl ToString for StoreBucket {
     }
 }
 
-impl WriteLLVMIR for StoreBucket {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
-        Self::manage_debug_loc_from_curr(producer, self);
-
-        // A store instruction has a source instruction that states the origin of the value that is going to be stored
+impl StoreBucket{
+    /// Ignore self.src and use the given pre-converted source instead.
+    /// The caller must manage the debug location information before calling this function.
+    pub fn produce_llvm_ir_from_src<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>, source: AnyValueEnum<'a>) -> Option<LLVMInstruction<'a>> {
         let dest_index =  self.dest.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
-
-        // Extract the source and store the result in the destination
-        let source = to_enum(self.src.produce_llvm_ir(producer).unwrap());
 
         // If we have bounds for an unknown index, we will get the base address and let the function check the bounds
         let store = match &self.bounded_fn {
@@ -99,6 +95,9 @@ impl WriteLLVMIR for StoreBucket {
                     }
                 }.into_pointer_value();
                 if self.context.size > 1 {
+                    // In the non-scalar case, produce an array copy. If the stored source is a
+                    //  LoadBucket, convert it into an address. Otherwise, just use the given
+                    //  source parameter.
                     if let Instruction::Load(v) = &*self.src {
                         let src_index = v
                             .src
@@ -127,9 +126,14 @@ impl WriteLLVMIR for StoreBucket {
                             &[source_gep.into(), dest_gep.into(), create_literal_u32(producer, self.context.size as u64).into()],
                         )
                     } else {
-                        todo!("Did not handle instruction other than Load as the source for array Store");
+                        create_call(
+                            producer,
+                            FR_ARRAY_COPY_FN_NAME,
+                            &[source.into_pointer_value().into(), dest_gep.into(), create_literal_u32(producer, self.context.size as u64).into()],
+                        )
                     }
                 } else {
+                    // In the scalar case, just produce a store from the source value that was given
                     create_store(producer, dest_gep, source)
                 }
             }
@@ -189,6 +193,14 @@ impl WriteLLVMIR for StoreBucket {
             }
         }
         Some(store)
+    }
+}
+
+impl WriteLLVMIR for StoreBucket {
+    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+        Self::manage_debug_loc_from_curr(producer, self);
+        // A store instruction has a source that states the origin of the value that is going to be stored
+        self.produce_llvm_ir_from_src(producer, to_enum(self.src.produce_llvm_ir(producer).unwrap()))
     }
 }
 
