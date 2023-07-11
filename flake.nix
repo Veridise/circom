@@ -17,14 +17,7 @@
            src = ./.;
 
            buildInputs = [ llvmPackages_13.libllvm libffi libiconv libxml2 zlib  ];
-           installCheckInputs = [ lit ];
-
-           installCheckPhase = ''
-               runHook preCheck
-               export PATH="$out"/bin:"$PATH"
-               lit -v --no-progress tests
-               runHook postCheck
-             '';
+           checkInputs = [ lit ];
 
            doCheck = true;
 
