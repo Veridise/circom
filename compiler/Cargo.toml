@@ -9,7 +9,7 @@ constant_tracking = {path = "../constant_tracking"}
 program_structure = {path = "../program_structure"}
 code_producers = {path = "../code_producers"}
 
+either = "1.8.0"
 num-bigint-dig = "0.6.0"
 num-traits = "0.2.6"
 rand = "0.8.5"
-
