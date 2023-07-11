@@ -6,10 +6,9 @@ use program_structure::ast::SignalType;
 use code_producers::llvm_elements::run_fn_name;
 use serde::Serialize;
 
-
 #[derive(Serialize)]
 struct Meta {
-    is_ir_ssa: bool
+    is_ir_ssa: bool,
 }
 
 #[derive(Serialize)]
@@ -17,13 +16,13 @@ struct SignalSummary {
     name: String,
     visibility: String,
     idx: usize,
-    public: bool
+    public: bool,
 }
 
 #[derive(Serialize)]
 struct SubcmpSummary {
     name: String,
-    idx: usize
+    idx: usize,
 }
 
 #[derive(Serialize)]
@@ -32,7 +31,8 @@ struct TemplateSummary {
     main: bool,
     signals: Vec<SignalSummary>,
     subcmps: Vec<SubcmpSummary>,
-    logic_fn_name: String
+    logic_fn_name: String,
+    template_id: usize,
 }
 
 #[derive(Serialize)]
@@ -49,12 +49,12 @@ pub struct SummaryRoot {
     framework: Option<String>,
     meta: Meta,
     components: Vec<TemplateSummary>,
-    functions: Vec<FunctionSummary>
+    functions: Vec<FunctionSummary>,
 }
 
 fn index_names(lengths: &[usize]) -> Vec<String> {
     if lengths.is_empty() {
-        return vec!["".to_string()]
+        return vec!["".to_string()];
     }
     let hd = lengths[0];
     let tl = &lengths[1..lengths.len()];
@@ -76,11 +76,12 @@ fn unroll_signal(name: &String, info: &SignalInfo, idx: usize) -> Vec<SignalSumm
             visibility: match info.signal_type {
                 SignalType::Output => "output",
                 SignalType::Input => "input",
-                SignalType::Intermediate => "intermediate"
-            }.to_string(),
+                SignalType::Intermediate => "intermediate",
+            }
+            .to_string(),
             public: false,
-            idx
-        }]
+            idx,
+        }];
     }
     let mut signals = vec![];
 
@@ -90,10 +91,11 @@ fn unroll_signal(name: &String, info: &SignalInfo, idx: usize) -> Vec<SignalSumm
             visibility: match info.signal_type {
                 SignalType::Output => "output",
                 SignalType::Input => "input",
-                SignalType::Intermediate => "intermediate"
-            }.to_string(),
+                SignalType::Intermediate => "intermediate",
+            }
+            .to_string(),
             idx: idx + offset,
-            public: false
+            public: false,
         })
     }
 
@@ -102,19 +104,13 @@ fn unroll_signal(name: &String, info: &SignalInfo, idx: usize) -> Vec<SignalSumm
 
 fn unroll_subcmp(name: &String, lengths: &[usize], idx: usize) -> Vec<SubcmpSummary> {
     if lengths.is_empty() {
-        return vec![SubcmpSummary {
-            name: name.to_string(),
-            idx
-        }]
+        return vec![SubcmpSummary { name: name.to_string(), idx }];
     }
 
     let mut subcmps = vec![];
 
-    for (offset, indices)  in index_names(lengths).iter().enumerate() {
-        subcmps.push(SubcmpSummary {
-            name: format!("{name}{indices}"),
-            idx: idx + offset
-        })
+    for (offset, indices) in index_names(lengths).iter().enumerate() {
+        subcmps.push(SubcmpSummary { name: format!("{name}{indices}"), idx: idx + offset })
     }
 
     subcmps
@@ -135,7 +131,8 @@ impl SummaryRoot {
             println!("==== {} ====", template_name);
             let mut signals = vec![];
 
-            let mut signals_data: Vec<(String, usize)> = template_database.signals_id[template_id].clone().into_iter().collect();
+            let mut signals_data: Vec<(String, usize)> =
+                template_database.signals_id[template_id].clone().into_iter().collect();
             signals_data.sort_by_key(|(_, x)| *x);
             for (signal_name, _signal_idx) in &signals_data {
                 let signal_info = &template_database.signal_info[template_id][signal_name];
@@ -154,6 +151,7 @@ impl SummaryRoot {
 
             let template = TemplateSummary {
                 name: template_name.clone(),
+                template_id,
                 main: template_id == vcp.main_id,
                 subcmps,
                 signals,

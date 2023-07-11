@@ -30,6 +30,7 @@ pub struct TemplateSummary {
     pub signals: Vec<SignalSummary>,
     pub subcmps: Vec<SubcmpSummary>,
     pub logic_fn_name: String,
+    pub template_id: usize,
 }
 
 #[derive(Deserialize, Debug)]
