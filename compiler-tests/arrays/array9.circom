@@ -14,6 +14,5 @@ template ArrayCopyTemplate() {
 
 component main = ArrayCopyTemplate();
 
-
-//CHECK-LABEL: define i256 @copy_0(
+//CHECK-LABEL: define i256 @copy
 //CHECK: call void @fr_copy_n(i256* %{{.*}}, i256* %{{.*}}, i32 3)
