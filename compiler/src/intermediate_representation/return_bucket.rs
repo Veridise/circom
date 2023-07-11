@@ -2,7 +2,7 @@ use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use code_producers::llvm_elements::instructions::create_return_from_any_value;
+use code_producers::llvm_elements::instructions::{create_return_from_any_value, create_return_void};
 use code_producers::wasm_elements::*;
 use crate::intermediate_representation::BucketId;
 
@@ -54,9 +54,13 @@ impl WriteLLVMIR for ReturnBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
-        let ret_value = self.value.produce_llvm_ir(producer)
-            .expect("Return instruction must produce a value to return");
-        Some(create_return_from_any_value(producer, ret_value))
+        if self.with_size > 1 {
+            Some(create_return_void(producer))
+        } else {
+            let ret_value = self.value.produce_llvm_ir(producer)
+                .expect("Return instruction must produce a value to return");
+            Some(create_return_from_any_value(producer, ret_value))
+        }
     }
 }
 

@@ -13,7 +13,7 @@ use code_producers::llvm_elements::*;
 use code_producers::llvm_elements::fr::load_fr;
 use code_producers::llvm_elements::functions::{create_function, FunctionLLVMIRProducer};
 use code_producers::llvm_elements::stdlib::load_stdlib;
-use code_producers::llvm_elements::types::bigint_type;
+use code_producers::llvm_elements::types::{bigint_type, void_type};
 use program_structure::program_archive::ProgramArchive;
 
 pub struct CompilationFlags {
@@ -77,7 +77,13 @@ impl WriteLLVMIR for Circuit {
                 f.get_line(),
                 f.name.as_str(),
                 name,
-                bigint_type(producer).fn_type(&[arena_ty.into()], false));
+                if f.returns.is_empty() || (f.returns.len() == 1 && *f.returns.get(0).unwrap() == 1)
+                {
+                    bigint_type(producer).fn_type(&[arena_ty.into()], false)
+                } else {
+                    void_type(producer).fn_type(&[arena_ty.into()], false)
+                },
+            );
             funcs.insert(name, function);
         }
 
