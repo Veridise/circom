@@ -1046,7 +1046,6 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
 
                 let next = coda_statement(next_context, next_instructions);
 
-                // CodaStatement::Instantiate { instance, next: Box::new(next) }
                 next
             }
 
