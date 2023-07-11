@@ -1,14 +1,15 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
+use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer, to_enum, run_fn_name, fr::FR_ARRAY_COPY_FN_NAME};
 use code_producers::llvm_elements::array_switch::array_ptr_ty;
-use code_producers::llvm_elements::{LLVMInstruction, to_enum, LLVMIRProducer};
-use code_producers::llvm_elements::instructions::{create_call, create_gep, create_load_with_name, create_store, create_sub_with_name, pointer_cast};
-use code_producers::llvm_elements::run_fn_name;
+use code_producers::llvm_elements::instructions::{
+    create_call, create_gep, create_load_with_name, create_store, create_sub_with_name,
+    pointer_cast,
+};
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::wasm_elements::*;
 use crate::intermediate_representation::BucketId;
-
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct StoreBucket {
@@ -67,7 +68,7 @@ impl WriteLLVMIR for StoreBucket {
         Self::manage_debug_loc_from_curr(producer, self);
 
         // A store instruction has a source instruction that states the origin of the value that is going to be stored
-        let index =  self.dest.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
+        let dest_index =  self.dest.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
 
         // Extract the source and store the result in the destination
         let source = to_enum(self.src.produce_llvm_ir(producer).unwrap());
@@ -85,28 +86,62 @@ impl WriteLLVMIR for StoreBucket {
                     }
                 }.into_pointer_value();
                 let arr_ptr = pointer_cast(producer, arr_ptr, array_ptr_ty(producer));
-                create_call(producer, name.as_str(), &[arr_ptr.into(), index.into(), source.into_int_value().into()])
-            },
+                create_call(producer, name.as_str(), &[arr_ptr.into(), dest_index.into(), source.into_int_value().into()])
+            }
             None => {
-                let gep = match &self.dest_address_type {
-                    AddressType::Variable => producer.body_ctx().get_variable(producer, index),
-                    AddressType::Signal => producer.template_ctx().get_signal(producer, index),
+                let dest_gep = match &self.dest_address_type {
+                    AddressType::Variable => producer.body_ctx().get_variable(producer, dest_index),
+                    AddressType::Signal => producer.template_ctx().get_signal(producer, dest_index),
                     AddressType::SubcmpSignal { cmp_address, .. } => {
                         let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
                         let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        create_gep(producer, subcmp, &[zero(producer), index])
+                        create_gep(producer, subcmp, &[zero(producer), dest_index])
                     }
                 }.into_pointer_value();
-                create_store(producer,gep, source)
-            },
+                if self.context.size > 1 {
+                    if let Instruction::Load(v) = &*self.src {
+                        let src_index = v
+                            .src
+                            .produce_llvm_ir(producer)
+                            .expect("We need to produce some kind of instruction!")
+                            .into_int_value();
+                        let source_gep = match &v.address_type {
+                            AddressType::Variable => {
+                                producer.body_ctx().get_variable(producer, src_index)
+                            }
+                            AddressType::Signal => {
+                                producer.template_ctx().get_signal(producer, src_index)
+                            }
+                            AddressType::SubcmpSignal { cmp_address, .. } => {
+                                let addr = cmp_address
+                                    .produce_llvm_ir(producer)
+                                    .expect("The address of a subcomponent must yield a value!");
+                                let subcmp =
+                                    producer.template_ctx().load_subcmp_addr(producer, addr);
+                                create_gep(producer, subcmp, &[zero(producer), src_index])
+                            }
+                        }.into_pointer_value();
+                        create_call(
+                            producer,
+                            FR_ARRAY_COPY_FN_NAME,
+                            &[source_gep.into(), dest_gep.into(), create_literal_u32(producer, self.context.size as u64).into()],
+                        )
+                    } else {
+                        todo!("Did not handle instruction other than Load as the source for array Store");
+                    }
+                } else {
+                    create_store(producer, dest_gep, source)
+                }
+            }
         };
 
         // If we have a subcomponent storage decrement the counter
         if let AddressType::SubcmpSignal { cmp_address, .. } = &self.dest_address_type {
             let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
             let counter = producer.template_ctx().load_subcmp_counter(producer, addr);
-            let value = create_load_with_name(producer,counter, "load.subcmp.counter");
+            let value = create_load_with_name(producer, counter, "load.subcmp.counter");
             let new_value = create_sub_with_name(producer, value.into_int_value(), create_literal_u32(producer, 1), "decrement.counter");
+            assert_eq!(1, self.context.size, "unhandled array store");
             create_store(producer, counter, new_value);
         }
 
