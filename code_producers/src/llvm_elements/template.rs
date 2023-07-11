@@ -165,6 +165,15 @@ impl<'a> TemplateCtx<'a> {
         let signals = self.current_function.get_nth_param(self.signals_arg_offset as u32).unwrap();
         create_gep(producer, signals.into_pointer_value(), &[zero(producer), index])
     }
+
+    /// Returns a pointer to the signal array
+    pub fn get_signal_array(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+    ) -> AnyValueEnum<'a> {
+        let signals = self.current_function.get_nth_param(self.signals_arg_offset as u32).unwrap();
+        signals.into_pointer_value().into()
+    }
 }
 
 impl<'a> BodyCtx<'a> for TemplateCtx<'a> {
@@ -175,6 +184,13 @@ impl<'a> BodyCtx<'a> for TemplateCtx<'a> {
         index: IntValue<'a>,
     ) -> AnyValueEnum<'a> {
         create_gep(producer, self.stack, &[zero(producer), index])
+    }
+
+    fn get_variable_array(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+    ) -> AnyValueEnum<'a> {
+        self.stack.into()
     }
 }
 

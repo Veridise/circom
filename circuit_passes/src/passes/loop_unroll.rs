@@ -54,15 +54,19 @@ impl InterpreterObserver for LoopUnrollPass {
         let mem = self.memory.borrow();
         let interpreter = mem.build_interpreter(self);
         // First we run the loop once. If the result is None that means that the condition is unknown
-        let (_, cond_result, env_once) = interpreter.execute_loop_bucket_once(bucket, env.clone(), false);
-        if cond_result.is_none() {
-            return true;
-        }
+        // let (_, cond_result, env_once) = interpreter.execute_loop_bucket_once(bucket, env.clone(), false);
+        // if cond_result.is_none() {
+        //     return true;
+        // }
         let mut block_body = vec![];
         let mut cond_result = Some(true);
         let mut env = env.clone();
         while cond_result.unwrap() {
+            println!("\nRunning loop once. ENV = {} \n Consts = {:?}", env, interpreter.constant_fields);
             let (_, new_cond, new_env) = interpreter.execute_loop_bucket_once(bucket, env, false);
+            if new_cond.is_none() {
+                return true; // If the conditional becomes Unknown just give up.
+            }
             cond_result = new_cond;
             env = new_env;
             if let Some(true) = new_cond {
@@ -239,6 +243,7 @@ mod test {
                             value: 0,
                         }
                         .allocate(),
+                        bounded_fn: None,
                     }
                     .allocate(),
                     // (store 1 0)
@@ -273,6 +278,7 @@ mod test {
                             value: 0,
                         }
                         .allocate(),
+                        bounded_fn: None,
                     }
                     .allocate(),
                     // (loop (compute le (load 1) 5) (
@@ -308,6 +314,7 @@ mod test {
                                         .allocate(),
                                         template_header: Some("test_0".to_string()),
                                     },
+                                    bounded_fn: None,
                                 }
                                 .allocate(),
                                 ValueBucket {
@@ -373,6 +380,7 @@ mod test {
                                                 .allocate(),
                                                 template_header: Some("test_0".to_string()),
                                             },
+                                            bounded_fn: None,
                                         }
                                         .allocate(),
                                         ValueBucket {
@@ -388,6 +396,7 @@ mod test {
                                     ],
                                 }
                                 .allocate(),
+                                bounded_fn: None,
                             }
                             .allocate(),
                             //   (store 1 (compute add (load 1) 1))
@@ -439,6 +448,7 @@ mod test {
                                                 .allocate(),
                                                 template_header: Some("test_0".to_string()),
                                             },
+                                            bounded_fn: None,
                                         }
                                         .allocate(),
                                         ValueBucket {
@@ -454,6 +464,7 @@ mod test {
                                     ],
                                 }
                                 .allocate(),
+                                bounded_fn: None,
                             }
                             .allocate(),
                         ],

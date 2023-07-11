@@ -130,4 +130,11 @@ impl<'a> BodyCtx<'a> for FunctionCtx<'a> {
     ) -> AnyValueEnum<'a> {
         create_gep(producer, self.arena, &[index])
     }
+
+    fn get_variable_array(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+    ) -> AnyValueEnum<'a> {
+        self.arena.into()
+    }
 }

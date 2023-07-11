@@ -349,6 +349,7 @@ fn initialize_constants(state: &mut State, file_lib: &FileLibrary, constants: Ve
                 dest: LocationRule::Indexed { location: full_address, template_header: None },
                 context: InstrContext { size: 1 },
                 src: content,
+                bounded_fn: None,
             }
             .allocate();
             state.code.push(store_instruction);
@@ -1256,6 +1257,7 @@ impl ProcessedSymbol {
                 context: InstrContext { size: self.length },
                 dest_is_output: false,
                 dest_address_type: dest_type,
+                bounded_fn: None,
             }
             .allocate()
         } else {
@@ -1274,6 +1276,7 @@ impl ProcessedSymbol {
                 dest_is_output: self.signal_type.map_or(false, |t| t == SignalType::Output),
                 dest: LocationRule::Indexed { location: address, template_header: None },
                 context: InstrContext { size: self.length },
+                bounded_fn: None,
             }
             .allocate()
         }
@@ -1297,6 +1300,7 @@ impl ProcessedSymbol {
                 message_id: self.message_id,
                 src: signal,
                 address_type: dest_type,
+                bounded_fn: None,
             }
             .allocate()
         } else {
@@ -1312,6 +1316,7 @@ impl ProcessedSymbol {
                 address_type: xtype,
                 message_id: self.message_id,
                 src: LocationRule::Indexed { location: address, template_header: None },
+                bounded_fn: None,
             }
             .allocate()
         }
