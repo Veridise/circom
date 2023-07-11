@@ -1,3 +1,4 @@
+use either::Either;
 use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
@@ -132,19 +133,14 @@ impl WriteLLVMIR for CallBucket {
                         &[i32_type(producer).const_int(self.arguments.len() as u64, false)],
                     )
                 };
-                return StoreBucket {
-                    id: new_id(),
-                    source_file_id: self.source_file_id,
-                    line: self.line,
-                    message_id: self.message_id,
-                    context: InstrContext { size },
-                    dest_is_output: false,
-                    dest_address_type: data.dest_address_type.clone(),
-                    dest: data.dest.clone(),
-                    src: NopBucket { id: new_id() }.allocate(),
-                    bounded_fn: None,
-                }
-                .produce_llvm_ir_from_src(producer, source_of_store);
+                return StoreBucket::produce_llvm_ir(
+                    producer,
+                    Either::Left(source_of_store),
+                    &data.dest,
+                    &data.dest_address_type,
+                    InstrContext { size },
+                    &None,
+                );
             }
         };
     }

@@ -1,3 +1,4 @@
+pub use either::Either;
 use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
@@ -64,15 +65,26 @@ impl ToString for StoreBucket {
 }
 
 impl StoreBucket{
-    /// Ignore self.src and use the given pre-converted source instead.
     /// The caller must manage the debug location information before calling this function.
-    pub fn produce_llvm_ir_from_src<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>, source: AnyValueEnum<'a>) -> Option<LLVMInstruction<'a>> {
-        let dest_index =  self.dest.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
+    pub fn produce_llvm_ir<'a, 'b>(
+        producer: &'b dyn LLVMIRProducer<'a>,
+        src: Either<AnyValueEnum<'a>, &InstructionPointer>,
+        dest: &LocationRule,
+        dest_address_type: &AddressType,
+        context: InstrContext,
+        bounded_fn: &Option<String>,
+    ) -> Option<LLVMInstruction<'a>> {
+        let dest_index = dest.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
+
+        let mut source = match src {
+            Either::Left(s) => s,
+            Either::Right(s) => to_enum(s.produce_llvm_ir(producer).unwrap()),
+        };
 
         // If we have bounds for an unknown index, we will get the base address and let the function check the bounds
-        let store = match &self.bounded_fn {
+        let store = match &bounded_fn {
             Some(name) => {
-                let arr_ptr = match &self.dest_address_type {
+                let arr_ptr = match &dest_address_type {
                     AddressType::Variable => producer.body_ctx().get_variable_array(producer),
                     AddressType::Signal => producer.template_ctx().get_signal_array(producer),
                     AddressType::SubcmpSignal { cmp_address, .. } => {
@@ -85,7 +97,7 @@ impl StoreBucket{
                 create_call(producer, name.as_str(), &[arr_ptr.into(), dest_index.into(), source.into_int_value().into()])
             }
             None => {
-                let dest_gep = match &self.dest_address_type {
+                let dest_gep = match &dest_address_type {
                     AddressType::Variable => producer.body_ctx().get_variable(producer, dest_index),
                     AddressType::Signal => producer.template_ctx().get_signal(producer, dest_index),
                     AddressType::SubcmpSignal { cmp_address, .. } => {
@@ -94,44 +106,39 @@ impl StoreBucket{
                         create_gep(producer, subcmp, &[zero(producer), dest_index])
                     }
                 }.into_pointer_value();
-                if self.context.size > 1 {
-                    // In the non-scalar case, produce an array copy. If the stored source is a
-                    //  LoadBucket, convert it into an address. Otherwise, just use the given
-                    //  source parameter.
-                    if let Instruction::Load(v) = &*self.src {
-                        let src_index = v
-                            .src
-                            .produce_llvm_ir(producer)
-                            .expect("We need to produce some kind of instruction!")
-                            .into_int_value();
-                        let source_gep = match &v.address_type {
-                            AddressType::Variable => {
-                                producer.body_ctx().get_variable(producer, src_index)
-                            }
-                            AddressType::Signal => {
-                                producer.template_ctx().get_signal(producer, src_index)
-                            }
-                            AddressType::SubcmpSignal { cmp_address, .. } => {
-                                let addr = cmp_address
-                                    .produce_llvm_ir(producer)
-                                    .expect("The address of a subcomponent must yield a value!");
-                                let subcmp =
-                                    producer.template_ctx().load_subcmp_addr(producer, addr);
-                                create_gep(producer, subcmp, &[zero(producer), src_index])
-                            }
-                        }.into_pointer_value();
-                        create_call(
-                            producer,
-                            FR_ARRAY_COPY_FN_NAME,
-                            &[source_gep.into(), dest_gep.into(), create_literal_u32(producer, self.context.size as u64).into()],
-                        )
-                    } else {
-                        create_call(
-                            producer,
-                            FR_ARRAY_COPY_FN_NAME,
-                            &[source.into_pointer_value().into(), dest_gep.into(), create_literal_u32(producer, self.context.size as u64).into()],
-                        )
+                if context.size > 1 {
+                    // In the non-scalar case, produce an array copy. If the stored source
+                    //  is a LoadBucket, first convert it into an address.
+                    if let Either::Right(r) = src {
+                        if let Instruction::Load(v) = &**r {
+                            let src_index = v
+                                .src
+                                .produce_llvm_ir(producer)
+                                .expect("We need to produce some kind of instruction!")
+                                .into_int_value();
+                            source = match &v.address_type {
+                                AddressType::Variable => {
+                                    producer.body_ctx().get_variable(producer, src_index)
+                                }
+                                AddressType::Signal => {
+                                    producer.template_ctx().get_signal(producer, src_index)
+                                }
+                                AddressType::SubcmpSignal { cmp_address, .. } => {
+                                    let addr = cmp_address
+                                        .produce_llvm_ir(producer)
+                                        .expect("The address of a subcomponent must yield a value!");
+                                    let subcmp =
+                                        producer.template_ctx().load_subcmp_addr(producer, addr);
+                                    create_gep(producer, subcmp, &[zero(producer), src_index])
+                                }
+                            };
+                        }
                     }
+                    create_call(
+                        producer,
+                        FR_ARRAY_COPY_FN_NAME,
+                        &[source.into_pointer_value().into(), dest_gep.into(), create_literal_u32(producer, context.size as u64).into()],
+                    )
                 } else {
                     // In the scalar case, just produce a store from the source value that was given
                     create_store(producer, dest_gep, source)
@@ -140,22 +147,22 @@ impl StoreBucket{
         };
 
         // If we have a subcomponent storage decrement the counter
-        if let AddressType::SubcmpSignal { cmp_address, .. } = &self.dest_address_type {
+        if let AddressType::SubcmpSignal { cmp_address, .. } = &dest_address_type {
             let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
             let counter = producer.template_ctx().load_subcmp_counter(producer, addr);
             let value = create_load_with_name(producer, counter, "load.subcmp.counter");
             let new_value = create_sub_with_name(producer, value.into_int_value(), create_literal_u32(producer, 1), "decrement.counter");
-            assert_eq!(1, self.context.size, "unhandled array store");
+            assert_eq!(1, context.size, "unhandled array store");
             create_store(producer, counter, new_value);
         }
 
-        let sub_cmp_name = match &self.dest {
+        let sub_cmp_name = match &dest {
             LocationRule::Indexed { template_header, .. } => template_header.clone(),
-            _ => None
+            LocationRule::Mapped { .. } => None
         };
         // If the input information is unknown add a check that checks the counter and if its zero call the subcomponent
         // If its last just call run directly
-        if let AddressType::SubcmpSignal { input_information, cmp_address, .. } = &self.dest_address_type {
+        if let AddressType::SubcmpSignal { input_information, cmp_address, .. } = &dest_address_type {
             if let InputInformation::Input { status } = input_information {
                 match status {
                     StatusInput::Last => {
@@ -200,7 +207,7 @@ impl WriteLLVMIR for StoreBucket {
     fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
         // A store instruction has a source that states the origin of the value that is going to be stored
-        self.produce_llvm_ir_from_src(producer, to_enum(self.src.produce_llvm_ir(producer).unwrap()))
+        Self::produce_llvm_ir(producer, Either::Right(&self.src), &self.dest, &self.dest_address_type, self.context, &self.bounded_fn)
     }
 }
 
