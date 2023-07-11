@@ -1028,12 +1028,6 @@ fn coda_statement(context: &CodaContext, instructions: &[Box<Instruction>]) -> C
                 }
             },
             CreateCmp(create_cmp) => {
-                // println!("create_cmp: {:?}", create_cmp);
-                // println!("components: {:?}", &context.summary_root.components.iter().map(|cmp| &cmp.name).collect::<Vec<&String>>());
-
-                // HENRY: this is a temporary hack, since I can't figure out why the order of the components in the summary_root is in a random order.
-                // let template_summary = &context.summary_root.components.iter().find(|cmp| create_cmp.symbol.starts_with::<&String>(&cmp.name)).unwrap();
-
                 let template_summary = &context.summary_root.components.iter().find(|cmp| create_cmp.template_id == cmp.template_id).unwrap();
 
                 let template_name = CodaTemplateName { value : template_summary.name.clone() };
