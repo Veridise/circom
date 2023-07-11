@@ -325,6 +325,7 @@ version = "2.1.3"
 dependencies = [
  "code_producers",
  "constant_tracking",
+ "either",
  "num-bigint-dig",
  "num-traits",
  "program_structure",

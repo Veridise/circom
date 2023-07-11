@@ -1,13 +1,15 @@
+use either::Either;
 use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer, to_basic_metadata_enum};
-use code_producers::llvm_elements::instructions::{create_alloca, create_call, create_gep, create_store, pointer_cast};
-use code_producers::llvm_elements::types::bigint_type;
+use code_producers::llvm_elements::instructions::{
+    create_alloca, create_call, create_gep, create_store, pointer_cast,
+};
+use code_producers::llvm_elements::types::{bigint_type, i32_type};
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
-
+use crate::intermediate_representation::{BucketId, new_id};
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FinalData {
@@ -74,28 +76,73 @@ impl ToString for CallBucket {
 }
 
 impl WriteLLVMIR for CallBucket {
-    /// Since calls use the same internal IR than templates they expect the same memory layout
+    /// Since calls use the same internal IR as templates they expect the same memory layout.
     /// Any signal is copied previously to an arena and the function uses that arena
     /// as a set of local variables.
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a, 'b>(
+        &self,
+        producer: &'b dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
         // Create array with arena_size size
         let bigint_arr = bigint_type(producer).array_type(self.arena_size as u32);
-        let arena = create_alloca(producer, bigint_arr.into(), format!("{}_arena", self.symbol).as_str());
+        let arena =
+            create_alloca(producer, bigint_arr.into(), format!("{}_arena", self.symbol).as_str());
 
         // Copy arguments into elements of the arena by indexing order (arg 0 -> arena 0, arg 1 -> arena 1, etc)
-        for (id, arg) in self.arguments.iter().map(|i|
-            i.produce_llvm_ir(producer).expect("Call arguments must produce a value!")
-        ).enumerate() {
+        for (id, arg) in self
+            .arguments
+            .iter()
+            .map(|i| i.produce_llvm_ir(producer).expect("Call arguments must produce a value!"))
+            .enumerate()
+        {
             let i = create_literal_u32(producer, id as u64);
             let ptr = create_gep(producer, arena.into_pointer_value(), &[zero(producer), i]);
             create_store(producer, ptr.into_pointer_value(), arg);
         }
 
-        let arena = pointer_cast(producer, arena.into_pointer_value(), bigint_type(producer).ptr_type(Default::default()));
+        let arena = pointer_cast(
+            producer,
+            arena.into_pointer_value(),
+            bigint_type(producer).ptr_type(Default::default()),
+        );
+
         // Call function passing the array as argument
-        Some(create_call(producer, self.symbol.as_str(), &[to_basic_metadata_enum(arena.into())]))
+        let call_ret_val = create_call(
+            producer,
+            self.symbol.as_str(),
+            &[to_basic_metadata_enum(arena.into())],
+        );
+
+        match &self.return_info {
+            ReturnType::Intermediate { op_aux_no } => {
+                todo!("ReturnType::Intermediate {:#?}", op_aux_no);
+            }
+            ReturnType::Final(data) => {
+                let size = data.context.size;
+                let source_of_store = if size == 1 {
+                    //For scalar returns, store the returned value to
+                    //  the proper index in the current function's arena.
+                    call_ret_val
+                } else {
+                    //For array returns, copy the data from the callee arena to the caller arena.
+                    create_gep(
+                        producer,
+                        arena,
+                        &[i32_type(producer).const_int(self.arguments.len() as u64, false)],
+                    )
+                };
+                return StoreBucket::produce_llvm_ir(
+                    producer,
+                    Either::Left(source_of_store),
+                    &data.dest,
+                    &data.dest_address_type,
+                    InstrContext { size },
+                    &None,
+                );
+            }
+        };
     }
 }
 
