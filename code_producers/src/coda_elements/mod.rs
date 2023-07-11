@@ -298,7 +298,7 @@ impl CodaCompile for CodaBody {
 
 impl CodaCompile for CodaSignalName {
     fn coda_compile(&self) -> String {
-        self.value.clone()
+        self.value.clone().replace("[", "___").replace("]", "")
     }
 }
 
