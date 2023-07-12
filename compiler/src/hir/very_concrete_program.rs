@@ -2,7 +2,7 @@ use num_bigint_dig::BigInt;
 use program_structure::ast::{SignalType, Statement};
 use program_structure::program_archive::ProgramArchive;
 use program_structure::program_library::file_definition::FileLibrary;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -98,6 +98,7 @@ pub struct TemplateInstance {
     pub triggers: Vec<Trigger>,
     pub clusters: Vec<TriggerCluster>,
     pub code: Code,
+    pub public_inputs: HashSet<String>,
 }
 
 pub struct TemplateConfig {
@@ -113,6 +114,7 @@ pub struct TemplateConfig {
     pub components: Vec<Component>,
     pub arguments: Vec<Argument>,
     pub signals_to_tags: BTreeMap<String, TagInfo>,
+    pub public_inputs: HashSet<String>,
 }
 impl TemplateInstance {
     pub fn new(config: TemplateConfig) -> TemplateInstance {
@@ -135,6 +137,7 @@ impl TemplateInstance {
             triggers: config.triggers,
             clusters: config.clusters,
             signals_to_tags: config.signals_to_tags,
+            public_inputs: config.public_inputs
         }
     }
 

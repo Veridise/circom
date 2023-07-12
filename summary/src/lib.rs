@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use compiler::hir::very_concrete_program::{Component, VCP};
+use compiler::hir::very_concrete_program::{Component, TemplateInstance, VCP};
 use compiler::intermediate_representation::translate::{SignalInfo, TemplateDB};
 use program_structure::ast::SignalType;
 use code_producers::llvm_elements::run_fn_name;
@@ -9,7 +9,8 @@ use serde::Serialize;
 
 #[derive(Serialize)]
 struct Meta {
-    is_ir_ssa: bool
+    is_ir_ssa: bool,
+    prime: String
 }
 
 #[derive(Serialize)]
@@ -122,17 +123,20 @@ fn unroll_subcmp(name: &String, lengths: &[usize], idx: usize) -> Vec<SubcmpSumm
 
 impl SummaryRoot {
     pub fn new(vcp: &VCP) -> SummaryRoot {
-        let meta = Meta { is_ir_ssa: false };
+        let meta = Meta { is_ir_ssa: false, prime: vcp.prime.clone() };
         let mut templates = vec![];
 
         let mut subcmps_data = HashMap::<String, &Vec<Component>>::new();
         for i in &vcp.templates {
             subcmps_data.insert(i.template_name.clone(), &i.components);
         }
+        let template_instances: HashMap<usize, &TemplateInstance> =
+            vcp.templates.iter().map(|i| (i.template_id, i)).collect();
 
         let template_database = TemplateDB::build(&vcp.file_library, &vcp.templates);
         for (template_name, template_id) in template_database.indexes {
             let mut signals = vec![];
+            let template = template_instances[&template_id];
 
             let mut signals_data: Vec<(String, usize)> = template_database.signals_id[template_id].clone().into_iter().collect();
             signals_data.sort_by_key(|(_, x)| *x);
@@ -151,9 +155,16 @@ impl SummaryRoot {
                 }
             }
 
+            let is_main = template_id == vcp.main_id;
+            if is_main {
+                for signal in &mut signals {
+                    signal.public = template.public_inputs.contains(&signal.name);
+                }
+            }
+
             let template = TemplateSummary {
                 name: template_name.clone(),
-                main: template_id == vcp.main_id,
+                main: is_main,
                 subcmps,
                 signals,
                 logic_fn_name: run_fn_name(format!("{}_{}", template_name, template_id)),
