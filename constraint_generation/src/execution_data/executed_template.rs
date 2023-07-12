@@ -348,6 +348,7 @@ impl ExecutedTemplate {
             name: self.template_name,
             number_of_components : self.number_of_components,
             signals_to_tags: self.signal_to_tags,
+            public_inputs: self.public_inputs.clone()
         };
 
         let mut instance = TemplateInstance::new(config);
