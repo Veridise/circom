@@ -14,7 +14,6 @@ import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Tuple, List, Match, Union, Optional
-
 import click
 
 
@@ -64,6 +63,15 @@ class TimedOutExecution:
         return self.exception.stderr
 
 
+def extract_number_templates(message) -> int:
+    for line in message.splitlines():
+        check = re.compile(r"template instances: (\d*)")
+        match = check.match(line)
+        if match:
+            return int(match.group(1))
+    return -1
+
+
 class Report:
     def __init__(self, src: str, cmd: List[str], execution: Union[subprocess.CompletedProcess | TimedOutExecution], run_time: float):
         self.src = src
@@ -104,6 +112,12 @@ class Report:
         return ""
 
     @property
+    def stdout(self):
+        if self.execution.stdout:
+            return escape_ansi(self.execution.stdout.decode("utf-8"))
+        return ""
+
+    @property
     def error_class(self):
         if self.successful:
             return "none"
@@ -127,13 +141,14 @@ class Report:
             'cmd': self.cmd,
             'return_code': self.execution.returncode,
             'successful': self.successful,
-            'stdout': escape_ansi(self.execution.stdout.decode("utf-8")),
+            'stdout': self.stdout,
             'stderr': self.stderr,
             'run_time': self.run_time,
             'missing_feature': self.missing_feature,
             'error_class': self.error_class,
             'panicked': self.has_panic,
-            'test_id': self.test_id
+            'test_id': self.test_id,
+            'template_instances': extract_number_templates(self.stdout)
         }
 
 
@@ -213,7 +228,7 @@ def evaluate_test(test_path: str, circom: str, debug: bool, libs_path: str, time
 @click.command()
 @click.option('--src', help='Path where the benchmark is located.')
 @click.option('--out', help='Location of the output report.')
-@click.option('--circom', help="Optional path to circom binary", default=os.path.realpath("../target/release/circom"))
+@click.option('--circom', help="Optional path to circom binary", default=os.path.realpath("target/release/circom"))
 @click.option('--debug', help="Print debug information", is_flag=True)
 @click.option('--timeout', help="Timeout for stopping the compilation", default=600)
 def main(src, out, circom, debug, timeout):
@@ -224,20 +239,21 @@ def main(src, out, circom, debug, timeout):
         reports.extend(evaluate_test(test, circom, debug, str(src.joinpath("tests/libs")), timeout))
 
     with open(out, 'w') as out_csv:
-        print('test_id,successful,error_class,message,file,line,column', file=out_csv)
+        print('test_id,successful,error_class,message,file,line,column,run_time,template_instances', file=out_csv)
         for report in reports:
             report = report.to_dict()
             if report['successful']:
-                print(report['test_id'], report['successful'], '', '', '', '', '', sep=',', file=out_csv)
+                print(report['test_id'], report['successful'], '', '', '', '', '', report['run_time'],
+                      report['template_instances'], sep=',', file=out_csv)
             else:
                 if report['panicked']:
                     print(report['test_id'], report['successful'], report['error_class'],
                           f"\"{report['panicked']['message']}\"",
-                          report['panicked']['file'], report['panicked']['line'], report['panicked']['column'], sep=',',
-                          file=out_csv)
+                          report['panicked']['file'], report['panicked']['line'], report['panicked']['column'],
+                          report['run_time'], report['template_instances'], sep=',', file=out_csv)
                 else:
-                    print(report['test_id'], report['successful'], report['error_class'], '', '', '', '', sep=',',
-                          file=out_csv)
+                    print(report['test_id'], report['successful'], report['error_class'], '', '', '', '',
+                          report['run_time'], report['template_instances'], sep=',', file=out_csv)
 
 
 if __name__ == "__main__":

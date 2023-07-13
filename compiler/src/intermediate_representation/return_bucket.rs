@@ -4,7 +4,7 @@ use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
 use code_producers::llvm_elements::instructions::{create_return_from_any_value, create_return_void};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -47,6 +47,24 @@ impl ToString for ReturnBucket {
         let template_id = self.message_id.to_string();
         let value = self.value.to_string();
         format!("RETURN(line: {},template_id: {},value: {})", line, template_id, value)
+    }
+}
+
+impl ToSExp for ReturnBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("RETURN".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            self.value.to_sexp()
+        ])
+    }
+}
+
+impl UpdateId for ReturnBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        self.value.update_id();
     }
 }
 

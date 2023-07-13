@@ -6,7 +6,7 @@ use code_producers::llvm_elements::instructions::create_call;
 use code_producers::llvm_elements::stdlib::ASSERT_FN_NAME;
 use code_producers::llvm_elements::types::bool_type;
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -48,6 +48,24 @@ impl ToString for AssertBucket {
         let template_id = self.message_id.to_string();
         let evaluate = self.evaluate.to_string();
         format!("ASSERT(line: {},template_id: {},evaluate: {})", line, template_id, evaluate)
+    }
+}
+
+impl ToSExp for AssertBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("ASSERT".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            self.evaluate.to_sexp()
+        ])
+    }
+}
+
+impl UpdateId for AssertBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        self.evaluate.update_id();
     }
 }
 

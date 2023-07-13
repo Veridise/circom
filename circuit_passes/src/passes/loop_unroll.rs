@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{InstructionPointer, new_id};
+use compiler::intermediate_representation::{BucketId, InstructionList, InstructionPointer, new_id, ToSExp, UpdateId};
 use compiler::intermediate_representation::ir_interface::{
     Allocate, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket,
     CreateCmpBucket, LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket,
@@ -19,13 +19,48 @@ use crate::passes::memory::PassMemory;
 pub struct LoopUnrollPass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     memory: RefCell<PassMemory>,
-    replacements: RefCell<BTreeMap<LoopBucket, InstructionPointer>>,
+    replacements: RefCell<BTreeMap<BucketId, InstructionPointer>>,
 
 }
 
 impl LoopUnrollPass {
     pub fn new(prime: &String) -> Self {
         LoopUnrollPass { memory: PassMemory::new_cell(prime, String::from(""), Default::default()), replacements: Default::default() }
+    }
+
+    fn try_unroll_loop(&self, bucket: &LoopBucket, env: &Env) -> (Option<InstructionList>, usize) {
+        let mem = self.memory.borrow();
+        let interpreter = mem.build_interpreter(self);
+        let mut block_body = vec![];
+        let mut cond_result = Some(true);
+        let mut env = env.clone();
+        let mut iters = 0;
+        while cond_result.unwrap() {
+            let (_, new_cond, new_env) = interpreter.execute_loop_bucket_once(bucket, env, false);
+            if new_cond.is_none() {
+                return (None, 0); // If the conditional becomes Unknown just give up.
+            }
+            cond_result = new_cond;
+            env = new_env;
+            if let Some(true) = new_cond {
+                iters += 1;
+                for inst in &bucket.body {
+                    block_body.push(inst.clone());
+                }
+            }
+        }
+        for inst in &mut block_body {
+            inst.update_id();
+        }
+        (Some(block_body), iters)
+    }
+
+    // Will take the unrolled loop and interpretate it
+    // checking if new loop buckets appear
+    fn continue_inside(&self, bucket: &BlockBucket, env: &Env) {
+        let mem = self.memory.borrow();
+        let interpreter = mem.build_interpreter(self);
+        interpreter.execute_block_bucket(bucket, env.clone(), true);
     }
 }
 
@@ -51,40 +86,19 @@ impl InterpreterObserver for LoopUnrollPass {
     }
 
     fn on_loop_bucket(&self, bucket: &LoopBucket, env: &Env) -> bool {
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
-        // First we run the loop once. If the result is None that means that the condition is unknown
-        // let (_, cond_result, env_once) = interpreter.execute_loop_bucket_once(bucket, env.clone(), false);
-        // if cond_result.is_none() {
-        //     return true;
-        // }
-        let mut block_body = vec![];
-        let mut cond_result = Some(true);
-        let mut env = env.clone();
-        while cond_result.unwrap() {
-            println!("\nRunning loop once. ENV = {} \n Consts = {:?}", env, interpreter.constant_fields);
-            let (_, new_cond, new_env) = interpreter.execute_loop_bucket_once(bucket, env, false);
-            if new_cond.is_none() {
-                return true; // If the conditional becomes Unknown just give up.
-            }
-            cond_result = new_cond;
-            env = new_env;
-            if let Some(true) = new_cond {
-                for inst in &bucket.body {
-                    block_body.push(inst.clone());
-                }
-            }
-        }
-        let block =
-            BlockBucket {
+        if let (Some(block_body), n_iters) = self.try_unroll_loop(bucket, env) {
+            let block = BlockBucket {
                 id: new_id(),
                 source_file_id: bucket.source_file_id,
                 line: bucket.line,
                 message_id: bucket.message_id,
-                body: block_body
-            }.allocate();
-        self.replacements.borrow_mut().insert(bucket.clone(), block);
-        true
+                body: block_body,
+                n_iters
+            };
+            self.continue_inside(&block, env);
+            self.replacements.borrow_mut().insert(bucket.id, block.allocate());
+        }
+        false
     }
 
     fn on_create_cmp_bucket(&self, _bucket: &CreateCmpBucket, _env: &Env) -> bool {
@@ -147,7 +161,7 @@ impl CircuitTransformationPass for LoopUnrollPass {
     }
 
     fn transform_loop_bucket(&self, bucket: &LoopBucket) -> InstructionPointer {
-        if let Some(unrolled_loop) = self.replacements.borrow().get(&bucket) {
+        if let Some(unrolled_loop) = self.replacements.borrow().get(&bucket.id) {
             return self.transform_instruction(unrolled_loop);
         }
         LoopBucket {

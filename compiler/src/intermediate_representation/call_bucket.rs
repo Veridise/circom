@@ -1,3 +1,4 @@
+use std::path::is_separator;
 use either::Either;
 use super::ir_interface::*;
 use crate::translating_traits::*;
@@ -9,7 +10,7 @@ use code_producers::llvm_elements::instructions::{
 use code_producers::llvm_elements::types::{bigint_type, i32_type};
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::{BucketId, new_id};
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FinalData {
@@ -72,6 +73,27 @@ impl ToString for CallBucket {
             args = format!("{}{},", args, i.to_string());
         }
         format!("CALL(line:{},template_id:{},id:{},args:{})", line, template_id, self.symbol, args)
+    }
+}
+
+impl ToSExp for CallBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("CALL".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            SExp::Atom(self.symbol.clone()),
+            SExp::List(self.arguments.iter().map(|i| i.to_sexp()).collect()),
+        ])
+    }
+}
+
+impl UpdateId for CallBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        for inst in &mut self.arguments {
+            inst.update_id();
+        }
     }
 }
 

@@ -1,20 +1,22 @@
 pub mod value;
 pub mod env;
 pub mod observer;
+pub(crate) mod operations;
 
 use std::collections::HashMap;
 use std::ops::{Range, RangeInclusive};
 use circom_algebra::modular_arithmetic;
 use code_producers::components::TemplateInstanceIOMap;
 use code_producers::llvm_elements::IndexMapping;
-use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
+use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer, ToSExp};
 use compiler::intermediate_representation::ir_interface::{AddressType, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket, CreateCmpBucket, InputInformation, LoadBucket, LocationRule, LogBucket, LogBucketArg, LoopBucket, NopBucket, OperatorType, ReturnBucket, ReturnType, StatusInput, StoreBucket, ValueBucket, ValueType};
 use compiler::num_bigint::BigInt;
 use observer::InterpreterObserver;
 use program_structure::constants::UsefulConstants;
-use crate::bucket_interpreter::env::{Env};
+use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::value::{JoinSemiLattice, mod_value, resolve_operation, Value};
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
+
 
 pub struct BucketInterpreter<'a> {
     scope: &'a String,
@@ -280,7 +282,6 @@ impl<'a> BucketInterpreter<'a> {
                 let idx_value = idx.expect("Indexed location must produce a value!");
                 if !idx_value.is_unknown() {
                     let idx = idx_value.get_u32();
-                    println!("Setting variable #{} with value {:?}", idx, value);
                     env.set_var(idx, value)
                 } else {
                     env
@@ -385,41 +386,10 @@ impl<'a> BucketInterpreter<'a> {
             return (Some(Unknown), env);
         }
         let p = &self.p;
-        let computed_value = Some(match bucket.op {
-            OperatorType::Mul => resolve_operation(value::mul_value, p, &stack),
-            OperatorType::Div => resolve_operation(value::div_value, p, &stack),
-            OperatorType::Add => resolve_operation(value::add_value, p, &stack),
-            OperatorType::Sub => resolve_operation(value::sub_value, p, &stack),
-            OperatorType::Pow => resolve_operation(value::pow_value, p, &stack),
-            OperatorType::IntDiv => resolve_operation(value::int_div_value, p, &stack),
-            OperatorType::Mod => resolve_operation(value::mod_value, p, &stack),
-            OperatorType::ShiftL => resolve_operation(value::shift_l_value, p, &stack),
-            OperatorType::ShiftR => resolve_operation(value::shift_r_value, p, &stack),
-            OperatorType::LesserEq => value::lesser_eq(&stack[0], &stack[1], p),
-            OperatorType::GreaterEq => value::greater_eq(&stack[0], &stack[1], p),
-            OperatorType::Lesser => value::lesser(&stack[0], &stack[1], p),
-            OperatorType::Greater => value::greater(&stack[0], &stack[1], p),
-            OperatorType::Eq(1) => value::eq1(&stack[0], &stack[1], p),
-            OperatorType::Eq(_) => todo!(),
-            OperatorType::NotEq => value::not_eq(&stack[0], &stack[1], p),
-            OperatorType::BoolOr => resolve_operation(value::bool_or_value, p, &stack),
-            OperatorType::BoolAnd => resolve_operation(value::bool_and_value, p, &stack),
-            OperatorType::BitOr => resolve_operation(value::bit_or_value, p, &stack),
-            OperatorType::BitAnd => resolve_operation(value::bit_and_value, p, &stack),
-            OperatorType::BitXor => resolve_operation(value::bit_xor_value, p, &stack),
-            OperatorType::PrefixSub => {
-                value::prefix_sub(&stack[0], p)
-            }
-            OperatorType::BoolNot => KnownU32((!stack[0].to_bool(p)).into()),
-            OperatorType::Complement => {
-                value::complement(&stack[0], p)
-            }
-            OperatorType::ToAddress => value::to_address(&stack[0]),
-            OperatorType::MulAddress => stack.iter().fold(KnownU32(1), value::mul_address),
-            OperatorType::AddAddress => stack.iter().fold(KnownU32(0), value::add_address),
-        });
+        let computed_value = operations::compute_operation(bucket, &stack, p);
         (computed_value, env)
     }
+
 
     pub fn execute_call_bucket<'env>(&self, bucket: &'env CallBucket, env: Env<'env>, observe: bool) -> R<'env> {
         let mut args = vec![];
@@ -430,7 +400,14 @@ impl<'a> BucketInterpreter<'a> {
             args.push(value.expect("Function argument must produce a value!"));
         }
 
-        let result = env.run_function(&bucket.symbol, self, args, observe);
+        let any_unknown = args.iter().any(|v| v.is_unknown());
+
+        //let result = env.run_function(&bucket.symbol, self, args, observe);
+        let result = if any_unknown {
+            Unknown
+        } else {
+            env.run_function(&bucket.symbol, self, args, observe)
+        };
 
         // Write the result in the destination according to the address type
         match &bucket.return_info {
@@ -476,7 +453,7 @@ impl<'a> BucketInterpreter<'a> {
     }
 
     pub fn execute_assert_bucket<'env>(&self, bucket: &'env AssertBucket, env: Env<'env>, observe: bool) -> R<'env> {
-        self.observer.on_assert_bucket(bucket, &env);
+        //self.observer.on_assert_bucket(bucket, &env);
 
         let (cond, env) = self.execute_instruction(&bucket.evaluate, env, observe);
         let cond = cond.expect("cond in AssertBucket must produce a value!");
@@ -506,7 +483,6 @@ impl<'a> BucketInterpreter<'a> {
         env: Env<'env>,
         observe: bool,
     ) -> (Option<Value>, Option<bool>, Env<'env>) {
-        println!("COND: {}", cond.to_string());
         let (executed_cond, env) = self.execute_instruction(cond, env, observe);
         let executed_cond = executed_cond.expect("executed_cond must produce a value!");
         let cond_bool_result = self.value_to_bool(&executed_cond);
@@ -516,10 +492,12 @@ impl<'a> BucketInterpreter<'a> {
                 (None, None, env)
             }
             Some(true) => {
+                println!("Running then branch");
                 let (ret, env) = self.execute_instructions(&true_branch, env, observe);
                 (ret, Some(true), env)
             }
             Some(false) => {
+                println!("Running else branch");
                 let (ret, env) = self.execute_instructions(&false_branch, env, observe);
                 (ret, Some(false), env)
             }
@@ -549,7 +527,7 @@ impl<'a> BucketInterpreter<'a> {
     /// potentially written into in the loop's body are set to `Unknown` to represent
     /// that we don't know the values after the execution of that loop.
     pub fn execute_loop_bucket<'env>(&self, bucket: &'env LoopBucket, env: Env<'env>, observe: bool) -> R<'env> {
-        self.observer.on_loop_bucket(bucket, &env);
+        //self.observer.on_loop_bucket(bucket, &env);
         let mut last_value = Some(Unknown);
         let mut loop_env = env;
         let mut n_iters = 0;
@@ -591,13 +569,6 @@ impl<'a> BucketInterpreter<'a> {
                 }
             }
         }
-        // self.compute_while(
-        //     &bucket.continue_condition,
-        //     &bucket.body,
-        //     env,
-        //     Default::default(),
-        //     observe
-        // )
     }
 
     pub fn execute_create_cmp_bucket<'env>(
@@ -606,7 +577,7 @@ impl<'a> BucketInterpreter<'a> {
         env: Env<'env>,
         observe: bool,
     ) -> R<'env> {
-        self.observer.on_create_cmp_bucket(bucket, &env);
+        //self.observer.on_create_cmp_bucket(bucket, &env);
 
         let (cmp_id, env) = self.execute_instruction(&bucket.sub_cmp_id, env, observe);
         let cmp_id = cmp_id.expect("sub_cmp_id subexpression must yield a value!").get_u32();
@@ -626,7 +597,7 @@ impl<'a> BucketInterpreter<'a> {
         env: Env<'env>,
         observe: bool,
     ) -> R<'env> {
-        self.observer.on_constraint_bucket(bucket, &env);
+        //self.observer.on_constraint_bucket(bucket, &env);
 
         self.execute_instruction(
             match bucket {
@@ -651,7 +622,7 @@ impl<'a> BucketInterpreter<'a> {
         last
     }
 
-    pub fn execute_unrolled_loop_bucket<'env>(
+    pub fn execute_block_bucket<'env>(
         &self,
         bucket: &'env BlockBucket,
         env: Env<'env>,
@@ -682,7 +653,7 @@ impl<'a> BucketInterpreter<'a> {
             Instruction::Constraint(b) => {
                 self.execute_constraint_bucket(b, env, continue_observing)
             }
-            Instruction::Block(b) => self.execute_unrolled_loop_bucket(b, env, continue_observing),
+            Instruction::Block(b) => self.execute_block_bucket(b, env, continue_observing),
             Instruction::Nop(b) => self.execute_nop_bucket(b, env, continue_observing),
         }
     }

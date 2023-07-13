@@ -19,6 +19,7 @@ mod nop_bucket;
 pub mod ir_interface;
 pub mod translate;
 
+use pretty::{Doc, RcDoc};
 use rand::Rng;
 pub use ir_interface::{Instruction, InstructionList, InstructionPointer};
 
@@ -27,4 +28,37 @@ pub type BucketId = u128;
 pub fn new_id() -> BucketId {
     let mut rng = rand::thread_rng();
     rng.gen()
+}
+
+pub enum SExp {
+    Atom(String),
+    List(Vec<SExp>)
+}
+
+impl SExp {
+    /// Return a pretty printed format of self.
+    pub fn to_doc(&self) -> RcDoc<()> {
+        match *self {
+            SExp::Atom(ref x) => RcDoc::as_string(x),
+            SExp::List(ref xs) =>
+                RcDoc::text("(")
+                    .append(RcDoc::intersperse(xs.into_iter().map(|x| x.to_doc()), Doc::line()).nest(1).group())
+                    .append(RcDoc::text(")"))
+        }
+    }
+
+    pub fn to_pretty(&self, width: usize) -> String {
+        let mut w = Vec::new();
+        self.to_doc().render(width, &mut w).unwrap();
+        String::from_utf8(w).unwrap()
+    }
+}
+
+pub trait ToSExp {
+    fn to_sexp(&self) -> SExp;
+}
+
+pub trait UpdateId {
+    /// Will change its internal ID to a new one
+    fn update_id(&mut self);
 }

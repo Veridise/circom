@@ -3,7 +3,7 @@ use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -67,6 +67,32 @@ impl ToString for LogBucket {
             }
         }
         ret
+    }
+}
+
+impl ToSExp for LogBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("LOG".to_string()),
+            SExp::List(self.argsprint.iter().map(|a| {
+                match a {
+                    LogBucketArg::LogExp(e) => e.to_sexp(),
+                    LogBucketArg::LogStr(s) => SExp::Atom(format!("String_{s}"))
+                }
+            }).collect())
+        ])
+    }
+}
+
+impl UpdateId for LogBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        for arg in &mut self.argsprint {
+            match arg {
+                LogBucketArg::LogExp(e) => e.update_id(),
+                LogBucketArg::LogStr(_) => {}
+            }
+        }
     }
 }
 

@@ -8,7 +8,7 @@ use code_producers::llvm_elements::{AnyValueEnum, InstructionOpcode}; //from ink
 use code_producers::llvm_elements::functions::create_bb;
 use code_producers::llvm_elements::instructions::{create_br, create_conditional_branch};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -62,6 +62,32 @@ impl ToString for BranchBucket {
             "IF(line:{},template_id:{},cond:{},if:{},else{})",
             line, template_id, cond, if_body, else_body
         )
+    }
+}
+
+impl ToSExp for BranchBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("IF".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            self.cond.to_sexp(),
+            SExp::List(self.if_branch.iter().map(|i| i.to_sexp()).collect()),
+            SExp::List(self.else_branch.iter().map(|i| i.to_sexp()).collect())
+        ])
+    }
+}
+
+impl UpdateId for BranchBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        self.cond.update_id();
+        for inst in &mut self.if_branch {
+            inst.update_id();
+        }
+        for inst in &mut self.else_branch {
+            inst.update_id();
+        }
     }
 }
 

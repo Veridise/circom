@@ -1,5 +1,6 @@
+use pretty::{Doc, RcDoc};
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use crate::intermediate_representation::{BucketId, Instruction, InstructionList, InstructionPointer};
+use crate::intermediate_representation::{BucketId, Instruction, InstructionList, InstructionPointer, new_id, SExp, ToSExp, UpdateId};
 use crate::intermediate_representation::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
 use crate::translating_traits::WriteLLVMIR;
 
@@ -9,7 +10,8 @@ pub struct BlockBucket {
     pub source_file_id: Option<usize>,
     pub line: usize,
     pub message_id: usize,
-    pub body: InstructionList
+    pub body: InstructionList,
+    pub n_iters: usize
 }
 
 impl IntoInstruction for BlockBucket {
@@ -40,13 +42,33 @@ impl ToString for BlockBucket {
     fn to_string(&self) -> String {
         let line = self.line.to_string();
         let template_id = self.message_id.to_string();
-        let mut body = "".to_string();
-        body = format!("{}[", body);
+        let mut body = "[\n".to_string();
         for i in &self.body {
-            body = format!("{}{};", body, i.to_string());
+            body = format!("{} - {};\n", body, i.to_string());
         }
         body = format!("{}]", body);
-        format!("BLOCK(line:{},template_id:{},n_iterations:{},body:{})", line, template_id, self.body.len(), body)
+        format!("BLOCK(line:{},template_id:{},n_iterations:{},body:{})", line, template_id, self.n_iters, body)
+    }
+}
+
+impl ToSExp for BlockBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("BLOCK".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            SExp::Atom(format!("n_iterations:{}", self.n_iters)),
+            SExp::List(self.body.iter().map(|i| i.to_sexp()).collect())
+        ])
+    }
+}
+
+impl UpdateId for BlockBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        for inst in &mut self.body {
+            inst.update_id();
+        }
     }
 }
 
