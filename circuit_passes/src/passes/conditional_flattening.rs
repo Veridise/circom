@@ -38,9 +38,7 @@ impl InterpreterObserver for ConditionalFlattening {
         true
     }
 
-    fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> bool {
-        println!("Before env: {}", env);
-        println!("on_store_bucket: {}", bucket.to_sexp().to_pretty(200));
+    fn on_store_bucket(&self, _bucket: &StoreBucket, _env: &Env) -> bool {
         true
     }
 
@@ -64,8 +62,7 @@ impl InterpreterObserver for ConditionalFlattening {
         true
     }
 
-    fn on_block_bucket(&self, bucket: &BlockBucket, _env: &Env) -> bool {
-        println!("on_block_bucket({}): n_iters = {}", bucket.id, bucket.n_iters);
+    fn on_block_bucket(&self, _bucket: &BlockBucket, _env: &Env) -> bool {
         true
     }
 
