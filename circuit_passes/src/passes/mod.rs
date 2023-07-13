@@ -21,6 +21,7 @@ use crate::passes::{
     simplification::SimplificationPass,
     unknown_index_sanitization::UnknownIndexSanitizationPass,
 };
+use crate::passes::checks::assert_unique_ids_in_circuit;
 
 mod conditional_flattening;
 mod loop_unroll;
@@ -29,6 +30,7 @@ mod simplification;
 mod deterministic_subcomponent_invocation;
 mod mapped_to_indexed;
 mod unknown_index_sanitization;
+mod checks;
 
 macro_rules! pre_hook {
     ($name: ident, $bucket_ty: ty) => {
@@ -365,6 +367,7 @@ pub trait CircuitTransformationPass {
             line: bucket.line,
             message_id: bucket.message_id,
             body: self.transform_instructions(&bucket.body),
+            n_iters: bucket.n_iters
         }
         .allocate()
     }
@@ -440,6 +443,7 @@ impl PassManager {
         let mut transformed_circuit = circuit;
         for pass in self.passes.borrow().iter() {
             transformed_circuit = pass.transform_circuit(&transformed_circuit);
+            assert_unique_ids_in_circuit(&transformed_circuit);
         }
         transformed_circuit
     }

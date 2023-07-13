@@ -4,7 +4,7 @@ use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, to_enum, LLVMIRProducer};
 use code_producers::llvm_elements::values::{create_literal_u32, get_const};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -53,6 +53,25 @@ impl ToString for ValueBucket {
             "VALUE(line:{},template_id:{},as:{},op_number:{},value:{})",
             line, template_id, parse_as, op_aux_number, value
         )
+    }
+}
+
+impl ToSExp for ValueBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("VALUE".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            SExp::Atom(format!("as:{}", self.parse_as.to_string())),
+            SExp::Atom(format!("op_number:{}", self.op_aux_no)),
+            SExp::Atom(self.value.to_string())
+        ])
+    }
+}
+
+impl UpdateId for ValueBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
     }
 }
 

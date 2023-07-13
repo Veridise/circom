@@ -3,7 +3,7 @@ use code_producers::llvm_elements::{LLVMInstruction, new_constraint, to_basic_me
 use code_producers::llvm_elements::instructions::{create_call, create_load, get_instruction_arg};
 use code_producers::llvm_elements::stdlib::{CONSTRAINT_VALUE_FN_NAME, CONSTRAINT_VALUES_FN_NAME};
 use code_producers::wasm_elements::WASMProducer;
-use crate::intermediate_representation::{Instruction, InstructionPointer};
+use crate::intermediate_representation::{Instruction, InstructionPointer, SExp, ToSExp, UpdateId};
 use crate::intermediate_representation::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
 use crate::translating_traits::{WriteC, WriteLLVMIR, WriteWasm};
 
@@ -15,6 +15,13 @@ pub enum ConstraintBucket {
 
 impl ConstraintBucket {
     pub fn unwrap(&self) -> &InstructionPointer {
+        match self {
+            ConstraintBucket::Substitution(i) => i,
+            ConstraintBucket::Equality(i) => i
+        }
+    }
+
+    pub fn unwrap_mut(&mut self) -> &mut InstructionPointer {
         match self {
             ConstraintBucket::Substitution(i) => i,
             ConstraintBucket::Equality(i) => i
@@ -64,6 +71,21 @@ impl ToString for ConstraintBucket {
                 ConstraintBucket::Equality(i) => i
             }.to_string()
         )
+    }
+}
+
+impl ToSExp for ConstraintBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("CONSTRAINT".to_string()),
+            self.unwrap().to_sexp(),
+        ])
+    }
+}
+
+impl UpdateId for ConstraintBucket {
+    fn update_id(&mut self) {
+        self.unwrap_mut().update_id();
     }
 }
 

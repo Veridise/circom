@@ -1,5 +1,5 @@
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use crate::intermediate_representation::{BucketId, Instruction, InstructionPointer};
+use crate::intermediate_representation::{BucketId, Instruction, InstructionPointer, new_id, SExp, ToSExp, UpdateId};
 use crate::intermediate_representation::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
 use crate::translating_traits::WriteLLVMIR;
 
@@ -35,6 +35,18 @@ impl ObtainMeta for NopBucket {
 impl ToString for NopBucket {
     fn to_string(&self) -> String {
         "NOP".to_string()
+    }
+}
+
+impl ToSExp for NopBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::Atom("NOP".to_string())
+    }
+}
+
+impl UpdateId for NopBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
     }
 }
 

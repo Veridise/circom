@@ -15,6 +15,7 @@ use code_producers::llvm_elements::array_switch::{load_array_switch, get_array_l
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::{BucketInterpreter, value, R};
 use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::operations::compute_operation;
 use crate::bucket_interpreter::value::{mod_value, resolve_operation, Value, Value::KnownU32, Value::KnownBigInt};
 use crate::passes::CircuitTransformationPass;
 use crate::passes::memory::PassMemory;
@@ -72,39 +73,7 @@ impl<'a> ZeroingInterpreter<'a> {
             return (Some(KnownU32(0)), env);
         }
         let p = &self.p;
-        let computed_value = Some(match bucket.op {
-            OperatorType::Mul => resolve_operation(value::mul_value, p, &stack),
-            OperatorType::Div => resolve_operation(value::div_value, p, &stack),
-            OperatorType::Add => resolve_operation(value::add_value, p, &stack),
-            OperatorType::Sub => resolve_operation(value::sub_value, p, &stack),
-            OperatorType::Pow => resolve_operation(value::pow_value, p, &stack),
-            OperatorType::IntDiv => resolve_operation(value::int_div_value, p, &stack),
-            OperatorType::Mod => resolve_operation(value::mod_value, p, &stack),
-            OperatorType::ShiftL => resolve_operation(value::shift_l_value, p, &stack),
-            OperatorType::ShiftR => resolve_operation(value::shift_r_value, p, &stack),
-            OperatorType::LesserEq => value::lesser_eq(&stack[0], &stack[1], p),
-            OperatorType::GreaterEq => value::greater_eq(&stack[0], &stack[1], p),
-            OperatorType::Lesser => value::lesser(&stack[0], &stack[1], p),
-            OperatorType::Greater => value::greater(&stack[0], &stack[1], p),
-            OperatorType::Eq(1) => value::eq1(&stack[0], &stack[1], p),
-            OperatorType::Eq(_) => todo!(),
-            OperatorType::NotEq => value::not_eq(&stack[0], &stack[1], p),
-            OperatorType::BoolOr => resolve_operation(value::bool_or_value, p, &stack),
-            OperatorType::BoolAnd => resolve_operation(value::bool_and_value, p, &stack),
-            OperatorType::BitOr => resolve_operation(value::bit_or_value, p, &stack),
-            OperatorType::BitAnd => resolve_operation(value::bit_and_value, p, &stack),
-            OperatorType::BitXor => resolve_operation(value::bit_xor_value, p, &stack),
-            OperatorType::PrefixSub => {
-                value::prefix_sub(&stack[0], p)
-            }
-            OperatorType::BoolNot => KnownU32((!stack[0].to_bool(p)).into()),
-            OperatorType::Complement => {
-                value::complement(&stack[0], p)
-            }
-            OperatorType::ToAddress => value::to_address(&stack[0]),
-            OperatorType::MulAddress => stack.iter().fold(KnownU32(1), value::mul_address),
-            OperatorType::AddAddress => stack.iter().fold(KnownU32(0), value::add_address),
-        });
+        let computed_value = compute_operation(bucket, &stack, p);
         (computed_value, env)
     }
 

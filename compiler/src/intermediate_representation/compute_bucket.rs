@@ -11,7 +11,7 @@ use code_producers::llvm_elements::fr::{
 };
 use code_producers::llvm_elements::instructions::{create_add_with_name, create_call, create_mul_with_name};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Ord, PartialOrd)]
@@ -139,14 +139,36 @@ impl ToString for ComputeBucket {
         let template_id = self.message_id.to_string();
         let op = self.op.to_string();
         let op_number = self.op_aux_no.to_string();
-        let mut stack = "".to_string();
+        let mut stack = "\n".to_string();
         for i in &self.stack {
-            stack = format!("{}{};", stack, i.to_string());
+            stack = format!("{} - {};\n", stack, i.to_string());
         }
         format!(
             "COMPUTE(line:{},template_id:{},op_number:{},op:{},stack:{})",
             line, template_id, op_number, op, stack
         )
+    }
+}
+
+impl ToSExp for ComputeBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("COMPUTE".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            SExp::Atom(format!("op_number:{}", self.op_aux_no)),
+            SExp::Atom(self.op.to_string()),
+            SExp::List(self.stack.iter().map(|i| i.to_sexp()).collect()),
+        ])
+    }
+}
+
+impl UpdateId for ComputeBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        for inst in &mut self.stack {
+            inst.update_id();
+        }
     }
 }
 

@@ -10,7 +10,7 @@ use code_producers::llvm_elements::instructions::{
 };
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct StoreBucket {
@@ -61,6 +61,28 @@ impl ToString for StoreBucket {
             "STORE(line:{},template_id:{},dest_type:{},dest:{},src:{})",
             line, template_id, dest_type, dest, src
         )
+    }
+}
+
+impl ToSExp for StoreBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("STORE".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            self.dest_address_type.to_sexp(),
+            self.dest.to_sexp(),
+            self.src.to_sexp()
+        ])
+    }
+}
+
+impl UpdateId for StoreBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        self.src.update_id();
+        self.dest.update_id();
+        self.dest_address_type.update_id();
     }
 }
 

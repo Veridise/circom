@@ -5,7 +5,7 @@ use code_producers::llvm_elements::{build_fn_name, LLVMInstruction, LLVMIRProduc
 use code_producers::llvm_elements::instructions::{create_add, create_call};
 use code_producers::llvm_elements::values::create_literal_u32;
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -70,6 +70,25 @@ impl ToString for CreateCmpBucket {
             "CREATE_CMP(line:{},template_id:{},name:{},id_no:{})",
             line, template_id, self.symbol, id_no
         )
+    }
+}
+
+impl ToSExp for CreateCmpBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("CREATE_CMP".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            SExp::Atom(format!("name:{}", self.symbol)),
+            self.sub_cmp_id.to_sexp()
+        ])
+    }
+}
+
+impl UpdateId for CreateCmpBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        self.sub_cmp_id.update_id();
     }
 }
 

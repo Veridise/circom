@@ -5,7 +5,7 @@ use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
 use code_producers::llvm_elements::functions::create_bb;
 use code_producers::llvm_elements::instructions::{create_br, create_conditional_branch};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -52,6 +52,28 @@ impl ToString for LoopBucket {
             body = format!("{}{};", body, i.to_string());
         }
         format!("LOOP(line:{},template_id:{},cond:{},body:{})", line, template_id, cond, body)
+    }
+}
+
+impl ToSExp for LoopBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("LOOP".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            self.continue_condition.to_sexp(),
+            SExp::List(self.body.iter().map(|i| i.to_sexp()).collect()),
+        ])
+    }
+}
+
+impl UpdateId for LoopBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        self.continue_condition.update_id();
+        for inst in &mut self.body {
+            inst.update_id();
+        }
     }
 }
 

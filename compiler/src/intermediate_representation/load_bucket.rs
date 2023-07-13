@@ -6,7 +6,7 @@ use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
 use code_producers::llvm_elements::instructions::{create_gep, create_load, create_call, pointer_cast};
 use code_producers::llvm_elements::values::zero;
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::BucketId;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -54,6 +54,26 @@ impl ToString for LoadBucket {
             "LOAD(line:{},template_id:{},address_type:{},src:{})",
             line, template_id, address, src
         )
+    }
+}
+
+impl ToSExp for LoadBucket {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("LOAD".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("template_id:{}", self.message_id)),
+            self.address_type.to_sexp(),
+            self.src.to_sexp()
+        ])
+    }
+}
+
+impl UpdateId for LoadBucket {
+    fn update_id(&mut self) {
+        self.id = new_id();
+        self.address_type.update_id();
+        self.src.update_id();
     }
 }
 

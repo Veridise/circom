@@ -21,6 +21,7 @@ use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
 use code_producers::wasm_elements::*;
+use crate::intermediate_representation::{SExp, ToSExp, UpdateId};
 
 
 pub trait IntoInstruction {
@@ -231,6 +232,28 @@ impl ToString for Instruction {
     }
 }
 
+impl ToSExp for Instruction {
+    fn to_sexp(&self) -> SExp {
+        use Instruction::*;
+        match self {
+            Value(b) => b.to_sexp(),
+            Load(b) => b.to_sexp(),
+            Store(b) => b.to_sexp(),
+            Compute(b) => b.to_sexp(),
+            Call(b) => b.to_sexp(),
+            Branch(b) => b.to_sexp(),
+            Return(b) => b.to_sexp(),
+            Assert(b) => b.to_sexp(),
+            Log(b) => b.to_sexp(),
+            Loop(b) => b.to_sexp(),
+            CreateCmp(b) => b.to_sexp(),
+            Constraint(b) => b.to_sexp(),
+            Block(b) => b.to_sexp(),
+            Nop(b) => b.to_sexp(),
+        }
+    }
+}
+
 impl Instruction {
     pub fn label_name(&self, idx: u32) -> String {
         use Instruction::*;
@@ -253,6 +276,28 @@ impl Instruction {
             }.label_name(idx),
             Block(_) => format!("unrolled_loop{}", idx),
             Nop(_) => format!("nop{}", idx)
+        }
+    }
+}
+
+impl UpdateId for Instruction {
+    fn update_id(&mut self) {
+        use Instruction::*;
+        match self {
+            Value(b) => b.update_id(),
+            Load(b) => b.update_id(),
+            Store(b) => b.update_id(),
+            Compute(b) => b.update_id(),
+            Call(b) => b.update_id(),
+            Branch(b) => b.update_id(),
+            Return(b) => b.update_id(),
+            Assert(b) => b.update_id(),
+            Log(b) => b.update_id(),
+            Loop(b) => b.update_id(),
+            CreateCmp(b) => b.update_id(),
+            Constraint(b) => b.update_id(),
+            Block(b) => b.update_id(),
+            Nop(b) => b.update_id(),
         }
     }
 }

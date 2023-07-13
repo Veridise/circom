@@ -2,7 +2,6 @@ pragma circom 2.0.0;
 
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s
-// XFAIL: *
 
 function SplitFn(in, n, m) {
     return [in % (1 << n), (in \ (1 << n)) % (1 << m)];

@@ -26,7 +26,7 @@ impl Display for Value {
         match self {
             Unknown => write!(f, "Unknown"),
             KnownU32(n) => write!(f, "{}", n),
-            KnownBigInt(n) => write!(f, "{}", n),
+            KnownBigInt(n) => write!(f, "BigInt({})", n),
         }
     }
 }
@@ -46,8 +46,6 @@ impl Value {
             _ => panic!("Can't unwrap a u32 from a non KnownU32 value! {:?}", self),
         }
     }
-
-
 
     pub fn get_bigint_as_string(&self) -> String {
         match self {
@@ -156,7 +154,6 @@ pub fn add_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
 
 pub fn sub_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
     wrap_op(lhs, rhs, field, |x, y| x - y, modular_arithmetic::sub)
-
 }
 
 pub fn mul_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
@@ -166,7 +163,6 @@ pub fn mul_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
 
 pub fn div_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
     wrap_op_result(lhs, rhs, field, |x, y| x / y, modular_arithmetic::div)
-
 }
 
 fn fr_pow(lhs: &BigInt, rhs: &BigInt) -> BigInt {
@@ -217,7 +213,6 @@ pub fn lesser(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
 
 pub fn greater(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
     wrap_op(lhs, rhs, field, |x, y| (x > y).into(), modular_arithmetic::greater)
-
 }
 
 pub fn eq1(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
@@ -267,7 +262,9 @@ pub fn complement(v: &Value, field: &BigInt) -> Value {
 pub fn to_address(v: &Value) -> Value {
     match v {
         Unknown => panic!("Cant convert into an address an unknown value!"),
-        KnownBigInt(b) => KnownU32(b.to_u64().unwrap() as usize),
+        KnownBigInt(b) => KnownU32(b.to_u64().expect(format!(
+            "Can't convert {} to a usize type", b
+        ).as_str()) as usize),
         x => x.clone(),
     }
 }
