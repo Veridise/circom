@@ -28,7 +28,7 @@
          };
 
         devShell = with pkgs; mkShell {
-          buildInputs = [ cargo rustc rustfmt pre-commit rustPackages.clippy lit ] ++ circom_deps;
+          buildInputs = [ cargo rustc rustfmt pre-commit rustPackages.clippy lit jq ] ++ circom_deps;
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
           LLVM_SYS_130_PREFIX = "${libllvm.dev}";
         };
