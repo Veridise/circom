@@ -91,7 +91,11 @@ impl<'a> BucketInterpreter<'a> {
         match bucket.dest_address_type {
             AddressType::Variable => {
                 let idx = self.get_id_from_indexed_location(&bucket.dest, env);
-                let indices = self.variables_index_mapping[&idx].clone();
+                let indices = self.variables_index_mapping.get(&idx).expect(
+                    format!("Could not get idx {idx} from mapping. Min key {:?}. Max key {:?}",
+                            self.variables_index_mapping.keys().min(),
+                            self.variables_index_mapping.keys().max()).as_str()
+                ).clone();
                 for index in indices {
                     vars.push(index);
                 }
