@@ -163,6 +163,7 @@ def run_test(src: str, circom: str, debug: bool, cwd: str, libs_path: Optional[s
     cmd = [
         circom,
         '--llvm',
+        '--summary',
         '-o', tmp.name
     ]
     if libs_path:

@@ -11,3 +11,4 @@ serde = "1.0"
 program_structure = {path = "../program_structure"}
 compiler = {path = "../compiler"}
 code_producers = {path = "../code_producers"}
+constant_tracking = {path = "../constant_tracking"}

@@ -30,7 +30,7 @@ pub enum CircomEnvironmentError {
     NonExistentSymbol,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RawEnvironment<T, CC, SC, VC> {
     components: HashMap<String, CC>,
     inputs: HashMap<String, SC>,
@@ -406,7 +406,7 @@ where
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct VariableBlock<VC> {
     variables: HashMap<String, VC>,
 }

@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 use std::fs::File;
 use compiler::hir::very_concrete_program::{Component, TemplateInstance, VCP};
-use compiler::intermediate_representation::translate::{SignalInfo, TemplateDB};
+use compiler::intermediate_representation::translate::{initialize_signals, SignalInfo, State, TemplateDB};
 use program_structure::ast::SignalType;
 use code_producers::llvm_elements::run_fn_name;
 use serde::Serialize;
+use constant_tracking::ConstantTracker;
+use program_structure::file_definition::FileLibrary;
 
 
 #[derive(Serialize)]
@@ -122,54 +124,77 @@ fn unroll_subcmp(name: &String, lengths: &[usize], idx: usize) -> Vec<SubcmpSumm
 }
 
 impl SummaryRoot {
+    fn prepare_template_instances(templates: &[TemplateInstance]) -> HashMap<usize, &TemplateInstance> {
+        templates.iter().map(|i| (i.template_id, i)).collect()
+    }
+
+    fn prepare_signals(template: &TemplateInstance) -> HashMap<String, SignalInfo> {
+        let mut signal_info = HashMap::new();
+        for signal in template.signals.clone() {
+            let info = SignalInfo{ signal_type: signal.xtype, lengths: signal.lengths};
+            signal_info.insert(signal.name, info);
+        }
+        signal_info
+    }
+
+    fn create_state(template: &TemplateInstance) -> State {
+        State::new(
+            template.template_id,
+            0,
+            ConstantTracker::new(),
+            HashMap::with_capacity(0),
+            template.signals_to_tags.clone(),
+        )
+    }
+
+    fn process_signals(instance: &TemplateInstance, file_lib: &FileLibrary) -> Vec<SignalSummary> {
+        let mut signals = vec![];
+        let mut state = Self::create_state(instance);
+        initialize_signals(&mut state, file_lib, instance.signals.clone(), &instance.code);
+        for signal in &instance.signals {
+            let info = SignalInfo { signal_type: signal.xtype, lengths: signal.lengths.clone() };
+            let idx = state.ssa.get_signal(&signal.name).unwrap().0;
+            for signal_summary in unroll_signal(&signal.name, &info, idx) {
+                signals.push(signal_summary);
+            }
+        }
+        signals
+    }
+
+    fn process_template(template: &TemplateInstance, vcp: &VCP) -> TemplateSummary {
+        let mut signals = Self::process_signals(template, &vcp.file_library);
+
+        let mut subcmps = vec![];
+        for subcmp in &template.components {
+            for subcmp_summary in unroll_subcmp(&subcmp.name, &subcmp.lengths, subcmps.len()) {
+                subcmps.push(subcmp_summary);
+            }
+        }
+
+        let is_main = template.template_id == vcp.main_id;
+        if is_main {
+            for signal in &mut signals {
+                signal.public = template.public_inputs.contains(&signal.name);
+            }
+        }
+
+        TemplateSummary {
+            name: template.template_name.clone(),
+            main: is_main,
+            subcmps,
+            signals,
+            logic_fn_name: run_fn_name(template.template_header.clone()),
+        }
+    }
+
     pub fn new(vcp: &VCP) -> SummaryRoot {
         let meta = Meta { is_ir_ssa: false, prime: vcp.prime.clone() };
         let mut templates = vec![];
 
-        let mut subcmps_data = HashMap::<String, &Vec<Component>>::new();
-        for i in &vcp.templates {
-            subcmps_data.insert(i.template_name.clone(), &i.components);
-        }
-        let template_instances: HashMap<usize, &TemplateInstance> =
-            vcp.templates.iter().map(|i| (i.template_id, i)).collect();
-
         let template_database = TemplateDB::build(&vcp.file_library, &vcp.templates);
-        for (template_name, template_id) in template_database.indexes {
-            let mut signals = vec![];
-            let template = template_instances[&template_id];
-
-            let mut signals_data: Vec<(String, usize)> = template_database.signals_id[template_id].clone().into_iter().collect();
-            signals_data.sort_by_key(|(_, x)| *x);
-            for (signal_name, _signal_idx) in &signals_data {
-                let signal_info = &template_database.signal_info[template_id][signal_name];
-
-                for signal_summary in unroll_signal(signal_name, signal_info, signals.len()) {
-                    signals.push(signal_summary);
-                }
-            }
-
-            let mut subcmps = vec![];
-            for subcmp in subcmps_data[&template_name] {
-                for subcmp_summary in unroll_subcmp(&subcmp.name, &subcmp.lengths, subcmps.len()) {
-                    subcmps.push(subcmp_summary);
-                }
-            }
-
-            let is_main = template_id == vcp.main_id;
-            if is_main {
-                for signal in &mut signals {
-                    signal.public = template.public_inputs.contains(&signal.name);
-                }
-            }
-
-            let template = TemplateSummary {
-                name: template_name.clone(),
-                main: is_main,
-                subcmps,
-                signals,
-                logic_fn_name: run_fn_name(format!("{}_{}", template_name, template_id)),
-            };
-            templates.push(template);
+        for template in &vcp.templates {
+            let template_summary = Self::process_template(template, vcp);
+            templates.push(template_summary);
         }
         SummaryRoot {
             version: env!("CARGO_PKG_VERSION").to_string(),

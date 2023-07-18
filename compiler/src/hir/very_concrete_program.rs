@@ -24,7 +24,7 @@ impl PartialEq for Argument {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Signal {
     pub name: String,
     pub lengths: Vec<Length>,

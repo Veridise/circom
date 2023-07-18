@@ -24,7 +24,7 @@ pub struct SymbolInfo {
     is_component: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SignalInfo{
     pub signal_type: SignalType,
     pub lengths: Vec<usize>,
@@ -155,6 +155,10 @@ impl SSACollector {
         self.signals.insert(name.clone(), (addr, lengths.clone()));
     }
 
+    pub fn get_signal(&self, name: &String) -> Option<&(usize, Vec<usize>)> {
+        self.signals.get(name)
+    }
+
     pub fn dump_signals(&self) -> IndexMapping {
         let mut mapping = HashMap::new();
         for (addr, lengths) in self.signals.values() {
@@ -184,7 +188,7 @@ impl SSACollector {
     }
 }
 
-struct State {
+pub struct State {
     field_tracker: FieldTracker,
     environment: E,
     component_to_parallel:  HashMap<String, ParallelClusters>,
@@ -199,11 +203,11 @@ struct State {
     component_address_stack: usize,
     code: InstructionList,
     string_table: HashMap<String, usize>,
-    ssa: SSACollector
+    pub ssa: SSACollector
 }
 
 impl State {
-    fn new(
+    pub fn new(
         msg_id: usize,
         cmp_id_offset: usize,
         field_tracker: FieldTracker,
@@ -358,7 +362,7 @@ fn initialize_constants(state: &mut State, file_lib: &FileLibrary, constants: Ve
     }
 }
 
-fn initialize_signals(state: &mut State, file_lib: &FileLibrary, signals: Vec<Signal>, body: &Statement) {
+pub fn initialize_signals(state: &mut State, file_lib: &FileLibrary, signals: Vec<Signal>, body: &Statement) {
     let meta = body.get_meta();
     let line_num = file_lib.get_line(meta.get_start(), meta.get_file_id()).unwrap();
     for signal in signals {

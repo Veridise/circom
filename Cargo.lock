@@ -1627,6 +1627,7 @@ version = "2.1.3"
 dependencies = [
  "code_producers",
  "compiler",
+ "constant_tracking",
  "program_structure",
  "serde",
  "serde_json",
