@@ -217,6 +217,14 @@ trait CodaCompile {
 impl CodaCompile for CodaProgram {
     fn coda_compile(&self) -> String {
         let mut s: String = String::new();
+        
+        s.push_str("open Dsl\n");
+        s.push_str("open Expr\n");
+        s.push_str("open Qual\n");
+        s.push_str("open Typ\n");
+        s.push_str("open TypRef\n");
+        s.push_str("open Hoare_circuit\n");
+
         self.coda_circuits.iter().for_each(|circuit| {
             s.push_str(&format!("{}\n\n", circuit.coda_compile()));
         });
@@ -265,7 +273,7 @@ impl CodaCompile for CodaCircuit {
         // applies the abstracted body definition to the inputs in Coda variable form `var "NAME"`
         let template_def_body_string = format!("{} {}", body_name_string, inputs_as_args_string);
 
-        let template_def_string = format!("let {} = Hoare_circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; preconditions= []; postcondition= []; body= {} }}",
+        let template_def_string = format!("let {} = to_circuit @@ Hoare_circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; preconditions= []; postcondition= []; body= {} }}",
             template_name_string,
             &self.name,
             &inputs_string,
@@ -405,7 +413,7 @@ impl CodaCompile for CodaExpr {
             }
             CodaExpr::Constant(string) => string.clone(),
             CodaExpr::Binop(op, e1, e2) => {
-                format!("({} {} {})", e1.coda_compile(), op.coda_compile(), e2.coda_compile())
+                format!("F.({} {} {})", e1.coda_compile(), op.coda_compile(), e2.coda_compile())
             }
         }
     }

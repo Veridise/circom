@@ -135,6 +135,10 @@ impl SummaryRoot {
                 template_database.signals_id[template_id].clone().into_iter().collect();
             signals_data.sort_by_key(|(_, x)| *x);
             for (signal_name, _signal_idx) in &signals_data {
+                println!("[DEBUG]");
+                println!("template_id: {:?}", template_id);
+                println!("signal_name: {:?}", signal_name);
+
                 let signal_info = &template_database.signal_info[template_id][signal_name];
 
                 for signal_summary in unroll_signal(signal_name, signal_info, signals.len()) {
