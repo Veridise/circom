@@ -1,3 +1,7 @@
+use code_producers::coda_elements::load_summary;
+
+pub use crate::circuit_design::circuit::{Circuit, CompilationFlags};
+pub use crate::hir::very_concrete_program::VCP;
 use std::fs::File;
 use std::io::BufWriter;
 
@@ -61,6 +65,19 @@ pub fn write_llvm_ir(circuit: &mut Circuit, program_archive: &ProgramArchive, ll
         eprintln!("Error creating the LLVM file {}: {}", llvm_file, err)
     })?;
     circuit.produce_llvm_ir(program_archive, &llvm_file)
+}
+
+pub fn write_coda(circuit: &mut Circuit, summary_file: &str, coda_file: &str) -> Result<(), ()> {
+    println!("[compiler_interface::write_coda] summary_file: {}", summary_file);
+    let summary_root = load_summary(summary_file).map_err(|err| {
+        println!("[compiler_interface::write_coda] error loading summary file {}: {}", summary_file, err);
+    })?;
+
+    println!("[compiler_interface::write_coda] coda_file: {}", coda_file);
+    let file = File::create(coda_file).map_err(|_err| {})?;
+    let mut writer = BufWriter::new(file);
+    
+    circuit.produce_coda(summary_root, &mut writer)
 }
 
 fn produce_debug_output(circuit: &Circuit) -> Result<(), ()> {

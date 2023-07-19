@@ -8,7 +8,6 @@ use serde::Serialize;
 use constant_tracking::ConstantTracker;
 use program_structure::file_definition::FileLibrary;
 
-
 #[derive(Serialize)]
 struct Meta {
     is_ir_ssa: bool,
@@ -20,13 +19,13 @@ struct SignalSummary {
     name: String,
     visibility: String,
     idx: usize,
-    public: bool
+    public: bool,
 }
 
 #[derive(Serialize)]
 struct SubcmpSummary {
     name: String,
-    idx: usize
+    idx: usize,
 }
 
 #[derive(Serialize)]
@@ -35,7 +34,8 @@ struct TemplateSummary {
     main: bool,
     signals: Vec<SignalSummary>,
     subcmps: Vec<SubcmpSummary>,
-    logic_fn_name: String
+    logic_fn_name: String,
+    template_id: usize,
 }
 
 #[derive(Serialize)]
@@ -52,12 +52,12 @@ pub struct SummaryRoot {
     framework: Option<String>,
     meta: Meta,
     components: Vec<TemplateSummary>,
-    functions: Vec<FunctionSummary>
+    functions: Vec<FunctionSummary>,
 }
 
 fn index_names(lengths: &[usize]) -> Vec<String> {
     if lengths.is_empty() {
-        return vec!["".to_string()]
+        return vec!["".to_string()];
     }
     let hd = lengths[0];
     let tl = &lengths[1..lengths.len()];
@@ -79,11 +79,12 @@ fn unroll_signal(name: &String, info: &SignalInfo, idx: usize) -> Vec<SignalSumm
             visibility: match info.signal_type {
                 SignalType::Output => "output",
                 SignalType::Input => "input",
-                SignalType::Intermediate => "intermediate"
-            }.to_string(),
+                SignalType::Intermediate => "intermediate",
+            }
+            .to_string(),
             public: false,
-            idx
-        }]
+            idx,
+        }];
     }
     let mut signals = vec![];
 
@@ -93,10 +94,11 @@ fn unroll_signal(name: &String, info: &SignalInfo, idx: usize) -> Vec<SignalSumm
             visibility: match info.signal_type {
                 SignalType::Output => "output",
                 SignalType::Input => "input",
-                SignalType::Intermediate => "intermediate"
-            }.to_string(),
+                SignalType::Intermediate => "intermediate",
+            }
+            .to_string(),
             idx: idx + offset,
-            public: false
+            public: false,
         })
     }
 
@@ -105,19 +107,13 @@ fn unroll_signal(name: &String, info: &SignalInfo, idx: usize) -> Vec<SignalSumm
 
 fn unroll_subcmp(name: &String, lengths: &[usize], idx: usize) -> Vec<SubcmpSummary> {
     if lengths.is_empty() {
-        return vec![SubcmpSummary {
-            name: name.to_string(),
-            idx
-        }]
+        return vec![SubcmpSummary { name: name.to_string(), idx }];
     }
 
     let mut subcmps = vec![];
 
-    for (offset, indices)  in index_names(lengths).iter().enumerate() {
-        subcmps.push(SubcmpSummary {
-            name: format!("{name}{indices}"),
-            idx: idx + offset
-        })
+    for (offset, indices) in index_names(lengths).iter().enumerate() {
+        subcmps.push(SubcmpSummary { name: format!("{name}{indices}"), idx: idx + offset })
     }
 
     subcmps
@@ -163,6 +159,15 @@ impl SummaryRoot {
 
     fn process_template(template: &TemplateInstance, vcp: &VCP) -> TemplateSummary {
         let mut signals = Self::process_signals(template, &vcp.file_library);
+            let mut signals_data: Vec<(String, usize)> =
+                template_database.signals_id[template_id].clone().into_iter().collect();
+            signals_data.sort_by_key(|(_, x)| *x);
+            for (signal_name, _signal_idx) in &signals_data {
+                println!("[DEBUG]");
+                println!("template_id: {:?}", template_id);
+                println!("signal_name: {:?}", signal_name);
+
+                let signal_info = &template_database.signal_info[template_id][signal_name];
 
         let mut subcmps = vec![];
         for subcmp in &template.components {
@@ -195,7 +200,18 @@ impl SummaryRoot {
         for template in &vcp.templates {
             let template_summary = Self::process_template(template, vcp);
             templates.push(template_summary);
-        }
+
+            let template = TemplateSummary {
+                name: template_name.clone(),
+                template_id,
+                main: template_id == vcp.main_id,
+                subcmps,
+                signals,
+                logic_fn_name: run_fn_name(format!("{}_{}", template_name, template_id)),
+            };
+            templates.push(template);
+
+      }
         SummaryRoot {
             version: env!("CARGO_PKG_VERSION").to_string(),
             compiler: "circom".to_string(),

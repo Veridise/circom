@@ -4,6 +4,8 @@ use code_producers::llvm_elements::*;
 use code_producers::wasm_elements::*;
 use program_structure::program_archive::ProgramArchive;
 use crate::intermediate_representation::ir_interface::ObtainMeta;
+use code_producers::coda_elements::*;
+use std::io::Write;
 
 pub trait WriteC {
     /*
@@ -37,7 +39,6 @@ pub trait WriteLLVMIR {
         &self,
         producer: &'b dyn LLVMIRProducer<'a>,
     ) -> Option<LLVMInstruction<'a>>;
-
     fn write_llvm_ir(
         &self,
         program_archive: &ProgramArchive,
@@ -51,7 +52,8 @@ pub trait WriteLLVMIR {
             out_path,
             data.field_tracking.clone(),
         );
-        self.produce_llvm_ir(&top_level);
+
+      self.produce_llvm_ir(&top_level);
         top_level.write_to_file(out_path)
     }
 
@@ -84,5 +86,16 @@ pub trait WriteLLVMIR {
             // Clear active debug location if no associated file or no DebugInfo for that file
             None => producer.builder().unset_current_debug_location(),
         };
+}
+
+pub trait WriteCoda {
+    fn produce_coda_program(&self, summary: SummaryRoot) -> CodaProgram;
+
+    fn write_coda_program<W: Write>(&self, writer: &mut W, program: CodaProgram) -> Result<(), ()> {
+        // let str = "";
+        let str = coda_compile_program(&program);
+        println!("write_coda_program:\n\n{}\n\n", str);
+        writer.write_all(str.as_bytes()).map_err(|_| ())?;
+        Ok(())
     }
 }

@@ -16,10 +16,12 @@ pub struct Input {
     pub out_llvm_code: PathBuf,
     pub out_summary_dat: PathBuf,
     pub out_llvm_folder: PathBuf,
+    pub out_coda_code: PathBuf,
     //pub field: &'static str,
     pub c_flag: bool,
     pub wasm_flag: bool,
     pub llvm_flag: bool,
+    pub coda_flag: bool,
     pub summary_flag: bool,
     pub wat_flag: bool,
     pub r1cs_flag: bool,
@@ -49,6 +51,7 @@ const DAT: &'static str = "dat";
 const SYM: &'static str = "sym";
 const JSON: &'static str = "json";
 const LLVM_IR: &'static str = "ll";
+const CODA: &'static str = "ml";
 
 
 impl Input {
@@ -75,6 +78,7 @@ impl Input {
 	        out_c_run_name: file_name.clone(),
             out_c_code: Input::build_output(&output_c_path, &file_name, CPP),
             out_llvm_code: Input::build_output(&output_llvm_path, &file_name, LLVM_IR),
+            out_coda_code: Input::build_output(&output_path, &file_name, CODA),
             out_llvm_folder: output_llvm_path.clone(),
             out_summary_dat: Input:: build_output(&output_llvm_path, &file_name, JSON),
             out_c_dat: Input::build_output(&output_c_path, &file_name, DAT),
@@ -87,6 +91,7 @@ impl Input {
             wat_flag:input_processing::get_wat(&matches),
             wasm_flag: input_processing::get_wasm(&matches),
             llvm_flag: input_processing::get_llvm(&matches),
+            coda_flag: input_processing::get_coda(&matches),
             summary_flag: input_processing::get_summary(&matches),
             c_flag: input_processing::get_c(&matches),
             r1cs_flag: input_processing::get_r1cs(&matches),
@@ -176,6 +181,12 @@ impl Input {
     }
     pub fn llvm_flag(&self) -> bool {
         self.llvm_flag
+    }
+    pub fn coda_flag(&self) -> bool {
+        self.coda_flag
+    }
+    pub fn coda_file(&self) -> &str {
+        self.out_coda_code.to_str().unwrap()
     }
     pub fn summary_flag(&self) -> bool {
         self.summary_flag
@@ -300,6 +311,10 @@ mod input_processing {
 
     pub fn get_llvm(matches: &ArgMatches) -> bool {
         matches.is_present("print_llvm_ir")
+    }
+
+    pub fn get_coda(matches: &ArgMatches) -> bool {
+        matches.is_present("print_coda")
     }
 
     pub fn get_summary(matches: &ArgMatches) -> bool {
@@ -465,6 +480,13 @@ mod input_processing {
                     .takes_value(false)
                     .display_order(91)
                     .help("Compiles the circuit to LLVM-IR"),
+            )
+            .arg(
+                Arg::with_name("print_coda")
+                    .long("coda")
+                    .takes_value(false)
+                    .display_order(91)
+                    .help("Compiles the circuit to Coda-IR"),
             )
             .arg(
                 Arg::with_name("print_summary")

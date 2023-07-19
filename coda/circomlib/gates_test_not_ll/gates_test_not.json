@@ -1,0 +1,1 @@
+{"version":"2.1.3","compiler":"circom","framework":null,"meta":{"is_ir_ssa":false},"components":[{"name":"NOT","main":true,"signals":[{"name":"out","visibility":"output","idx":0,"public":false},{"name":"in","visibility":"input","idx":1,"public":false}],"subcmps":[],"logic_fn_name":"NOT_0_run","template_id":0}],"functions":[]}

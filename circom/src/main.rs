@@ -55,6 +55,8 @@ fn start() -> Result<(), ()> {
         c_flag: user_input.c_flag(),
         wasm_flag: user_input.wasm_flag(),
         llvm_flag: user_input.llvm_flag(),
+        coda_flag: user_input.coda_flag(),
+        coda_file: user_input.coda_file().to_string(),
         wat_flag: user_input.wat_flag(),
 	    js_folder: user_input.js_folder().to_string(),
 	    wasm_name: user_input.wasm_name().to_string(),
@@ -68,6 +70,7 @@ fn start() -> Result<(), ()> {
         wat_file: user_input.wat_file().to_string(),
         wasm_file: user_input.wasm_file().to_string(),
         produce_input_log: user_input.main_inputs_flag(),
+        summary_file: user_input.summary_file().to_string(),
     };
     compilation_user::compile(compilation_config, program_archive, &user_input.prime())?;
     Result::Ok(())

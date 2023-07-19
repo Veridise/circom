@@ -25,8 +25,11 @@ pub struct CompilerConfig {
     pub wasm_flag: bool,
     pub c_flag: bool,
     pub llvm_flag: bool,
+    pub coda_flag: bool,
+    pub coda_file: String,
     pub debug_output: bool,
     pub produce_input_log: bool,
+    pub summary_file: String,
     pub vcp: VCP,
 }
 
@@ -83,6 +86,20 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
             Colour::Green.paint("Written successfully:"),
             config.llvm_file
         );
+    }
+
+    if config.coda_flag {
+        // These passes were originally implemented for LLVM compilation, but
+        // turns out it will also be useful for Coda compilation.
+        let pm = PassManager::new();
+        circuit = pm
+            .schedule_loop_unroll_pass(prime)
+            .schedule_conditional_flattening_pass(prime)
+            .schedule_simplification_pass(prime)
+            .schedule_deterministic_subcmp_invoke_pass(prime)
+            .transform_circuit(circuit);
+
+        compiler_interface::write_coda(&mut circuit, &config.summary_file, &config.coda_file)?
     }
 
     match (config.wat_flag, config.wasm_flag) {

@@ -301,6 +301,7 @@ dependencies = [
  "lz_fnv",
  "num-bigint-dig",
  "program_structure",
+ "serde",
  "serde_json",
  "uuid",
 ]

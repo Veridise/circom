@@ -16,3 +16,4 @@ report.csv
 out.stacks
 flamegraph.svg
 result
+.llvmenv
