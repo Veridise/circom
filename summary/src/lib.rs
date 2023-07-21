@@ -32,6 +32,7 @@ struct SubcmpSummary {
 #[derive(Serialize)]
 struct TemplateSummary {
     name: String,
+    id: usize,
     main: bool,
     signals: Vec<SignalSummary>,
     subcmps: Vec<SubcmpSummary>,
@@ -181,6 +182,7 @@ impl SummaryRoot {
         TemplateSummary {
             name: template.template_name.clone(),
             main: is_main,
+            id: template.template_id,
             subcmps,
             signals,
             logic_fn_name: run_fn_name(template.template_header.clone()),
