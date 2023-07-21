@@ -3,7 +3,7 @@ use std::fs::File;
 use compiler::hir::very_concrete_program::{Component, TemplateInstance, VCP};
 use compiler::intermediate_representation::translate::{initialize_signals, SignalInfo, State, TemplateDB};
 use program_structure::ast::SignalType;
-use code_producers::llvm_elements::run_fn_name;
+use code_producers::llvm_elements::{build_fn_name, run_fn_name};
 use serde::Serialize;
 use constant_tracking::ConstantTracker;
 use program_structure::file_definition::FileLibrary;
@@ -36,7 +36,8 @@ struct TemplateSummary {
     main: bool,
     signals: Vec<SignalSummary>,
     subcmps: Vec<SubcmpSummary>,
-    logic_fn_name: String
+    logic_fn_name: String,
+    constructor_fn_name: String,
 }
 
 #[derive(Serialize)]
@@ -186,6 +187,7 @@ impl SummaryRoot {
             subcmps,
             signals,
             logic_fn_name: run_fn_name(template.template_header.clone()),
+            constructor_fn_name: build_fn_name(template.template_header.clone())
         }
     }
 
@@ -193,7 +195,6 @@ impl SummaryRoot {
         let meta = Meta { is_ir_ssa: false, prime: vcp.prime.clone() };
         let mut templates = vec![];
 
-        let template_database = TemplateDB::build(&vcp.file_library, &vcp.templates);
         for template in &vcp.templates {
             let template_summary = Self::process_template(template, vcp);
             templates.push(template_summary);
