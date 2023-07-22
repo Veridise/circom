@@ -21,6 +21,7 @@ pub struct Input {
     pub wasm_flag: bool,
     pub llvm_flag: bool,
     pub coda_flag: bool,
+    pub coda_file: Option<String>,
     pub summary_flag: bool,
     pub wat_flag: bool,
     pub r1cs_flag: bool,
@@ -89,6 +90,7 @@ impl Input {
             wasm_flag: input_processing::get_wasm(&matches),
             llvm_flag: input_processing::get_llvm(&matches),
             coda_flag: input_processing::get_coda(&matches),
+            coda_file: input_processing::get_coda_file(&matches),
             summary_flag: input_processing::get_summary(&matches),
             c_flag: input_processing::get_c(&matches),
             r1cs_flag: input_processing::get_r1cs(&matches),
@@ -181,6 +183,9 @@ impl Input {
     }
     pub fn coda_flag(&self) -> bool {
         self.coda_flag
+    }
+    pub fn coda_file(&self) -> Option<String> {
+        self.coda_file.clone()
     }
     pub fn summary_flag(&self) -> bool {
         self.summary_flag
@@ -308,7 +313,11 @@ mod input_processing {
     }
 
     pub fn get_coda(matches: &ArgMatches) -> bool {
-        matches.is_present("print_coda_ir")
+        matches.is_present("print_coda")
+    }
+    
+    pub fn get_coda_file(matches: &ArgMatches) -> Option<String> {
+        matches.value_of("coda_output_file").map(|name| name.to_string())
     }
 
     pub fn get_summary(matches: &ArgMatches) -> bool {
@@ -476,7 +485,14 @@ mod input_processing {
                     .help("Compiles the circuit to LLVM-IR"),
             )
             .arg(
-                Arg::with_name("print_coda_ir")
+                Arg::with_name("coda_output_file")
+                    .long("coda-output")
+                    .takes_value(true)
+                    .display_order(91)
+                    .help("The output file to write the output Coda program to.")
+            )
+            .arg(
+                Arg::with_name("print_coda")
                     .long("coda")
                     .takes_value(false)
                     .display_order(91)

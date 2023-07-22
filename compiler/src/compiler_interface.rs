@@ -63,6 +63,13 @@ pub fn write_llvm_ir(circuit: &mut Circuit, program_archive: &ProgramArchive, ll
     circuit.produce_llvm_ir(program_archive, &llvm_file)
 }
 
+pub fn write_coda(circuit: &mut Circuit, program_archive: &ProgramArchive, coda_file: &str) -> Result<(), ()> {
+    let file = &mut File::create(coda_file).map_err(|err| {
+        eprintln!("Error creating the Coda file {}: {}", coda_file, err)
+    })?;
+    circuit.produce_coda(program_archive, file)
+}
+
 fn produce_debug_output(circuit: &Circuit) -> Result<(), ()> {
     use std::io::Write;
     use std::path::Path;

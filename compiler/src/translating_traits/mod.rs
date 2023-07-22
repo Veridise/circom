@@ -31,6 +31,10 @@ pub trait WriteWasm {
     }
 }
 
+pub trait PrintCoda {
+    fn print_coda(&self, program_archive: &ProgramArchive) -> String;
+}
+
 pub trait WriteLLVMIR {
     /// This must always return the final statement in the current BasicBlock or None if empty.
     fn produce_llvm_ir<'a, 'b>(

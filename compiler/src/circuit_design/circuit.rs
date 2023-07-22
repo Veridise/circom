@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
 use std::io::Write;
 use super::function::{FunctionCode, FunctionCodeInfo};
 use super::template::{TemplateCode, TemplateCodeInfo};
@@ -14,7 +15,7 @@ use code_producers::llvm_elements::fr::load_fr;
 use code_producers::llvm_elements::functions::{create_function, FunctionLLVMIRProducer};
 use code_producers::llvm_elements::stdlib::load_stdlib;
 use code_producers::llvm_elements::types::{bigint_type, void_type};
-use program_structure::program_archive::ProgramArchive;
+use program_structure::program_archive::{ProgramArchive, self};
 
 pub struct CompilationFlags {
     pub main_inputs_log: bool,
@@ -541,4 +542,18 @@ impl Circuit {
     pub fn produce_llvm_ir(&mut self, program_archive: &ProgramArchive, out_path: &str) -> Result<(), ()> {
         self.write_llvm_ir(program_archive, out_path, &self.llvm_data)
     }
+    pub fn produce_coda(&mut self, program_archive: &ProgramArchive, out_file: &mut File) -> Result<(), ()> {
+        // self.write_coda(program_archive, out_path)
+        let str = self.print_coda(program_archive);
+        out_file.write_all(str.as_bytes()).map_err(|err| {
+            eprintln!("Error writing to the Coda file: {}", err)
+        })
+    }
 }
+
+impl PrintCoda for Circuit {
+    fn print_coda(&self, program_archive: &ProgramArchive) -> String {
+        "this was produced by `print_coda`".to_string()
+    }
+}
+

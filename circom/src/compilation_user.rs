@@ -1,3 +1,5 @@
+use core::panic;
+
 use ansi_term::Colour;
 use circuit_passes::passes::PassManager;
 use compiler::compiler_interface;
@@ -26,6 +28,7 @@ pub struct CompilerConfig {
     pub c_flag: bool,
     pub llvm_flag: bool,
     pub coda_flag: bool,
+    pub coda_file: Option<String>,
     pub debug_output: bool,
     pub produce_input_log: bool,
     pub vcp: VCP,
@@ -87,7 +90,38 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
     }
 
     if config.coda_flag {
+        // Only run this passes if we are going to generate LLVM code
+        let pm = PassManager::new();
+        // TODO: are all of these necessary for Coda->Circom?
+        circuit = pm
+            .schedule_loop_unroll_pass(prime)
+            .schedule_conditional_flattening_pass(prime)
+            .schedule_mapped_to_indexed_pass(prime)
+            .schedule_unknown_index_sanitization_pass(prime)
+            .schedule_simplification_pass(prime)
+            .schedule_deterministic_subcmp_invoke_pass(prime)
+            .transform_circuit(circuit);
 
+        // compiler_interface::write_llvm_ir(
+        //     &mut circuit,
+        //     &program_archive,
+        //     &config.llvm_folder,
+        //     &config.llvm_file,
+        //     config.clean_llvm,
+        // )?;
+
+        let coda_file = match config.coda_file {
+            Some(coda_file) => coda_file,
+            None => panic!("In order to generate Coda ouput, must provide a Coda output file."),
+        };
+
+        compiler_interface::write_coda(&mut circuit, &program_archive, &coda_file)?;
+
+        println!(
+        "{} {}",
+            Colour::Green.paint("Written successfully:"),
+            coda_file
+        );
     }
 
     match (config.wat_flag, config.wasm_flag) {
