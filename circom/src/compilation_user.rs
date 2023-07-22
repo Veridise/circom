@@ -112,7 +112,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
 
         let coda_file = match config.coda_file {
             Some(coda_file) => coda_file,
-            None => panic!("In order to generate Coda ouput, must provide a Coda output file."),
+            None => panic!("In order to generate Coda output, must provide a Coda output file."),
         };
 
         compiler_interface::write_coda(&mut circuit, &program_archive, &coda_file)?;
