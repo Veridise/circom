@@ -5,9 +5,11 @@ use super::function::{FunctionCode, FunctionCodeInfo};
 use super::template::{TemplateCode, TemplateCodeInfo};
 use super::types::*;
 use crate::hir::very_concrete_program::VCP;
-use crate::intermediate_representation::ir_interface::ObtainMeta;
+use crate::intermediate_representation::{InstructionList, Instruction};
+use crate::intermediate_representation::ir_interface::{ObtainMeta, AddressType, LocationRule, OperatorType, ConstraintBucket};
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
+use code_producers::coda_elements::*;
 use code_producers::llvm_elements::array_switch::load_array_switch;
 use code_producers::wasm_elements::*;
 use code_producers::llvm_elements::*;
@@ -19,7 +21,7 @@ use program_structure::program_archive::{ProgramArchive, self};
 
 pub struct CompilationFlags {
     pub main_inputs_log: bool,
-    pub wat_flag:bool,
+    pub wat_flag: bool,
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -44,7 +46,10 @@ impl Default for Circuit {
 }
 
 impl WriteLLVMIR for Circuit {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a, 'b>(
+        &self,
+        producer: &'b dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>> {
         // Code for prelude
 
         // Code for standard library?
@@ -53,7 +58,11 @@ impl WriteLLVMIR for Circuit {
 
         // Generate all the switch functions
         let mut ranges = HashSet::new();
-        let mappings = [&self.llvm_data.signal_index_mapping, &self.llvm_data.variable_index_mapping, &self.llvm_data.component_index_mapping];
+        let mappings = [
+            &self.llvm_data.signal_index_mapping,
+            &self.llvm_data.variable_index_mapping,
+            &self.llvm_data.component_index_mapping,
+        ];
 
         for mapping in mappings {
             for range_mapping in mapping.values() {
@@ -163,7 +172,7 @@ impl WriteWasm for Circuit {
         code.append(&mut code_aux);
 
         code_aux = get_input_size_generator(&producer);
-        code.append(&mut code_aux);	
+        code.append(&mut code_aux);
 
         code_aux = get_witness_size_generator(&producer);
         code.append(&mut code_aux);
@@ -303,7 +312,7 @@ impl WriteWasm for Circuit {
         code = merge_code(code_aux);
         writer.write_all(code.as_bytes()).map_err(|_| {})?;
         writer.flush().map_err(|_| {})?;
-	
+
         code_aux = get_witness_size_generator(&producer);
         code = merge_code(code_aux);
         writer.write_all(code.as_bytes()).map_err(|_| {})?;
@@ -383,34 +392,35 @@ impl WriteC for Circuit {
         code.push("#include \"calcwit.hpp\"".to_string());
 
         let mut template_headers = collect_template_headers(producer.get_template_instance_list());
-        let function_headers: Vec<_> = self.functions
-            .iter()
-            .map(|f| f.header.clone())
-            .collect();
+        let function_headers: Vec<_> = self.functions.iter().map(|f| f.header.clone()).collect();
         let mut function_headers = collect_function_headers(function_headers);
         code.append(&mut template_headers);
         code.append(&mut function_headers);
         std::mem::drop(template_headers);
         std::mem::drop(function_headers);
 
-        let (func_list_no_parallel, func_list_parallel) = generate_function_list(
-            producer, 
-            producer.get_template_instance_list()
-        );
+        let (func_list_no_parallel, func_list_parallel) =
+            generate_function_list(producer, producer.get_template_instance_list());
 
-        code.push(format!("Circom_TemplateFunction {}[{}] = {{ {} }};",
-            function_table(), producer.get_number_of_template_instances(), func_list_no_parallel,
+        code.push(format!(
+            "Circom_TemplateFunction {}[{}] = {{ {} }};",
+            function_table(),
+            producer.get_number_of_template_instances(),
+            func_list_no_parallel,
         ));
 
-        code.push(format!("Circom_TemplateFunction {}[{}] = {{ {} }};",
-        function_table_parallel(), producer.get_number_of_template_instances(), func_list_parallel,
-    ));
+        code.push(format!(
+            "Circom_TemplateFunction {}[{}] = {{ {} }};",
+            function_table_parallel(),
+            producer.get_number_of_template_instances(),
+            func_list_parallel,
+        ));
 
         code.push(format!(
             "uint get_main_input_signal_start() {{return {};}}\n",
             producer.get_number_of_main_outputs()
         ));
-	
+
         code.push(format!(
             "uint get_main_input_signal_no() {{return {};}}\n",
             producer.get_number_of_main_inputs()
@@ -437,7 +447,7 @@ impl WriteC for Circuit {
             producer.get_io_map().len()
         ));
         //code.append(&mut generate_message_list_def(producer, producer.get_message_list()));
-        
+
         // Functions to release the memory
         let mut release_component_code = generate_function_release_memory_component();
         code.append(&mut release_component_code);
@@ -454,31 +464,36 @@ impl WriteC for Circuit {
             code.append(&mut t_code);
         }
 
-
         // Epilogue
         let run_circuit = "void run".to_string();
         let run_circuit_args = vec![declare_circom_calc_wit()];
-        let main_template_create = if producer.main_is_parallel{
+        let main_template_create = if producer.main_is_parallel {
             producer.main_header.clone() + "_create_parallel"
-        } else{
+        } else {
             producer.main_header.clone() + "_create"
         };
         // We use 0 to indicate that the main component has no father
-        let create_args = vec!["1".to_string(), "0".to_string(), CIRCOM_CALC_WIT.to_string(), "\"main\"".to_string(), "0".to_string()];
+        let create_args = vec![
+            "1".to_string(),
+            "0".to_string(),
+            CIRCOM_CALC_WIT.to_string(),
+            "\"main\"".to_string(),
+            "0".to_string(),
+        ];
         let create_call = build_call(main_template_create, create_args);
         // let ctx_index = format!("{} = {};", declare_ctx_index(), create_call);
         let ctx_index = format!("{};", create_call);
         // let start_msg = "printf(\"Starting...\\n\");".to_string();
         // let end_msg = "printf(\"End\\n\");".to_string();
 
-        let main_template_run = if producer.main_is_parallel{
+        let main_template_run = if producer.main_is_parallel {
             producer.main_header.clone() + "_run_parallel"
-        } else{
+        } else {
             producer.main_header.clone() + "_run"
         };
         let mut run_args = vec![];
         // run_args.push(CTX_INDEX.to_string());
-	run_args.push("0".to_string());
+        run_args.push("0".to_string());
         run_args.push(CIRCOM_CALC_WIT.to_string());
         let run_call = format!("{};", build_call(main_template_run, run_args.clone()));
 
@@ -486,7 +501,6 @@ impl WriteC for Circuit {
         code.push(build_callable(run_circuit, run_circuit_args, main_run_body));
         (code, "".to_string())
     }
-
 }
 
 impl Circuit {
@@ -518,42 +532,362 @@ impl Circuit {
     pub fn produce_ir_string_for_function(&self, id: ID) -> String {
         self.functions[id].to_string()
     }
-    pub fn produce_c<W: Write>(&self, c_folder: &str, run_name: &str, c_circuit: &mut W, c_dat: &mut W) -> Result<(), ()> {
-	use std::path::Path;
-	let c_folder_path = Path::new(c_folder.clone()).to_path_buf();
+    pub fn produce_c<W: Write>(
+        &self,
+        c_folder: &str,
+        run_name: &str,
+        c_circuit: &mut W,
+        c_dat: &mut W,
+    ) -> Result<(), ()> {
+        use std::path::Path;
+        let c_folder_path = Path::new(c_folder.clone()).to_path_buf();
         c_code_generator::generate_main_cpp_file(&c_folder_path).map_err(|_err| {})?;
         c_code_generator::generate_circom_hpp_file(&c_folder_path).map_err(|_err| {})?;
-        c_code_generator::generate_fr_hpp_file(&c_folder_path, &self.c_producer.prime_str).map_err(|_err| {})?;
+        c_code_generator::generate_fr_hpp_file(&c_folder_path, &self.c_producer.prime_str)
+            .map_err(|_err| {})?;
         c_code_generator::generate_calcwit_hpp_file(&c_folder_path).map_err(|_err| {})?;
-        c_code_generator::generate_fr_cpp_file(&c_folder_path, &self.c_producer.prime_str).map_err(|_err| {})?;
+        c_code_generator::generate_fr_cpp_file(&c_folder_path, &self.c_producer.prime_str)
+            .map_err(|_err| {})?;
         c_code_generator::generate_calcwit_cpp_file(&c_folder_path).map_err(|_err| {})?;
-        c_code_generator::generate_fr_asm_file(&c_folder_path, &self.c_producer.prime_str).map_err(|_err| {})?;
-        c_code_generator::generate_make_file(&c_folder_path,run_name,&self.c_producer).map_err(|_err| {})?;
+        c_code_generator::generate_fr_asm_file(&c_folder_path, &self.c_producer.prime_str)
+            .map_err(|_err| {})?;
+        c_code_generator::generate_make_file(&c_folder_path, run_name, &self.c_producer)
+            .map_err(|_err| {})?;
         c_code_generator::generate_dat_file(c_dat, &self.c_producer).map_err(|_err| {})?;
         self.write_c(c_circuit, &self.c_producer)
     }
-    pub fn produce_wasm<W: Write>(&self, js_folder: &str, _wasm_name: &str, writer: &mut W) -> Result<(), ()> {
-	use std::path::Path;
-	let js_folder_path = Path::new(js_folder.clone()).to_path_buf();
-        wasm_code_generator::generate_generate_witness_js_file(&js_folder_path).map_err(|_err| {})?;
-        wasm_code_generator::generate_witness_calculator_js_file(&js_folder_path).map_err(|_err| {})?;
+    pub fn produce_wasm<W: Write>(
+        &self,
+        js_folder: &str,
+        _wasm_name: &str,
+        writer: &mut W,
+    ) -> Result<(), ()> {
+        use std::path::Path;
+        let js_folder_path = Path::new(js_folder.clone()).to_path_buf();
+        wasm_code_generator::generate_generate_witness_js_file(&js_folder_path)
+            .map_err(|_err| {})?;
+        wasm_code_generator::generate_witness_calculator_js_file(&js_folder_path)
+            .map_err(|_err| {})?;
         self.write_wasm(writer, &self.wasm_producer)
     }
-    pub fn produce_llvm_ir(&mut self, program_archive: &ProgramArchive, out_path: &str) -> Result<(), ()> {
+    pub fn produce_llvm_ir(
+        &mut self,
+        program_archive: &ProgramArchive,
+        out_path: &str,
+    ) -> Result<(), ()> {
         self.write_llvm_ir(program_archive, out_path, &self.llvm_data)
     }
-    pub fn produce_coda(&mut self, program_archive: &ProgramArchive, out_file: &mut File) -> Result<(), ()> {
+    pub fn produce_coda(
+        &mut self,
+        program_archive: &ProgramArchive,
+        out_file: &mut File,
+    ) -> Result<(), ()> {
         // self.write_coda(program_archive, out_path)
         let str = self.print_coda(program_archive);
-        out_file.write_all(str.as_bytes()).map_err(|err| {
-            eprintln!("Error writing to the Coda file: {}", err)
-        })
+        out_file
+            .write_all(str.as_bytes())
+            .map_err(|err| eprintln!("Error writing to the Coda file: {}", err))
     }
 }
 
-impl PrintCoda for Circuit {
-    fn print_coda(&self, program_archive: &ProgramArchive) -> String {
-        "this was produced by `print_coda`".to_string()
+impl CompileCoda for Circuit {
+    fn compile_coda(
+        &self,
+        program_archive: &ProgramArchive,
+    ) -> code_producers::coda_elements::CodaProgram {
+        let mut coda_program = CodaProgram::default();
+
+        for template in &self.templates {
+            println!("template.name: {:?}", template.name);
+            println!(" - template.number_of_inputs: {:?}", template.number_of_inputs);
+            println!(" - template.number_of_intermediates: {:?}", template.number_of_intermediates);
+            println!(" - template.number_of_outputs: {:?}", template.number_of_outputs);
+            println!(" - template.number_of_components: {:?}", template.number_of_components);
+            println!(" - body:");
+            for instruction in &template.body {
+                println!("    • {:?}", instruction);
+            }
+
+            // let mut signal_i = 0;
+            // for _ in 0..template.number_of_inputs {
+            //     signals.push(format!("{}", signal_i));
+            // }
+
+            let mut inputs: Vec<String> = Vec::new();
+            for i in 0..template.number_of_inputs {
+                inputs.push(format!("input_{}", i));
+            }
+
+            let mut intermediates: Vec<String> = Vec::new();
+            for i in 0..template.number_of_intermediates {
+                intermediates.push(format!("intermediate_{}", i));
+            }
+
+            let mut outputs: Vec<String> = Vec::new();
+            for i in 0..template.number_of_outputs {
+                outputs.push(format!("output_{}", i))
+            }
+
+            let body = compile_coda_stmt(program_archive, template,&template.body, 0);
+
+            let coda_template = CodaTemplate {
+                inputs,
+                intermediates, 
+                outputs,
+                body
+            };
+
+            coda_program.templates.push(coda_template);
+        }
+
+
+        println!("BEGIN CODA PROGRAM\n\n{}\n\nEND CODA PROGRAM", coda_program.print());
+
+        coda_program
     }
 }
 
+fn compile_coda_stmt(
+    program_archive: &ProgramArchive, 
+    template: &Box<TemplateCodeInfo>,
+    instructions: &Vec<Box<Instruction>>,
+    instruction_i: usize
+) -> CodaExpr {
+
+    // end of instructions
+    if instruction_i == instructions.len() {
+
+        // tuple of all the outputs
+        let mut outs: Vec<Box<CodaExpr>> = Vec::new();
+        for out_i in 0..template.number_of_outputs {
+            outs.push(Box::new(CodaExpr::Var(from_usize_to_var_string(out_i))))
+        }
+        CodaExpr::Tuple(outs)
+
+    } else {
+
+        let instruction = instructions[instruction_i].clone();
+
+        match instruction.as_ref() {
+            Instruction::Constraint(constraint) => {
+                match &constraint {
+                    ConstraintBucket::Substitution(next_instruction) => {
+                        compile_coda_stmt(program_archive, template, instructions, instruction_i + 1)
+                    },
+                    ConstraintBucket::Equality(next_instruction) => {
+                        compile_coda_stmt(program_archive, template, instructions, instruction_i + 1)
+                    },
+                }
+            },
+            Instruction::Block(block) => {
+                // compile_coda_stmt(program_archive, template, &[&block.body, next_instructions].concat())
+
+                let mut next_instructions = instructions.clone();
+                // next_instructions.splice(instruction_i..instruction_i, &block.body);
+                next_instructions.splice(instruction_i..instruction_i, block.body.iter().cloned());
+
+                compile_coda_stmt(program_archive, template, &next_instructions, instruction_i)
+            },
+            Instruction::Store(store) => {
+                let name = match &store.dest {
+                    LocationRule::Indexed { location, template_header } => match location.as_ref() {
+                        Instruction::Value(value) => from_usize_to_var_string(value.value),
+                        _ => panic!()
+                    },
+                    LocationRule::Mapped { signal_code, indexes } => panic!(),
+                };
+                // CodaExpr::Let(
+                //     name, 
+                //     Box::new(compile_coda_expr(program_archive, template, store.src.clone())), 
+                //     Box::new(compile_coda_stmt(program_archive, template, &next_instructions[1..]))
+                // )
+                todo!()
+            },
+            Instruction::Branch(branch) => todo!(),
+            Instruction::CreateCmp(create_cmp) => todo!(),
+    
+            Instruction::Load(_) => panic!("This case should not appear as a statement."),
+            Instruction::Value(_) => panic!("This case should not appear as a statement."),
+            Instruction::Compute(_) => panic!("This case should not appear as a statement."),
+            Instruction::Call(_) => panic!("This case should not appear as a statement."),
+    
+            Instruction::Return(_) => panic!("This case is not handled by Circom->Coda"),
+            Instruction::Assert(_) => panic!("This case is not handled by Circom->Coda"),
+            Instruction::Log(_) => panic!("This case is not handled by Circom->Coda"),
+            Instruction::Loop(_) => panic!("This case is not handled by Circom->Coda"),
+            
+            Instruction::Nop(_) => todo!() // compile_coda_stmt(program_archive, template, next_instructions),
+        }
+
+    }
+    
+    // if instructions.len() == 0 {
+    //     // tuple of all the outputs
+    //     let mut outs: Vec<Box<CodaExpr>> = Vec::new();
+    //     for out_i in 0..template.number_of_outputs {
+    //         outs.push(Box::new(CodaExpr::Var(from_usize_to_var_string(out_i))))
+    //     }
+    //     CodaExpr::Tuple(outs)
+    // } else {
+    //     let instruction = instructions[0].clone();
+    
+    //     let next_instructions = 
+    //         if instructions.len() > 1 {
+    //             &instructions[1..]
+    //         } else {
+    //             &[]
+    //         };
+    
+    //     match instruction.as_ref() {
+    //         Instruction::Constraint(constraint) => {
+    //             match &constraint {
+    //                 ConstraintBucket::Substitution(next_instruction) => {
+    //                     compile_coda_stmt(program_archive, template, &[&[next_instruction.to_owned()], next_instructions].concat()[..])
+    //                 },
+    //                 ConstraintBucket::Equality(next_instruction) => {
+    //                     compile_coda_stmt(program_archive, template, &[&[next_instruction.to_owned()], next_instructions].concat()[..])
+    //                 },
+    //             }
+    //         },
+    //         Instruction::Block(block) => compile_coda_stmt(program_archive, template, &[&block.body, next_instructions].concat()),
+    //         Instruction::Store(store) => {
+    //             let name = match &store.dest {
+    //                 LocationRule::Indexed { location, template_header } => match location.as_ref() {
+    //                     Instruction::Value(value) => from_usize_to_var_string(value.value),
+    //                     _ => panic!()
+    //                 },
+    //                 LocationRule::Mapped { signal_code, indexes } => panic!(),
+    //             };
+    //             CodaExpr::Let(
+    //                 name, 
+    //                 Box::new(compile_coda_expr(program_archive, template, store.src.clone())), 
+    //                 Box::new(compile_coda_stmt(program_archive, template, &next_instructions[1..]))
+    //             )
+    //         },
+    //         Instruction::Branch(branch) => todo!(),
+    //         Instruction::CreateCmp(create_cmp) => todo!(),
+    
+    //         Instruction::Load(_) => panic!("This case should not appear as a statement."),
+    //         Instruction::Value(_) => panic!("This case should not appear as a statement."),
+    //         Instruction::Compute(_) => panic!("This case should not appear as a statement."),
+    //         Instruction::Call(_) => panic!("This case should not appear as a statement."),
+    
+    //         Instruction::Return(_) => panic!("This case is not handled by Circom->Coda"),
+    //         Instruction::Assert(_) => panic!("This case is not handled by Circom->Coda"),
+    //         Instruction::Log(_) => panic!("This case is not handled by Circom->Coda"),
+    //         Instruction::Loop(_) => panic!("This case is not handled by Circom->Coda"),
+            
+    //         Instruction::Nop(_) => compile_coda_stmt(program_archive, template, next_instructions),
+    //     }
+    // }
+
+}
+
+fn compile_coda_expr(
+    program_archive: &ProgramArchive, 
+    template: &Box<TemplateCodeInfo>, 
+    instruction: Box<Instruction>
+) -> CodaExpr {
+    match instruction.as_ref() {
+        Instruction::Value(value) => {
+            CodaExpr::Val(from_usize_to_val_string(value.value))
+        },
+
+        Instruction::Load(load) => {
+            match &load.address_type {
+                AddressType::Variable => panic!(),
+                AddressType::Signal => {
+                    match &load.src {
+                        LocationRule::Indexed { location, template_header } => match location.as_ref() {
+                            Instruction::Value(value) => CodaExpr::Var(format!("Signal Var({})", value.value)),
+                            _ => panic!()
+                        },
+                        LocationRule::Mapped { signal_code, indexes } => panic!(),
+                    }
+                },
+                AddressType::SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information } => {
+                    match &load.src {
+                        LocationRule::Indexed { location, template_header } => match location.as_ref() {
+                            Instruction::Value(value) => CodaExpr::Var(format!("Subcmp Var({})", value.value)),
+                            _ => panic!()
+                        },
+                        LocationRule::Mapped { signal_code, indexes } => panic!(),
+                    }
+                },
+            }
+        },
+
+        Instruction::Compute(compute) => {
+            assert!(compute.stack.len() == 2);
+            let coda_op = compile_coda_op(compute.op);
+            let coda_expr1 = compile_coda_expr(program_archive, template, compute.stack[0].clone());
+            let coda_expr2 = compile_coda_expr(program_archive, template, compute.stack[1].clone());
+            CodaExpr::Op(coda_op, Box::new(coda_expr1), Box::new(coda_expr2))
+        }
+
+        Instruction::Branch(branch) => {
+            assert!(branch.if_branch.len() == 1);
+            let if_branch = branch.if_branch[0].clone();
+            
+            assert!(branch.if_branch.len() == 1);
+            let else_branch = branch.else_branch[0].clone();
+
+            CodaExpr::Branch { 
+                condition: Box::new(compile_coda_expr(program_archive, template, branch.cond.clone())),
+                then_: Box::new(compile_coda_expr(program_archive, template, if_branch)), 
+                else_: Box::new(compile_coda_expr(program_archive, template, else_branch))
+            }
+        },
+
+        Instruction::Block(block) => {
+            assert!(block.body.len() == 1);
+            let body = block.body[0].clone();
+            compile_coda_expr(program_archive, template, body)
+        },
+        
+        // panic!("This case cannot appear as an expression.")
+        Instruction::Constraint(_) => panic!("This case cannot appear as an expression."),
+        Instruction::CreateCmp(_) => panic!("This case cannot appear as an expression."),
+        Instruction::Store(_) => panic!("This case cannot appear as an expression."),
+        
+        
+        // panic!("This case is not handled by Circom->Coda")
+        Instruction::Loop(_) => panic!("This case is not handled by Circom->Coda"),
+        Instruction::Call(_) => panic!("This case is not handled by Circom->Coda"),
+        Instruction::Return(_) => panic!("This case is not handled by Circom->Coda"),
+        Instruction::Assert(_) => panic!("This case is not handled by Circom->Coda"),
+        Instruction::Log(_) => panic!("This case is not handled by Circom->Coda"),
+        Instruction::Nop(_) => panic!("This case is not handled by Circom->Coda"),
+    }
+}
+
+fn compile_coda_op(op: OperatorType) -> CodaOp {
+    match op {
+        OperatorType::Mul => CodaOp::Mul,
+        OperatorType::Div => CodaOp::Div,
+        OperatorType::Add => CodaOp::Add,
+        OperatorType::Sub => CodaOp::Sub,
+        OperatorType::Pow => CodaOp::Pow,
+        OperatorType::Mod => CodaOp::Mod,
+        OperatorType::IntDiv => todo!(),
+        OperatorType::ShiftL => todo!(),
+        OperatorType::ShiftR => todo!(),
+        OperatorType::LesserEq => todo!(),
+        OperatorType::GreaterEq => todo!(),
+        OperatorType::Lesser => todo!(),
+        OperatorType::Greater => todo!(),
+        OperatorType::Eq(_) => todo!(),
+        OperatorType::NotEq => todo!(),
+        OperatorType::BoolOr => todo!(),
+        OperatorType::BoolAnd => todo!(),
+        OperatorType::BitOr => todo!(),
+        OperatorType::BitAnd => todo!(),
+        OperatorType::BitXor => todo!(),
+        OperatorType::PrefixSub => todo!(),
+        OperatorType::BoolNot => todo!(),
+        OperatorType::Complement => todo!(),
+        OperatorType::ToAddress => todo!(),
+        OperatorType::MulAddress => todo!(),
+        OperatorType::AddAddress => todo!(),
+    }
+}

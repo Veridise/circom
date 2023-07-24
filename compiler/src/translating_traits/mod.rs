@@ -2,6 +2,7 @@ use std::io::Write;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::*;
 use code_producers::wasm_elements::*;
+use code_producers::coda_elements::*;
 use program_structure::program_archive::ProgramArchive;
 use crate::intermediate_representation::ir_interface::ObtainMeta;
 
@@ -31,8 +32,12 @@ pub trait WriteWasm {
     }
 }
 
-pub trait PrintCoda {
-    fn print_coda(&self, program_archive: &ProgramArchive) -> String;
+pub trait CompileCoda {
+    fn print_coda(&self, program_archive: &ProgramArchive) -> String {
+        self.compile_coda(program_archive).print()
+    }
+
+    fn compile_coda(&self, program_archive: &ProgramArchive) -> CodaProgram;
 }
 
 pub trait WriteLLVMIR {
