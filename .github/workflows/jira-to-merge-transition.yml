@@ -15,7 +15,6 @@ jobs:
       uses: actions/checkout@v3.5.2
       with:
         submodules: recursive
-        token: '${{ secrets.CI_BOT_PAT }}'
         persist-credentials: false
 
     - name: Login
