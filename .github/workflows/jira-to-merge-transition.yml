@@ -1,0 +1,60 @@
+on:
+  pull_request_review:
+    types: [submitted]
+    branches: [ llvm ]
+
+
+name: Transition Issue to "To Merge" State
+
+jobs:
+  transition-issue:
+    name: Transition Issue to In Review
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3.5.2
+      with:
+        submodules: recursive
+        persist-credentials: false
+
+    - name: Login
+      uses: atlassian/gajira-login@master
+      env:
+        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+    - uses: luisrjaeger/approved-event-checker@1.0.0
+      id: approved
+      with:
+        # defaults to one approval, leaving it this here in case we
+        # want to increase it in the future.
+        # approvals: 2
+        check_changes_requested: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Find Issue Key
+      id: find
+      uses: atlassian/gajira-find-issue-key@v3
+      continue-on-error: true
+      with:
+        string: ${{ github.event.pull_request.head.ref }}
+
+    # This progress to Verify. Eventually, it should be the last step of this workflow.
+    - name: Transition issue 1
+      if: ${{ steps.approved.outputs.approved == 'true' }}
+      uses: atlassian/gajira-transition@v3
+      continue-on-error: true
+      with:
+        issue: ${{ steps.find.outputs.issue }}
+        transition: Approved by reviewer
+
+    # Our imaginary Q/A team approves. This should be moved to a different workflow.
+    - name: Transition issue 2
+      if: ${{ steps.approved.outputs.approved == 'true' }}
+      uses: atlassian/gajira-transition@v3
+      continue-on-error: true
+      with:
+        issue: ${{ steps.find.outputs.issue }}
+        transition: Q/A team approves
