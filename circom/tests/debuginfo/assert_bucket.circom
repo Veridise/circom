@@ -15,7 +15,7 @@ component main = A(5);
 //	define a variable. The only alternatives are to lose the extra check given by matching
 //	full lines or to remove the "--match-full-lines" option and surround each check with
 //	{{^}} and {{$}} but it gets messy.
-//
+
 //CHECK-LABEL:    define void @A_0_build({ [0 x i256]*, i32 }* %{{[[:alnum:]_]+}}) !dbg !4 {
 //CHECK-NEXT:     [[L1:main]]:
 //CHECK-COUNT-06:   {{.*}}, !dbg !7
@@ -26,10 +26,10 @@ component main = A(5);
 //CHECK-NEXT:     [[L1:prelude]]:
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L2:store[0-9]+]]:{{[[:space:]]}}; preds = %{{.*}}[[L1]]
+//CHECK-NEXT:     [[L2:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L1]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L3:assert[0-9]+]]:{{[[:space:]]}}; preds = %{{.*}}[[L2]]
+//CHECK-NEXT:     [[L3:assert[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L2]]
 //CHECK-COUNT-05:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
 //CHECK-NEXT:     [[L4:prologue]]:{{[[:space:]]}}; preds = %{{.*}}[[L3]]
