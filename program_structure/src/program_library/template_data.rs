@@ -9,7 +9,7 @@ pub type TagInfo = HashSet<String>;
 type SignalInfo = BTreeMap<String, (usize, TagInfo)>;
 type SignalDeclarationOrder = Vec<(String, usize)>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TemplateData {
     file_id: FileID,
     name: String,

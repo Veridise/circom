@@ -5,17 +5,18 @@ use compiler::intermediate_representation::translate::{initialize_signals, Signa
 use program_structure::ast::SignalType;
 use code_producers::llvm_elements::run_fn_name;
 use serde::Serialize;
+use serde::Deserialize;
 use constant_tracking::ConstantTracker;
 use program_structure::file_definition::FileLibrary;
 
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct Meta {
     is_ir_ssa: bool,
     prime: String
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct SignalSummary {
     name: String,
     visibility: String,
@@ -23,13 +24,13 @@ struct SignalSummary {
     public: bool
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct SubcmpSummary {
     name: String,
     idx: usize
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct TemplateSummary {
     name: String,
     main: bool,
@@ -38,14 +39,14 @@ struct TemplateSummary {
     logic_fn_name: String
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct FunctionSummary {
     name: String,
     params: Vec<String>,
     logic_fn_name: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct SummaryRoot {
     version: String,
     compiler: String,

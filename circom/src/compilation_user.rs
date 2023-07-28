@@ -1,5 +1,5 @@
 use core::panic;
-
+use std::io::BufReader;
 use ansi_term::Colour;
 use circuit_passes::passes::PassManager;
 use compiler::compiler_interface;
@@ -8,8 +8,9 @@ use program_structure::error_definition::Report;
 use program_structure::error_code::ReportCode;
 use program_structure::file_definition::FileLibrary;
 use program_structure::program_archive::ProgramArchive;
+use code_producers::coda_elements::SummaryRoot;
 use crate::VERSION;
-
+use std::fs;
 
 pub struct CompilerConfig {
     pub js_folder: String,
@@ -110,12 +111,18 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
         //     config.clean_llvm,
         // )?;
 
+        // HENRY: this is horrible, but it works till i find the right way to get the basename
+        let basename = config.dat_file.split("/").last().unwrap().split(".").next().unwrap();
+        let summary_file = fs::File::open(format!("{}/{}.json", config.llvm_folder, basename)).map_err(|e| panic!("{}", e))?;
+        let summary_reader = BufReader::new(summary_file);
+        let summary = serde_json::from_reader::<_, SummaryRoot>(summary_reader).map_err(|e| panic!("{}", e))?;
+
         let coda_file = match config.coda_file {
             Some(coda_file) => coda_file,
             None => panic!("In order to generate Coda output, must provide a Coda output file."),
         };
 
-        compiler_interface::write_coda(&mut circuit, &program_archive, &coda_file)?;
+        compiler_interface::write_coda(&circuit, &program_archive, &summary, &circuit.coda_data, &coda_file)?;
 
         println!(
         "{} {}",

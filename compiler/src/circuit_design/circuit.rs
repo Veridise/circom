@@ -29,6 +29,7 @@ pub struct Circuit {
     pub wasm_producer: WASMProducer,
     pub c_producer: CProducer,
     pub llvm_data: LLVMCircuitData,
+    pub coda_data: CodaCircuitData,
     pub templates: Vec<TemplateCode>,
     pub functions: Vec<FunctionCode>,
 }
@@ -39,6 +40,7 @@ impl Default for Circuit {
             c_producer: CProducer::default(),
             wasm_producer: WASMProducer::default(),
             llvm_data: LLVMCircuitData::default(),
+            coda_data: CodaCircuitData::default(),
             templates: Vec::new(),
             functions: Vec::new(),
         }
@@ -578,12 +580,12 @@ impl Circuit {
         self.write_llvm_ir(program_archive, out_path, &self.llvm_data)
     }
     pub fn produce_coda(
-        &mut self,
+        &self,
         program_archive: &ProgramArchive,
+        summary: &SummaryRoot,
         out_file: &mut File,
     ) -> Result<(), ()> {
-        // self.write_coda(program_archive, out_path)
-        let str = self.print_coda(program_archive);
+        let str = self.print_coda(self, program_archive, summary);
         out_file
             .write_all(str.as_bytes())
             .map_err(|err| eprintln!("Error writing to the Coda file: {}", err))
@@ -593,7 +595,9 @@ impl Circuit {
 impl CompileCoda for Circuit {
     fn compile_coda(
         &self,
+        circuit: &Circuit,
         program_archive: &ProgramArchive,
+        summary: &SummaryRoot,
     ) -> code_producers::coda_elements::CodaProgram {
         let mut coda_program = CodaProgram::default();
 
@@ -604,33 +608,43 @@ impl CompileCoda for Circuit {
             println!(" - template.number_of_outputs: {:?}", template.number_of_outputs);
             println!(" - template.number_of_components: {:?}", template.number_of_components);
             println!(" - body:");
-            for instruction in &template.body {
-                println!("    • {:?}", instruction);
-            }
 
-            // let mut signal_i = 0;
-            // for _ in 0..template.number_of_inputs {
-            //     signals.push(format!("{}", signal_i));
+            // HENRY: can I not just use template.id as the index in summary.components? I'm guessing it couldn't be that easy... right?
+            let template_summary = summary.components.iter().find(|t| t.name == template.name).unwrap();
+
+            // for instruction in &template.body {
+            //     println!("    • {:?}", instruction);
             // }
 
-            let mut inputs: Vec<String> = Vec::new();
-            for i in 0..template.number_of_inputs {
-                inputs.push(format!("input_{}", i));
+            let name = template.name.clone();
+
+            let mut inputs: Vec<CodaVar> = Vec::new();
+            let mut intermediates: Vec<CodaVar> = Vec::new();
+            let mut outputs: Vec<CodaVar> = Vec::new();
+
+            for signal in &template_summary.signals {
+                if signal.visibility == "input" {
+                    inputs.push(CodaVar::make_signal(signal.name.clone()));
+                } else if signal.visibility == "output" {
+                    outputs.push(CodaVar::make_signal(signal.name.clone()));
+                } else if signal.visibility == "intermediate" {
+                    // pass
+                } else {
+                    panic!("Unrecognized signal visibility: {}", signal.visibility)
+                }
             }
 
-            let mut intermediates: Vec<String> = Vec::new();
-            for i in 0..template.number_of_intermediates {
-                intermediates.push(format!("intermediate_{}", i));
+            for x in &circuit.coda_data.field_tracking {
+                println!(" - {:?}", x);
             }
 
-            let mut outputs: Vec<String> = Vec::new();
-            for i in 0..template.number_of_outputs {
-                outputs.push(format!("output_{}", i))
-            }
+            let body = compile_coda_stmt(circuit, program_archive, summary, template, &template_summary,&template.body, 0);
 
-            let body = compile_coda_stmt(program_archive, template,&template.body, 0);
+            // TODO:HENRY: define all the constants
+            
 
             let coda_template = CodaTemplate {
+                name,
                 inputs,
                 intermediates, 
                 outputs,
@@ -648,21 +662,31 @@ impl CompileCoda for Circuit {
 }
 
 fn compile_coda_stmt(
-    program_archive: &ProgramArchive, 
+    circuit: &Circuit,
+    program_archive: &ProgramArchive,
+    summary: &SummaryRoot, 
     template: &Box<TemplateCodeInfo>,
+    template_summary: &TemplateSummary,
     instructions: &Vec<Box<Instruction>>,
     instruction_i: usize
 ) -> CodaExpr {
 
     // end of instructions
-    if instruction_i == instructions.len() {
-
+    if instruction_i >= instructions.len() {
+        
         // tuple of all the outputs
-        let mut outs: Vec<Box<CodaExpr>> = Vec::new();
-        for out_i in 0..template.number_of_outputs {
-            outs.push(Box::new(CodaExpr::Var(from_usize_to_var_string(out_i))))
-        }
-        CodaExpr::Tuple(outs)
+        // let mut outs: Vec<Box<CodaExpr>> = Vec::new();
+
+        let outs: Vec<CodaVar> = template_summary.signals.iter()
+            .filter_map(|signal| 
+                if signal.visibility == "output" {
+                    Some(CodaVar::make_signal(signal.name.clone()))
+                } else {
+                    None
+                })
+            .collect();
+
+        CodaExpr::Tuple(outs.iter().map(|x| Box::new(CodaExpr::Var(x.clone()))).collect())
 
     } else {
 
@@ -672,39 +696,121 @@ fn compile_coda_stmt(
             Instruction::Constraint(constraint) => {
                 match &constraint {
                     ConstraintBucket::Substitution(next_instruction) => {
-                        compile_coda_stmt(program_archive, template, instructions, instruction_i + 1)
+                        let mut new_instructions = instructions.clone();
+                        new_instructions.insert(instruction_i + 1, next_instruction.clone());
+                        compile_coda_stmt(circuit, program_archive, summary, template, &template_summary, &new_instructions, instruction_i + 1)
                     },
                     ConstraintBucket::Equality(next_instruction) => {
-                        compile_coda_stmt(program_archive, template, instructions, instruction_i + 1)
+                        let mut new_instructions = instructions.clone();
+                        new_instructions.insert(instruction_i + 1, next_instruction.clone());
+                        compile_coda_stmt(circuit, program_archive, summary, template, &template_summary,&new_instructions, instruction_i + 1)
                     },
                 }
             },
             Instruction::Block(block) => {
-                // compile_coda_stmt(program_archive, template, &[&block.body, next_instructions].concat())
-
                 let mut next_instructions = instructions.clone();
-                // next_instructions.splice(instruction_i..instruction_i, &block.body);
                 next_instructions.splice(instruction_i..instruction_i, block.body.iter().cloned());
-
-                compile_coda_stmt(program_archive, template, &next_instructions, instruction_i)
+                compile_coda_stmt(circuit, program_archive, summary, template, &template_summary, &next_instructions, instruction_i)
             },
             Instruction::Store(store) => {
                 let name = match &store.dest {
-                    LocationRule::Indexed { location, template_header } => match location.as_ref() {
-                        Instruction::Value(value) => from_usize_to_var_string(value.value),
-                        _ => panic!()
+                    LocationRule::Indexed { location, template_header } => {
+                        let signal_i = from_instruction_to_value(location);
+                        match &store.dest_address_type {
+                            AddressType::Variable => todo!(),
+                            AddressType::Signal => {
+                                let signal = template_summary.signals.iter().find(|signal| signal.idx == signal_i).unwrap();
+                                CodaVar::make_signal(signal.name.clone())
+                            },
+                            AddressType::SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information } => {
+                                let cmp_i = from_instruction_to_value(cmp_address);
+                                let cmp = &summary.components[cmp_i];
+                                let signal = cmp.signals.iter().find(|signal| signal.idx == signal_i).unwrap();
+                                CodaVar::make_subcomponent_signal(cmp.name.clone(), signal.name.clone())
+                            },
+                        }
                     },
                     LocationRule::Mapped { signal_code, indexes } => panic!(),
                 };
-                // CodaExpr::Let(
-                //     name, 
-                //     Box::new(compile_coda_expr(program_archive, template, store.src.clone())), 
-                //     Box::new(compile_coda_stmt(program_archive, template, &next_instructions[1..]))
-                // )
-                todo!()
+
+                // TODO:HENRY: check if this assignment was of the final input
+                // to a subcomponent. if so, then need to define the
+                // subcomponent as well
+
+                
+                CodaExpr::Let(
+                    name, 
+                    Box::new(compile_coda_expr(circuit, program_archive, summary, template, &template_summary, store.src.clone())), 
+                    Box::new(compile_coda_stmt(circuit, program_archive, summary, template, &template_summary, instructions, instruction_i + 1))
+                )
             },
-            Instruction::Branch(branch) => todo!(),
-            Instruction::CreateCmp(create_cmp) => todo!(),
+            Instruction::Branch(branch) => {
+                let mut then_instructions = instructions.clone();
+                then_instructions.splice(instruction_i..instruction_i, branch.if_branch.iter().cloned());
+
+                let mut else_instructions = instructions.clone();
+                else_instructions.splice(instruction_i..instruction_i, branch.else_branch.iter().cloned());
+
+                CodaExpr::Branch { 
+                    condition: Box::new(compile_coda_expr(circuit, program_archive, summary, template, &template_summary, branch.cond.clone())),
+                    then_: Box::new(compile_coda_stmt(circuit, program_archive, summary, template, &template_summary, &then_instructions, instruction_i + 1 )),
+                    else_: Box::new(compile_coda_stmt(circuit, program_archive, summary, template, &template_summary, &else_instructions, instruction_i + 1)),
+                }
+            },
+            Instruction::CreateCmp(create_cmp) => {
+                /*
+                    create_cmp.template_id: usize
+                    create_cmp.cmp_unique_id: usize
+                    create_cmp.sub_cmp_id: InstructionPointer
+                    create_cmp.name_subcomponent: String
+                    create_cmp.number_of_cmp: usize
+                */
+
+                // let sub_cmp_id = from_instruction_to_value(&create_cmp.sub_cmp_id);
+                let sub_template_id = create_cmp.template_id;
+                let sub_template_summary = &summary.components[sub_template_id];
+                let sub_template_data = &program_archive.templates[&sub_template_summary.name];
+                let sub_template_name = &sub_template_summary.name;
+                let sub_template_name_alt = sub_template_data.get_name();
+                let sub_component_name = &create_cmp.name_subcomponent;
+
+                // HENRY: this should hold if I'm understanding how subcomponent
+                // data is stored
+                assert!(sub_template_name == sub_template_name_alt);
+
+                if false {
+                    println!("create component:");
+                    println!(" - template_id: {:?}", sub_template_id);
+                    println!(" - template_name: {:?}", sub_template_name);
+                    println!(" - component_name: {:?}", sub_component_name);
+                    println!(" - name_subcomponent: {:?}", create_cmp.name_subcomponent);
+                }
+
+                let inputs: Vec<CodaVar> = template_summary.signals.iter()
+                    .filter_map(|signal| if signal.visibility == "input" {
+                        Some(CodaVar::make_signal(signal.name.clone()))
+                    } else {
+                        None
+                    })
+                    .collect();
+                let outputs: Vec<CodaVar> = template_summary.signals.iter()
+                    .filter_map(|signal| if signal.visibility == "output" {
+                        Some(CodaVar::make_signal(signal.name.clone()))
+                    } else {
+                        None
+                    })
+                    .collect();
+
+                CodaExpr::Inst(
+                    CodaComponentInfo::new(
+                        sub_template_name.clone(),
+                        sub_component_name.to_string(), 
+                        inputs,
+                        outputs
+                    ),
+                    Box::new(compile_coda_stmt(circuit, program_archive, summary, template, &template_summary, instructions, instruction_i + 1))
+                )
+            },
     
             Instruction::Load(_) => panic!("This case should not appear as a statement."),
             Instruction::Value(_) => panic!("This case should not appear as a statement."),
@@ -716,81 +822,25 @@ fn compile_coda_stmt(
             Instruction::Log(_) => panic!("This case is not handled by Circom->Coda"),
             Instruction::Loop(_) => panic!("This case is not handled by Circom->Coda"),
             
-            Instruction::Nop(_) => todo!() // compile_coda_stmt(program_archive, template, next_instructions),
+            Instruction::Nop(_) => todo!() // compile_coda_stmt(circuit, program_archive, summary, template, next_instructions),
         }
 
     }
-    
-    // if instructions.len() == 0 {
-    //     // tuple of all the outputs
-    //     let mut outs: Vec<Box<CodaExpr>> = Vec::new();
-    //     for out_i in 0..template.number_of_outputs {
-    //         outs.push(Box::new(CodaExpr::Var(from_usize_to_var_string(out_i))))
-    //     }
-    //     CodaExpr::Tuple(outs)
-    // } else {
-    //     let instruction = instructions[0].clone();
-    
-    //     let next_instructions = 
-    //         if instructions.len() > 1 {
-    //             &instructions[1..]
-    //         } else {
-    //             &[]
-    //         };
-    
-    //     match instruction.as_ref() {
-    //         Instruction::Constraint(constraint) => {
-    //             match &constraint {
-    //                 ConstraintBucket::Substitution(next_instruction) => {
-    //                     compile_coda_stmt(program_archive, template, &[&[next_instruction.to_owned()], next_instructions].concat()[..])
-    //                 },
-    //                 ConstraintBucket::Equality(next_instruction) => {
-    //                     compile_coda_stmt(program_archive, template, &[&[next_instruction.to_owned()], next_instructions].concat()[..])
-    //                 },
-    //             }
-    //         },
-    //         Instruction::Block(block) => compile_coda_stmt(program_archive, template, &[&block.body, next_instructions].concat()),
-    //         Instruction::Store(store) => {
-    //             let name = match &store.dest {
-    //                 LocationRule::Indexed { location, template_header } => match location.as_ref() {
-    //                     Instruction::Value(value) => from_usize_to_var_string(value.value),
-    //                     _ => panic!()
-    //                 },
-    //                 LocationRule::Mapped { signal_code, indexes } => panic!(),
-    //             };
-    //             CodaExpr::Let(
-    //                 name, 
-    //                 Box::new(compile_coda_expr(program_archive, template, store.src.clone())), 
-    //                 Box::new(compile_coda_stmt(program_archive, template, &next_instructions[1..]))
-    //             )
-    //         },
-    //         Instruction::Branch(branch) => todo!(),
-    //         Instruction::CreateCmp(create_cmp) => todo!(),
-    
-    //         Instruction::Load(_) => panic!("This case should not appear as a statement."),
-    //         Instruction::Value(_) => panic!("This case should not appear as a statement."),
-    //         Instruction::Compute(_) => panic!("This case should not appear as a statement."),
-    //         Instruction::Call(_) => panic!("This case should not appear as a statement."),
-    
-    //         Instruction::Return(_) => panic!("This case is not handled by Circom->Coda"),
-    //         Instruction::Assert(_) => panic!("This case is not handled by Circom->Coda"),
-    //         Instruction::Log(_) => panic!("This case is not handled by Circom->Coda"),
-    //         Instruction::Loop(_) => panic!("This case is not handled by Circom->Coda"),
-            
-    //         Instruction::Nop(_) => compile_coda_stmt(program_archive, template, next_instructions),
-    //     }
-    // }
 
 }
 
 fn compile_coda_expr(
+    circuit: &Circuit,
     program_archive: &ProgramArchive, 
+    summary: &SummaryRoot,
     template: &Box<TemplateCodeInfo>, 
+    template_summary: &TemplateSummary,
     instruction: Box<Instruction>
 ) -> CodaExpr {
     match instruction.as_ref() {
         Instruction::Value(value) => {
-            CodaExpr::Val(from_usize_to_val_string(value.value))
+            let x = circuit.coda_data.field_tracking[value.value].clone();
+            CodaExpr::Val(CodaVal::new(x))
         },
 
         Instruction::Load(load) => {
@@ -798,9 +848,21 @@ fn compile_coda_expr(
                 AddressType::Variable => panic!(),
                 AddressType::Signal => {
                     match &load.src {
-                        LocationRule::Indexed { location, template_header } => match location.as_ref() {
-                            Instruction::Value(value) => CodaExpr::Var(format!("Signal Var({})", value.value)),
-                            _ => panic!()
+                        LocationRule::Indexed { location, template_header } => {
+                            let signal_i = from_instruction_to_value(location);
+                            match &load.address_type {
+                                AddressType::Variable => todo!(),
+                                AddressType::Signal => {
+                                    let signal = template_summary.signals.iter().find(|signal| signal.idx == signal_i).unwrap();
+                                    CodaExpr::Var(CodaVar::make_signal(signal.name.clone()))
+                                },
+                                AddressType::SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information } => {
+                                    let cmp_i = from_instruction_to_value(cmp_address);
+                                    let cmp = &summary.components[cmp_i];
+                                    let signal = cmp.signals.iter().find(|signal| signal.idx == signal_i).unwrap();
+                                    CodaExpr::Var(CodaVar::make_subcomponent_signal(cmp.name.clone(), signal.name.clone()))
+                                }
+                            }
                         },
                         LocationRule::Mapped { signal_code, indexes } => panic!(),
                     }
@@ -808,8 +870,14 @@ fn compile_coda_expr(
                 AddressType::SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information } => {
                     match &load.src {
                         LocationRule::Indexed { location, template_header } => match location.as_ref() {
-                            Instruction::Value(value) => CodaExpr::Var(format!("Subcmp Var({})", value.value)),
-                            _ => panic!()
+                            Instruction::Value(value) => {
+                                let cmp_i = from_instruction_to_value(cmp_address);
+                                let cmp = &summary.components[cmp_i];
+                                let signal_i = from_instruction_to_value(location);
+                                let signal = cmp.signals.iter().find(|signal| signal.idx == signal_i).unwrap();
+                                CodaExpr::Var(CodaVar::make_subcomponent_signal(cmp.name.clone(), signal.name.clone()))
+                            },
+                            _ => panic!(),
                         },
                         LocationRule::Mapped { signal_code, indexes } => panic!(),
                     }
@@ -820,8 +888,8 @@ fn compile_coda_expr(
         Instruction::Compute(compute) => {
             assert!(compute.stack.len() == 2);
             let coda_op = compile_coda_op(compute.op);
-            let coda_expr1 = compile_coda_expr(program_archive, template, compute.stack[0].clone());
-            let coda_expr2 = compile_coda_expr(program_archive, template, compute.stack[1].clone());
+            let coda_expr1 = compile_coda_expr(circuit, program_archive, summary, template, &template_summary, compute.stack[0].clone());
+            let coda_expr2 = compile_coda_expr(circuit, program_archive, summary, template, &template_summary, compute.stack[1].clone());
             CodaExpr::Op(coda_op, Box::new(coda_expr1), Box::new(coda_expr2))
         }
 
@@ -833,16 +901,16 @@ fn compile_coda_expr(
             let else_branch = branch.else_branch[0].clone();
 
             CodaExpr::Branch { 
-                condition: Box::new(compile_coda_expr(program_archive, template, branch.cond.clone())),
-                then_: Box::new(compile_coda_expr(program_archive, template, if_branch)), 
-                else_: Box::new(compile_coda_expr(program_archive, template, else_branch))
+                condition: Box::new(compile_coda_expr(circuit, program_archive, summary, template, &template_summary, branch.cond.clone())),
+                then_: Box::new(compile_coda_expr(circuit, program_archive, summary, template, &template_summary, if_branch)), 
+                else_: Box::new(compile_coda_expr(circuit, program_archive, summary, template, &template_summary, else_branch))
             }
         },
 
         Instruction::Block(block) => {
             assert!(block.body.len() == 1);
             let body = block.body[0].clone();
-            compile_coda_expr(program_archive, template, body)
+            compile_coda_expr(circuit, program_archive, summary, template, &template_summary, body)
         },
         
         // panic!("This case cannot appear as an expression.")
@@ -889,5 +957,12 @@ fn compile_coda_op(op: OperatorType) -> CodaOp {
         OperatorType::ToAddress => todo!(),
         OperatorType::MulAddress => todo!(),
         OperatorType::AddAddress => todo!(),
+    }
+}
+
+fn from_instruction_to_value(instruction: &Box<Instruction>) -> usize {
+    match instruction.as_ref() {
+        Instruction::Value(value) => value.value,
+        _ => panic!("Expected `{:?}` to be of the form `Value(_)`", instruction)
     }
 }

@@ -4,6 +4,7 @@ use code_producers::llvm_elements::*;
 use code_producers::wasm_elements::*;
 use code_producers::coda_elements::*;
 use program_structure::program_archive::ProgramArchive;
+use crate::circuit_design::circuit::Circuit;
 use crate::intermediate_representation::ir_interface::ObtainMeta;
 
 pub trait WriteC {
@@ -33,11 +34,11 @@ pub trait WriteWasm {
 }
 
 pub trait CompileCoda {
-    fn print_coda(&self, program_archive: &ProgramArchive) -> String {
-        self.compile_coda(program_archive).print()
+    fn print_coda(&self, circuit: &Circuit, program_archive: &ProgramArchive, summary: &SummaryRoot) -> String {
+        self.compile_coda(circuit, program_archive, summary).print()
     }
 
-    fn compile_coda(&self, program_archive: &ProgramArchive) -> CodaProgram;
+    fn compile_coda(&self, circuit: &Circuit, program_archive: &ProgramArchive, summary: &SummaryRoot) -> CodaProgram;
 }
 
 pub trait WriteLLVMIR {

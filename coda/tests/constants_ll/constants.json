@@ -1,0 +1,1 @@
+{"version":"2.1.3","compiler":"circom","framework":null,"meta":{"is_ir_ssa":false,"prime":"bn128"},"components":[{"name":"Main","main":true,"signals":[{"name":"b","visibility":"output","idx":0,"public":false},{"name":"a","visibility":"input","idx":1,"public":false}],"subcmps":[],"logic_fn_name":"Main_0_run"}],"functions":[]}

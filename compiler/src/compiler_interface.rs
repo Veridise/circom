@@ -1,8 +1,7 @@
 use std::fs::File;
 use std::io::BufWriter;
-
+use code_producers::coda_elements::{SummaryRoot, CodaCircuitData};
 use program_structure::program_archive::ProgramArchive;
-
 pub use crate::circuit_design::circuit::{Circuit, CompilationFlags};
 pub use crate::hir::very_concrete_program::VCP;
 
@@ -63,11 +62,11 @@ pub fn write_llvm_ir(circuit: &mut Circuit, program_archive: &ProgramArchive, ll
     circuit.produce_llvm_ir(program_archive, &llvm_file)
 }
 
-pub fn write_coda(circuit: &mut Circuit, program_archive: &ProgramArchive, coda_file: &str) -> Result<(), ()> {
+pub fn write_coda(circuit: &Circuit, program_archive: &ProgramArchive, summary: &SummaryRoot, coda_data: &CodaCircuitData, coda_file: &str) -> Result<(), ()> {
     let file = &mut File::create(coda_file).map_err(|err| {
         eprintln!("Error creating the Coda file {}: {}", coda_file, err)
     })?;
-    circuit.produce_coda(program_archive, file)
+    circuit.produce_coda(program_archive, summary, file)
 }
 
 fn produce_debug_output(circuit: &Circuit) -> Result<(), ()> {

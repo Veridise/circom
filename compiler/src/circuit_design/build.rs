@@ -411,7 +411,8 @@ pub fn build_circuit(vcp: VCP, flag: CompilationFlags, version: &str) -> Circuit
         let constant = field_tracker.get_constant(i).unwrap().clone();
         circuit.wasm_producer.field_tracking.push(constant.clone());
         circuit.c_producer.field_tracking.push(constant.clone());
-        circuit.llvm_data.field_tracking.push(constant);
+        circuit.llvm_data.field_tracking.push(constant.clone());
+        circuit.coda_data.field_tracking.push(constant);
     }
     for fun in &mut circuit.functions {
         set_arena_size_in_calls(&mut fun.body, &function_to_arena_size);

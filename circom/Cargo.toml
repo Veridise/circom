@@ -21,11 +21,15 @@ constraint_writers = { path = "../constraint_writers" }
 compiler = { path = "../compiler" }
 summary = { path = "../summary" }
 circuit_passes = { path = "../circuit_passes" }
+code_producers = { path = "../code_producers" }
 dag = { path = "../dag" }
 clap = "2.33.0"
 ansi_term = "0.12.1"
 wast = "39.0.0"
 exitcode = "1.1.2"
+serde = "1.0.82"
+serde_derive = "1.0.91"
+serde_json = "1.0"
 
 [dev-dependencies]
 assert_cmd = "=2.0.8"

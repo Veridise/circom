@@ -73,5 +73,5 @@ template MultiAND(n) {
     }
 }
 
-// component main = XOR();
-component main = MultiAND(4);
+component main = XOR();
+// component main = MultiAND(2);
