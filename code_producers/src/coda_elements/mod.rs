@@ -204,7 +204,7 @@ impl CodaVal {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CodaVar {
     value: String,
 }
@@ -229,14 +229,12 @@ impl CodaVar {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CodaComponentInfo {
-    template_name: String,
-    component_name: String,
-    inputs: Vec<CodaVar>,
-    outputs: Vec<CodaVar>,
+    pub template_name: String,
+    pub component_name: String,
+    pub header_name: String,
+    pub inputs: Vec<CodaVar>,
+    pub outputs: Vec<CodaVar>,
 }
 
-impl CodaComponentInfo {
-    pub fn new(template_name: String, component_name: String, inputs: Vec<CodaVar>, outputs: Vec<CodaVar>) -> Self { Self { template_name, component_name, inputs, outputs } }
-}

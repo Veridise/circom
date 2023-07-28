@@ -7,6 +7,6 @@ gates:
 subcomponent:
 	cargo run -- coda/tests/subcomponent.circom --summary --coda --coda-output coda/tests/subcomponent.ml -o coda/tests/
 
-semaphore:
+mux1:
 	# cargo run -- coda/tests/semaphore/mux1_test.circom --summary 
 	cargo run -- coda/tests/semaphore/mux1_test.circom --summary --coda --coda-output coda/tests/semaphore/mux1_test.ml -o coda/tests/semaphore
