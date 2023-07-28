@@ -43,7 +43,7 @@ impl PassMemory {
 
     pub fn run_template(&self, observer: &dyn InterpreterObserver, template: &TemplateCode) {
         assert!(!self.current_scope.is_empty());
-        println!("Running {}", self.current_scope);
+        if cfg!(debug_assertions) { println!("Running {}", self.current_scope); }
         let interpreter = self.build_interpreter(observer);
         let env = Env::new(&self.templates_library, &self.functions_library, self);
         interpreter.execute_instructions(&template.body, env, true);
