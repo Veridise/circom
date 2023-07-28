@@ -612,10 +612,6 @@ impl CompileCoda for Circuit {
             // HENRY: can I not just use template.id as the index in summary.components? I'm guessing it couldn't be that easy... right?
             let template_summary = summary.components.iter().find(|t| t.name == template.name).unwrap();
 
-            // for instruction in &template.body {
-            //     println!("    • {:?}", instruction);
-            // }
-
             let name = template.name.clone();
 
             let mut inputs: Vec<CodaVar> = Vec::new();
@@ -628,20 +624,13 @@ impl CompileCoda for Circuit {
                 } else if signal.visibility == "output" {
                     outputs.push(CodaVar::make_signal(signal.name.clone()));
                 } else if signal.visibility == "intermediate" {
-                    // pass
+                    intermediates.push(CodaVar::make_signal(signal.name.clone()))
                 } else {
                     panic!("Unrecognized signal visibility: {}", signal.visibility)
                 }
             }
 
-            for x in &circuit.coda_data.field_tracking {
-                println!(" - {:?}", x);
-            }
-
             let body = compile_coda_stmt(circuit, program_archive, summary, template, &template_summary,&template.body, 0);
-
-            // TODO:HENRY: define all the constants
-            
 
             let coda_template = CodaTemplate {
                 name,
