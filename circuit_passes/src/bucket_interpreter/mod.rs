@@ -496,12 +496,12 @@ impl<'a> BucketInterpreter<'a> {
                 (None, None, env)
             }
             Some(true) => {
-                println!("Running then branch");
+                if cfg!(debug_assertions) { println!("Running then branch"); }
                 let (ret, env) = self.execute_instructions(&true_branch, env, observe);
                 (ret, Some(true), env)
             }
             Some(false) => {
-                println!("Running else branch");
+                if cfg!(debug_assertions) { println!("Running else branch"); }
                 let (ret, env) = self.execute_instructions(&false_branch, env, observe);
                 (ret, Some(false), env)
             }

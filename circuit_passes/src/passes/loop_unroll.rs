@@ -198,7 +198,7 @@ mod test {
         circuit.llvm_data.signal_index_mapping.insert("test_0".to_string(), HashMap::new());
         circuit.llvm_data.component_index_mapping.insert("test_0".to_string(), HashMap::new());
         let new_circuit = pass.transform_circuit(&circuit);
-        println!("{}", new_circuit.templates[0].body.last().unwrap().to_string());
+        if cfg!(debug_assertions) { println!("{}", new_circuit.templates[0].body.last().unwrap().to_string()); }
         assert_ne!(circuit, new_circuit);
         match new_circuit.templates[0].body.last().unwrap().as_ref() {
             Instruction::Block(b) => assert_eq!(b.body.len(), 10), // 5 iterations unrolled times 2 statements in the loop body

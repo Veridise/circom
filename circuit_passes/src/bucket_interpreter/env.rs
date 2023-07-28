@@ -264,7 +264,7 @@ impl<'a> Env<'a> {
                         interpreter: &BucketInterpreter,
                         args: Vec<Value>,
                         observe: bool) -> Value {
-        println!("Running {}", name);
+        if cfg!(debug_assertions) { println!("Running {}", name); }
         let code = &self.functions_library[name].body;
         let mut function_env = Env::new(self.templates_library, self.functions_library, self.context_switcher);
         for (id, arg) in args.iter().enumerate() {
