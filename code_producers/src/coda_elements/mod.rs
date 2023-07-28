@@ -223,6 +223,10 @@ impl CodaVar {
     pub fn make_subcomponent_signal(cmp_name: String, name: String) -> CodaVar {
         CodaVar { value: format!("signal_{}_{}", cmp_name, name) }
     }
+
+    pub fn make_variable(i: usize) -> CodaVar {
+        CodaVar { value: format!("var_{}", i) }
+    }
 }
 
 #[derive(Clone)]

@@ -706,7 +706,10 @@ fn compile_coda_stmt(
                     LocationRule::Indexed { location, template_header } => {
                         let signal_i = from_instruction_to_value(location);
                         match &store.dest_address_type {
-                            AddressType::Variable => todo!(),
+                            // AddressType::Variable => todo!("Store Variable: {:?}", store),
+                            AddressType::Variable => {
+                                CodaVar::make_variable(signal_i)
+                            }
                             AddressType::Signal => {
                                 let signal = template_summary.signals.iter().find(|signal| signal.idx == signal_i).unwrap();
                                 CodaVar::make_signal(signal.name.clone())

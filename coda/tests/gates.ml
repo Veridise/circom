@@ -1,8 +1,5 @@
+let body_XOR signal_a signal_b = let signal_out = ((signal_a + signal_b) - ((2 * signal_a) * signal_b)) in (signal_out)
 
-
-let body_XOR input_signal_0 input_signal_1 output_signal_0 = let input_signal_0 = ((input_signal_1 + input_signal_2) - ((value_0 * input_signal_1) * input_signal_2)) in (output_signal_0)
-
-let circuit_XOR = body_XOR (var "input_signal_0") (var "input_signal_1") (var "output_signal_0")
-
+let circuit_XOR = Hoare_circuit { name= "XOR"; inputs= [Presignal "signal_a" Presignal "signal_b"]; outputs= [Presignal "signal_out"]; preconditions= []; postconditions= []; body= body_XOR (var "signal_a") (var "signal_b") }
 
 
