@@ -323,17 +323,16 @@ fn compile_coda_stmts(ctx: CompileCodaContext) -> CodaExpr {
                         ctx.insert_instructions(&branch.else_branch).next_instruction(),
                     )),
                 },
-                Instruction::CreateCmp(_create_cmp) =>
-                /* compile_coda_stmts(
-                    ctx.insert_subcomponent(CodaTemplateSubcomponent {
-                        interface: todo,
-                        name: (),
-                        header_name: (),
-                    })
-                    .next_instruction(),
-                ) */
-                {
-                    compile_coda_stmts(ctx.next_instruction())
+                Instruction::CreateCmp(create_cmp) => {
+                    let cmp_i = create_cmp.cmp_unique_id;
+                    let cmp = ctx.get_subcomponent(cmp_i);
+                    compile_coda_stmts(
+                        ctx.insert_subcomponent(CodaTemplateSubcomponent {
+                            interface: cmp.interface.clone(),
+                            name: cmp.name.clone(),
+                        })
+                        .next_instruction(),
+                    )
                 }
                 Instruction::Load(_load) => {
                     panic!("This case should not appear as a statement: {:?}", instruction)

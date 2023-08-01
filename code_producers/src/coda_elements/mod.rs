@@ -118,7 +118,6 @@ pub struct CodaTemplate {
 pub struct CodaTemplateSubcomponent {
     pub interface: CodaTemplateInterface,
     pub name: String,
-    pub header_name: String,
 }
 
 impl CodaTemplate {
