@@ -34,11 +34,21 @@ pub trait WriteWasm {
 }
 
 pub trait CompileCoda {
-    fn print_coda(&self, circuit: &Circuit, program_archive: &ProgramArchive, summary: &SummaryRoot) -> String {
-        self.compile_coda(circuit, program_archive, summary).print()
+    fn print_coda(
+        &self,
+        circuit: &Circuit,
+        program_archive: &ProgramArchive,
+        summary: &SummaryRoot,
+    ) -> String {
+        self.compile_coda(circuit, program_archive, summary).coda_print()
     }
 
-    fn compile_coda(&self, circuit: &Circuit, program_archive: &ProgramArchive, summary: &SummaryRoot) -> CodaProgram;
+    fn compile_coda(
+        &self,
+        circuit: &Circuit,
+        program_archive: &ProgramArchive,
+        summary: &SummaryRoot,
+    ) -> CodaProgram;
 }
 
 pub trait WriteLLVMIR {

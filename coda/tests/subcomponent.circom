@@ -13,28 +13,30 @@ template B() {
   y2 <== a.x2;
 }
 
-// template C() {
-//   signal input z1;
-//   signal input z2;
-//   signal output z3;
-//   component a = A();
-//   component b = B();
-//   a.x1 <== z1;
-//   b.y1 <== z2;
-//   z3 <== a.x2 + b.y2;
-// }
-
 template C() {
   signal input z1;
   signal input z2;
   signal output z3;
-  component a1 = A();
-  component b = B();
-  component a2 = A();
-  a1.x1 <== z1;
-  b.y1 <== z1;
-  a2.x1 <== z2;
-  z3 <== a1.x1 + b.y2 + a2.x1;
+  component a = A();
+  component b1 = B();
+  component b2 = B();
+  a.x1 <== z1;
+  b1.y1 <== z2;
+  b2.y1 <== z2;
+  z3 <== a.x2 + b1.y2 + b2.y2;
 }
+
+// template C() {
+//   signal input z1;
+//   signal input z2;
+//   signal output z3;
+//   component a1 = A();
+//   component b = B();
+//   component a2 = A();
+//   a1.x1 <== z1;
+//   b.y1 <== z1;
+//   a2.x1 <== z2;
+//   z3 <== a1.x1 + b.y2 + a2.x1;
+// }
 
 component main = C();

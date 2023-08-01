@@ -1,0 +1,119 @@
+(*
+intermediate sigs are just treated like variables   
+
+*)
+
+(*
+==== Circom ====
+
+template A() {
+    sig input a1;
+    sig output a2;
+
+    a1 <== a2;
+}
+
+template B() {
+    sig input x1;
+    sig input x2;
+    sig output y1;
+    sig output y2;
+
+    component a = A();
+
+    y1 <== x1;
+
+    a.a1 <== x2;
+    y2 <== a.a2;
+}
+*)
+
+(* ==== Coda ==== *)
+
+type expr = Expr | Tuple of expr * expr
+
+let var x = Expr
+let elet x e1 e2 = Expr
+
+let body_A a1 =
+    let sigs = [a1; var "a2"] in
+    let subsigs = [] in
+    a1
+
+let circuit_A = body_A (var "a1")
+
+let circuit_B x1 x2 =
+
+    (* (sig_index: int) ==> (sig_name: string) *)
+    let sig_names = [ 
+            (0, "x1"); (* sig input x1; *)
+            (1, "x2"); (* sig input x2; *)
+            (2, "x3"); (* sig output y1; *)
+            (3, "x4"); (* sig output y2; *)
+        ] 
+    in
+
+    (* 
+        All input sigs are mapped to the inputs of the circuit. Input sigs
+        are mapped to the circuit function inputs, which can be instantiated
+        differently depending on how the circuit is used (either as a main
+        component or subcomponent). All other sigs are just mapped to the
+        corresponding var expression. 
+    *)
+
+    (* (sig_index: int) ==> (sig_val: expr) *)
+    let sig_vals = [
+            (0, x1); (* sig input x1; *)
+            (1, x2); (* sig input x1; *)
+            (2, var "x3"); (* sig input x1; *)
+            (3, var "x4"); (* sig input x1; *)
+        ]
+    in
+
+    (* (subcomponent_index: int) ==> (subcomponent_instance_name: string) *)
+    let subcmp_instance_names = [ 
+            (0, "a") (* component a = A(); *)
+        ]
+    in 
+
+    (* (subcomponent_index: int) ==> (subcomponent_template_name: string) *)
+    let subcmp_template_names = [ 
+            (0, "A") (* component a = A(); *)
+        ]
+    in
+
+    (* (subcomponent_index: int) ==> (sig_index: int) ==> (sig_name: string) *)
+    let subcmp_sig_names = [
+            (0, [
+                (0, "a.a1");
+                (1, "a.a2");
+            ])
+        ]
+    in
+    
+    (* (subcomponent_index: int) ==> (sig_index: int) ==> (sig_val: expr) *)
+    let subcmp_sig_vals = [
+            (0, [
+                (0, var "a.a1");
+                (1, var "a.a2");
+            ])
+        ]
+    in
+
+    let sig_name i = List.assoc i sig_names in
+    let sig_val i = List.assoc i sig_vals in
+    let subcmp_sig_name cmp_i sig_i = List.assoc sig_i (List.assoc cmp_i subcmp_sig_names) in
+    let subcmp_sig_val cmp_i sig_i = List.assoc sig_i (List.assoc cmp_i subcmp_sig_vals) in
+
+    (* y1 <== x1; *)
+    elet (sig_name 2) (sig_val 0) @@
+    (* a.a1 <== x2; *)
+    elet (subcmp_sig_name 0 0) (sig_val 1) @@
+    (* this is triggered since `subcmp_sig_name 0 0` was the last input to
+    `component a` *)
+    (* component a = A(); *)
+    elet (subcmp_sig_name 0 1) (body_A (subcmp_sig_val 0 0)) @@
+    (* y2 <== a.a2; *)
+    elet (sig_val 3) (subcmp_sig_val 0 1) @@
+
+    Tuple (sig_val 2, sig_val 3)
