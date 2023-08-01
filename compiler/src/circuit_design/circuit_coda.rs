@@ -127,6 +127,8 @@ impl CompileCoda for Circuit {
             let _template_data = program_archive.get_template_data(&template_name);
             let template_code_info = circuit.get_template(template_id);
 
+            println!("template_summary.signals: {:?}", template_summary.signals);
+
             let signals = template_summary
                 .signals
                 .iter()
@@ -256,9 +258,9 @@ impl<'a> CompileCodaContext<'a> {
     pub fn insert_instructions(&self, instructions: &Vec<Box<Instruction>>) -> Self {
         CompileCodaContext {
             instructions: [
-                &self.instructions[..self.instruction_i],
+                &self.instructions[..self.instruction_i + 1],
                 &instructions[..],
-                &self.instructions[self.instruction_i..],
+                &self.instructions[self.instruction_i + 1..],
             ]
             .concat(),
             ..self.clone()
@@ -348,80 +350,86 @@ fn compile_coda_var(
 }
 
 fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
-    let instruction = ctx.current_instruction().unwrap();
-    println!("compile_coda_stmt: {}", pretty_print_instruction(instruction));
+    match ctx.current_instruction() {
+        None => CodaStmt::Output,
+        Some(instruction) => {
+            println!("compile_coda_stmt: {}", pretty_print_instruction(instruction));
 
-    match instruction.as_ref() {
-        Instruction::Constraint(constraint) => match constraint {
-            ConstraintBucket::Substitution(next_instruction) => compile_coda_stmt(
-                &ctx.insert_instructions(&vec![next_instruction.clone()]).next_instruction(),
-            ),
-            ConstraintBucket::Equality(next_instruction) => compile_coda_stmt(
-                &ctx.insert_instructions(&vec![next_instruction.clone()]).next_instruction(),
-            ),
-        },
-        Instruction::Block(block) => {
-            compile_coda_stmt(&ctx.insert_instructions(&block.body).next_instruction())
-        }
-        Instruction::Store(store) => {
-            let var = compile_coda_var(&ctx, &store.dest, &store.dest_address_type);
-            let val = Box::new(compile_coda_expr(&ctx.set_instructions(&vec![store.src.clone()])));
-            let body = Box::new(compile_coda_stmt(&ctx.next_instruction()));
-            CodaStmt::Let { var, val, body }
-        }
-        Instruction::Branch(branch) => CodaStmt::Branch {
-            condition: Box::new(compile_coda_expr(
-                &ctx.set_instructions(&vec![branch.cond.clone()]),
-            )),
-            then_: Box::new(compile_coda_stmt(
-                &ctx.insert_instructions(&branch.if_branch).next_instruction(),
-            )),
-            else_: Box::new(compile_coda_stmt(
-                &ctx.insert_instructions(&branch.else_branch).next_instruction(),
-            )),
-        },
-        Instruction::CreateCmp(create_cmp) => {
-            let cmp_i = create_cmp.cmp_unique_id;
-            let cmp = ctx.get_subcomponent(cmp_i);
-            compile_coda_stmt(
-                &ctx.insert_subcomponent(
-                    cmp_i,
-                    CodaTemplateSubcomponent {
-                        interface: cmp.interface.clone(),
-                        name: cmp.name.clone(),
-                    },
-                )
-                .next_instruction(),
-            )
-        }
-        Instruction::Load(_load) => {
-            panic!("This case should not appear as a statement: {:?}", instruction)
-        }
-        Instruction::Value(_) => {
-            panic!("This case should not appear as a statement: {:?}", instruction)
-        }
-        Instruction::Compute(_) => {
-            panic!("This case should not appear as a statement: {:?}", instruction)
-        }
-        Instruction::Call(_) => {
-            panic!("This case should not appear as a statement: {:?}", instruction)
-        }
+            match instruction.as_ref() {
+                Instruction::Constraint(constraint) => match constraint {
+                    ConstraintBucket::Substitution(next_instruction) => compile_coda_stmt(
+                        &ctx.insert_instructions(&vec![next_instruction.clone()])
+                            .next_instruction(),
+                    ),
+                    ConstraintBucket::Equality(next_instruction) => compile_coda_stmt(
+                        &ctx.insert_instructions(&vec![next_instruction.clone()])
+                            .next_instruction(),
+                    ),
+                },
+                Instruction::Block(block) => {
+                    compile_coda_stmt(&ctx.insert_instructions(&block.body).next_instruction())
+                }
+                Instruction::Store(store) => {
+                    let var = compile_coda_var(&ctx, &store.dest, &store.dest_address_type);
+                    let val = Box::new(compile_coda_expr(&ctx.set_instruction(&store.src)));
+                    let body = Box::new(compile_coda_stmt(&ctx.next_instruction()));
+                    CodaStmt::Let { var, val, body }
+                }
+                Instruction::Branch(branch) => CodaStmt::Branch {
+                    condition: Box::new(compile_coda_expr(
+                        &ctx.set_instructions(&vec![branch.cond.clone()]),
+                    )),
+                    then_: Box::new(compile_coda_stmt(
+                        &ctx.insert_instructions(&branch.if_branch).next_instruction(),
+                    )),
+                    else_: Box::new(compile_coda_stmt(
+                        &ctx.insert_instructions(&branch.else_branch).next_instruction(),
+                    )),
+                },
+                Instruction::CreateCmp(create_cmp) => {
+                    let cmp_i = create_cmp.cmp_unique_id;
+                    let cmp = ctx.get_subcomponent(cmp_i);
+                    compile_coda_stmt(
+                        &ctx.insert_subcomponent(
+                            cmp_i,
+                            CodaTemplateSubcomponent {
+                                interface: cmp.interface.clone(),
+                                name: cmp.name.clone(),
+                            },
+                        )
+                        .next_instruction(),
+                    )
+                }
+                Instruction::Load(_load) => {
+                    panic!("This case should not appear as a statement: {:?}", instruction)
+                }
+                Instruction::Value(_) => {
+                    panic!("This case should not appear as a statement: {:?}", instruction)
+                }
+                Instruction::Compute(_) => {
+                    panic!("This case should not appear as a statement: {:?}", instruction)
+                }
+                Instruction::Call(_) => {
+                    panic!("This case should not appear as a statement: {:?}", instruction)
+                }
 
-        Instruction::Return(_) => {
-            panic!("This case is not handled by Circom->Coda: {:?}", instruction)
-        }
-        Instruction::Assert(_) => {
-            panic!("This case is not handled by Circom->Coda: {:?}", instruction)
-        }
-        Instruction::Log(_) => {
-            panic!("This case is not handled by Circom->Coda: {:?}", instruction)
-        }
-        Instruction::Loop(_) => {
-            panic!("This case is not handled by Circom->Coda: {:?}", instruction)
-        }
+                Instruction::Return(_) => {
+                    panic!("This case is not handled by Circom->Coda: {:?}", instruction)
+                }
+                Instruction::Assert(_) => {
+                    panic!("This case is not handled by Circom->Coda: {:?}", instruction)
+                }
+                Instruction::Log(_) => {
+                    panic!("This case is not handled by Circom->Coda: {:?}", instruction)
+                }
+                Instruction::Loop(_) => {
+                    panic!("This case is not handled by Circom->Coda: {:?}", instruction)
+                }
 
-        Instruction::Nop(_) => {
-            panic!("This case is not handled by Circom->Coda: {:?}", instruction)
+                Instruction::Nop(_) => {
+                    panic!("This case is not handled by Circom->Coda: {:?}", instruction)
+                }
+            }
         }
     }
 }

@@ -235,7 +235,7 @@ impl CodaTemplate {
         // circuit
 
         str.push_str(&format!(
-            "let {} = Hoare_circuit {{name= {}, inputs= [{}], outputs= [{}], dep= None, body= {} {}}}\n\n",
+            "let {} = Hoare_circuit {{name= \"{}\", inputs= [{}], outputs= [{}], preconditions= [], postconditions= [], dep= None, body= {} ({})}}\n\n",
             self.interface.coda_print_template_name(),
             self.interface.template_name,
             self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.name)).collect::<Vec<String>>().join("; "),
@@ -244,7 +244,7 @@ impl CodaTemplate {
             self.interface
                 .signals
                 .iter()
-                .map(|signal| signal.to_expr().coda_print())
+                .map(|signal| format!("\"{}\"", signal.name))
                 .collect::<Vec<String>>()
                 .join(", ")
         ));
@@ -258,6 +258,7 @@ pub enum CodaStmt {
     Let { var: CodaVar, val: Box<CodaExpr>, body: Box<CodaStmt> },
     CreateCmp { subcomponent: CodaTemplateSubcomponent, body: Box<CodaStmt> },
     Branch { condition: Box<CodaExpr>, then_: Box<CodaStmt>, else_: Box<CodaStmt> },
+    Output,
 }
 
 impl CodaStmt {
@@ -284,6 +285,7 @@ impl CodaStmt {
                 then_.coda_print(),
                 else_.coda_print()
             ),
+            CodaStmt::Output => format!("body"),
         }
     }
 }
@@ -352,7 +354,10 @@ impl CodaVal {
     }
 
     pub fn coda_print(&self) -> String {
-        self.value.clone()
+        // TODO: need to reason about what type the constant _should_ be in order to satisfy typing
+        // For reference:
+        //      type const = CNil | CUnit | CInt of big_int | CF of big_int | CBool of bool
+        format!("(CF {})", self.value)
     }
 }
 
