@@ -157,6 +157,26 @@ impl CodaTemplateInterface {
     pub fn coda_print_body_name(&self) -> String {
         format!("body_{}", self.template_name)
     }
+
+    pub fn get_input_signals(&self) -> Vec<CodaTemplateSignal> {
+        self.signals
+            .iter()
+            .filter_map(|signal| match signal.visibility {
+                CodaVisibility::Input => Some(signal.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub fn get_output_signals(&self) -> Vec<CodaTemplateSignal> {
+        self.signals
+            .iter()
+            .filter_map(|signal| match signal.visibility {
+                CodaVisibility::Output => Some(signal.clone()),
+                _ => None,
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -188,26 +208,11 @@ pub struct CodaTemplateSubcomponent {
 }
 
 impl CodaTemplate {
-    pub fn get_inputs(&self) -> Vec<String> {
-        self.interface
-            .signals
-            .iter()
-            .filter_map(|signal| match signal.visibility {
-                CodaVisibility::Input => Some(signal.name.clone()),
-                _ => None,
-            })
-            .collect()
+    pub fn get_input_signals(&self) -> Vec<CodaTemplateSignal> {
+        self.interface.get_input_signals()
     }
-
-    pub fn get_outputs(&self) -> Vec<String> {
-        self.interface
-            .signals
-            .iter()
-            .filter_map(|signal| match signal.visibility {
-                CodaVisibility::Output => Some(signal.name.clone()),
-                _ => None,
-            })
-            .collect()
+    pub fn get_output_signals(&self) -> Vec<CodaTemplateSignal> {
+        self.interface.get_output_signals()
     }
 
     pub fn coda_print(&self) -> String {
@@ -230,8 +235,11 @@ impl CodaTemplate {
         // circuit
 
         str.push_str(&format!(
-            "let {} = Hoare_circuit {{body= {} {}}}\n\n",
+            "let {} = Hoare_circuit {{name= {}, inputs= [{}], outputs= [{}], dep= None, body= {} {}}}\n\n",
             self.interface.coda_print_template_name(),
+            self.interface.template_name,
+            self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.name)).collect::<Vec<String>>().join("; "),
+            self.interface.get_output_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.name)).collect::<Vec<String>>().join("; "),
             self.interface.coda_print_body_name(),
             self.interface
                 .signals

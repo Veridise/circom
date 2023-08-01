@@ -6,6 +6,8 @@ use code_producers::coda_elements::*;
 use program_structure::program_archive::ProgramArchive;
 use super::circuit::Circuit;
 
+const __DEBUG: bool = false;
+
 fn pretty_print_input_information(input_information: &InputInformation) -> String {
     match &input_information {
         InputInformation::NoInput => format!("NoInput"),
@@ -159,7 +161,9 @@ impl CompileCoda for Circuit {
             let _template_code_info = circuit.get_template(template_id);
             let interface = coda_template_interfaces[template_id].clone();
 
-            if false {
+            if __DEBUG {
+                // debug print this template
+
                 let mut template_string = String::new();
                 template_string.push_str(&format!("name: {}\n", template.name));
                 template_string
