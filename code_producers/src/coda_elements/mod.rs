@@ -1,3 +1,49 @@
+/*
+Example:
+
+```circom
+template Foo {
+    signal input x;
+    signal input y;
+    signal output z;
+    signal output w;
+
+    ...
+}
+
+template Bar {
+    signal input a;
+    signal output b;
+    signal output c;
+
+    component foo = Foo();
+
+    foo.x <== a;
+    foo.y <== 7;
+
+    b <== foo.z;
+    c <== foo.w;
+}
+```
+
+```coda
+let body_Foo (x, y, z, w) body = ...
+
+let circuit_Foo = Hoare_circuit {..., body= body_Foo ("x", "y", "z", "w") (tuple (var "z", var "w"))}
+
+let body_Bar (a, b, c) body =
+    body_Foo ("foo.x", "foo.y", "foo.z", "foo.w") @@
+    elet "foo.x" (var a) @@
+    elet "foo.y" (lit 7) @@
+    elet "b" (var "foo.z") @@
+    elet "c" (var "foo.w") @@
+    body
+
+let circuit_Bar = Hoare_circuit {..., body= body_Bar ("a", "b", "c") (tuple (var "b", var "c"))}
+```
+
+*/
+
 use std::str::FromStr;
 use serde::Serialize;
 use serde::Deserialize;
@@ -59,33 +105,20 @@ pub struct SummaryRoot {
     pub functions: Vec<FunctionSummary>,
 }
 
-pub trait CodaPrint {
-    fn coda_print(&self) -> String;
-}
-
 pub struct CodaProgram {
     pub templates: Vec<CodaTemplate>,
     // pub main: ,
 }
 
-impl CodaPrint for CodaProgram {
-    fn coda_print(&self) -> String {
+impl CodaProgram {
+    pub fn coda_print(&self) -> String {
         let mut str = String::new();
 
         // TODO: imports
 
-        str.push_str(&format!("let bodies: (expr list -> expr) list ref = ref [];;"));
-
-        for _template in &self.templates {
-            // str.push_str(&format!("{}\n", &template.coda_print()))
-            // str.push_str(&format!("bodies := List.cons () bodies"));
-            todo!()
+        for template in &self.templates {
+            str.push_str(&format!("{}\n", &template.coda_print()))
         }
-
-        // // TODO: imports
-        // for template in &self.templates {
-        //     str.push_str(&format!("{}\n", &template.coda_print()))
-        // }
 
         str
     }
@@ -98,10 +131,32 @@ impl Default for CodaProgram {
 }
 
 #[derive(Debug, Clone)]
+pub struct CodaTemplateName {
+    pub name: String,
+}
+
+impl CodaTemplateName {
+    pub fn coda_print(&self) -> String {
+        format!("circuit_{}", self.name)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct CodaTemplateInterface {
     pub template_id: usize,
     pub template_name: String,
     pub signals: Vec<CodaTemplateSignal>,
+    pub variables: Vec<String>,
+}
+
+impl CodaTemplateInterface {
+    pub fn coda_print_template_name(&self) -> String {
+        format!("circuit_{}", self.template_name)
+    }
+
+    pub fn coda_print_body_name(&self) -> String {
+        format!("body_{}", self.template_name)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -110,14 +165,26 @@ pub struct CodaTemplateSignal {
     pub visibility: CodaVisibility,
 }
 
-pub struct CodaTemplate {
-    pub interface: CodaTemplateInterface,
-    pub body: CodaExpr,
+impl CodaTemplateSignal {
+    pub fn to_var(&self) -> CodaVar {
+        CodaVar::make_signal(&self.name)
+    }
+
+    pub fn to_expr(&self) -> CodaExpr {
+        CodaExpr::Var(self.to_var())
+    }
 }
 
+#[derive(Debug, Clone)]
+pub struct CodaTemplate {
+    pub interface: CodaTemplateInterface,
+    pub body: CodaStmt,
+}
+
+#[derive(Debug, Clone)]
 pub struct CodaTemplateSubcomponent {
     pub interface: CodaTemplateInterface,
-    pub name: String,
+    pub name: CodaComponentName,
 }
 
 impl CodaTemplate {
@@ -142,227 +209,93 @@ impl CodaTemplate {
             })
             .collect()
     }
-}
 
-impl CodaPrint for CodaTemplate {
-    fn coda_print(&self) -> String {
+    pub fn coda_print(&self) -> String {
         let mut str = String::new();
 
-        // TODO: don't need to do this stuff with leading definitions -- all reference indices will be constant by the time of this translation
+        // body
 
         str.push_str(&format!(
-            "let signal_names = [{}] in ",
+            "let {} ({}) body = {}\n\n",
+            self.interface.coda_print_body_name(),
             self.interface
                 .signals
                 .iter()
-                .enumerate()
-                .map(|(signal_i, signal)| format!("({}, \"{}\")", signal_i, signal.name))
+                .map(|signal| signal.name.clone())
                 .collect::<Vec<String>>()
-                .join("; ")
+                .join(", "),
+            self.body.coda_print()
         ));
+
+        // circuit
+
         str.push_str(&format!(
-            "let signal_values = [{}] in ",
+            "let {} = Hoare_circuit {{body= {} {}}}\n\n",
+            self.interface.coda_print_template_name(),
+            self.interface.coda_print_body_name(),
             self.interface
                 .signals
                 .iter()
-                .enumerate()
-                .map(|(signal_i, signal)| match signal.visibility {
-                    CodaVisibility::Input => format!("List.nth {} inputs", signal_i),
-                    CodaVisibility::Output => CodaExpr::Var(CodaVar::Signal(signal_i)).coda_print(),
-                    CodaVisibility::Intermediate =>
-                        CodaExpr::Var(CodaVar::Signal(signal_i)).coda_print(),
-                })
+                .map(|signal| signal.to_expr().coda_print())
                 .collect::<Vec<String>>()
-                .join("; ")
+                .join(", ")
         ));
 
-        // TODO: remove subcomponent stuff
-
-        // str.push_str(&format!(
-        //     "let subcomponent_template_names = [{}] in ",
-        //     self.subcomponents
-        //         .iter()
-        //         .enumerate()
-        //         .map(|(cmp_i, subcmp)| format!(
-        //             "({}, \"{}\")",
-        //             cmp_i, subcmp.interface.template_name
-        //         ))
-        //         .collect::<Vec<String>>()
-        //         .join("; ")
-        // ));
-        // str.push_str(&format!(
-        //     "let subcomponent_instance_names = [{}] in ",
-        //     self.subcomponents
-        //         .iter()
-        //         .enumerate()
-        //         .map(|(cmp_i, subcmp)| format!(
-        //             "({}, \"{}\")",
-        //             cmp_i, subcmp.interface.template_name
-        //         ))
-        //         .collect::<Vec<String>>()
-        //         .join("; ")
-        // ));
-        // str.push_str(&format!(
-        //     "let subcomponent_signal_names = [{}] in ",
-        //     self.subcomponents
-        //         .iter()
-        //         .enumerate()
-        //         .map(|(cmp_i, subcmp)| format!(
-        //             "({}, [{}])",
-        //             cmp_i,
-        //             subcmp
-        //                 .interface
-        //                 .signals
-        //                 .iter()
-        //                 .enumerate()
-        //                 .map(|(sig_i, sig)| format!("({}, \"{}\")", sig_i, sig.name))
-        //                 .collect::<Vec<String>>()
-        //                 .join("; ")
-        //         ))
-        //         .collect::<Vec<String>>()
-        //         .join("; ")
-        // ));
-
-        // str.push_str(&format!(
-        //     "let subcomponent_signal_values = [{}] in ",
-        //     self.subcomponents
-        //         .iter()
-        //         .enumerate()
-        //         .map(|(cmp_i, cmp)| format!(
-        //             "({}, [{}])",
-        //             cmp_i,
-        //             cmp.interface
-        //                 .signals
-        //                 .iter()
-        //                 .enumerate()
-        //                 .map(|(sig_i, _sig)| format!(
-        //                     "({}, \"{}\")",
-        //                     sig_i,
-        //                     CodaExpr::Var(CodaVar::SubSignal {
-        //                         subcomponent_index: cmp_i,
-        //                         signal_index: sig_i
-        //                     })
-        //                     .coda_print()
-        //                 ))
-        //                 .collect::<Vec<String>>()
-        //                 .join("; ")
-        //         ))
-        //         .collect::<Vec<String>>()
-        //         .join("; ")
-        // ));
-
-        // str.push_str(&format!(
-        //     "let subcomponent_instances = [{}] in ",
-        //     self.subcomponents
-        //         .iter()
-        //         .enumerate()
-        //         .map(|(cmp_i, cmp)| format!(
-        //             "({}, List.nth component_bodies {} [{}])",
-        //             cmp_i,
-        //             cmp_i,
-        //             cmp.interface
-        //                 .signals
-        //                 .iter()
-        //                 .enumerate()
-        //                 .filter_map(|(sig_i, sig)| match sig.visibility {
-        //                     CodaVisibility::Input => Some(
-        //                         CodaExpr::Var(CodaVar::SubSignal {
-        //                             subcomponent_index: cmp_i,
-        //                             signal_index: sig_i
-        //                         })
-        //                         .coda_print()
-        //                     ),
-        //                     CodaVisibility::Output => None,
-        //                     CodaVisibility::Intermediate => None,
-        //                 })
-        //                 .collect::<Vec<String>>()
-        //                 .join("; ")
-        //         ))
-        //         .collect::<Vec<String>>()
-        //         .join("; ")
-        // ));
-
-        // utility functions
-        str.push_str(&format!("let get_signal_name i = List.assoc i signal_names in "));
-        str.push_str(&format!("let get_signal_value i = List.assoc i signal_values in "));
-        str.push_str(&format!(
-            "let get_subcomponent_template_name i = List.assoc i subcomponent_template_names in "
-        ));
-        str.push_str(&format!(
-            "let get_subcomponent_instance_name i = List.assoc i subcomponent_instance_names in "
-        ));
-        str.push_str(&format!("let get_subcomponent_signal_name component_i signal_i = List.assoc signal_i (List.assoc component_i subcomponent_signal_names) in "));
-        str.push_str(&self.body.coda_print());
         str
-
-        /*
-        // define `circuit_<name>` (which uses `body_<name>`)
-        {
-            let circuit_name = format!("circuit_{}", self.interface.name);
-            let args_strings: Vec<String> = self
-                .get_inputs()
-                .iter()
-                .enumerate()
-                .map(|(sig_i, sig_name)| {
-                    format!(
-                        "(* {} *) {}",
-                        sig_name,
-                        CodaExpr::Var(CodaVar::Signal(sig_i)).coda_print()
-                    )
-                })
-                .collect();
-
-            let inputs_strings: Vec<String> =
-                self.get_inputs().iter().map(|input| format!("Presignal \"{}\"", input)).collect();
-
-            let outputs_strings: Vec<String> = self
-                .get_outputs()
-                .iter()
-                .map(|output| format!("Presignal \"{}\"", output))
-                .collect();
-
-            let circuit_constr = format!(
-                "Hoare_circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; preconditions= []; postconditions= []; body= {} {} }}",
-                self.interface.name,
-                inputs_strings.join(" "),
-                outputs_strings.join(", "),
-                body_name,
-                args_strings.join(" ")
-            );
-            str.push_str(&format!("let {} = {}\n\n", circuit_name, circuit_constr));
-
-        }
-        */
     }
 }
 
 #[derive(Clone, Debug)]
-pub enum CodaExpr {
-    Let { var: CodaVar, val: Box<CodaExpr>, body: Box<CodaExpr> },
-    Op { op: CodaOp, arg1: Box<CodaExpr>, arg2: Box<CodaExpr> },
-    Var(CodaVar),
-    Val(CodaVal),
-    Branch { condition: Box<CodaExpr>, then_: Box<CodaExpr>, else_: Box<CodaExpr> },
-    Tuple(Vec<Box<CodaExpr>>),
+pub enum CodaStmt {
+    Let { var: CodaVar, val: Box<CodaExpr>, body: Box<CodaStmt> },
+    CreateCmp { subcomponent: CodaTemplateSubcomponent, body: Box<CodaStmt> },
+    Branch { condition: Box<CodaExpr>, then_: Box<CodaStmt>, else_: Box<CodaStmt> },
 }
 
-impl CodaPrint for CodaExpr {
-    fn coda_print(&self) -> String {
-        match &self {
-            CodaExpr::Let { var, val, body } => {
-                format!("elet {} {} {}", var.coda_print(), val.coda_print(), body.coda_print())
+impl CodaStmt {
+    pub fn coda_print(&self) -> String {
+        match self {
+            CodaStmt::Let { var, val, body } => {
+                format!("elet {} {} @@ {}", var.coda_print(), val.coda_print(), body.coda_print())
             }
-            CodaExpr::Op { op, arg1, arg2 } => {
-                format!("({} {} {})", arg1.coda_print(), op.coda_print(), arg2.coda_print())
-            }
-            CodaExpr::Var(var) => format!("(var {})", var.coda_print()),
-            CodaExpr::Val(val) => val.coda_print(),
-            CodaExpr::Branch { condition, then_, else_ } => format!(
+            CodaStmt::CreateCmp { subcomponent, body } => format!(
+                "{} ({}) @@ {}",
+                subcomponent.name.coda_print(),
+                subcomponent
+                    .interface
+                    .signals
+                    .iter()
+                    .map(|signal| signal.name.clone())
+                    .collect::<Vec<String>>()
+                    .join(", "),
+                body.coda_print()
+            ),
+            CodaStmt::Branch { condition, then_, else_ } => format!(
                 "(if {} then {} else {})",
                 condition.coda_print(),
                 then_.coda_print(),
                 else_.coda_print()
             ),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum CodaExpr {
+    Op { op: CodaOp, arg1: Box<CodaExpr>, arg2: Box<CodaExpr> },
+    Var(CodaVar),
+    Val(CodaVal),
+    Tuple(Vec<Box<CodaExpr>>),
+}
+
+impl CodaExpr {
+    pub fn coda_print(&self) -> String {
+        match &self {
+            CodaExpr::Op { op, arg1, arg2 } => {
+                format!("({} {} {})", arg1.coda_print(), op.coda_print(), arg2.coda_print())
+            }
+            CodaExpr::Var(var) => format!("(var {})", var.coda_print()),
+            CodaExpr::Val(val) => val.coda_print(),
             CodaExpr::Tuple(es) => {
                 format!(
                     "({})",
@@ -383,8 +316,8 @@ pub enum CodaOp {
     Pow,
 }
 
-impl CodaPrint for CodaOp {
-    fn coda_print(&self) -> String {
+impl CodaOp {
+    pub fn coda_print(&self) -> String {
         match &self {
             CodaOp::Add => "+".to_string(),
             CodaOp::Sub => "-".to_string(),
@@ -409,10 +342,8 @@ impl CodaVal {
     pub fn from_usize(i: usize) -> CodaVal {
         CodaVal { value: format!("{}", i) }
     }
-}
 
-impl CodaPrint for CodaVal {
-    fn coda_print(&self) -> String {
+    pub fn coda_print(&self) -> String {
         self.value.clone()
     }
 }
@@ -441,30 +372,49 @@ impl FromStr for CodaVisibility {
 }
 
 #[derive(Clone, Debug)]
-pub enum CodaVar {
-    Signal(usize),
-    Var(usize),
-    SubSignal { subcomponent_index: usize, signal_index: usize },
+pub struct CodaVar {
+    pub name: String,
 }
 
-impl CodaPrint for CodaVar {
-    fn coda_print(&self) -> String {
-        match self {
-            CodaVar::Signal(sig_i) => format!("(get_signal_name {})", sig_i),
-            CodaVar::Var(var_i) => format!("(get_var_name {})", var_i),
-            CodaVar::SubSignal { subcomponent_index, signal_index } => {
-                format!("(get_subsignal_name {} {})", subcomponent_index, signal_index)
-            }
-        }
+impl CodaVar {
+    pub fn make_signal(name: &String) -> Self {
+        Self { name: name.clone() }
+    }
+    pub fn make_variable(name: &String) -> Self {
+        Self { name: name.clone() }
+    }
+    pub fn make_subcomponent_signal(
+        subcomponent_name: &CodaComponentName,
+        signal_name: &str,
+    ) -> Self {
+        Self { name: format!("{}_{}", subcomponent_name.name, signal_name) }
+    }
+    pub fn coda_print(&self) -> String {
+        format!("{}", self.name)
     }
 }
 
-// #[derive(Clone, Debug)]
-// pub struct CodaComponentInfo {
-//     pub template_id: usize,
-//     pub template_name: String,
-//     pub component_name: String,
-//     pub header_name: String,
-//     pub inputs: Vec<String>,
-//     pub outputs: Vec<String>,
-// }
+#[derive(Debug, Clone)]
+pub struct CodaComponentName {
+    pub name: String,
+}
+
+impl CodaComponentName {
+    pub fn coda_print(&self) -> String {
+        format!("body_{}", self.name)
+    }
+}
+
+/*
+fn commas(xs: Iter<'_, String>) -> String {
+    xs.map(|x| x.clone()).collect::<Vec<String>>().join(", ")
+}
+
+fn spaces(xs: Iter<'_, String>) -> String {
+    xs.map(|x| x.clone()).collect::<Vec<String>>().join(" ")
+}
+
+fn semis(xs: Iter<'_, String>) -> String {
+    xs.map(|x| x.clone()).collect::<Vec<String>>().join("; ")
+}
+*/
