@@ -7,7 +7,7 @@ use code_producers::coda_elements::*;
 use program_structure::program_archive::ProgramArchive;
 use super::circuit::Circuit;
 
-const __DEBUG: bool = false;
+const __DEBUG: bool = true;
 
 fn pretty_print_input_information(input_information: &InputInformation) -> String {
     match &input_information {
@@ -214,6 +214,12 @@ impl CompileCoda for Circuit {
     }
 }
 
+#[derive(Clone, Debug)]
+struct CompileCodaContextSubcomponent {
+    index: usize,
+    coda_template_subcomponent: CodaTemplateSubcomponent,
+}
+
 #[derive(Clone)]
 struct CompileCodaContext<'a> {
     circuit: &'a Circuit,
@@ -221,7 +227,7 @@ struct CompileCodaContext<'a> {
     template_summary: &'a TemplateSummary,
     template_interface: &'a CodaTemplateInterface,
     template_interfaces: Vec<CodaTemplateInterface>,
-    subcomponents: Vec<(usize, CodaTemplateSubcomponent)>,
+    subcomponents: Vec<CompileCodaContextSubcomponent>,
     instructions: Vec<Box<Instruction>>,
     instruction_i: usize,
 }
@@ -233,7 +239,7 @@ impl<'a> CompileCodaContext<'a> {
         template_summary: &'a TemplateSummary,
         template_interfaces: Vec<CodaTemplateInterface>,
         template_interface: &'a CodaTemplateInterface,
-        subcomponents: Vec<(usize, CodaTemplateSubcomponent)>,
+        subcomponents: Vec<CompileCodaContextSubcomponent>,
         instructions: Vec<Box<Instruction>>,
     ) -> Self {
         Self {
@@ -272,8 +278,18 @@ impl<'a> CompileCodaContext<'a> {
         }
     }
 
-    pub fn get_constant(&self, i: usize) -> &String {
-        &self.circuit.coda_data.field_tracking[i]
+    // why does the field_tracking not have all the constants that are referred to later? perhaps there is a bug in generating hte field_trackign vector, cuz im definitely using it right;
+    // TODO: send a message to Daniel
+    pub fn get_constant(&self, i: usize) -> String {
+        if i < self.circuit.coda_data.field_tracking.len() {
+            self.circuit.coda_data.field_tracking[i].clone()
+        } else {
+            // format!("(bad constant index: {})", i)
+            format!(
+                "(* ERROR: bad constant index: {} in {:?} *) 0",
+                i, self.circuit.coda_data.field_tracking
+            )
+        }
     }
 
     pub fn get_signal(&self, i: usize) -> &CodaTemplateSignal {
@@ -284,10 +300,13 @@ impl<'a> CompileCodaContext<'a> {
         &self.template_interface.variables[i]
     }
 
-    pub fn get_subcomponent(&self, subcomponent_i: usize) -> CodaTemplateSubcomponent {
+    pub fn get_subcomponent(&self, subcomponent_i: usize) -> &CompileCodaContextSubcomponent {
         println!("get_subcomponent: subcomponent_i = {}", subcomponent_i);
-        println!("get_subcomponent: self.subcomponents: {:?}", self.subcomponents);
-        at(subcomponent_i, &self.subcomponents).clone()
+        println!("get_subcomponent: self.subcomponents:");
+        for subcmp in &self.subcomponents {
+            println!(" - {:?}", subcmp);
+        }
+        self.subcomponents.iter().find(|subcmp| subcmp.index == subcomponent_i).unwrap()
     }
 
     pub fn get_subcomponent_signal(
@@ -295,7 +314,14 @@ impl<'a> CompileCodaContext<'a> {
         subcomponent_i: usize,
         signal_i: usize,
     ) -> CodaTemplateSignal {
-        at(subcomponent_i, &self.subcomponents).interface.signals[signal_i].clone()
+        self.subcomponents
+            .iter()
+            .find(|subcmp| subcmp.index == subcomponent_i)
+            .unwrap()
+            .coda_template_subcomponent
+            .interface
+            .signals[signal_i]
+            .clone()
     }
 
     pub fn set_instructions(&self, instructions: &Vec<Box<Instruction>>) -> Self {
@@ -309,11 +335,17 @@ impl<'a> CompileCodaContext<'a> {
     pub fn insert_subcomponent(
         &self,
         subcomponent_i: usize,
-        subcomponent: CodaTemplateSubcomponent,
+        coda_template_subcomponent: CodaTemplateSubcomponent,
     ) -> Self {
         Self {
-            subcomponents: [self.subcomponents.clone(), vec![(subcomponent_i, subcomponent)]]
-                .concat(),
+            subcomponents: [
+                self.subcomponents.clone(),
+                vec![CompileCodaContextSubcomponent {
+                    index: subcomponent_i,
+                    coda_template_subcomponent,
+                }],
+            ]
+            .concat(),
             ..self.clone()
         }
     }
@@ -344,8 +376,8 @@ fn compile_coda_var(
     };
 
     match &address_type {
-        AddressType::Variable => CodaVar::make_variable(&ctx.get_variable_name(i)),
-        AddressType::Signal => CodaVar::make_signal(&ctx.get_signal(i).name),
+        AddressType::Variable => CodaVar::Variable(ctx.get_variable_name(i).clone()),
+        AddressType::Signal => CodaVar::Signal(ctx.get_signal(i).name.clone()),
         AddressType::SubcmpSignal {
             cmp_address,
             uniform_parallel_value: _,
@@ -354,8 +386,11 @@ fn compile_coda_var(
         } => {
             let subcmp_i = from_constant_instruction(cmp_address);
             let subcmp = &ctx.get_subcomponent(subcmp_i);
-            let subcmp_signal = &subcmp.interface.signals[i];
-            CodaVar::make_subcomponent_signal(&subcmp.name, &subcmp_signal.name)
+            let subcmp_signal = &subcmp.coda_template_subcomponent.interface.signals[i];
+            CodaVar::SubcomponentSignal(
+                subcmp.coda_template_subcomponent.component_name.clone(),
+                subcmp_signal.name.clone(),
+            )
         }
     }
 }
@@ -384,7 +419,38 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                     let var = compile_coda_var(&ctx, &store.dest, &store.dest_address_type);
                     let val = Box::new(compile_coda_expr(&ctx.set_instruction(&store.src)));
                     let body = Box::new(compile_coda_stmt(&ctx.next_instruction()));
-                    CodaStmt::Let { var, val, body }
+
+                    match &store.dest_address_type {
+                        AddressType::Variable => CodaStmt::Let { var, val, body },
+                        AddressType::Signal => CodaStmt::Let { var, val, body },
+                        AddressType::SubcmpSignal {
+                            cmp_address,
+                            uniform_parallel_value: _,
+                            is_output: _,
+                            input_information,
+                        } => match &input_information {
+                            InputInformation::NoInput => CodaStmt::Let { var, val, body },
+                            InputInformation::Input { status } => match &status {
+                                StatusInput::Unknown => {
+                                    panic!("Should not be Unknown at this point, after IR transformation passes.")
+                                }
+                                StatusInput::NoLast => CodaStmt::Let { var, val, body },
+                                StatusInput::Last => {
+                                    let cmp_i = from_constant_instruction(cmp_address.as_ref());
+                                    let subcomponent = ctx
+                                        .get_subcomponent(cmp_i)
+                                        .coda_template_subcomponent
+                                        .clone();
+
+                                    CodaStmt::Let {
+                                        var,
+                                        val,
+                                        body: Box::new(CodaStmt::CreateCmp { subcomponent, body }),
+                                    }
+                                }
+                            },
+                        },
+                    }
                 }
                 Instruction::Branch(branch) => CodaStmt::Branch {
                     condition: Box::new(compile_coda_expr(
@@ -398,7 +464,6 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                     )),
                 },
                 Instruction::CreateCmp(create_cmp) => {
-                    // let cmp_i = create_cmp.cmp_unique_id;
                     let cmp_i = from_constant_instruction(create_cmp.sub_cmp_id.as_ref());
                     let template_id = create_cmp.template_id;
                     let template_interface = &ctx.template_interfaces[template_id];
@@ -407,7 +472,9 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                             cmp_i,
                             CodaTemplateSubcomponent {
                                 interface: template_interface.clone(),
-                                name: CodaComponentName::new(create_cmp.name_subcomponent.clone()),
+                                component_name: CodaComponentName::new(
+                                    create_cmp.name_subcomponent.clone(),
+                                ),
                             },
                         )
                         .next_instruction(),
@@ -542,7 +609,7 @@ fn compile_coda_expr(ctx: &CompileCodaContext) -> CodaExpr {
     }
 }
 
-fn at<A: Debug>(i: usize, xs: &Vec<(usize, A)>) -> &A {
-    println!("at: i={}, xs={:?}", i, xs);
-    xs.iter().find_map(|x| if x.0 == i { Some(&x.1) } else { None }).unwrap()
-}
+// fn at<A: Debug>(i: usize, xs: &Vec<(usize, A)>) -> &A {
+//     println!("at: i={}, xs={:?}", i, xs);
+//     xs.iter().find_map(|x| if x.0 == i { Some(&x.1) } else { None }).unwrap()
+// }

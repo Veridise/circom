@@ -136,6 +136,10 @@ pub struct CodaTemplateName {
 }
 
 impl CodaTemplateName {
+    pub fn print(&self) -> &String {
+        &self.name
+    }
+
     pub fn coda_print(&self) -> String {
         format!("circuit_{}", self.name)
     }
@@ -186,12 +190,20 @@ pub struct CodaTemplateSignal {
 }
 
 impl CodaTemplateSignal {
-    pub fn to_var(&self) -> CodaVar {
-        CodaVar::make_signal(&self.name)
+    pub fn to_signal(&self) -> CodaVar {
+        CodaVar::Signal(self.name.clone())
     }
 
-    pub fn to_expr(&self) -> CodaExpr {
-        CodaExpr::Var(self.to_var())
+    pub fn to_subcomponent_signal(&self, subcomponent_name: &CodaComponentName) -> CodaVar {
+        CodaVar::SubcomponentSignal(subcomponent_name.clone(), self.name.clone())
+    }
+
+    pub fn print_name_value(&self) -> String {
+        self.name.replace("[", "_").replace("]", "")
+    }
+
+    pub fn print_name_string(&self) -> String {
+        self.name.replace("[", "_").replace("]", "")
     }
 }
 
@@ -204,7 +216,7 @@ pub struct CodaTemplate {
 #[derive(Debug, Clone)]
 pub struct CodaTemplateSubcomponent {
     pub interface: CodaTemplateInterface,
-    pub name: CodaComponentName,
+    pub component_name: CodaComponentName,
 }
 
 impl CodaTemplate {
@@ -226,7 +238,7 @@ impl CodaTemplate {
             self.interface
                 .signals
                 .iter()
-                .map(|signal| signal.name.clone())
+                .map(|signal| signal.print_name_value())
                 .collect::<Vec<String>>()
                 .join(", "),
             self.body.coda_print()
@@ -238,13 +250,13 @@ impl CodaTemplate {
             "let {} = Hoare_circuit {{name= \"{}\", inputs= [{}], outputs= [{}], preconditions= [], postconditions= [], dep= None, body= {} ({})}}\n\n",
             self.interface.coda_print_template_name(),
             self.interface.template_name,
-            self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.name)).collect::<Vec<String>>().join("; "),
-            self.interface.get_output_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.name)).collect::<Vec<String>>().join("; "),
+            self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+            self.interface.get_output_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
             self.interface.coda_print_body_name(),
             self.interface
                 .signals
                 .iter()
-                .map(|signal| format!("\"{}\"", signal.name))
+                .map(|signal| format!("\"{}\"", signal.print_name_string()))
                 .collect::<Vec<String>>()
                 .join(", ")
         ));
@@ -265,16 +277,18 @@ impl CodaStmt {
     pub fn coda_print(&self) -> String {
         match self {
             CodaStmt::Let { var, val, body } => {
-                format!("elet {} {} @@ {}", var.coda_print(), val.coda_print(), body.coda_print())
+                format!("elet {} {} @@ {}", var.print_value(), val.coda_print(), body.coda_print())
             }
             CodaStmt::CreateCmp { subcomponent, body } => format!(
                 "{} ({}) @@ {}",
-                subcomponent.name.coda_print(),
+                subcomponent.interface.coda_print_body_name(),
                 subcomponent
                     .interface
                     .signals
                     .iter()
-                    .map(|signal| signal.name.clone())
+                    .map(|signal| signal
+                        .to_subcomponent_signal(&subcomponent.component_name)
+                        .print_value())
                     .collect::<Vec<String>>()
                     .join(", "),
                 body.coda_print()
@@ -304,7 +318,7 @@ impl CodaExpr {
             CodaExpr::Op { op, arg1, arg2 } => {
                 format!("({} {} {})", arg1.coda_print(), op.coda_print(), arg2.coda_print())
             }
-            CodaExpr::Var(var) => format!("(var {})", var.coda_print()),
+            CodaExpr::Var(var) => format!("(var {})", var.print_value()),
             CodaExpr::Val(val) => val.coda_print(),
             CodaExpr::Tuple(es) => {
                 format!(
@@ -384,30 +398,52 @@ impl FromStr for CodaVisibility {
     }
 }
 
+// #[derive(Clone, Debug)]
+// pub struct CodaVar {
+//     pub name: String,
+//     pub is_subcomponent_signal: bool,
+// }
+
 #[derive(Clone, Debug)]
-pub struct CodaVar {
-    pub name: String,
+pub enum CodaVar {
+    Signal(String),
+    Variable(String),
+    SubcomponentSignal(CodaComponentName, String),
 }
 
 impl CodaVar {
-    pub fn new(name: String) -> Self {
-        Self { name }
-    }
+    // pub fn make_signal(name: &String) -> Self {
+    //     println!("make_signal({})", name);
+    //     Self { name: name.clone(), is_subcomponent_signal: false }
+    // }
+    // pub fn make_variable(name: &String) -> Self {
+    //     println!("make_variable({})", name);
+    //     Self { name: name.clone(), is_subcomponent_signal: false }
+    // }
+    // pub fn make_subcomponent_signal(
+    //     subcomponent_name: &CodaComponentName,
+    //     signal_name: &str,
+    // ) -> Self {
+    //     println!("make_subcomponent_signal({:?}, {})", subcomponent_name, signal_name);
+    //     Self {
+    //         name: format!("{}_{}", subcomponent_name.print(), signal_name),
+    //         is_subcomponent_signal: true,
+    //     }
+    // }
 
-    pub fn make_signal(name: &String) -> Self {
-        Self { name: name.clone() }
-    }
-    pub fn make_variable(name: &String) -> Self {
-        Self { name: name.clone() }
-    }
-    pub fn make_subcomponent_signal(
-        subcomponent_name: &CodaComponentName,
-        signal_name: &str,
-    ) -> Self {
-        Self { name: format!("{}_{}", subcomponent_name.name, signal_name) }
-    }
-    pub fn coda_print(&self) -> String {
-        format!("{}", self.name)
+    pub fn print_value(&self) -> String {
+        // Example: xs[0][1] ~~> x_0_1
+        match self {
+            CodaVar::Signal(name) => name.replace("[", "_").replace("]", ""),
+            CodaVar::Variable(name) => format!("\"{}\"", name.replace("[", "_").replace("]", "")),
+            CodaVar::SubcomponentSignal(subcomponent_name, name) => {
+                format!(
+                    "\"{}_{}\"",
+                    subcomponent_name.print(),
+                    name.replace("[", "_").replace("]", "")
+                )
+            }
+        }
     }
 }
 
@@ -421,8 +457,12 @@ impl CodaComponentName {
         Self { name }
     }
 
+    pub fn print(&self) -> &String {
+        &self.name
+    }
+
     pub fn coda_print(&self) -> String {
-        format!("body_{}", self.name)
+        format!("body_{}", self.print())
     }
 }
 
