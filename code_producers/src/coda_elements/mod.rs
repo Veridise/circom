@@ -357,7 +357,7 @@ impl CodaVal {
         // TODO: need to reason about what type the constant _should_ be in order to satisfy typing
         // For reference:
         //      type const = CNil | CUnit | CInt of big_int | CF of big_int | CBool of bool
-        format!("(CF {})", self.value)
+        format!("(F.const {})", self.value)
     }
 }
 
@@ -390,6 +390,10 @@ pub struct CodaVar {
 }
 
 impl CodaVar {
+    pub fn new(name: String) -> Self {
+        Self { name }
+    }
+
     pub fn make_signal(name: &String) -> Self {
         Self { name: name.clone() }
     }
@@ -413,6 +417,10 @@ pub struct CodaComponentName {
 }
 
 impl CodaComponentName {
+    pub fn new(name: String) -> Self {
+        Self { name }
+    }
+
     pub fn coda_print(&self) -> String {
         format!("body_{}", self.name)
     }

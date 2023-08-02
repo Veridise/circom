@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::str::FromStr;
 use crate::intermediate_representation::Instruction;
 use crate::intermediate_representation::ir_interface::*;
@@ -120,7 +121,7 @@ impl CompileCoda for Circuit {
         let mut coda_program = CodaProgram::default();
 
         // accumulate coda_template_interfaces
-        let mut coda_template_interfaces: Vec<CodaTemplateInterface> = Vec::new();
+        let coda_template_interfaces: &mut Vec<CodaTemplateInterface> = &mut Vec::new();
         for (template_id, _template) in self.templates.iter().enumerate() {
             let template_summary = summary.components[template_id].clone();
             let template_name = template_summary.name.clone();
@@ -195,12 +196,13 @@ impl CompileCoda for Circuit {
                 circuit,
                 program_archive,
                 template_summary,
+                coda_template_interfaces.clone(),
                 &interface,
                 Vec::new(),
                 template.body.clone(),
             ));
 
-            coda_program.templates.push(CodaTemplate { interface, body })
+            coda_program.templates.push(CodaTemplate { interface: interface.clone(), body })
         }
 
         println!(
@@ -218,6 +220,7 @@ struct CompileCodaContext<'a> {
     program_archive: &'a ProgramArchive,
     template_summary: &'a TemplateSummary,
     template_interface: &'a CodaTemplateInterface,
+    template_interfaces: Vec<CodaTemplateInterface>,
     subcomponents: Vec<(usize, CodaTemplateSubcomponent)>,
     instructions: Vec<Box<Instruction>>,
     instruction_i: usize,
@@ -228,6 +231,7 @@ impl<'a> CompileCodaContext<'a> {
         circuit: &'a Circuit,
         program_archive: &'a ProgramArchive,
         template_summary: &'a TemplateSummary,
+        template_interfaces: Vec<CodaTemplateInterface>,
         template_interface: &'a CodaTemplateInterface,
         subcomponents: Vec<(usize, CodaTemplateSubcomponent)>,
         instructions: Vec<Box<Instruction>>,
@@ -236,6 +240,7 @@ impl<'a> CompileCodaContext<'a> {
             circuit,
             program_archive,
             template_summary,
+            template_interfaces,
             template_interface,
             subcomponents,
             instructions,
@@ -267,6 +272,10 @@ impl<'a> CompileCodaContext<'a> {
         }
     }
 
+    pub fn get_constant(&self, i: usize) -> &String {
+        &self.circuit.coda_data.field_tracking[i]
+    }
+
     pub fn get_signal(&self, i: usize) -> &CodaTemplateSignal {
         &self.template_interface.signals[i]
     }
@@ -276,6 +285,8 @@ impl<'a> CompileCodaContext<'a> {
     }
 
     pub fn get_subcomponent(&self, subcomponent_i: usize) -> CodaTemplateSubcomponent {
+        println!("get_subcomponent: subcomponent_i = {}", subcomponent_i);
+        println!("get_subcomponent: self.subcomponents: {:?}", self.subcomponents);
         at(subcomponent_i, &self.subcomponents).clone()
     }
 
@@ -387,14 +398,16 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                     )),
                 },
                 Instruction::CreateCmp(create_cmp) => {
-                    let cmp_i = create_cmp.cmp_unique_id;
-                    let cmp = ctx.get_subcomponent(cmp_i);
+                    // let cmp_i = create_cmp.cmp_unique_id;
+                    let cmp_i = from_constant_instruction(create_cmp.sub_cmp_id.as_ref());
+                    let template_id = create_cmp.template_id;
+                    let template_interface = &ctx.template_interfaces[template_id];
                     compile_coda_stmt(
                         &ctx.insert_subcomponent(
                             cmp_i,
                             CodaTemplateSubcomponent {
-                                interface: cmp.interface.clone(),
-                                name: cmp.name.clone(),
+                                interface: template_interface.clone(),
+                                name: CodaComponentName::new(create_cmp.name_subcomponent.clone()),
                             },
                         )
                         .next_instruction(),
@@ -483,7 +496,10 @@ fn compile_coda_expr(ctx: &CompileCodaContext) -> CodaExpr {
                 let var = compile_coda_var(ctx, &load.src, &load.address_type);
                 CodaExpr::Var(var)
             }
-            Instruction::Value(value) => CodaExpr::Val(CodaVal::from_usize(value.value)),
+            Instruction::Value(value) => {
+                let value_string = ctx.get_constant(value.value);
+                CodaExpr::Val(CodaVal::new(value_string.clone()))
+            }
             Instruction::Compute(compute) => CodaExpr::Op {
                 op: compile_coda_op(&compute.op),
                 arg1: Box::new(compile_coda_expr(&ctx.set_instruction(&compute.stack[0]))),
@@ -526,6 +542,7 @@ fn compile_coda_expr(ctx: &CompileCodaContext) -> CodaExpr {
     }
 }
 
-fn at<A>(i: usize, xs: &Vec<(usize, A)>) -> &A {
+fn at<A: Debug>(i: usize, xs: &Vec<(usize, A)>) -> &A {
+    println!("at: i={}, xs={:?}", i, xs);
     xs.iter().find_map(|x| if x.0 == i { Some(&x.1) } else { None }).unwrap()
 }
