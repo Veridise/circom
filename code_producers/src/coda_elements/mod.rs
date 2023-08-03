@@ -211,6 +211,7 @@ impl CodaTemplateSignal {
 pub struct CodaTemplate {
     pub interface: CodaTemplateInterface,
     pub body: CodaStmt,
+    pub is_abstract: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -246,7 +247,8 @@ impl CodaTemplate {
 
         // circuit
 
-        str.push_str(&format!(
+        if !self.is_abstract {
+            str.push_str(&format!(
             "let {} = Hoare_circuit {{name= \"{}\", inputs= [{}], outputs= [{}], preconditions= [], postconditions= [], dep= None, body= {} ({})}}\n\n",
             self.interface.coda_print_template_name(),
             self.interface.template_name,
@@ -260,7 +262,7 @@ impl CodaTemplate {
                 .collect::<Vec<String>>()
                 .join(", ")
         ));
-
+        }
         str
     }
 }
