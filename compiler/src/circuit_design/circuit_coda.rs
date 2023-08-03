@@ -467,18 +467,23 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                     let cmp_i = from_constant_instruction(create_cmp.sub_cmp_id.as_ref());
                     let template_id = create_cmp.template_id;
                     let template_interface = &ctx.template_interfaces[template_id];
-                    compile_coda_stmt(
-                        &ctx.insert_subcomponent(
-                            cmp_i,
+
+                    let mut new_ctx = ctx.clone();
+
+                    // Repeated `CreateCmp` of the same template are grouped together, with a number of copies indicated by copies indicated by `create_cmp.number_of_cmp`.
+                    for cmp_di in 0..create_cmp.number_of_cmp {
+                        new_ctx = new_ctx.insert_subcomponent(
+                            cmp_i + cmp_di,
                             CodaTemplateSubcomponent {
                                 interface: template_interface.clone(),
                                 component_name: CodaComponentName::new(
                                     create_cmp.name_subcomponent.clone(),
                                 ),
                             },
-                        )
-                        .next_instruction(),
-                    )
+                        );
+                    }
+
+                    compile_coda_stmt(&new_ctx.next_instruction())
                 }
                 Instruction::Load(_load) => {
                     panic!("This case should not appear as a statement: {:?}", instruction)

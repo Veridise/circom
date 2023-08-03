@@ -4,6 +4,9 @@ constants:
 gates:
 	cargo run -- coda/tests/gates.circom --summary --coda --coda-output coda/tests/gates.ml -o coda/tests/
 
+variables:
+	cargo run -- coda/tests/variables.circom --summary --coda --coda-output coda/tests/variables.ml -o coda/tests/
+
 subcomponents1:
 	cargo run -- coda/tests/subcomponents/subcomponents1.circom --summary --coda --coda-output coda/tests/subcomponents/subcomponents1.ml -o coda/tests/subcomponents
 

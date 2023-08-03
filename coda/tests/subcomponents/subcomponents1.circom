@@ -7,7 +7,11 @@ template A() {
 template B() {
     signal input b1;
     signal output b2;
-    b2 <== b1;
+
+    component a = A();
+    a.a1 <== b1;
+
+    b2 <== a.a2;
 }
 
 template C() {
