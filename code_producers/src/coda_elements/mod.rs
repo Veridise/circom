@@ -310,6 +310,7 @@ pub enum CodaExpr {
     Var(CodaVar),
     Val(CodaVal),
     Tuple(Vec<Box<CodaExpr>>),
+    Star,
 }
 
 impl CodaExpr {
@@ -326,6 +327,7 @@ impl CodaExpr {
                     es.iter().map(|e| e.coda_print()).collect::<Vec<String>>().join(", ")
                 )
             }
+            CodaExpr::Star => format!("star"),
         }
     }
 }

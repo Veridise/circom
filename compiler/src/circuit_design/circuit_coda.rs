@@ -7,7 +7,7 @@ use code_producers::coda_elements::*;
 use program_structure::program_archive::ProgramArchive;
 use super::circuit::Circuit;
 
-const __DEBUG: bool = true;
+const __DEBUG: bool = false;
 
 fn pretty_print_input_information(input_information: &InputInformation) -> String {
     match &input_information {
@@ -96,7 +96,7 @@ fn pretty_print_instruction(instruction: &Instruction) -> String {
         },
 
         Instruction::Return(_) => panic!(),
-        Instruction::Assert(_) => panic!(),
+        Instruction::Assert(_) => format!("assert(..)"),
         Instruction::Log(_) => panic!(),
         Instruction::Loop(_) => panic!(),
         Instruction::Nop(_) => panic!(),
@@ -120,15 +120,33 @@ impl CompileCoda for Circuit {
     ) -> code_producers::coda_elements::CodaProgram {
         let mut coda_program = CodaProgram::default();
 
+        // // Remove copies of template;
+        // let mut dedup_templates: Vec<(usize, Box<TemplateCodeInfo>)> = Vec::new();
+        // for (template_id, template_code_info) in self.templates.iter().enumerate() {
+        //     println!("template_coda_info.name: {}", template_code_info.name);
+        //     let mut is_dup = false;
+        //     for (_, other_template_code_info) in dedup_templates.iter() {
+        //         if is_dup
+        //             || *template_code_info.name.as_str() == *other_template_code_info.name.as_str()
+        //         {
+        //             is_dup = true;
+        //         }
+        //     }
+        //     if !is_dup {
+        //         println!("not is_dup: {}", template_code_info.name);
+        //         dedup_templates.push((template_id, template_code_info.clone()))
+        //     }
+        // }
+
         // accumulate coda_template_interfaces
         let coda_template_interfaces: &mut Vec<CodaTemplateInterface> = &mut Vec::new();
-        for (template_id, _template) in self.templates.iter().enumerate() {
+        for (template_id, template_code_info) in self.templates.iter().enumerate() {
             let template_summary = summary.components[template_id].clone();
             let template_name = template_summary.name.clone();
             let _template_data = program_archive.get_template_data(&template_name);
-            let template_code_info = circuit.get_template(template_id);
+            // let template_code_info = circuit.get_template(template_id);
 
-            println!("template_summary.signals: {:?}", template_summary.signals);
+            // println!("template_summary.signals: {:?}", template_summary.signals);
 
             let signals = template_summary
                 .signals
@@ -149,7 +167,7 @@ impl CompileCoda for Circuit {
             };
 
             coda_template_interfaces.push(CodaTemplateInterface {
-                template_id,
+                template_id: template_id,
                 template_name,
                 signals,
                 variables,
@@ -157,50 +175,85 @@ impl CompileCoda for Circuit {
         }
 
         // accumulate coda_program.templates
-        for (template_id, template) in self.templates.iter().enumerate() {
+        let mut done_template_names: Vec<String> = Vec::new();
+        for (template_id, template_code_info) in self.templates.iter().enumerate() {
+            if done_template_names
+                .iter()
+                .find(|template_name| *template_name.as_str() == *template_code_info.name.as_str())
+                .is_some()
+            {
+                continue;
+            }
+            done_template_names.push(template_code_info.name.clone());
+
             let template_summary = &summary.components[template_id];
             let template_name = &template_summary.name;
             let _template_data = program_archive.get_template_data(template_name);
-            let _template_code_info = circuit.get_template(template_id);
-            let interface = coda_template_interfaces[template_id].clone();
+            // let _template_code_info = circuit.get_template(template_id);
+            let interface =
+                coda_template_interfaces.iter().find(|cti| cti.template_id == template_id).unwrap();
 
             if __DEBUG {
                 // debug print this template
 
                 let mut template_string = String::new();
-                template_string.push_str(&format!("name: {}\n", template.name));
-                template_string
-                    .push_str(&format!("number_of_inputs: {}\n", template.number_of_inputs));
+                template_string.push_str(&format!("name: {}\n", template_code_info.name));
+                template_string.push_str(&format!(
+                    "number_of_inputs: {}\n",
+                    template_code_info.number_of_inputs
+                ));
                 template_string.push_str(&format!(
                     "number_of_intermediates: {}\n",
-                    template.number_of_intermediates
+                    template_code_info.number_of_intermediates
                 ));
-                template_string
-                    .push_str(&format!("number_of_outputs: {}\n", template.number_of_outputs));
+                template_string.push_str(&format!(
+                    "number_of_outputs: {}\n",
+                    template_code_info.number_of_outputs
+                ));
                 template_string.push_str(&format!(
                     "number_of_components: {}\n",
-                    template.number_of_components
+                    template_code_info.number_of_components
                 ));
                 for signal in &template_summary.signals {
                     template_string
                         .push_str(&format!("signal {} {}\n", signal.visibility, signal.name));
                 }
-                template_string.push_str(&pretty_print_instructions(&template.body));
+                template_string.push_str(&pretty_print_instructions(&template_code_info.body));
                 println!(
                     "\n==================== BEGIN template ====================\n{}================ END template ====================",
                     template_string
                 );
             }
 
-            let body = compile_coda_stmt(&CompileCodaContext::new(
-                circuit,
-                program_archive,
-                template_summary,
-                coda_template_interfaces.clone(),
-                &interface,
-                Vec::new(),
-                template.body.clone(),
-            ));
+            // Some circuits are compiled to abstract Coda bodies
+
+            // println!("template_name: {}", template_name);
+            // panic!();
+
+            let abstract_circuit_names =
+                ["Poseidon", "Ark", "Sigma", "Mix", "MixLast", "MixS", "PoseidonEx"];
+
+            let body = if abstract_circuit_names.contains(&template_name.as_str()) {
+                compile_coda_stmt_abstract(&CompileCodaContext::new(
+                    circuit,
+                    program_archive,
+                    template_summary,
+                    coda_template_interfaces.clone(),
+                    &interface,
+                    Vec::new(),
+                    template_code_info.body.clone(),
+                ))
+            } else {
+                compile_coda_stmt(&CompileCodaContext::new(
+                    circuit,
+                    program_archive,
+                    template_summary,
+                    coda_template_interfaces.clone(),
+                    &interface,
+                    Vec::new(),
+                    template_code_info.body.clone(),
+                ))
+            };
 
             coda_program.templates.push(CodaTemplate { interface: interface.clone(), body })
         }
@@ -285,10 +338,11 @@ impl<'a> CompileCodaContext<'a> {
             self.circuit.coda_data.field_tracking[i].clone()
         } else {
             // format!("(bad constant index: {})", i)
-            format!(
-                "(* ERROR: bad constant index: {} in {:?} *) 0",
-                i, self.circuit.coda_data.field_tracking
-            )
+            // format!(
+            //     // "(* ERROR: bad constant index: {} in {:?} *) 0",
+            //     i, self.circuit.coda_data.field_tracking
+            // )
+            format!("0")
         }
     }
 
@@ -395,6 +449,19 @@ fn compile_coda_var(
     }
 }
 
+fn compile_coda_stmt_abstract(ctx: &CompileCodaContext) -> CodaStmt {
+    // Defines all outputs to be Coda's `star` i.e. `NonDet`
+    let mut stmt = CodaStmt::Output;
+    for signal in ctx.template_interface.signals.iter().rev() {
+        stmt = CodaStmt::Let {
+            var: signal.to_signal(),
+            val: Box::new(CodaExpr::Star),
+            body: Box::new(stmt),
+        }
+    }
+    stmt
+}
+
 fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
     match ctx.current_instruction() {
         None => CodaStmt::Output,
@@ -466,7 +533,11 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                 Instruction::CreateCmp(create_cmp) => {
                     let cmp_i = from_constant_instruction(create_cmp.sub_cmp_id.as_ref());
                     let template_id = create_cmp.template_id;
-                    let template_interface = &ctx.template_interfaces[template_id];
+                    let template_interface = ctx
+                        .template_interfaces
+                        .iter()
+                        .find(|ti| ti.template_id == template_id)
+                        .unwrap();
 
                     let mut new_ctx = ctx.clone();
 
@@ -485,6 +556,8 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
 
                     compile_coda_stmt(&new_ctx.next_instruction())
                 }
+
+                // Invalid statements
                 Instruction::Load(_load) => {
                     panic!("This case should not appear as a statement: {:?}", instruction)
                 }
@@ -498,19 +571,17 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                     panic!("This case should not appear as a statement: {:?}", instruction)
                 }
 
+                // Ignored by Coda
+                Instruction::Assert(_) => compile_coda_stmt(&ctx.next_instruction()),
+                Instruction::Log(_) => compile_coda_stmt(&ctx.next_instruction()),
+
+                // Not handled by Coda
                 Instruction::Return(_) => {
-                    panic!("This case is not handled by Circom->Coda: {:?}", instruction)
-                }
-                Instruction::Assert(_) => {
-                    panic!("This case is not handled by Circom->Coda: {:?}", instruction)
-                }
-                Instruction::Log(_) => {
                     panic!("This case is not handled by Circom->Coda: {:?}", instruction)
                 }
                 Instruction::Loop(_) => {
                     panic!("This case is not handled by Circom->Coda: {:?}", instruction)
                 }
-
                 Instruction::Nop(_) => {
                     panic!("This case is not handled by Circom->Coda: {:?}", instruction)
                 }
