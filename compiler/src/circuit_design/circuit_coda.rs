@@ -120,24 +120,6 @@ impl CompileCoda for Circuit {
     ) -> code_producers::coda_elements::CodaProgram {
         let mut coda_program = CodaProgram::default();
 
-        // // Remove copies of template;
-        // let mut dedup_templates: Vec<(usize, Box<TemplateCodeInfo>)> = Vec::new();
-        // for (template_id, template_code_info) in self.templates.iter().enumerate() {
-        //     println!("template_coda_info.name: {}", template_code_info.name);
-        //     let mut is_dup = false;
-        //     for (_, other_template_code_info) in dedup_templates.iter() {
-        //         if is_dup
-        //             || *template_code_info.name.as_str() == *other_template_code_info.name.as_str()
-        //         {
-        //             is_dup = true;
-        //         }
-        //     }
-        //     if !is_dup {
-        //         println!("not is_dup: {}", template_code_info.name);
-        //         dedup_templates.push((template_id, template_code_info.clone()))
-        //     }
-        // }
-
         // accumulate coda_template_interfaces
         let coda_template_interfaces: &mut Vec<CodaTemplateInterface> = &mut Vec::new();
         for (template_id, template_code_info) in self.templates.iter().enumerate() {
@@ -233,8 +215,8 @@ impl CompileCoda for Circuit {
             let abstract_circuit_names =
                 ["Poseidon", "Ark", "Sigma", "Mix", "MixLast", "MixS", "PoseidonEx"];
 
-            let body = if abstract_circuit_names.contains(&template_name.as_str()) {
-                compile_coda_stmt_abstract(&CompileCodaContext::new(
+            if abstract_circuit_names.contains(&template_name.as_str()) {
+                let body = compile_coda_stmt_abstract(&CompileCodaContext::new(
                     circuit,
                     program_archive,
                     template_summary,
@@ -242,9 +224,14 @@ impl CompileCoda for Circuit {
                     &interface,
                     Vec::new(),
                     template_code_info.body.clone(),
-                ))
+                ));
+                coda_program.templates.push(CodaTemplate {
+                    interface: interface.clone(),
+                    body,
+                    is_abstract: true,
+                })
             } else {
-                compile_coda_stmt(&CompileCodaContext::new(
+                let body = compile_coda_stmt(&CompileCodaContext::new(
                     circuit,
                     program_archive,
                     template_summary,
@@ -252,10 +239,13 @@ impl CompileCoda for Circuit {
                     &interface,
                     Vec::new(),
                     template_code_info.body.clone(),
-                ))
-            };
-
-            coda_program.templates.push(CodaTemplate { interface: interface.clone(), body })
+                ));
+                coda_program.templates.push(CodaTemplate {
+                    interface: interface.clone(),
+                    body,
+                    is_abstract: false,
+                })
+            }
         }
 
         println!(
