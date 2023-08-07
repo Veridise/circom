@@ -7,7 +7,8 @@ use code_producers::coda_elements::*;
 use program_structure::program_archive::ProgramArchive;
 use super::circuit::Circuit;
 
-const __DEBUG: bool = false;
+const __DEBUG: bool = true;
+// const __DEBUG: bool = false;
 
 fn pretty_print_input_information(input_information: &InputInformation) -> String {
     match &input_information {
@@ -94,9 +95,9 @@ fn pretty_print_instruction(instruction: &Instruction) -> String {
         Instruction::Call(call) => {
             format!("Call({}, [{}])", call.symbol, call.arguments.iter().map(|arg| pretty_print_instruction(arg)).collect::<Vec<String>>().join(", "))
         },
+        Instruction::Assert(ass) => format!("Assert({})", pretty_print_instruction(ass.evaluate.as_ref())),
 
         Instruction::Return(_) => panic!(),
-        Instruction::Assert(_) => format!("assert(..)"),
         Instruction::Log(_) => panic!(),
         Instruction::Loop(_) => panic!(),
         Instruction::Nop(_) => panic!(),
@@ -273,6 +274,7 @@ struct CompileCodaContext<'a> {
     subcomponents: Vec<CompileCodaContextSubcomponent>,
     instructions: Vec<Box<Instruction>>,
     instruction_i: usize,
+    fresh_counter: usize,
 }
 
 impl<'a> CompileCodaContext<'a> {
@@ -294,7 +296,12 @@ impl<'a> CompileCodaContext<'a> {
             subcomponents,
             instructions,
             instruction_i: 0,
+            fresh_counter: 0,
         }
+    }
+
+    pub fn incrememnt_counter(&self) -> Self {
+        CompileCodaContext { fresh_counter: self.fresh_counter + 1, ..self.clone() }
     }
 
     pub fn current_instruction(&self) -> Option<&Box<Instruction>> {
@@ -345,11 +352,11 @@ impl<'a> CompileCodaContext<'a> {
     }
 
     pub fn get_subcomponent(&self, subcomponent_i: usize) -> &CompileCodaContextSubcomponent {
-        println!("get_subcomponent: subcomponent_i = {}", subcomponent_i);
-        println!("get_subcomponent: self.subcomponents:");
-        for subcmp in &self.subcomponents {
-            println!(" - {:?}", subcmp);
-        }
+        // println!("get_subcomponent: subcomponent_i = {}", subcomponent_i);
+        // println!("get_subcomponent: self.subcomponents:");
+        // for subcmp in &self.subcomponents {
+        //     println!(" - {:?}", subcmp);
+        // }
         self.subcomponents.iter().find(|subcmp| subcmp.index == subcomponent_i).unwrap()
     }
 
@@ -456,7 +463,7 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
     match ctx.current_instruction() {
         None => CodaStmt::Output,
         Some(instruction) => {
-            println!("compile_coda_stmt: {}", pretty_print_instruction(instruction));
+            // println!("compile_coda_stmt: {}", pretty_print_instruction(instruction));
 
             match instruction.as_ref() {
                 Instruction::Constraint(constraint) => match constraint {
@@ -547,6 +554,17 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                     compile_coda_stmt(&new_ctx.next_instruction())
                 }
 
+                Instruction::Assert(ass) => {
+                    let new_ctx = &ctx.incrememnt_counter();
+                    CodaStmt::Assert {
+                        i: new_ctx.fresh_counter,
+                        condition: Box::new(compile_coda_expr(
+                            &new_ctx.set_instruction(&ass.evaluate),
+                        )),
+                        body: Box::new(compile_coda_stmt(&new_ctx.next_instruction())),
+                    }
+                }
+
                 // Invalid statements
                 Instruction::Load(_load) => {
                     panic!("This case should not appear as a statement: {:?}", instruction)
@@ -562,7 +580,6 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                 }
 
                 // Ignored by Coda
-                Instruction::Assert(_) => compile_coda_stmt(&ctx.next_instruction()),
                 Instruction::Log(_) => compile_coda_stmt(&ctx.next_instruction()),
 
                 // Not handled by Coda
@@ -605,7 +622,7 @@ fn compile_coda_op(op: &OperatorType) -> CodaOp {
         OperatorType::GreaterEq => panic!(),
         OperatorType::Lesser => panic!(),
         OperatorType::Greater => panic!(),
-        OperatorType::Eq(_) => panic!(),
+        OperatorType::Eq(_eq) => CodaOp::Eq,
         OperatorType::NotEq => panic!(),
         OperatorType::BoolOr => panic!(),
         OperatorType::BoolAnd => panic!(),

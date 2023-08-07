@@ -272,6 +272,7 @@ pub enum CodaStmt {
     Let { var: CodaVar, val: Box<CodaExpr>, body: Box<CodaStmt> },
     CreateCmp { subcomponent: CodaTemplateSubcomponent, body: Box<CodaStmt> },
     Branch { condition: Box<CodaExpr>, then_: Box<CodaStmt>, else_: Box<CodaStmt> },
+    Assert { i: usize, condition: Box<CodaExpr>, body: Box<CodaStmt> },
     Output,
 }
 
@@ -301,6 +302,14 @@ impl CodaStmt {
                 then_.coda_print(),
                 else_.coda_print()
             ),
+            CodaStmt::Assert { i, condition, body } => {
+                format!(
+                    "assert_in \"_assertion_{}\" {} @@ {}",
+                    i,
+                    condition.coda_print(),
+                    body.coda_print()
+                )
+            }
             CodaStmt::Output => format!("body"),
         }
     }
@@ -342,6 +351,7 @@ pub enum CodaOp {
     Div,
     Mod,
     Pow,
+    Eq,
 }
 
 impl CodaOp {
@@ -353,6 +363,7 @@ impl CodaOp {
             CodaOp::Div => "/".to_string(),
             CodaOp::Mod => "%".to_string(),
             CodaOp::Pow => "^".to_string(),
+            CodaOp::Eq => "=.".to_string(),
         }
     }
 }

@@ -19,5 +19,8 @@ multiand_test:
 poseidon:
 	cargo run -- coda/tests/semaphore/poseidon_test.circom --summary --coda --coda-output coda/tests/semaphore/poseidon_test.ml -o coda/tests/semaphore
 
+tree:
+	cargo run -- coda/tests/semaphore/tree_test.circom --summary --coda --coda-output coda/tests/semaphore/tree_test.ml -o coda/tests/semaphore
+
 semaphore:
 	cargo run -- coda/tests/semaphore/semaphore.circom --summary --coda --coda-output coda/tests/semaphore/semaphore.ml -o coda/tests/semaphore
