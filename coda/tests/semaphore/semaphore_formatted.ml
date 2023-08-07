@@ -1,4 +1,4 @@
-let body_Ark (out_0, out_1, out_2, in_0, in_1, in_2) body = elet out_0 star @@ elet out_1 star @@ elet out_2 star @@ elet in_0 star @@ elet in_1 star @@ elet in_2 star @@ body
+let body_Ark (out_0, out_1, out_2, in_0, in_1, in_2) body = elet out_0 star @@ elet out_1 star @@ elet out_2 star @@ elet in_0 star @@ elet in_1 star @@ elet in_2 star @@ y
 
 
 let body_Sigma (out, in, in2, in4) body = elet out star @@ elet in star @@ elet in2 star @@ elet in4 star @@ body
@@ -43,6 +43,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     elet "var_0" (F.const 20) @@
     elet hashes_0 (var leaf) @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_1" (((var pathIndices_0) * ((F.const 1) - (var pathIndices_0))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_0) @@
     elet "mux_c_0_1" (var siblings_0) @@
     elet "mux_c_1_0" (var siblings_0) @@
@@ -54,6 +55,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_1 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_2" (((var pathIndices_1) * ((F.const 1) - (var pathIndices_1))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_1) @@
     elet "mux_c_0_1" (var siblings_1) @@
     elet "mux_c_1_0" (var siblings_1) @@
@@ -65,6 +67,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_2 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_3" (((var pathIndices_2) * ((F.const 1) - (var pathIndices_2))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_2) @@
     elet "mux_c_0_1" (var siblings_2) @@
     elet "mux_c_1_0" (var siblings_2) @@
@@ -76,6 +79,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_3 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_4" (((var pathIndices_3) * ((F.const 1) - (var pathIndices_3))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_3) @@
     elet "mux_c_0_1" (var siblings_3) @@
     elet "mux_c_1_0" (var siblings_3) @@
@@ -87,6 +91,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_4 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_5" (((var pathIndices_4) * ((F.const 1) - (var pathIndices_4))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_4) @@
     elet "mux_c_0_1" (var siblings_4) @@
     elet "mux_c_1_0" (var siblings_4) @@
@@ -98,6 +103,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_5 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_6" (((var pathIndices_5) * ((F.const 1) - (var pathIndices_5))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_5) @@
     elet "mux_c_0_1" (var siblings_5) @@
     elet "mux_c_1_0" (var siblings_5) @@
@@ -109,6 +115,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_6 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_7" (((var pathIndices_6) * ((F.const 1) - (var pathIndices_6))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_6) @@
     elet "mux_c_0_1" (var siblings_6) @@
     elet "mux_c_1_0" (var siblings_6) @@
@@ -120,6 +127,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_7 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_8" (((var pathIndices_7) * ((F.const 1) - (var pathIndices_7))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_7) @@
     elet "mux_c_0_1" (var siblings_7) @@
     elet "mux_c_1_0" (var siblings_7) @@
@@ -131,6 +139,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_8 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_9" (((var pathIndices_8) * ((F.const 1) - (var pathIndices_8))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_8) @@
     elet "mux_c_0_1" (var siblings_8) @@
     elet "mux_c_1_0" (var siblings_8) @@
@@ -142,6 +151,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_9 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_10" (((var pathIndices_9) * ((F.const 1) - (var pathIndices_9))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_9) @@
     elet "mux_c_0_1" (var siblings_9) @@
     elet "mux_c_1_0" (var siblings_9) @@
@@ -153,6 +163,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_10 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_11" (((var pathIndices_10) * ((F.const 1) - (var pathIndices_10))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_10) @@
     elet "mux_c_0_1" (var siblings_10) @@
     elet "mux_c_1_0" (var siblings_10) @@
@@ -164,6 +175,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_11 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_12" (((var pathIndices_11) * ((F.const 1) - (var pathIndices_11))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_11) @@
     elet "mux_c_0_1" (var siblings_11) @@
     elet "mux_c_1_0" (var siblings_11) @@
@@ -175,6 +187,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_12 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_13" (((var pathIndices_12) * ((F.const 1) - (var pathIndices_12))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_12) @@
     elet "mux_c_0_1" (var siblings_12) @@
     elet "mux_c_1_0" (var siblings_12) @@
@@ -186,6 +199,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_13 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_14" (((var pathIndices_13) * ((F.const 1) - (var pathIndices_13))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_13) @@
     elet "mux_c_0_1" (var siblings_13) @@
     elet "mux_c_1_0" (var siblings_13) @@
@@ -197,6 +211,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_14 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_15" (((var pathIndices_14) * ((F.const 1) - (var pathIndices_14))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_14) @@
     elet "mux_c_0_1" (var siblings_14) @@
     elet "mux_c_1_0" (var siblings_14) @@
@@ -208,6 +223,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_15 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_16" (((var pathIndices_15) * ((F.const 1) - (var pathIndices_15))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_15) @@
     elet "mux_c_0_1" (var siblings_15) @@
     elet "mux_c_1_0" (var siblings_15) @@
@@ -219,6 +235,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_16 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_17" (((var pathIndices_16) * ((F.const 1) - (var pathIndices_16))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_16) @@
     elet "mux_c_0_1" (var siblings_16) @@
     elet "mux_c_1_0" (var siblings_16) @@
@@ -230,6 +247,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_17 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_18" (((var pathIndices_17) * ((F.const 1) - (var pathIndices_17))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_17) @@
     elet "mux_c_0_1" (var siblings_17) @@
     elet "mux_c_1_0" (var siblings_17) @@
@@ -241,6 +259,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_18 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_19" (((var pathIndices_18) * ((F.const 1) - (var pathIndices_18))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_18) @@
     elet "mux_c_0_1" (var siblings_18) @@
     elet "mux_c_1_0" (var siblings_18) @@
@@ -252,6 +271,7 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_19 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
+    assert_in "_assertion_20" (((var pathIndices_19) * ((F.const 1) - (var pathIndices_19))) =. (F.const 0)) @@
     elet "mux_c_0_0" (var hashes_19) @@
     elet "mux_c_0_1" (var siblings_19) @@
     elet "mux_c_1_0" (var siblings_19) @@
@@ -263,14 +283,12 @@ let body_MerkleTreeInclusionProof (root, leaf, pathIndices_0, pathIndices_1, pat
     body_Poseidon ("poseidons_out", "poseidons_inputs_0", "poseidons_inputs_1") @@
     elet hashes_20 (var "poseidons_out") @@
     elet "var_1" (F.const 0) @@
-    elet root (var hashes_20) @@
-    body
+    elet root (var hashes_20) @@ body
 
 let circuit_MerkleTreeInclusionProof = Hoare_circuit {name= "MerkleTreeInclusionProof", inputs= [Presignal "leaf"; Presignal "pathIndices_0"; Presignal "pathIndices_1"; Presignal "pathIndices_2"; Presignal "pathIndices_3"; Presignal "pathIndices_4"; Presignal "pathIndices_5"; Presignal "pathIndices_6"; Presignal "pathIndices_7"; Presignal "pathIndices_8"; Presignal "pathIndices_9"; Presignal "pathIndices_10"; Presignal "pathIndices_11"; Presignal "pathIndices_12"; Presignal "pathIndices_13"; Presignal "pathIndices_14"; Presignal "pathIndices_15"; Presignal "pathIndices_16"; Presignal "pathIndices_17"; Presignal "pathIndices_18"; Presignal "pathIndices_19"; Presignal "siblings_0"; Presignal "siblings_1"; Presignal "siblings_2"; Presignal "siblings_3"; Presignal "siblings_4"; Presignal "siblings_5"; Presignal "siblings_6"; Presignal "siblings_7"; Presignal "siblings_8"; Presignal "siblings_9"; Presignal "siblings_10"; Presignal "siblings_11"; Presignal "siblings_12"; Presignal "siblings_13"; Presignal "siblings_14"; Presignal "siblings_15"; Presignal "siblings_16"; Presignal "siblings_17"; Presignal "siblings_18"; Presignal "siblings_19"], outputs= [Presignal "root"], preconditions= [], postconditions= [], dep= None, body= body_MerkleTreeInclusionProof ("root", "leaf", "pathIndices_0", "pathIndices_1", "pathIndices_2", "pathIndices_3", "pathIndices_4", "pathIndices_5", "pathIndices_6", "pathIndices_7", "pathIndices_8", "pathIndices_9", "pathIndices_10", "pathIndices_11", "pathIndices_12", "pathIndices_13", "pathIndices_14", "pathIndices_15", "pathIndices_16", "pathIndices_17", "pathIndices_18", "pathIndices_19", "siblings_0", "siblings_1", "siblings_2", "siblings_3", "siblings_4", "siblings_5", "siblings_6", "siblings_7", "siblings_8", "siblings_9", "siblings_10", "siblings_11", "siblings_12", "siblings_13", "siblings_14", "siblings_15", "siblings_16", "siblings_17", "siblings_18", "siblings_19", "hashes_0", "hashes_1", "hashes_2", "hashes_3", "hashes_4", "hashes_5", "hashes_6", "hashes_7", "hashes_8", "hashes_9", "hashes_10", "hashes_11", "hashes_12", "hashes_13", "hashes_14", "hashes_15", "hashes_16", "hashes_17", "hashes_18", "hashes_19", "hashes_20")}
 
 
-let body_Semaphore (root, nullifierHash, signalHash, externalNullifier, identityNullifier, identityTrapdoor, treePathIndices_0, treePathIndices_1, treePathIndices_2, treePathIndices_3, treePathIndices_4, treePathIndices_5, treePathIndices_6, treePathIndices_7, treePathIndices_8, treePathIndices_9, treePathIndices_10, treePathIndices_11, treePathIndices_12, treePathIndices_13, treePathIndices_14, treePathIndices_15, treePathIndices_16, treePathIndices_17, treePathIndices_18, treePathIndices_19, treeSiblings_0, treeSiblings_1, treeSiblings_2, treeSiblings_3, treeSiblings_4, treeSiblings_5, treeSiblings_6, treeSiblings_7, treeSiblings_8, treeSiblings_9, treeSiblings_10, treeSiblings_11, treeSiblings_12, treeSiblings_13, treeSiblings_14, treeSiblings_15, treeSiblings_16, treeSiblings_17, treeSiblings_18, treeSiblings_19, secret, signalHashSquared) body =
-    elet "var_0" (F.const 20) @@
+let body_Semaphore (root, nullifierHash, signalHash, externalNullifier, identityNullifier, identityTrapdoor, treePathIndices_0, treePathIndices_1, treePathIndices_2, treePathIndices_3, treePathIndices_4, treePathIndices_5, treePathIndices_6, treePathIndices_7, treePathIndices_8, treePathIndices_9, treePathIndices_10, treePathIndices_11, treePathIndices_12, treePathIndices_13, treePathIndices_14, treePathIndices_15, treePathIndices_16, treePathIndices_17, treePathIndices_18, treePathIndices_19, treeSiblings_0, treeSiblings_1, treeSiblings_2, treeSiblings_3, treeSiblings_4, treeSiblings_5, treeSiblings_6, treeSiblings_7, treeSiblings_8, treeSiblings_9, treeSiblings_10, treeSiblings_11, treeSiblings_12, treeSiblings_13, treeSiblings_14, treeSiblings_15, treeSiblings_16, treeSiblings_17, treeSiblings_18, treeSiblings_19, secret, signalHashSquared) body = elet "var_0" (F.const 20) @@
     elet "calculateSecret_identityNullifier" (var identityNullifier) @@
     elet "calculateSecret_identityTrapdoor" (var identityTrapdoor) @@
     body_CalculateSecret ("calculateSecret_out", "calculateSecret_identityNullifier", "calculateSecret_identityTrapdoor") @@
