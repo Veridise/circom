@@ -107,7 +107,6 @@ pub struct SummaryRoot {
 
 pub struct CodaProgram {
     pub templates: Vec<CodaTemplate>,
-    // pub main: ,
 }
 
 impl CodaProgram {
@@ -249,19 +248,19 @@ impl CodaTemplate {
 
         if !self.is_abstract {
             str.push_str(&format!(
-            "let {} = Hoare_circuit {{name= \"{}\", inputs= [{}], outputs= [{}], preconditions= [], postconditions= [], dep= None, body= {} ({})}}\n\n",
-            self.interface.coda_print_template_name(),
-            self.interface.template_name,
-            self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-            self.interface.get_output_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-            self.interface.coda_print_body_name(),
-            self.interface
-                .signals
-                .iter()
-                .map(|signal| format!("\"{}\"", signal.print_name_string()))
-                .collect::<Vec<String>>()
-                .join(", ")
-        ));
+                "let {} = Hoare_circuit {{name= \"{}\", inputs= [{}], outputs= [{}], preconditions= [], postconditions= [], dep= None, body= {} ({})}}\n\n",
+                self.interface.coda_print_template_name(),
+                self.interface.template_name,
+                self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+                self.interface.get_output_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+                self.interface.coda_print_body_name(),
+                self.interface
+                    .signals
+                    .iter()
+                    .map(|signal| format!("\"{}\"", signal.print_name_string()))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ));
         }
         str
     }
@@ -273,6 +272,7 @@ pub enum CodaStmt {
     CreateCmp { subcomponent: CodaTemplateSubcomponent, body: Box<CodaStmt> },
     Branch { condition: Box<CodaExpr>, then_: Box<CodaStmt>, else_: Box<CodaStmt> },
     Assert { i: usize, condition: Box<CodaExpr>, body: Box<CodaStmt> },
+    AssertEq { i: usize, lhs: Box<CodaExpr>, rhs: Box<CodaExpr>, body: Box<CodaStmt> },
     Output,
 }
 
@@ -302,14 +302,20 @@ impl CodaStmt {
                 then_.coda_print(),
                 else_.coda_print()
             ),
-            CodaStmt::Assert { i, condition, body } => {
-                format!(
-                    "assert_in \"_assertion_{}\" {} @@ {}",
-                    i,
-                    condition.coda_print(),
-                    body.coda_print()
-                )
-            }
+            CodaStmt::Assert { i, condition, body } => format!(
+                "assert_in \"_assertion_{}\" {} @@ {}",
+                i,
+                condition.coda_print(),
+                body.coda_print()
+            ),
+            CodaStmt::AssertEq { i, lhs, rhs, body } => format!(
+                "assert_eq_in \"_assertion_{}\" {} {} @@ {}",
+                i,
+                lhs.coda_print(),
+                rhs.coda_print(),
+                body.coda_print()
+            ),
+
             CodaStmt::Output => format!("body"),
         }
     }
