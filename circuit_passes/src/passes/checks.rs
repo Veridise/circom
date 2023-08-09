@@ -1,10 +1,9 @@
 use std::collections::HashSet;
-use std::ops::Add;
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{BucketId, Instruction, InstructionList, InstructionPointer};
-use compiler::intermediate_representation::ir_interface::{AddressType, LocationRule, LogBucketArg, ReturnType, ValueBucket};
+use compiler::intermediate_representation::ir_interface::{AddressType, LocationRule, LogBucketArg, ReturnType};
 
 type Ids<'a> = &'a mut HashSet<BucketId>;
 

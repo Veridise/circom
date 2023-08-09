@@ -19,11 +19,15 @@ pub struct PassMemory {
     pub io_map: TemplateInstanceIOMap,
     pub signal_index_mapping: HashMap<String, IndexMapping>,
     pub variables_index_mapping: HashMap<String, IndexMapping>,
-    pub component_addr_index_mapping: HashMap<String, IndexMapping>
+    pub component_addr_index_mapping: HashMap<String, IndexMapping>,
 }
 
 impl PassMemory {
-    pub fn new_cell(prime: &String, current_scope: String, io_map: TemplateInstanceIOMap) -> RefCell<Self> {
+    pub fn new_cell(
+        prime: &String,
+        current_scope: String,
+        io_map: TemplateInstanceIOMap,
+    ) -> RefCell<Self> {
         RefCell::new(PassMemory {
             templates_library: Default::default(),
             functions_library: Default::default(),
@@ -33,7 +37,7 @@ impl PassMemory {
             io_map,
             signal_index_mapping: Default::default(),
             variables_index_mapping: Default::default(),
-            component_addr_index_mapping: Default::default()
+            component_addr_index_mapping: Default::default(),
         })
     }
 
@@ -43,18 +47,36 @@ impl PassMemory {
 
     pub fn run_template(&self, observer: &dyn InterpreterObserver, template: &TemplateCode) {
         assert!(!self.current_scope.is_empty());
-        if cfg!(debug_assertions) { println!("Running {}", self.current_scope); }
+        if cfg!(debug_assertions) {
+            println!("Running {}", self.current_scope);
+        }
         let interpreter = self.build_interpreter(observer);
         let env = Env::new(&self.templates_library, &self.functions_library, self);
         interpreter.execute_instructions(&template.body, env, true);
     }
 
-    pub fn build_interpreter<'a>(&'a self, observer: &'a dyn InterpreterObserver) -> BucketInterpreter {
+    pub fn build_interpreter<'a>(
+        &'a self,
+        observer: &'a dyn InterpreterObserver,
+    ) -> BucketInterpreter {
         self.build_interpreter_with_scope(observer, &self.current_scope)
     }
 
-    fn build_interpreter_with_scope<'a>(&'a self, observer: &'a dyn InterpreterObserver, scope: &'a String) -> BucketInterpreter {
-        BucketInterpreter::init(scope, &self.prime, &self.constant_fields, observer, &self.io_map, &self.signal_index_mapping[scope], &self.variables_index_mapping[scope], &self.component_addr_index_mapping[scope])
+    fn build_interpreter_with_scope<'a>(
+        &'a self,
+        observer: &'a dyn InterpreterObserver,
+        scope: &'a String,
+    ) -> BucketInterpreter {
+        BucketInterpreter::init(
+            scope,
+            &self.prime,
+            &self.constant_fields,
+            observer,
+            &self.io_map,
+            &self.signal_index_mapping[scope],
+            &self.variables_index_mapping[scope],
+            &self.component_addr_index_mapping[scope],
+        )
     }
 
     pub fn add_template(&mut self, template: &TemplateCode) {
@@ -81,7 +103,11 @@ impl PassMemory {
 }
 
 impl ContextSwitcher for PassMemory {
-    fn switch<'a>(&'a self, interpreter: &'a BucketInterpreter<'a>, scope: &'a String) -> BucketInterpreter<'a> {
+    fn switch<'a>(
+        &'a self,
+        interpreter: &'a BucketInterpreter<'a>,
+        scope: &'a String,
+    ) -> BucketInterpreter<'a> {
         self.build_interpreter_with_scope(interpreter.observer, scope)
     }
 }

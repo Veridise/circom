@@ -2,14 +2,9 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{InstructionPointer, new_id, ToSExp};
-use compiler::intermediate_representation::ir_interface::{
-    Allocate, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket,
-    CreateCmpBucket, LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket,
-    StoreBucket, ValueBucket,
-};
+use compiler::intermediate_representation::{InstructionPointer, new_id};
+use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::passes::CircuitTransformationPass;
 use crate::passes::memory::PassMemory;
@@ -38,7 +33,7 @@ impl InterpreterObserver for ConditionalFlattening {
         true
     }
 
-    fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> bool {
+    fn on_store_bucket(&self, _bucket: &StoreBucket, _env: &Env) -> bool {
         true
     }
 
@@ -62,7 +57,7 @@ impl InterpreterObserver for ConditionalFlattening {
         true
     }
 
-    fn on_block_bucket(&self, bucket: &BlockBucket, _env: &Env) -> bool {
+    fn on_block_bucket(&self, _bucket: &BlockBucket, _env: &Env) -> bool {
         true
     }
 
@@ -134,7 +129,7 @@ impl CircuitTransformationPass for ConditionalFlattening {
                 line: bucket.line,
                 message_id: bucket.message_id,
                 body: code.clone(),
-                n_iters: 1
+                n_iters: 1,
             };
             return self.transform_block_bucket(&block);
         }

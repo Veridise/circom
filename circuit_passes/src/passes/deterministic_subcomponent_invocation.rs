@@ -1,17 +1,9 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-
-use compiler::intermediate_representation::ir_interface::{
-    AddressType, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket,
-    ConstraintBucket, CreateCmpBucket, InputInformation, LoadBucket, LocationRule, LogBucket,
-    LoopBucket, NopBucket, ReturnBucket, StatusInput, StoreBucket, ValueBucket,
-};
+use compiler::intermediate_representation::ir_interface::*;
 use compiler::intermediate_representation::ir_interface::StatusInput::{Last, NoLast};
-
-use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::passes::CircuitTransformationPass;

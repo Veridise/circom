@@ -1,17 +1,12 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{BucketId, InstructionList, InstructionPointer, new_id, ToSExp, UpdateId};
-use compiler::intermediate_representation::ir_interface::{
-    Allocate, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket,
-    CreateCmpBucket, LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket,
-    StoreBucket, ValueBucket,
+use compiler::intermediate_representation::{
+    BucketId, InstructionList, InstructionPointer, new_id, UpdateId,
 };
-
+use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::passes::CircuitTransformationPass;
 use crate::passes::memory::PassMemory;
@@ -20,12 +15,14 @@ pub struct LoopUnrollPass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     memory: RefCell<PassMemory>,
     replacements: RefCell<BTreeMap<BucketId, InstructionPointer>>,
-
 }
 
 impl LoopUnrollPass {
     pub fn new(prime: &String) -> Self {
-        LoopUnrollPass { memory: PassMemory::new_cell(prime, String::from(""), Default::default()), replacements: Default::default() }
+        LoopUnrollPass {
+            memory: PassMemory::new_cell(prime, String::from(""), Default::default()),
+            replacements: Default::default(),
+        }
     }
 
     fn try_unroll_loop(&self, bucket: &LoopBucket, env: &Env) -> (Option<InstructionList>, usize) {
@@ -93,7 +90,7 @@ impl InterpreterObserver for LoopUnrollPass {
                 line: bucket.line,
                 message_id: bucket.message_id,
                 body: block_body,
-                n_iters
+                n_iters,
             };
             self.continue_inside(&block, env);
             self.replacements.borrow_mut().insert(bucket.id, block.allocate());
@@ -198,7 +195,9 @@ mod test {
         circuit.llvm_data.signal_index_mapping.insert("test_0".to_string(), HashMap::new());
         circuit.llvm_data.component_index_mapping.insert("test_0".to_string(), HashMap::new());
         let new_circuit = pass.transform_circuit(&circuit);
-        if cfg!(debug_assertions) { println!("{}", new_circuit.templates[0].body.last().unwrap().to_string()); }
+        if cfg!(debug_assertions) {
+            println!("{}", new_circuit.templates[0].body.last().unwrap().to_string());
+        }
         assert_ne!(circuit, new_circuit);
         match new_circuit.templates[0].body.last().unwrap().as_ref() {
             Instruction::Block(b) => assert_eq!(b.body.len(), 10), // 5 iterations unrolled times 2 statements in the loop body

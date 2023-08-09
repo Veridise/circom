@@ -3,24 +3,22 @@ pub mod env;
 pub mod observer;
 pub(crate) mod operations;
 
-use std::collections::HashMap;
-use std::ops::{Range, RangeInclusive};
 use circom_algebra::modular_arithmetic;
 use code_producers::components::TemplateInstanceIOMap;
 use code_producers::llvm_elements::IndexMapping;
-use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer, ToSExp};
-use compiler::intermediate_representation::ir_interface::{AddressType, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket, CreateCmpBucket, InputInformation, LoadBucket, LocationRule, LogBucket, LogBucketArg, LoopBucket, NopBucket, OperatorType, ReturnBucket, ReturnType, StatusInput, StoreBucket, ValueBucket, ValueType};
+use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
+use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
 use observer::InterpreterObserver;
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::value::{JoinSemiLattice, mod_value, resolve_operation, Value};
+use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
 
 
 pub struct BucketInterpreter<'a> {
-    scope: &'a String,
-    prime: &'a String,
+    _scope: &'a String,
+    _prime: &'a String,
     pub constant_fields: &'a Vec<String>,
     pub(crate) observer: &'a dyn InterpreterObserver,
     io_map: &'a TemplateInstanceIOMap,
@@ -61,8 +59,8 @@ impl<'a> BucketInterpreter<'a> {
         component_addr_index_mapping: &'a IndexMapping
     ) -> Self {
         BucketInterpreter {
-            scope,
-            prime,
+            _scope: scope,
+            _prime: prime,
             constant_fields,
             observer,
             io_map,
@@ -182,10 +180,6 @@ impl<'a> BucketInterpreter<'a> {
         self.get_write_operations_in_body_rec(body, &mut vars, &mut signals, &mut subcmps, env);
 
         return (vars, signals, subcmps);
-    }
-
-    pub fn clone_in_new_scope(interpreter: &Self, new_scope: &'a String) -> BucketInterpreter<'a> {
-        Self::init(new_scope, interpreter.prime, interpreter.constant_fields, interpreter.observer, interpreter.io_map, &interpreter.signal_index_mapping, &interpreter.variables_index_mapping, &interpreter.component_addr_index_mapping)
     }
 
     pub fn execute_value_bucket<'env>(&self, bucket: &ValueBucket, env: Env<'env>, _observe: bool) -> R<'env> {

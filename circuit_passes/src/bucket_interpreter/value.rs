@@ -1,10 +1,10 @@
 use std::fmt::{Display, Formatter};
 use compiler::intermediate_representation::ir_interface::{ValueBucket, ValueType};
 use compiler::num_bigint::BigInt;
-use compiler::num_traits::{One, ToPrimitive, Zero};
+use compiler::num_traits::ToPrimitive;
+use compiler::intermediate_representation::new_id;
 use circom_algebra::modular_arithmetic;
 use circom_algebra::modular_arithmetic::ArithmeticError;
-use compiler::intermediate_representation::new_id;
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
 
 pub trait JoinSemiLattice {
@@ -35,7 +35,11 @@ impl JoinSemiLattice for Value {
     /// a ⊔ b = a    iff a = b
     /// a ⊔ b = UNK  otherwise
     fn join(&self, other: &Self) -> Self {
-        if self == other { self.clone() } else { Unknown }
+        if self == other {
+            self.clone()
+        } else {
+            Unknown
+        }
     }
 }
 
@@ -72,9 +76,7 @@ impl Value {
         match self {
             KnownU32(0) => false,
             KnownU32(1) => true,
-            KnownBigInt(n) => {
-                modular_arithmetic::as_bool(n, field)
-            }
+            KnownBigInt(n) => modular_arithmetic::as_bool(n, field),
             _ => panic!(
                 "Attempted to convert a value that cannot be converted to boolean! {:?}",
                 self
@@ -118,15 +120,19 @@ fn wrap_op(
     rhs: &Value,
     field: &BigInt,
     u32_op: impl Fn(&usize, &usize) -> usize,
-    bigint_op: impl Fn(&BigInt, &BigInt, &BigInt) -> BigInt
+    bigint_op: impl Fn(&BigInt, &BigInt, &BigInt) -> BigInt,
 ) -> Value {
     match (lhs, rhs) {
         (Unknown, _) => Unknown,
         (_, Unknown) => Unknown,
         (KnownU32(lhs), KnownU32(rhs)) => KnownU32(u32_op(lhs, rhs)),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(bigint_op(&BigInt::from(*lhs), rhs, field)),
+        (KnownU32(lhs), KnownBigInt(rhs)) => {
+            KnownBigInt(bigint_op(&BigInt::from(*lhs), rhs, field))
+        }
         (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(bigint_op(lhs, rhs, field)),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(bigint_op(lhs, &BigInt::from(*rhs), field)),
+        (KnownBigInt(lhs), KnownU32(rhs)) => {
+            KnownBigInt(bigint_op(lhs, &BigInt::from(*rhs), field))
+        }
     }
 }
 
@@ -136,15 +142,21 @@ fn wrap_op_result(
     rhs: &Value,
     field: &BigInt,
     u32_op: impl Fn(&usize, &usize) -> usize,
-    bigint_op: impl Fn(&BigInt, &BigInt, &BigInt) -> Result<BigInt, ArithmeticError>
+    bigint_op: impl Fn(&BigInt, &BigInt, &BigInt) -> Result<BigInt, ArithmeticError>,
 ) -> Value {
     match (lhs, rhs) {
         (Unknown, _) => Unknown,
         (_, Unknown) => Unknown,
         (KnownU32(lhs), KnownU32(rhs)) => KnownU32(u32_op(lhs, rhs)),
-        (KnownU32(lhs), KnownBigInt(rhs)) => KnownBigInt(bigint_op(&BigInt::from(*lhs), rhs, field).ok().unwrap()),
-        (KnownBigInt(lhs), KnownBigInt(rhs)) => KnownBigInt(bigint_op(lhs, rhs, field).ok().unwrap()),
-        (KnownBigInt(lhs), KnownU32(rhs)) => KnownBigInt(bigint_op(lhs, &BigInt::from(*rhs), field).ok().unwrap()),
+        (KnownU32(lhs), KnownBigInt(rhs)) => {
+            KnownBigInt(bigint_op(&BigInt::from(*lhs), rhs, field).ok().unwrap())
+        }
+        (KnownBigInt(lhs), KnownBigInt(rhs)) => {
+            KnownBigInt(bigint_op(lhs, rhs, field).ok().unwrap())
+        }
+        (KnownBigInt(lhs), KnownU32(rhs)) => {
+            KnownBigInt(bigint_op(lhs, &BigInt::from(*rhs), field).ok().unwrap())
+        }
     }
 }
 
@@ -158,25 +170,10 @@ pub fn sub_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
 
 pub fn mul_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
     wrap_op(lhs, rhs, field, |x, y| x * y, modular_arithmetic::mul)
-
 }
 
 pub fn div_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
     wrap_op_result(lhs, rhs, field, |x, y| x / y, modular_arithmetic::div)
-}
-
-fn fr_pow(lhs: &BigInt, rhs: &BigInt) -> BigInt {
-    let abv: BigInt = if rhs < &BigInt::from(0) { -rhs.clone() } else { rhs.clone() };
-    let mut res = BigInt::from(1);
-    let mut i = BigInt::from(0);
-    while i < abv {
-        res *= lhs;
-        i += 1
-    }
-    if rhs < &BigInt::from(0) {
-        res = 1 / res;
-    }
-    res
 }
 
 pub fn pow_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Value {
@@ -247,7 +244,7 @@ pub fn prefix_sub(v: &Value, field: &BigInt) -> Value {
     match v {
         Unknown => Unknown,
         KnownU32(_n) => panic!("We cannot get the negative of an unsigned integer!"),
-        KnownBigInt(n) => KnownBigInt(modular_arithmetic::prefix_sub(n, field))
+        KnownBigInt(n) => KnownBigInt(modular_arithmetic::prefix_sub(n, field)),
     }
 }
 
@@ -262,9 +259,9 @@ pub fn complement(v: &Value, field: &BigInt) -> Value {
 pub fn to_address(v: &Value) -> Value {
     match v {
         Unknown => panic!("Cant convert into an address an unknown value!"),
-        KnownBigInt(b) => KnownU32(b.to_u64().expect(format!(
-            "Can't convert {} to a usize type", b
-        ).as_str()) as usize),
+        KnownBigInt(b) => KnownU32(
+            b.to_u64().expect(format!("Can't convert {} to a usize type", b).as_str()) as usize,
+        ),
         x => x.clone(),
     }
 }
@@ -295,7 +292,11 @@ impl Default for &Value {
     }
 }
 
-pub fn resolve_operation(op: fn(&Value, &Value, &BigInt) -> Value, p: &BigInt, stack: &[Value]) -> Value {
+pub fn resolve_operation(
+    op: fn(&Value, &Value, &BigInt) -> Value,
+    p: &BigInt,
+    stack: &[Value],
+) -> Value {
     assert!(stack.len() > 0);
     let mut acc = stack[0].clone();
     for i in &stack[1..] {
