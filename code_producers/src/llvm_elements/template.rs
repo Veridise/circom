@@ -2,7 +2,7 @@ use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::ContextRef;
 use inkwell::types::{AnyType, BasicType, PointerType};
-use inkwell::values::{AnyValue, AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
+use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
 
 use crate::llvm_elements::{BodyCtx, LLVM, LLVMIRProducer};
 use crate::llvm_elements::instructions::{create_alloca, create_gep, create_load};
@@ -169,7 +169,7 @@ impl<'a> TemplateCtx<'a> {
     /// Returns a pointer to the signal array
     pub fn get_signal_array(
         &self,
-        producer: &dyn LLVMIRProducer<'a>,
+        _producer: &dyn LLVMIRProducer<'a>,
     ) -> AnyValueEnum<'a> {
         let signals = self.current_function.get_nth_param(self.signals_arg_offset as u32).unwrap();
         signals.into_pointer_value().into()
@@ -188,7 +188,7 @@ impl<'a> BodyCtx<'a> for TemplateCtx<'a> {
 
     fn get_variable_array(
         &self,
-        producer: &dyn LLVMIRProducer<'a>,
+        _producer: &dyn LLVMIRProducer<'a>,
     ) -> AnyValueEnum<'a> {
         self.stack.into()
     }

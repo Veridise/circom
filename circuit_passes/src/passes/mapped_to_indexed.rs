@@ -1,13 +1,9 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{InstructionPointer};
-use compiler::intermediate_representation::ir_interface::{AddressType, Allocate, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket, CreateCmpBucket, LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket, StoreBucket, ValueBucket};
-
+use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::value::Value::KnownU32;
 use crate::passes::CircuitTransformationPass;

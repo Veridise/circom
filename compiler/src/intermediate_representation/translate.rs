@@ -98,12 +98,6 @@ struct Counter {
 }
 
 impl Counter {
-    pub fn init() -> Self {
-        Counter {
-            value: 0
-        }
-    }
-
     pub fn get_and_inc(&mut self) -> usize {
         let v = self.value;
         self.value += 1;
@@ -1107,7 +1101,7 @@ struct ProcessedSymbol {
     signal: Option<LocationRule>,
     signal_type: Option<SignalType>,
     before_signal: Vec<InstructionPointer>,
-    meta: Meta
+    _meta: Meta
 }
 
 impl ProcessedSymbol {
@@ -1186,7 +1180,7 @@ impl ProcessedSymbol {
             before_signal: bf_index,
             signal: signal_location,
             signal_type,
-            meta
+            _meta: meta
         }
     }
 
@@ -1417,7 +1411,7 @@ fn indexing_instructions_filter(
     index_stack
 }
 
-fn op_to_opcode(op: OperatorType) -> ExpressionInfixOpcode {
+fn _op_to_opcode(op: OperatorType) -> ExpressionInfixOpcode {
     match op {
         OperatorType::Mul => ExpressionInfixOpcode::Mul,
         OperatorType::Div => ExpressionInfixOpcode::Div,

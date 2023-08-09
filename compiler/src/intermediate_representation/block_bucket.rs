@@ -1,4 +1,3 @@
-use pretty::{Doc, RcDoc};
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
 use crate::intermediate_representation::{BucketId, Instruction, InstructionList, InstructionPointer, new_id, SExp, ToSExp, UpdateId};
 use crate::intermediate_representation::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
