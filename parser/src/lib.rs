@@ -15,10 +15,10 @@ mod syntax_sugar_remover;
 use include_logic::{FileStack, IncludesGraph};
 use program_structure::error_code::ReportCode;
 use program_structure::error_definition::{Report, ReportCollection};
-use program_structure::file_definition::{FileLibrary};
+use program_structure::file_definition::FileLibrary;
 use program_structure::program_archive::ProgramArchive;
 use std::path::{PathBuf, Path};
-use syntax_sugar_remover::{apply_syntactic_sugar};
+use syntax_sugar_remover::apply_syntactic_sugar;
 
 use std::str::FromStr;
 
