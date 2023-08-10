@@ -109,12 +109,25 @@ pub struct CodaProgram {
     pub templates: Vec<CodaTemplate>,
 }
 
+enum CodaCircuitMode {
+    Normal,
+    Hoare,
+}
+
+static CODA_CIRCUIT_MODE: CodaCircuitMode = CodaCircuitMode::Normal;
+
 impl CodaProgram {
     pub fn coda_print(&self) -> String {
         let mut str = String::new();
 
-        let imports: Vec<&str> =
-            vec!["Ast", "Dsl", "Nice_dsl", "Expr", "Qual", "Typ", "TypRef", "Hoare_circuit"];
+        let imports: Vec<&str> = match CODA_CIRCUIT_MODE {
+            CodaCircuitMode::Normal => {
+                vec!["Ast", "Dsl", "Nice_dsl", "Expr", "Qual", "Typ", "TypRef"]
+            }
+            CodaCircuitMode::Hoare => {
+                vec!["Ast", "Dsl", "Nice_dsl", "Expr", "Qual", "Typ", "TypRef", "Hoare_circuit"]
+            }
+        };
 
         for import_str in imports {
             str.push_str(&format!("open {}\n", import_str));
@@ -265,26 +278,69 @@ impl CodaTemplate {
         // circuit
 
         if !self.is_abstract {
-            str.push_str(&format!(
-                "let {} = Hoare_circuit.to_circuit @@ Hoare_circuit {{name= \"{}\"; inputs= [{}]; outputs= [{}]; preconditions= []; postconditions= []; body= {} ({}) (Expr.tuple [{}])}}\n\n",
-                self.interface.coda_print_template_name(),
-                self.interface.template_name,
-                self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-                self.interface.get_output_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-                self.interface.coda_print_body_name(),
-                self.interface
-                    .signals
-                    .iter()
-                    .map(|signal| format!("\"{}\"", signal.print_name_string()))
-                    .collect::<Vec<String>>()
-                    .join(", "),
-                self.interface.signals.iter().filter_map(|signal| match signal.visibility {
-                        CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(signal.print_name_string())).coda_print()),
-                        _ => None
-                    })
-                    .collect::<Vec<String>>()
-                    .join("; ")
-            ));
+            match CODA_CIRCUIT_MODE {
+                CodaCircuitMode::Normal => {
+                    str.push_str(&format!(
+                        "let {} = Circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; dep=None; body= {} ({}) (Expr.tuple [{}]) }}\n\n",
+                        // ocaml name
+                        self.interface.coda_print_template_name(),
+                        // template name
+                        self.interface.template_name,
+                        // input and output signals, where each signals is a tuple of its name (string) and type (must be a `field`, but can be refined manually)
+                        // inputs
+                        self.interface.get_input_signals().iter().map(|signal| format!("(\"{}\", field)", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+                        // outputs
+                        self.interface.get_output_signals().iter().map(|signal| format!("(\"{}\", field)", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+                        // apply body to ...
+                        self.interface.coda_print_body_name(),
+                        // inputs signals' names
+                        self.interface
+                            .signals
+                            .iter()
+                            .map(|signal| format!("\"{}\"", signal.print_name_string()))
+                            .collect::<Vec<String>>()
+                            .join(", "),
+                        // tuple of the output signals (as expressions)
+                        self.interface.signals.iter().filter_map(|signal| match signal.visibility {
+                                CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(signal.print_name_string())).coda_print()),
+                                _ => None
+                            })
+                            .collect::<Vec<String>>()
+                            .join("; ")
+
+                    ))
+                }
+
+                CodaCircuitMode::Hoare => {
+                    str.push_str(&format!(
+                        "let {} = Hoare_circuit.to_circuit @@ Hoare_circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; preconditions= []; postconditions= []; body= {} ({}) (Expr.tuple [{}]) }}\n\n",
+                        // ocaml name
+                        self.interface.coda_print_template_name(),
+                        // template name
+                        self.interface.template_name,
+                        // inputs
+                        self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+                        // outputs
+                        self.interface.get_output_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+                        // apply body to ...
+                        self.interface.coda_print_body_name(),
+                        // inputs signals' names
+                        self.interface
+                            .signals
+                            .iter()
+                            .map(|signal| format!("\"{}\"", signal.print_name_string()))
+                            .collect::<Vec<String>>()
+                            .join(", "),
+                        // tuple of the output signals (as expressions)
+                        self.interface.signals.iter().filter_map(|signal| match signal.visibility {
+                                CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(signal.print_name_string())).coda_print()),
+                                _ => None
+                            })
+                            .collect::<Vec<String>>()
+                            .join("; ")
+                    ));
+                }
+            }
         }
         str
     }
