@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::ir_interface::*;
+use compiler::intermediate_representation::{InstructionPointer, UpdateId};
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::value::Value::KnownU32;
@@ -32,26 +33,32 @@ impl MappedToIndexedPass {
             .expect("cmp_address instruction in SubcmpSignal must produce a value!")
             .get_u32();
 
-        let name = acc_env.get_subcmp_name(resolved_addr).clone();
-        let mut indexes_values = vec![];
         let mut acc_env = acc_env;
-        for i in indexes {
-            let (val, new_env) = interpreter.execute_instruction(i, acc_env, false);
-            indexes_values.push(val.expect("Mapped location must produce a value!").get_u32());
-            acc_env = new_env;
-        }
-
+        let name = acc_env.get_subcmp_name(resolved_addr).clone();
+        let map_access = mem.io_map[&acc_env.get_subcmp_template_id(resolved_addr)][signal_code].offset;
         if indexes.len() > 0 {
+            let mut indexes_values = vec![];
+            for i in indexes {
+                let (val, new_env) = interpreter.execute_instruction(i, acc_env, false);
+                indexes_values.push(val.expect("Mapped location must produce a value!").get_u32());
+                acc_env = new_env;
+            }
             if indexes.len() == 1 {
-                let map_access = &mem.io_map[&acc_env.get_subcmp_template_id(resolved_addr)][signal_code].offset;
                 let value = map_access + indexes_values[0];
                 let mut unused = vec![];
-                LocationRule::Indexed { location: KnownU32(value).to_value_bucket(&mut unused).allocate(), template_header: Some(name) }
+                LocationRule::Indexed {
+                    location: KnownU32(value).to_value_bucket(&mut unused).allocate(),
+                    template_header: Some(name),
+                }
             } else {
                 todo!()
             }
         } else {
-            unreachable!()
+            let mut unused = vec![];
+            LocationRule::Indexed {
+                location: KnownU32(map_access).to_value_bucket(&mut unused).allocate(),
+                template_header: Some(name),
+            }
         }
     }
 
@@ -159,7 +166,9 @@ impl CircuitTransformationPass for MappedToIndexedPass {
     fn transform_location_rule(&self, location_rule: &LocationRule) -> LocationRule {
         // If the interpreter found a viable transformation, do that.
         if let Some(indexed_rule) = self.replacements.borrow().get(&location_rule) {
-            return indexed_rule.clone();
+            let mut clone = indexed_rule.clone();
+            clone.update_id(); //generate a new unique ID for the clone to avoid assertion in checks.rs
+            return clone;
         }
         match location_rule {
             LocationRule::Indexed { location, template_header } => LocationRule::Indexed {

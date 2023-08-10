@@ -243,22 +243,22 @@ impl<'a> BucketInterpreter<'a> {
                         (idx.expect("Indexed location must produce a value!").get_u32(), env)
                     },
                     LocationRule::Mapped { signal_code, indexes } => {
-                        let mut indexes_values = vec![];
                         let mut acc_env = env;
-                        for i in indexes {
-                            let (val, new_env) = self.execute_instruction(i, acc_env, continue_observing);
-                            indexes_values.push(val.expect("Mapped location must produce a value!").get_u32());
-                            acc_env = new_env;
-                        }
+                        let map_access = self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code].offset;
                         if indexes.len() > 0 {
-                            let map_access = &self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code].offset;
+                            let mut indexes_values = vec![];
+                            for i in indexes {
+                                let (val, new_env) = self.execute_instruction(i, acc_env, continue_observing);
+                                indexes_values.push(val.expect("Mapped location must produce a value!").get_u32());
+                                acc_env = new_env;
+                            }
                             if indexes.len() == 1 {
                                 (map_access + indexes_values[0], acc_env)
                             } else {
                                 todo!()
                             }
                         } else {
-                            unreachable!()
+                            (map_access, acc_env)
                         }
                     }
                 };
@@ -316,24 +316,23 @@ impl<'a> BucketInterpreter<'a> {
                         (idx.expect("Indexed location must produce a value!").get_u32(), env, template_header.clone())
                     },
                     LocationRule::Mapped { signal_code, indexes } => {
-                        let mut indexes_values = vec![];
                         let mut acc_env = env;
-                        for i in indexes {
-                            let (val, new_env) = self.execute_instruction(i, acc_env, continue_observing);
-                            indexes_values.push(val.expect("Mapped location must produce a value!").get_u32());
-                            acc_env = new_env;
-                        }
                         let name = Some(acc_env.get_subcmp_name(addr).clone());
+                        let map_access = self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code].offset;
                         if indexes.len() > 0 {
-                            //eprintln!("IO MAP crashes ({addr}): {:?}", self.io_map.contains_key(&1));
-                            let map_access = &self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code].offset;
+                            let mut indexes_values = vec![];
+                            for i in indexes {
+                                let (val, new_env) = self.execute_instruction(i, acc_env, continue_observing);
+                                indexes_values.push(val.expect("Mapped location must produce a value!").get_u32());
+                                acc_env = new_env;
+                            }
                             if indexes.len() == 1 {
                                 (map_access + indexes_values[0], acc_env, name)
                             } else {
                                 todo!()
                             }
                         } else {
-                            unreachable!()
+                            (map_access, acc_env, name)
                         }
                     }
                 };
