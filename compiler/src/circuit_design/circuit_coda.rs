@@ -213,8 +213,16 @@ impl CompileCoda for Circuit {
             // println!("template_name: {}", template_name);
             // panic!();
 
-            let abstract_circuit_names =
-                ["Poseidon", "Ark", "Sigma", "Mix", "MixLast", "MixS", "PoseidonEx"];
+            let abstract_circuit_names = [
+                "Poseidon",
+                "Ark",
+                "Sigma",
+                "Mix",
+                "MixLast",
+                "MixS",
+                "PoseidonEx",
+                "MerkleTreeInclusionProof",
+            ];
 
             if abstract_circuit_names.contains(&template_name.as_str()) {
                 let body = compile_coda_stmt_abstract(&CompileCodaContext::new(
@@ -556,12 +564,32 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
 
                 Instruction::Assert(ass) => {
                     let new_ctx = &ctx.incrememnt_counter();
-                    CodaStmt::Assert {
-                        i: new_ctx.fresh_counter,
-                        condition: Box::new(compile_coda_expr(
-                            &new_ctx.set_instruction(&ass.evaluate),
-                        )),
-                        body: Box::new(compile_coda_stmt(&new_ctx.next_instruction())),
+                    match ass.evaluate.as_ref() {
+                        Instruction::Compute(comp) => match comp.op {
+                            OperatorType::Eq(_) => {
+                                let lhs = Box::new(compile_coda_expr(
+                                    &new_ctx.set_instruction(&comp.stack[0]),
+                                ));
+                                let rhs = Box::new(compile_coda_expr(
+                                    &new_ctx.set_instruction(&comp.stack[1]),
+                                ));
+                                CodaStmt::AssertEq {
+                                    i: new_ctx.fresh_counter,
+                                    lhs,
+                                    rhs,
+                                    body: Box::new(compile_coda_stmt(&new_ctx.next_instruction())),
+                                }
+                            }
+                            // _ => CodaStmt::Assert {
+                            //     i: new_ctx.fresh_counter,
+                            //     condition: Box::new(compile_coda_expr(
+                            //         &new_ctx.set_instruction(&ass.evaluate),
+                            //     )),
+                            //     body: Box::new(compile_coda_stmt(&new_ctx.next_instruction())),
+                            // },
+                            _ => panic!(),
+                        },
+                        _ => panic!(),
                     }
                 }
 
@@ -607,13 +635,13 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
 //     stmts
 // }
 
-fn compile_coda_op(op: &OperatorType) -> CodaOp {
+fn compile_coda_op(op: &OperatorType, num_type: Option<CodaNumType>) -> CodaOp {
     match &op {
-        OperatorType::Mul => CodaOp::Mul,
+        OperatorType::Mul => CodaOp::Mul(num_type.unwrap()),
         OperatorType::Div => CodaOp::Div,
-        OperatorType::Add => CodaOp::Add,
-        OperatorType::Sub => CodaOp::Sub,
-        OperatorType::Pow => CodaOp::Pow,
+        OperatorType::Add => CodaOp::Add(num_type.unwrap()),
+        OperatorType::Sub => CodaOp::Sub(num_type.unwrap()),
+        OperatorType::Pow => CodaOp::Pow(num_type.unwrap()),
         OperatorType::IntDiv => panic!(),
         OperatorType::Mod => CodaOp::Mod,
         OperatorType::ShiftL => panic!(),
@@ -650,8 +678,9 @@ fn compile_coda_expr(ctx: &CompileCodaContext) -> CodaExpr {
                 let value_string = ctx.get_constant(value.value);
                 CodaExpr::Val(CodaVal::new(value_string.clone()))
             }
+            // TODO: calculate correct CodaNumType
             Instruction::Compute(compute) => CodaExpr::Op {
-                op: compile_coda_op(&compute.op),
+                op: compile_coda_op(&compute.op, Some(CodaNumType::Field)),
                 arg1: Box::new(compile_coda_expr(&ctx.set_instruction(&compute.stack[0]))),
                 arg2: Box::new(compile_coda_expr(&ctx.set_instruction(&compute.stack[1]))),
             },

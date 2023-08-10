@@ -113,7 +113,14 @@ impl CodaProgram {
     pub fn coda_print(&self) -> String {
         let mut str = String::new();
 
-        // TODO: imports
+        let imports: Vec<&str> =
+            vec!["Ast", "Dsl", "Nice_dsl", "Expr", "Qual", "Typ", "TypRef", "Hoare_circuit"];
+
+        for import_str in imports {
+            str.push_str(&format!("open {}\n", import_str));
+        }
+
+        str.push_str("\n");
 
         for template in &self.templates {
             str.push_str(&format!("{}\n", &template.coda_print()))
@@ -198,11 +205,22 @@ impl CodaTemplateSignal {
     }
 
     pub fn print_name_value(&self) -> String {
-        self.name.replace("[", "_").replace("]", "")
+        string_to_ocaml_name(&self.name)
     }
 
     pub fn print_name_string(&self) -> String {
-        self.name.replace("[", "_").replace("]", "")
+        string_to_ocaml_name(&self.name)
+    }
+}
+
+const OCAML_NAME_RESERVEDS: [&'static str; 2] = [&"in", &"let"];
+
+fn string_to_ocaml_name(s: &str) -> String {
+    let s = s.replace("[", "_").replace("]", "");
+    if OCAML_NAME_RESERVEDS.contains(&s.as_str()) {
+        format!("{}_", s)
+    } else {
+        s
     }
 }
 
@@ -248,7 +266,7 @@ impl CodaTemplate {
 
         if !self.is_abstract {
             str.push_str(&format!(
-                "let {} = Hoare_circuit {{name= \"{}\", inputs= [{}], outputs= [{}], preconditions= [], postconditions= [], dep= None, body= {} ({})}}\n\n",
+                "let {} = Hoare_circuit.to_circuit @@ Hoare_circuit {{name= \"{}\"; inputs= [{}]; outputs= [{}]; preconditions= []; postconditions= []; body= {} ({}) (Expr.tuple [{}])}}\n\n",
                 self.interface.coda_print_template_name(),
                 self.interface.template_name,
                 self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
@@ -259,7 +277,13 @@ impl CodaTemplate {
                     .iter()
                     .map(|signal| format!("\"{}\"", signal.print_name_string()))
                     .collect::<Vec<String>>()
-                    .join(", ")
+                    .join(", "),
+                self.interface.signals.iter().filter_map(|signal| match signal.visibility {
+                        CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(signal.print_name_string())).coda_print()),
+                        _ => None
+                    })
+                    .collect::<Vec<String>>()
+                    .join("; ")
             ));
         }
         str
@@ -322,6 +346,23 @@ impl CodaStmt {
 }
 
 #[derive(Clone, Debug)]
+pub enum CodaNumType {
+    Nat,
+    Field,
+    Int,
+}
+
+impl CodaNumType {
+    pub fn coda_print_module_name(&self) -> &str {
+        match self {
+            CodaNumType::Nat => "N",
+            CodaNumType::Field => "F",
+            CodaNumType::Int => "Z",
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum CodaExpr {
     Op { op: CodaOp, arg1: Box<CodaExpr>, arg2: Box<CodaExpr> },
     Var(CodaVar),
@@ -334,7 +375,7 @@ impl CodaExpr {
     pub fn coda_print(&self) -> String {
         match &self {
             CodaExpr::Op { op, arg1, arg2 } => {
-                format!("({} {} {})", arg1.coda_print(), op.coda_print(), arg2.coda_print())
+                op.coda_print(&arg1.coda_print(), &arg2.coda_print())
             }
             CodaExpr::Var(var) => format!("(var {})", var.print_value()),
             CodaExpr::Val(val) => val.coda_print(),
@@ -351,25 +392,40 @@ impl CodaExpr {
 
 #[derive(Clone, Debug)]
 pub enum CodaOp {
-    Add,
-    Sub,
-    Mul,
+    Add(CodaNumType),
+    Sub(CodaNumType),
+    Mul(CodaNumType),
+    Pow(CodaNumType),
     Div,
     Mod,
-    Pow,
     Eq,
 }
 
 impl CodaOp {
-    pub fn coda_print(&self) -> String {
-        match &self {
-            CodaOp::Add => "+".to_string(),
-            CodaOp::Sub => "-".to_string(),
-            CodaOp::Mul => "*".to_string(),
-            CodaOp::Div => "/".to_string(),
-            CodaOp::Mod => "%".to_string(),
-            CodaOp::Pow => "^".to_string(),
-            CodaOp::Eq => "=.".to_string(),
+    pub fn coda_print_without_prefix(op_str: &str, x: &str, y: &str) -> String {
+        format!("({} {} {})", x, op_str, y)
+    }
+    pub fn coda_print_with_prefix(pre: &str, op_str: &str, x: &str, y: &str) -> String {
+        format!("{}.({} {} {})", pre, x, op_str, y)
+    }
+
+    pub fn coda_print(&self, x: &str, y: &str) -> String {
+        match self {
+            CodaOp::Add(nt) => {
+                CodaOp::coda_print_with_prefix(nt.coda_print_module_name(), "+", x, y)
+            }
+            CodaOp::Sub(nt) => {
+                CodaOp::coda_print_with_prefix(nt.coda_print_module_name(), "-", x, y)
+            }
+            CodaOp::Mul(nt) => {
+                CodaOp::coda_print_with_prefix(nt.coda_print_module_name(), "*", x, y)
+            }
+            CodaOp::Pow(nt) => {
+                CodaOp::coda_print_with_prefix(nt.coda_print_module_name(), "^", x, y)
+            }
+            CodaOp::Div => CodaOp::coda_print_without_prefix("/", x, y),
+            CodaOp::Mod => CodaOp::coda_print_without_prefix("%", x, y),
+            CodaOp::Eq => CodaOp::coda_print_without_prefix("==", x, y),
         }
     }
 }
@@ -390,8 +446,6 @@ impl CodaVal {
 
     pub fn coda_print(&self) -> String {
         // TODO: need to reason about what type the constant _should_ be in order to satisfy typing
-        // For reference:
-        //      type const = CNil | CUnit | CInt of big_int | CF of big_int | CBool of bool
         format!("(F.const {})", self.value)
     }
 }
@@ -455,14 +509,10 @@ impl CodaVar {
     pub fn print_value(&self) -> String {
         // Example: xs[0][1] ~~> x_0_1
         match self {
-            CodaVar::Signal(name) => name.replace("[", "_").replace("]", ""),
-            CodaVar::Variable(name) => format!("\"{}\"", name.replace("[", "_").replace("]", "")),
+            CodaVar::Signal(name) => string_to_ocaml_name(name),
+            CodaVar::Variable(name) => format!("\"{}\"", string_to_ocaml_name(name)),
             CodaVar::SubcomponentSignal(subcomponent_name, name) => {
-                format!(
-                    "\"{}_{}\"",
-                    subcomponent_name.print(),
-                    name.replace("[", "_").replace("]", "")
-                )
+                format!("\"{}_{}\"", subcomponent_name.print(), string_to_ocaml_name(name))
             }
         }
     }
