@@ -8,8 +8,12 @@ variables:
 
 # subcomponents
 
+
 subcomponents1:
 	cargo run -- coda/tests/subcomponents/subcomponents1.circom --summary --coda --coda-output coda/tests/subcomponents/subcomponents1.ml -o coda/tests/subcomponents
+
+subcomponents2:
+	cargo run -- coda/tests/subcomponents/subcomponents2.circom --summary --coda --coda-output coda/tests/subcomponents/subcomponents2.ml -o coda/tests/subcomponents
 
 # gates
 

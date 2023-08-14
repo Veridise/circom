@@ -221,7 +221,7 @@ impl CompileCoda for Circuit {
                 "MixLast",
                 "MixS",
                 "PoseidonEx",
-                "MerkleTreeInclusionProof",
+                // "MerkleTreeInclusionProof",
             ];
 
             if abstract_circuit_names.contains(&template_name.as_str()) {
@@ -282,7 +282,9 @@ struct CompileCodaContext<'a> {
     subcomponents: Vec<CompileCodaContextSubcomponent>,
     instructions: Vec<Box<Instruction>>,
     instruction_i: usize,
-    fresh_counter: usize,
+    assertion_counter: usize,
+    // a variable name will be added to this vector every time it is updated (via a `Store` instruction)
+    variable_updates: Vec<CodaVariable>,
 }
 
 impl<'a> CompileCodaContext<'a> {
@@ -304,12 +306,13 @@ impl<'a> CompileCodaContext<'a> {
             subcomponents,
             instructions,
             instruction_i: 0,
-            fresh_counter: 0,
+            assertion_counter: 0,
+            variable_updates: Vec::new(),
         }
     }
 
     pub fn incrememnt_counter(&self) -> Self {
-        CompileCodaContext { fresh_counter: self.fresh_counter + 1, ..self.clone() }
+        CompileCodaContext { assertion_counter: self.assertion_counter + 1, ..self.clone() }
     }
 
     pub fn current_instruction(&self) -> Option<&Box<Instruction>> {
@@ -355,8 +358,22 @@ impl<'a> CompileCodaContext<'a> {
         &self.template_interface.signals[i]
     }
 
+    pub fn get_variable_fresh_index(&self, x: String) -> usize {
+        self.variable_updates
+            .iter()
+            .filter(|y| *x.as_str() == *y.name.as_str())
+            .collect::<Vec<&CodaVariable>>()
+            .len()
+    }
+
     pub fn get_variable_name(&self, i: usize) -> &String {
         &self.template_interface.variables[i]
+    }
+
+    pub fn get_variable_name_as_coda_variable(&self, i: usize) -> CodaVariable {
+        let name = self.get_variable_name(i);
+        let fresh_index = self.get_variable_fresh_index(name.clone()).clone();
+        CodaVariable { name: name.clone(), fresh_index }
     }
 
     pub fn get_subcomponent(&self, subcomponent_i: usize) -> &CompileCodaContextSubcomponent {
@@ -408,6 +425,10 @@ impl<'a> CompileCodaContext<'a> {
             ..self.clone()
         }
     }
+
+    pub fn log_variable_update(&self, x: CodaVariable) -> Self {
+        Self { variable_updates: [vec![x], self.variable_updates.clone()].concat(), ..self.clone() }
+    }
 }
 
 fn from_constant_instruction(instruction: &Instruction) -> usize {
@@ -435,7 +456,7 @@ fn compile_coda_var(
     };
 
     match &address_type {
-        AddressType::Variable => CodaVar::Variable(ctx.get_variable_name(i).clone()),
+        AddressType::Variable => CodaVar::Variable(ctx.get_variable_name_as_coda_variable(i)),
         AddressType::Signal => CodaVar::Signal(ctx.get_signal(i).name.clone()),
         AddressType::SubcmpSignal {
             cmp_address,
@@ -448,6 +469,7 @@ fn compile_coda_var(
             let subcmp_signal = &subcmp.coda_template_subcomponent.interface.signals[i];
             CodaVar::SubcomponentSignal(
                 subcmp.coda_template_subcomponent.component_name.clone(),
+                subcmp.coda_template_subcomponent.component_index,
                 subcmp_signal.name.clone(),
             )
         }
@@ -488,40 +510,65 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                     compile_coda_stmt(&ctx.insert_instructions(&block.body).next_instruction())
                 }
                 Instruction::Store(store) => {
-                    let var = compile_coda_var(&ctx, &store.dest, &store.dest_address_type);
                     let val = Box::new(compile_coda_expr(&ctx.set_instruction(&store.src)));
-                    let body = Box::new(compile_coda_stmt(&ctx.next_instruction()));
 
                     match &store.dest_address_type {
-                        AddressType::Variable => CodaStmt::Let { var, val, body },
-                        AddressType::Signal => CodaStmt::Let { var, val, body },
+                        AddressType::Variable => {
+                            let var: CodaVariable =
+                                match compile_coda_var(&ctx, &store.dest, &store.dest_address_type)
+                                    .clone()
+                                {
+                                    // it must be a Variable, since dest_address_type = Variable
+                                    CodaVar::Variable(CodaVariable { name, fresh_index }) => {
+                                        CodaVariable { name, fresh_index: fresh_index + 1 }
+                                    }
+                                    _ => panic!(),
+                                };
+
+                            let body = Box::new(compile_coda_stmt(
+                                &ctx.log_variable_update(var.clone()).next_instruction(),
+                            ));
+                            CodaStmt::Let { var: CodaVar::Variable(var.clone()), val, body }
+                        }
+                        AddressType::Signal => {
+                            let var = compile_coda_var(&ctx, &store.dest, &store.dest_address_type);
+                            let body = Box::new(compile_coda_stmt(&ctx.next_instruction()));
+                            CodaStmt::Let { var, val, body }
+                        }
                         AddressType::SubcmpSignal {
                             cmp_address,
                             uniform_parallel_value: _,
                             is_output: _,
                             input_information,
-                        } => match &input_information {
-                            InputInformation::NoInput => CodaStmt::Let { var, val, body },
-                            InputInformation::Input { status } => match &status {
-                                StatusInput::Unknown => {
-                                    panic!("Should not be Unknown at this point, after IR transformation passes.")
-                                }
-                                StatusInput::NoLast => CodaStmt::Let { var, val, body },
-                                StatusInput::Last => {
-                                    let cmp_i = from_constant_instruction(cmp_address.as_ref());
-                                    let subcomponent = ctx
-                                        .get_subcomponent(cmp_i)
-                                        .coda_template_subcomponent
-                                        .clone();
-
-                                    CodaStmt::Let {
-                                        var,
-                                        val,
-                                        body: Box::new(CodaStmt::CreateCmp { subcomponent, body }),
+                        } => {
+                            let var = compile_coda_var(&ctx, &store.dest, &store.dest_address_type);
+                            let body = Box::new(compile_coda_stmt(&ctx.next_instruction()));
+                            match &input_information {
+                                InputInformation::NoInput => CodaStmt::Let { var, val, body },
+                                InputInformation::Input { status } => match &status {
+                                    StatusInput::Unknown => {
+                                        panic!("Should not be Unknown at this point, after IR transformation passes.")
                                     }
-                                }
-                            },
-                        },
+                                    StatusInput::NoLast => CodaStmt::Let { var, val, body },
+                                    StatusInput::Last => {
+                                        let cmp_i = from_constant_instruction(cmp_address.as_ref());
+                                        let subcomponent = ctx
+                                            .get_subcomponent(cmp_i)
+                                            .coda_template_subcomponent
+                                            .clone();
+
+                                        CodaStmt::Let {
+                                            var,
+                                            val,
+                                            body: Box::new(CodaStmt::CreateCmp {
+                                                subcomponent,
+                                                body,
+                                            }),
+                                        }
+                                    }
+                                },
+                            }
+                        }
                     }
                 }
                 Instruction::Branch(branch) => CodaStmt::Branch {
@@ -552,6 +599,7 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                             cmp_i + cmp_di,
                             CodaTemplateSubcomponent {
                                 interface: template_interface.clone(),
+                                component_index: cmp_di,
                                 component_name: CodaComponentName::new(
                                     create_cmp.name_subcomponent.clone(),
                                 ),
@@ -574,7 +622,7 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                                     &new_ctx.set_instruction(&comp.stack[1]),
                                 ));
                                 CodaStmt::AssertEq {
-                                    i: new_ctx.fresh_counter,
+                                    i: new_ctx.assertion_counter,
                                     lhs,
                                     rhs,
                                     body: Box::new(compile_coda_stmt(&new_ctx.next_instruction())),
