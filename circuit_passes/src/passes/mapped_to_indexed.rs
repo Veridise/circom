@@ -6,6 +6,7 @@ use compiler::intermediate_representation::ir_interface::*;
 use compiler::intermediate_representation::{InstructionPointer, UpdateId};
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::Value::KnownU32;
 use crate::passes::CircuitTransformationPass;
 use crate::passes::memory::PassMemory;
@@ -35,7 +36,8 @@ impl MappedToIndexedPass {
 
         let mut acc_env = acc_env;
         let name = acc_env.get_subcmp_name(resolved_addr).clone();
-        let map_access = mem.io_map[&acc_env.get_subcmp_template_id(resolved_addr)][signal_code].offset;
+        let io_def = &mem.io_map[&acc_env.get_subcmp_template_id(resolved_addr)][signal_code];
+        let map_access = io_def.offset;
         if indexes.len() > 0 {
             let mut indexes_values = vec![];
             for i in indexes {
@@ -43,15 +45,11 @@ impl MappedToIndexedPass {
                 indexes_values.push(val.expect("Mapped location must produce a value!").get_u32());
                 acc_env = new_env;
             }
-            if indexes.len() == 1 {
-                let value = map_access + indexes_values[0];
-                let mut unused = vec![];
-                LocationRule::Indexed {
-                    location: KnownU32(value).to_value_bucket(&mut unused).allocate(),
-                    template_header: Some(name),
-                }
-            } else {
-                todo!()
+            let offset = compute_offset(&indexes_values, &io_def.lengths);
+            let mut unused = vec![];
+            LocationRule::Indexed {
+                location: KnownU32(map_access + offset).to_value_bucket(&mut unused).allocate(),
+                template_header: Some(name),
             }
         } else {
             let mut unused = vec![];
