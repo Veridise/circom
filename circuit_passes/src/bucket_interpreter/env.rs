@@ -238,7 +238,7 @@ impl<'a> Env<'a> {
         observe: bool,
     ) -> Value {
         if cfg!(debug_assertions) {
-            println!("Running {}", name);
+            println!("Running function {}", name);
         }
         let code = &self.functions_library[name].body;
         let mut function_env =
