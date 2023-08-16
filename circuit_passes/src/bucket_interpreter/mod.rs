@@ -12,6 +12,7 @@ use compiler::num_bigint::BigInt;
 use observer::InterpreterObserver;
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
 
@@ -244,7 +245,8 @@ impl<'a> BucketInterpreter<'a> {
                     },
                     LocationRule::Mapped { signal_code, indexes } => {
                         let mut acc_env = env;
-                        let map_access = self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code].offset;
+                        let io_def = &self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code];
+                        let map_access = io_def.offset;
                         if indexes.len() > 0 {
                             let mut indexes_values = vec![];
                             for i in indexes {
@@ -252,11 +254,8 @@ impl<'a> BucketInterpreter<'a> {
                                 indexes_values.push(val.expect("Mapped location must produce a value!").get_u32());
                                 acc_env = new_env;
                             }
-                            if indexes.len() == 1 {
-                                (map_access + indexes_values[0], acc_env)
-                            } else {
-                                todo!()
-                            }
+                            let offset = compute_offset(&indexes_values, &io_def.lengths);
+                            (map_access + offset, acc_env)
                         } else {
                             (map_access, acc_env)
                         }
@@ -318,7 +317,8 @@ impl<'a> BucketInterpreter<'a> {
                     LocationRule::Mapped { signal_code, indexes } => {
                         let mut acc_env = env;
                         let name = Some(acc_env.get_subcmp_name(addr).clone());
-                        let map_access = self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code].offset;
+                        let io_def = &self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code];
+                        let map_access = io_def.offset;
                         if indexes.len() > 0 {
                             let mut indexes_values = vec![];
                             for i in indexes {
@@ -326,11 +326,8 @@ impl<'a> BucketInterpreter<'a> {
                                 indexes_values.push(val.expect("Mapped location must produce a value!").get_u32());
                                 acc_env = new_env;
                             }
-                            if indexes.len() == 1 {
-                                (map_access + indexes_values[0], acc_env, name)
-                            } else {
-                                todo!()
-                            }
+                            let offset = compute_offset(&indexes_values, &io_def.lengths);
+                            (map_access + offset, acc_env, name)
                         } else {
                             (map_access, acc_env, name)
                         }
