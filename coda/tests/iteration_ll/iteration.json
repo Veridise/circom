@@ -1,0 +1,1 @@
+{"version":"2.1.3","compiler":"circom","framework":null,"meta":{"is_ir_ssa":false,"prime":"bn128"},"components":[{"name":"Test2","main":true,"signals":[{"name":"x","visibility":"output","idx":0,"public":false}],"subcmps":[],"logic_fn_name":"Test2_0_run"}],"functions":[]}

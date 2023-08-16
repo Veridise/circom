@@ -273,7 +273,7 @@ impl CodaTemplate {
         // body
 
         str.push_str(&format!(
-            "let {} ({}) body = {}\n\n",
+            "let {} prefix ({}) output =\n  {}\n\n",
             self.interface.coda_print_body_name(),
             self.interface
                 .signals
@@ -306,7 +306,7 @@ impl CodaTemplate {
             match CODA_CIRCUIT_MODE {
                 CodaCircuitMode::Normal => {
                     str.push_str(&format!(
-                        "let {} = Circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; dep=None; body= {} ({}) (Expr.tuple [{}]) }}\n\n",
+                        "let {} = Circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; dep=None; body= let prefix = {} in {} prefix ({}) (Expr.tuple [{}]) }}\n\n",
                         // ocaml name
                         self.interface.coda_print_template_name(),
                         // template name
@@ -316,7 +316,9 @@ impl CodaTemplate {
                         self.interface.get_input_signals().iter().map(|signal| format!("(\"{}\", field)", signal.print_name_string())).collect::<Vec<String>>().join("; "),
                         // outputs
                         self.interface.get_output_signals().iter().map(|signal| format!("(\"{}\", field)", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-                        // apply body to ...
+                        // body prefix
+                        "\"main_\"",
+                        // body name
                         self.interface.coda_print_body_name(),
                         // inputs signals' names
                         self.interface
@@ -327,7 +329,8 @@ impl CodaTemplate {
                             .join(", "),
                         // tuple of the output signals (as expressions)
                         self.interface.signals.iter().filter_map(|signal| match signal.visibility {
-                            CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(CodaVariable{ name: signal.print_name_string(), fresh_index: 0})).coda_print()),
+                            // CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(CodaVariable{ name: signal.print_name_string(), fresh_index: 0})).coda_print()),
+                            CodaVisibility::Output => Some(CodaVar::Signal(signal.print_name_string()).print_name_string()),
                             _ => None
                         })
                         .collect::<Vec<String>>()
@@ -337,7 +340,7 @@ impl CodaTemplate {
                 }
                 CodaCircuitMode::Hoare => {
                     str.push_str(&format!(
-                        "let {} = Hoare_circuit.to_circuit @@ Hoare_circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; preconditions= []; postconditions= []; body= {} ({}) (Expr.tuple [{}]) }}\n\n",
+                        "let {} = Hoare_circuit.to_circuit @@\n  Hoare_circuit {{\n  name= \"{}\";\n  inputs= [{}];\n  outputs= [{}];\n  preconditions= [];\n  postconditions= [];\n  body=\n  {} ({}) (Expr.tuple [{}]) }}\n\n",
                         // ocaml name
                         self.interface.coda_print_template_name(),
                         // template name
@@ -452,11 +455,17 @@ impl CodaStmt {
     pub fn coda_print(&self) -> String {
         match self {
             CodaStmt::Let { var, val, body } => {
-                format!("elet {} {} @@ {}", var.print_value(), val.coda_print(), body.coda_print())
+                format!(
+                    "elet {} {} @@\n  {}",
+                    var.print_value(),
+                    val.coda_print(),
+                    body.coda_print()
+                )
             }
             CodaStmt::CreateCmp { subcomponent, body } => format!(
-                "{} ({}) @@ {}",
+                "{} (prefix ^ \"sc{}_\") ({}) @@\n  {}",
                 subcomponent.interface.coda_print_body_name(),
+                subcomponent.component_index,
                 subcomponent
                     .interface
                     .signals
@@ -478,20 +487,20 @@ impl CodaStmt {
                 else_.coda_print()
             ),
             CodaStmt::Assert { i, condition, body } => format!(
-                "assert_in \"_assertion_{}\" {} @@ {}",
+                "assert_in \"_assertion_{}\" {} @@\n  {}",
                 i,
                 condition.coda_print(),
                 body.coda_print()
             ),
             CodaStmt::AssertEq { i, lhs, rhs, body } => format!(
-                "assert_eq_in \"_assertion_{}\" {} {} @@ {}",
+                "assert_eq_in \"_assertion_{}\" {} {} @@\n  {}",
                 i,
                 lhs.coda_print(),
                 rhs.coda_print(),
                 body.coda_print()
             ),
 
-            CodaStmt::Output => format!("body"),
+            CodaStmt::Output => format!("output"),
         }
     }
 }
@@ -644,15 +653,36 @@ pub struct CodaVariable {
 }
 
 impl CodaVar {
+    pub fn print_name_string(&self) -> String {
+        match self {
+            CodaVar::Signal(name) => format!("\"{}\"", string_to_ocaml_name(name)),
+            CodaVar::Variable(CodaVariable { name, fresh_index }) => {
+                if *fresh_index == 0 {
+                    format!("(prefix ^ \"{}\")", string_to_ocaml_name(name))
+                } else {
+                    format!("(prefix ^ \"{}_{}\")", string_to_ocaml_name(name), fresh_index)
+                }
+            }
+            CodaVar::SubcomponentSignal(subcomponent_name, subcomponent_index, name) => {
+                format!(
+                    "\"{}_{}_{}\"",
+                    subcomponent_name.print(),
+                    subcomponent_index,
+                    string_to_ocaml_name(name)
+                )
+            }
+        }
+    }
+
     pub fn print_value(&self) -> String {
         // Example: xs[0][1] ~~> x_0_1
         match self {
             CodaVar::Signal(name) => string_to_ocaml_name(name),
             CodaVar::Variable(CodaVariable { name, fresh_index }) => {
                 if *fresh_index == 0 {
-                    format!("\"{}\"", string_to_ocaml_name(name))
+                    format!("(prefix ^ \"{}\")", string_to_ocaml_name(name))
                 } else {
-                    format!("\"{}_{}\"", string_to_ocaml_name(name), fresh_index)
+                    format!("(prefix ^ \"{}_{}\")", string_to_ocaml_name(name), fresh_index)
                 }
             }
             CodaVar::SubcomponentSignal(subcomponent_name, subcomponent_index, name) => {

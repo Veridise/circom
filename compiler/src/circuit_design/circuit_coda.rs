@@ -49,7 +49,7 @@ fn pretty_print_location_rule(location_rule: &LocationRule) -> String {
 
 fn pretty_print_instruction(instruction: &Instruction) -> String {
     match instruction {
-        Instruction::Value(value) => format!("Value({})", value.value),
+        Instruction::Value(value) => format!("Value(value={}, parse_as={})", value.value, value.parse_as.to_string()),
         Instruction::Load(load) => format!(
             "Load(type={}, src={})",
             pretty_print_address_type(&load.address_type),
@@ -150,7 +150,7 @@ impl CompileCoda for Circuit {
             };
 
             coda_template_interfaces.push(CodaTemplateInterface {
-                template_id: template_id,
+                template_id,
                 template_name,
                 signals,
                 variables,
@@ -723,8 +723,19 @@ fn compile_coda_expr(ctx: &CompileCodaContext) -> CodaExpr {
                 CodaExpr::Var(var)
             }
             Instruction::Value(value) => {
-                let value_string = ctx.get_constant(value.value);
-                CodaExpr::Val(CodaVal::new(value_string.clone()))
+                match value.parse_as {
+                    // literal value
+                    ValueType::BigInt => CodaExpr::Val(CodaVal::new(
+                        ["(* literal *)".to_string(), value.value.to_string()].join(" "),
+                    )),
+                    // index into field_tracking
+                    ValueType::U32 => {
+                        let value_string = ctx.get_constant(value.value);
+                        CodaExpr::Val(CodaVal::new(
+                            ["(* indexed *)".to_string(), value_string.clone()].join(" "),
+                        ))
+                    }
+                }
             }
             // TODO: calculate correct CodaNumType
             Instruction::Compute(compute) => CodaExpr::Op {
