@@ -548,10 +548,17 @@ pub fn create_conditional_branch<'a>(
     then_block: BasicBlock<'a>,
     else_block: BasicBlock<'a>,
 ) -> AnyValueEnum<'a> {
+    let comparison_type = comparison.get_type();
+    let bool_ty = producer.llvm().module.get_context().bool_type();
+    let bool_comparison = if comparison_type != bool_ty {
+        create_neq(producer, comparison, comparison_type.const_zero()).into_int_value()
+    } else {
+        comparison
+    };
     producer
         .llvm()
         .builder
-        .build_conditional_branch(comparison, then_block, else_block)
+        .build_conditional_branch(bool_comparison, then_block, else_block)
         .as_any_value_enum()
 }
 
