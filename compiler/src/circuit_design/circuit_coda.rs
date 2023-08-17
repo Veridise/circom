@@ -221,7 +221,7 @@ impl CompileCoda for Circuit {
                 "MixLast",
                 "MixS",
                 "PoseidonEx",
-                // "MerkleTreeInclusionProof",
+                "AbstractCircuit", // "MerkleTreeInclusionProof",
             ];
 
             if abstract_circuit_names.contains(&template_name.as_str()) {
@@ -339,18 +339,15 @@ impl<'a> CompileCodaContext<'a> {
         }
     }
 
-    // why does the field_tracking not have all the constants that are referred to later? perhaps there is a bug in generating hte field_trackign vector, cuz im definitely using it right;
-    // TODO: send a message to Daniel
     pub fn get_constant(&self, i: usize) -> String {
         if i < self.circuit.coda_data.field_tracking.len() {
             self.circuit.coda_data.field_tracking[i].clone()
         } else {
-            // format!("(bad constant index: {})", i)
             // format!(
             //     // "(* ERROR: bad constant index: {} in {:?} *) 0",
             //     i, self.circuit.coda_data.field_tracking
             // )
-            format!("0")
+            format!("666")
         }
     }
 
@@ -724,17 +721,17 @@ fn compile_coda_expr(ctx: &CompileCodaContext) -> CodaExpr {
             }
             Instruction::Value(value) => {
                 match value.parse_as {
-                    // literal value
-                    ValueType::BigInt => CodaExpr::Val(CodaVal::new(
-                        ["(* literal *)".to_string(), value.value.to_string()].join(" "),
-                    )),
                     // index into field_tracking
-                    ValueType::U32 => {
+                    ValueType::BigInt => {
                         let value_string = ctx.get_constant(value.value);
                         CodaExpr::Val(CodaVal::new(
-                            ["(* indexed *)".to_string(), value_string.clone()].join(" "),
+                            ["(* index *)".to_string(), value_string.clone()].join(" "),
                         ))
                     }
+                    // literal value
+                    ValueType::U32 => CodaExpr::Val(CodaVal::new(
+                        ["(* literal *)".to_string(), value.value.to_string()].join(" "),
+                    )),
                 }
             }
             // TODO: calculate correct CodaNumType

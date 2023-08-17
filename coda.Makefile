@@ -9,6 +9,9 @@ variables:
 iteration:
 	cargo run -- coda/tests/iteration.circom --summary --coda --coda-output coda/tests/iteration.ml -o coda/tests/
 
+abstract:
+	cargo run -- coda/tests/abstract.circom --summary --coda --coda-output coda/tests/abstract.ml -o coda/tests/
+
 # subcomponents
 
 subcomponents1:

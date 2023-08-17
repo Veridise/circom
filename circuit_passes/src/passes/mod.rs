@@ -4,7 +4,6 @@ use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer, new_id};
 
-
 use std::cell::RefCell;
 
 use compiler::intermediate_representation::ir_interface::{
@@ -16,10 +15,8 @@ use compiler::intermediate_representation::ir_interface::{
 use crate::passes::{
     conditional_flattening::ConditionalFlattening,
     deterministic_subcomponent_invocation::DeterministicSubCmpInvokePass,
-    loop_unroll::LoopUnrollPass,
-    mapped_to_indexed::MappedToIndexedPass,
-    simplification::SimplificationPass,
-    unknown_index_sanitization::UnknownIndexSanitizationPass,
+    loop_unroll::LoopUnrollPass, mapped_to_indexed::MappedToIndexedPass,
+    simplification::SimplificationPass, unknown_index_sanitization::UnknownIndexSanitizationPass,
 };
 use crate::passes::checks::assert_unique_ids_in_circuit;
 
@@ -149,7 +146,8 @@ pub trait CircuitTransformationPass {
             parse_as: bucket.parse_as,
             op_aux_no: bucket.op_aux_no,
             value: bucket.value,
-        }.allocate()
+        }
+        .allocate()
     }
 
     fn transform_address_type(&self, address: &AddressType) -> AddressType {
@@ -368,15 +366,13 @@ pub trait CircuitTransformationPass {
             line: bucket.line,
             message_id: bucket.message_id,
             body: self.transform_instructions(&bucket.body),
-            n_iters: bucket.n_iters
+            n_iters: bucket.n_iters,
         }
         .allocate()
     }
 
     fn transform_nop_bucket(&self, _bucket: &NopBucket) -> InstructionPointer {
-        NopBucket {
-            id: new_id()
-        }.allocate()
+        NopBucket { id: new_id() }.allocate()
     }
 
     pre_hook!(pre_hook_circuit, Circuit);

@@ -173,6 +173,10 @@ pub struct CodaTemplateInterface {
 }
 
 impl CodaTemplateInterface {
+    pub fn coda_print_abstract_function_name(&self) -> String {
+        self.template_name.clone()
+    }
+
     pub fn coda_print_template_name(&self) -> String {
         format!("circuit_{}", self.template_name)
     }
@@ -272,17 +276,84 @@ impl CodaTemplate {
 
         // body
 
-        str.push_str(&format!(
-            "let {} prefix ({}) output =\n  {}\n\n",
-            self.interface.coda_print_body_name(),
-            self.interface
+        if !self.is_abstract {
+            str.push_str(&format!(
+                "let {} prefix ({}) output = {}\n\n",
+                self.interface.coda_print_body_name(),
+                self.interface
+                    .signals
+                    .iter()
+                    .map(|signal| signal.print_name_value())
+                    .collect::<Vec<String>>()
+                    .join(", "),
+                self.body.coda_print()
+            ))
+        } else {
+            let inputs = self
+                .interface
                 .signals
                 .iter()
-                .map(|signal| signal.print_name_value())
-                .collect::<Vec<String>>()
-                .join(", "),
-            self.body.coda_print()
-        ));
+                .filter(|signal| match signal.visibility {
+                    CodaVisibility::Input => true,
+                    _ => false,
+                })
+                .collect::<Vec<_>>();
+
+            let outputs = self
+                .interface
+                .signals
+                .iter()
+                .filter(|signal| match signal.visibility {
+                    CodaVisibility::Output => true,
+                    _ => false,
+                })
+                .collect::<Vec<_>>();
+
+            if outputs.len() == 1 {
+                let output = outputs[0];
+                let output_var = CodaVar::Signal(output.print_name_string());
+                str.push_str(&format!(
+                    "let {} _prefix ({}) output =\n  elet {} (call \"{}\" [{}]) @@\n  output\n\n",
+                    self.interface.coda_print_body_name(),
+                    self.interface
+                        .signals
+                        .iter()
+                        .map(|signal| signal.print_name_value())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    output_var.print_value(),
+                    self.interface.coda_print_abstract_function_name(),
+                    inputs
+                        .iter()
+                        .map(|signal| signal.print_name_value())
+                        .collect::<Vec<_>>()
+                        .join("; "),
+                ));
+            } else {
+                todo!(
+                    "using an abstract circuit '{}' that has multiple output ",
+                    self.interface.coda_print_abstract_function_name()
+                )
+            }
+
+            // str.push_str(&format!(
+            //     "let {} _prefix ({}) output =\n  call \"{}\" [{}]\n\n",
+            //     self.interface.coda_print_body_name(),
+            //     self.interface
+            //         .signals
+            //         .iter()
+            //         .map(|signal| signal.print_name_value())
+            //         .collect::<Vec<String>>()
+            //         .join(", "),
+            //     self.interface.coda_print_abstract_function_name(),
+            //     self.interface
+            //         .signals
+            //         .iter()
+            //         .map(|signal| signal.print_name_value())
+            //         .collect::<Vec<String>>()
+            //         .join("; ")
+            // ));
+        }
 
         // circuit
 
