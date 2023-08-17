@@ -215,13 +215,12 @@ impl CompileCoda for Circuit {
 
             let abstract_circuit_names = [
                 "Poseidon",
-                "Ark",
-                "Sigma",
-                "Mix",
-                "MixLast",
-                "MixS",
-                "PoseidonEx",
-                "AbstractCircuit", // "MerkleTreeInclusionProof",
+                "MultiMux1",
+                "CalculateSecret",
+                "CalculateIdentityCommitment",
+                "MerkleTreeInclusionProof",
+                "CalculateNullifierHash",
+                "AbstractCircuit",
             ];
 
             if abstract_circuit_names.contains(&template_name.as_str()) {
