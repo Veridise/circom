@@ -27,14 +27,17 @@ template Caller() {
 
     for (var i = 0; i < 4; i++) {
         s.inp[i] <== nop(inp[i]);
-        //CHECK: %[[CALL_VAL:call\.nop_[0-3]]] = call i256 @nop_{{[0-3]}}(i256* %6)
-        //CHECK: %[[SUBCMP_PTR:.*]] = getelementptr [1 x { [0 x i256]*, i32 }], [1 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 {{[0-3]}}
-        //CHECK: %[[SUBCMP:.*]] = load [0 x i256]*, [0 x i256]** %[[SUBCMP_PTR]]
-        //CHECK: %[[SUBCMP_INP:.*]] = getelementptr [0 x i256], [0 x i256]* %[[SUBCMP]], i32 0, i32 {{[1-4]}}
-        //CHECK: store i256 %[[CALL_VAL]], i256* %[[SUBCMP_INP]]
     }
 
     outp <== s.outp;
 }
 
 component main = Caller();
+
+//CHECK-LABEL: define void @Caller_{{[0-9]+}}_run
+//CHECK-SAME: ([0 x i256]* %0)
+//CHECK: %[[CALL_VAL:call\.nop_[0-3]]] = call i256 @nop_{{[0-3]}}(i256* %6)
+//CHECK: %[[SUBCMP_PTR:.*]] = getelementptr [1 x { [0 x i256]*, i32 }], [1 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 {{[0-3]}}
+//CHECK: %[[SUBCMP:.*]] = load [0 x i256]*, [0 x i256]** %[[SUBCMP_PTR]]
+//CHECK: %[[SUBCMP_INP:.*]] = getelementptr [0 x i256], [0 x i256]* %[[SUBCMP]], i32 0, i32 {{[1-4]}}
+//CHECK: store i256 %[[CALL_VAL]], i256* %[[SUBCMP_INP]]
