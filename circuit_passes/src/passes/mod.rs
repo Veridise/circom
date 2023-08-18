@@ -28,6 +28,8 @@ macro_rules! pre_hook {
 }
 
 pub trait CircuitTransformationPass {
+    fn name(&self) -> &str;
+
     fn transform_circuit(&self, circuit: &Circuit) -> Circuit {
         self.pre_hook_circuit(&circuit);
         let templates = circuit.templates.iter().map(|t| self.transform_template(t)).collect();
@@ -430,6 +432,9 @@ impl PassManager {
     pub fn transform_circuit(&self, circuit: Circuit) -> Circuit {
         let mut transformed_circuit = circuit;
         for pass in self.passes.borrow().iter() {
+            if cfg!(debug_assertions) {
+                println!("Do {}...", pass.name());
+            }
             transformed_circuit = pass.transform_circuit(&transformed_circuit);
             assert_unique_ids_in_circuit(&transformed_circuit);
         }

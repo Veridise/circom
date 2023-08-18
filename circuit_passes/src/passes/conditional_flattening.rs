@@ -107,6 +107,10 @@ impl InterpreterObserver for ConditionalFlattening {
 }
 
 impl CircuitTransformationPass for ConditionalFlattening {
+    fn name(&self) -> &str {
+        "ConditionalFlattening"
+    }
+
     fn pre_hook_circuit(&self, circuit: &Circuit) {
         self.memory.borrow_mut().fill_from_circuit(circuit);
     }

@@ -118,6 +118,10 @@ impl InterpreterObserver for SimplificationPass {
 }
 
 impl CircuitTransformationPass for SimplificationPass {
+    fn name(&self) -> &str {
+        "SimplificationPass"
+    }
+
     fn get_updated_field_constants(&self) -> Vec<String> {
         self.memory.borrow().constant_fields.clone()
     }

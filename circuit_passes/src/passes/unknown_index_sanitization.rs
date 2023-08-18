@@ -249,6 +249,10 @@ impl InterpreterObserver for UnknownIndexSanitizationPass {
 }
 
 impl CircuitTransformationPass for UnknownIndexSanitizationPass {
+    fn name(&self) -> &str {
+        "UnknownIndexSanitizationPass"
+    }
+
     fn transform_load_bucket(&self, bucket: &LoadBucket) -> InstructionPointer {
         let bounded_fn_symbol = match self.load_replacements.borrow().get(bucket) {
             Some(index_range) => Some(get_array_load_symbol(index_range)),

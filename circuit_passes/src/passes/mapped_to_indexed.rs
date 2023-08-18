@@ -153,6 +153,10 @@ impl InterpreterObserver for MappedToIndexedPass {
 }
 
 impl CircuitTransformationPass for MappedToIndexedPass {
+    fn name(&self) -> &str {
+        "MappedToIndexedPass"
+    }
+
     fn get_updated_field_constants(&self) -> Vec<String> {
         self.memory.borrow().constant_fields.clone()
     }
