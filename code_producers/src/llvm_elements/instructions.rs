@@ -1,11 +1,16 @@
 use inkwell::basic_block::BasicBlock;
 use inkwell::IntPredicate::{EQ, NE, SLT, SGT, SLE, SGE};
-use inkwell::types::{AnyTypeEnum, PointerType};
-use inkwell::values::{AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue, InstructionOpcode, InstructionValue, IntMathValue, IntValue, PhiValue, PointerValue};
+use inkwell::types::{AnyTypeEnum, PointerType, IntType};
+use inkwell::values::{
+    AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue,
+    InstructionOpcode, InstructionValue, IntMathValue, IntValue, PhiValue, PointerValue,
+};
 use crate::llvm_elements::{LLVMIRProducer};
 use crate::llvm_elements::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
 use crate::llvm_elements::functions::create_bb;
 use crate::llvm_elements::types::{bigint_type, i32_type};
+
+use super::types::bool_type;
 
 // bigint abv;
 // if (rhs < 0)
@@ -437,6 +442,50 @@ pub fn create_bit_xor<'a, T: IntMathValue<'a>>(
     create_bit_xor_with_name(producer, lhs, rhs, "")
 }
 
+pub fn ensure_bool_with_name<'a, T: IntMathValue<'a>>(
+    producer: &dyn LLVMIRProducer<'a>,
+    val: T,
+    name: &str,
+) -> AnyValueEnum<'a> {
+    let int_val = val.as_basic_value_enum().into_int_value();
+    if int_val.get_type() != bool_type(producer) {
+        create_neq_with_name(producer, int_val, bigint_type(producer).const_zero(), name)
+    } else {
+        val.as_any_value_enum()
+    }
+}
+
+pub fn ensure_bool<'a, T: IntMathValue<'a>>(
+    producer: &dyn LLVMIRProducer<'a>,
+    val: T,
+) -> AnyValueEnum<'a> {
+    ensure_bool_with_name(producer, val, "")
+}
+
+pub fn ensure_int_type_match<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    val: IntValue<'a>,
+    ty: IntType<'a>,
+) -> IntValue<'a> {
+    if val.get_type() == ty {
+        // No conversion needed
+        val
+    } else if val.get_type() == bool_type(producer) {
+        // Zero extend
+        producer.llvm().builder.build_int_z_extend(val, ty, "")
+    } else if ty == bool_type(producer) {
+        // Convert to bool
+        ensure_bool(producer, val).into_int_value()
+    } else {
+        panic!(
+            "Unhandled int conversion of value '{:?}': {:?} to {:?} not supported!",
+            val,
+            val.get_type(),
+            ty
+        )
+    }
+}
+
 pub fn create_logic_and_with_name<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
@@ -493,7 +542,10 @@ pub fn create_store<'a>(
 ) -> AnyValueEnum<'a> {
     match value {
         AnyValueEnum::ArrayValue(v) => producer.llvm().builder.build_store(ptr, v),
-        AnyValueEnum::IntValue(v) => producer.llvm().builder.build_store(ptr, v),
+        AnyValueEnum::IntValue(v) => {
+            let store_ty = ptr.get_type().get_element_type().into_int_type();
+            producer.llvm().builder.build_store(ptr, ensure_int_type_match(producer, v, store_ty))
+        }
         AnyValueEnum::FloatValue(v) => producer.llvm().builder.build_store(ptr, v),
         AnyValueEnum::PointerValue(v) => producer.llvm().builder.build_store(ptr, v),
         AnyValueEnum::StructValue(v) => producer.llvm().builder.build_store(ptr, v),
@@ -511,7 +563,26 @@ pub fn create_return<'a, V: BasicValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: V,
 ) -> AnyValueEnum<'a> {
-    producer.llvm().builder.build_return(Some(&val)).as_any_value_enum()
+    let f = producer
+        .llvm()
+        .builder
+        .get_insert_block()
+        .expect("no current block!")
+        .get_parent()
+        .expect("no current function!");
+    let ret_ty =
+        f.get_type().get_return_type().expect("non-void function should have a return type!");
+    let ret_val = if ret_ty.is_int_type() {
+        ensure_int_type_match(
+            producer,
+            val.as_basic_value_enum().into_int_value(),
+            ret_ty.into_int_type(),
+        )
+        .as_basic_value_enum()
+    } else {
+        val.as_basic_value_enum()
+    };
+    producer.llvm().builder.build_return(Some(&ret_val)).as_any_value_enum()
 }
 
 pub fn create_br<'a>(producer: &dyn LLVMIRProducer<'a>, bb: BasicBlock<'a>) -> AnyValueEnum<'a> {
@@ -535,10 +606,27 @@ pub fn create_call<'a>(
     arguments: &[BasicMetadataValueEnum<'a>],
 ) -> AnyValueEnum<'a> {
     let f = find_function(producer, name);
+    let params = f.get_params();
+    let checked_arguments: Vec<BasicMetadataValueEnum<'a>> = arguments
+        .into_iter()
+        .zip(params.into_iter())
+        .map(|(arg, param)| {
+            if arg.is_int_value() && param.is_int_value() {
+                ensure_int_type_match(
+                    producer,
+                    arg.into_int_value(),
+                    param.get_type().into_int_type(),
+                )
+                .into()
+            } else {
+                arg.clone()
+            }
+        })
+        .collect();
     producer
         .llvm()
         .builder
-        .build_call(f, arguments, format!("call.{}", name).as_str())
+        .build_call(f, &checked_arguments, format!("call.{}", name).as_str())
         .as_any_value_enum()
 }
 
@@ -548,13 +636,7 @@ pub fn create_conditional_branch<'a>(
     then_block: BasicBlock<'a>,
     else_block: BasicBlock<'a>,
 ) -> AnyValueEnum<'a> {
-    let comparison_type = comparison.get_type();
-    let bool_ty = producer.llvm().module.get_context().bool_type();
-    let bool_comparison = if comparison_type != bool_ty {
-        create_neq(producer, comparison, comparison_type.const_zero()).into_int_value()
-    } else {
-        comparison
-    };
+    let bool_comparison = ensure_bool(producer, comparison).into_int_value();
     producer
         .llvm()
         .builder
