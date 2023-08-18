@@ -447,13 +447,9 @@ pub fn ensure_bool_with_name<'a, T: IntMathValue<'a>>(
     val: T,
     name: &str,
 ) -> AnyValueEnum<'a> {
-    if val.as_basic_value_enum().into_int_value().get_type() != bool_type(producer) {
-        create_neq_with_name(
-            producer,
-            val.as_basic_value_enum().into_int_value(),
-            bigint_type(producer).const_zero(),
-            name,
-        )
+    let int_val = val.as_basic_value_enum().into_int_value();
+    if int_val.get_type() != bool_type(producer) {
+        create_neq_with_name(producer, int_val, bigint_type(producer).const_zero(), name)
     } else {
         val.as_any_value_enum()
     }
