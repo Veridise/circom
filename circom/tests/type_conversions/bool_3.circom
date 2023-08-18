@@ -22,3 +22,4 @@ component main = A(99);
 //CHECK: %[[VAL:[0-9]+]] = load i256, i256* %[[VAL_PTR]]
 //CHECK: %[[BOOL:[0-9]+]] = icmp ne i256 %[[VAL]], 0
 //CHECK: %call.fr_logic_or = call i1 @fr_logic_or(i1 %[[BOOL]], i1 true)
+//CHECK: br i1 %call.fr_logic_or, label %if.then, label %if.else
