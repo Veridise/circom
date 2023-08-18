@@ -567,7 +567,26 @@ pub fn create_return<'a, V: BasicValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: V,
 ) -> AnyValueEnum<'a> {
-    producer.llvm().builder.build_return(Some(&val)).as_any_value_enum()
+    let f = producer
+        .llvm()
+        .builder
+        .get_insert_block()
+        .expect("no current block!")
+        .get_parent()
+        .expect("no current function!");
+    let ret_ty =
+        f.get_type().get_return_type().expect("non-void function should have a return type!");
+    let ret_val = if ret_ty.is_int_type() {
+        ensure_int_type_match(
+            producer,
+            val.as_basic_value_enum().into_int_value(),
+            ret_ty.into_int_type(),
+        )
+        .as_basic_value_enum()
+    } else {
+        val.as_basic_value_enum()
+    };
+    producer.llvm().builder.build_return(Some(&ret_val)).as_any_value_enum()
 }
 
 pub fn create_br<'a>(producer: &dyn LLVMIRProducer<'a>, bb: BasicBlock<'a>) -> AnyValueEnum<'a> {
