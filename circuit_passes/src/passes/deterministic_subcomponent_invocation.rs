@@ -125,6 +125,10 @@ impl InterpreterObserver for DeterministicSubCmpInvokePass {
 }
 
 impl CircuitTransformationPass for DeterministicSubCmpInvokePass {
+    fn name(&self) -> &str {
+        "DeterministicSubCmpInvokePass"
+    }
+
     fn pre_hook_circuit(&self, circuit: &Circuit) {
         self.memory.borrow_mut().fill_from_circuit(circuit);
     }

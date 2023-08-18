@@ -144,6 +144,10 @@ impl InterpreterObserver for LoopUnrollPass {
 }
 
 impl CircuitTransformationPass for LoopUnrollPass {
+    fn name(&self) -> &str {
+        "LoopUnrollPass"
+    }
+
     fn pre_hook_circuit(&self, circuit: &Circuit) {
         self.memory.borrow_mut().fill_from_circuit(circuit);
     }
