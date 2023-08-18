@@ -490,25 +490,13 @@ pub fn ensure_int_type_match<'a>(
     }
 }
 
-macro_rules! conditional_name {
-    ($fmt: expr, $name: expr) => {{
-        if $name.is_empty() { $name.to_string() } else { format!($fmt, $name) }.as_ref()
-    }};
-}
-
 pub fn create_logic_and_with_name<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
     name: &str,
 ) -> AnyValueEnum<'a> {
-    let bool_lhs =
-        ensure_bool_with_name(producer, lhs, conditional_name!("bool_cast_lhs.{}", name))
-            .into_int_value();
-    let bool_rhs =
-        ensure_bool_with_name(producer, rhs, conditional_name!("bool_cast_rhs.{}", name))
-            .into_int_value();
-    producer.llvm().builder.build_and(bool_lhs, bool_rhs, name).as_any_value_enum()
+    producer.llvm().builder.build_and(lhs, rhs, name).as_any_value_enum()
 }
 
 pub fn create_logic_and<'a, T: IntMathValue<'a>>(
@@ -525,13 +513,7 @@ pub fn create_logic_or_with_name<'a, T: IntMathValue<'a>>(
     rhs: T,
     name: &str,
 ) -> AnyValueEnum<'a> {
-    let bool_lhs =
-        ensure_bool_with_name(producer, lhs, conditional_name!("bool_cast_lhs.{}", name))
-            .into_int_value();
-    let bool_rhs =
-        ensure_bool_with_name(producer, rhs, conditional_name!("bool_cast_rhs.{}", name))
-            .into_int_value();
-    producer.llvm().builder.build_or(bool_lhs, bool_rhs, name).as_any_value_enum()
+    producer.llvm().builder.build_or(lhs, rhs, name).as_any_value_enum()
 }
 
 pub fn create_logic_or<'a, T: IntMathValue<'a>>(
@@ -547,9 +529,7 @@ pub fn create_logic_not_with_name<'a, T: IntMathValue<'a>>(
     val: T,
     name: &str,
 ) -> AnyValueEnum<'a> {
-    let bool_val = ensure_bool_with_name(producer, val, conditional_name!("bool_cast.{}", name))
-        .into_int_value();
-    producer.llvm().builder.build_not(bool_val, name).as_any_value_enum()
+    producer.llvm().builder.build_not(val, name).as_any_value_enum()
 }
 
 pub fn create_logic_not<'a, T: IntMathValue<'a>>(
