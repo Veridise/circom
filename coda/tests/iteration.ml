@@ -21,6 +21,6 @@ let body_Test2 prefix (x) output =
   elet x (F.const (* index *) 6) @@
   output
 
-let circuit_Test2 = Circuit { name= "Test2"; inputs= []; outputs= [("x", field)]; dep=None; body= let prefix = "main_" in body_Test2 prefix ("x") (Expr.tuple ["x"]) }
+let circuit_Test2 = Circuit { name= "Test2"; inputs= []; outputs= [("x", field)]; dep=None; body= let prefix = "main_" in body_Test2 prefix ("x") (Expr.tuple [(var (prefix ^ "x"))]) }
 
 

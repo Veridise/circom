@@ -12,6 +12,9 @@ iteration:
 abstract:
 	cargo run -- coda/tests/abstract.circom --summary --coda --coda-output coda/tests/abstract.ml -o coda/tests/
 
+abstract_output_tuple:
+	cargo run -- coda/tests/abstract_output_tuple.circom --summary --coda --coda-output coda/tests/abstract_output_tuple.ml -o coda/tests/
+
 # subcomponents
 
 subcomponents1:

@@ -215,7 +215,12 @@ impl CompileCoda for Circuit {
 
             let abstract_circuit_names = [
                 "Poseidon",
+                "PoseidonEx",
                 "MultiMux1",
+                "Ark",
+                "Mix",
+                "MixS",
+                "MixLast",
                 "CalculateSecret",
                 "CalculateIdentityCommitment",
                 "MerkleTreeInclusionProof",
@@ -489,7 +494,9 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
     match ctx.current_instruction() {
         None => CodaStmt::Output,
         Some(instruction) => {
-            // println!("compile_coda_stmt: {}", pretty_print_instruction(instruction));
+            if __DEBUG {
+                println!("compile_coda_stmt: {}", pretty_print_instruction(instruction))
+            };
 
             match instruction.as_ref() {
                 Instruction::Constraint(constraint) => match constraint {
@@ -637,6 +644,13 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                     }
                 }
 
+                /*
+                Call(CallBucket { id: 136697760737723432672427078134442152209, source_file_id: Some(3), line: 79, message_id: 69, symbol: "POSEIDON_C_0", argument_types: [InstrContext { size: 1 }], arguments: [Value(ValueBucket { id: 326783913472980550211208520729987932540, source_file_id: Some(3), line: 79, message_id: 69, parse_as: BigInt, op_aux_no: 1, value: 82 })], arena_size: 205, return_info: Final(FinalData { context: InstrContext { size: 81 }, dest_is_output: false, dest_address_type: Variable, dest: Indexed { location: Value(ValueBucket { id: 237904140605526989290660355093185167777, source_file_id: Some(3), line: 79, message_id: 69, parse_as: U32, op_aux_no: 0, value: 21 }), template_header: None } }) })'
+                */
+                Instruction::Call(_) => {
+                    panic!("This case should not appear as a statement: {:?}", instruction)
+                }
+
                 // Invalid statements
                 Instruction::Load(_load) => {
                     panic!("This case should not appear as a statement: {:?}", instruction)
@@ -645,9 +659,6 @@ fn compile_coda_stmt(ctx: &CompileCodaContext) -> CodaStmt {
                     panic!("This case should not appear as a statement: {:?}", instruction)
                 }
                 Instruction::Compute(_) => {
-                    panic!("This case should not appear as a statement: {:?}", instruction)
-                }
-                Instruction::Call(_) => {
                     panic!("This case should not appear as a statement: {:?}", instruction)
                 }
 

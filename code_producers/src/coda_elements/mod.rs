@@ -278,7 +278,7 @@ impl CodaTemplate {
 
         if !self.is_abstract {
             str.push_str(&format!(
-                "let {} prefix ({}) output = {}\n\n",
+                "let {} prefix ({}) output =\n  {}\n\n",
                 self.interface.coda_print_body_name(),
                 self.interface
                     .signals
@@ -313,7 +313,7 @@ impl CodaTemplate {
                 let output = outputs[0];
                 let output_var = CodaVar::Signal(output.print_name_string());
                 str.push_str(&format!(
-                    "let {} _prefix ({}) output =\n  elet {} (call \"{}\" [{}]) @@\n  output\n\n",
+                    "let {} prefix ({}) output =\n  elet {} (call \"{}\" [{}]) @@\n  output\n\n",
                     self.interface.coda_print_body_name(),
                     self.interface
                         .signals
@@ -325,15 +325,51 @@ impl CodaTemplate {
                     self.interface.coda_print_abstract_function_name(),
                     inputs
                         .iter()
-                        .map(|signal| signal.print_name_value())
+                        .map(|signal| CodaExpr::Var(signal.to_signal()).coda_print())
                         .collect::<Vec<_>>()
                         .join("; "),
                 ));
             } else {
-                todo!(
-                    "using an abstract circuit '{}' that has multiple output ",
-                    self.interface.coda_print_abstract_function_name()
-                )
+                let tuple_var = CodaVar::Variable(CodaVariable {
+                    name: format!("__tuple__{}", self.interface.template_name),
+                    fresh_index: 0,
+                });
+
+                let mut binds_str: String = String::new();
+                // let mut results_strs: Vec<String> = Vec::new();
+
+                for (output_i, output) in outputs.iter().enumerate() {
+                    let component_var = output.to_signal();
+                    binds_str.push_str(&format!(
+                        "elet {} (project {} {}) @@\n  ",
+                        component_var.print_value(),
+                        CodaExpr::Var(tuple_var.clone()).coda_print(),
+                        output_i
+                    ));
+                    // results_strs.push(CodaExpr::Var(component_var).coda_print());
+                }
+
+                // let result_str = format!("(tuple [{}])", results_strs.join("; "));
+
+                str.push_str(&format!(
+                    "let {} prefix ({}) output =\n  elet {} (call \"{}\" [{}]) @@\n  {}{}\n\n",
+                    self.interface.coda_print_body_name(),
+                    self.interface
+                        .signals
+                        .iter()
+                        .map(|signal| signal.print_name_value())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    tuple_var.print_name_string(),
+                    self.interface.coda_print_abstract_function_name(),
+                    inputs
+                        .iter()
+                        .map(|signal| CodaExpr::Var(signal.to_signal()).coda_print())
+                        .collect::<Vec<_>>()
+                        .join("; "),
+                    binds_str,
+                    "output"
+                ));
             }
         }
 
@@ -383,7 +419,8 @@ impl CodaTemplate {
                         // tuple of the output signals (as expressions)
                         self.interface.signals.iter().filter_map(|signal| match signal.visibility {
                             // CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(CodaVariable{ name: signal.print_name_string(), fresh_index: 0})).coda_print()),
-                            CodaVisibility::Output => Some(CodaVar::Signal(signal.print_name_string()).print_name_string()),
+                            // CodaVisibility::Output => Some(CodaVar::Signal(signal.print_name_string()).print_name_string()),
+                            CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(CodaVariable {name: signal.print_name_string(), fresh_index: 0})).coda_print()),
                             _ => None
                         })
                         .collect::<Vec<String>>()
