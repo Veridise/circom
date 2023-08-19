@@ -1,5 +1,6 @@
 use std::io::Write;
 use code_producers::c_elements::*;
+use code_producers::coda_elements::summary::SummaryRoot;
 use code_producers::llvm_elements::*;
 use code_producers::wasm_elements::*;
 use code_producers::coda_elements::*;

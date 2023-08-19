@@ -2,13 +2,13 @@ use core::panic;
 use std::io::BufReader;
 use ansi_term::Colour;
 use circuit_passes::passes::PassManager;
+use code_producers::coda_elements::summary::SummaryRoot;
 use compiler::compiler_interface;
 use compiler::compiler_interface::{Config, VCP};
 use program_structure::error_definition::Report;
 use program_structure::error_code::ReportCode;
 use program_structure::file_definition::FileLibrary;
 use program_structure::program_archive::ProgramArchive;
-use code_producers::coda_elements::SummaryRoot;
 use crate::VERSION;
 use std::fs;
 
@@ -35,15 +35,29 @@ pub struct CompilerConfig {
     pub vcp: VCP,
 }
 
-pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &String) -> Result<(), ()> {
+pub fn compile(
+    config: CompilerConfig,
+    program_archive: ProgramArchive,
+    prime: &String,
+) -> Result<(), ()> {
     let mut circuit = compiler_interface::run_compiler(
         config.vcp,
-        Config { debug_output: config.debug_output, produce_input_log: config.produce_input_log, wat_flag: config.wat_flag },
-        VERSION
+        Config {
+            debug_output: config.debug_output,
+            produce_input_log: config.produce_input_log,
+            wat_flag: config.wat_flag,
+        },
+        VERSION,
     )?;
 
     if config.c_flag {
-        compiler_interface::write_c(&circuit, &config.c_folder, &config.c_run_name, &config.c_file, &config.dat_file)?;
+        compiler_interface::write_c(
+            &circuit,
+            &config.c_folder,
+            &config.c_run_name,
+            &config.c_file,
+            &config.dat_file,
+        )?;
         println!(
             "{} {} and {}",
             Colour::Green.paint("Written successfully:"),
@@ -53,7 +67,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
         println!(
             "{} {}/{}, {}, {}, {}, {}, {}, {} and {}",
             Colour::Green.paint("Written successfully:"),
-	    &config.c_folder,
+            &config.c_folder,
             "main.cpp".to_string(),
             "circom.hpp".to_string(),
             "calcwit.hpp".to_string(),
@@ -83,11 +97,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
             &config.llvm_file,
             config.clean_llvm,
         )?;
-        println!(
-          "{} {}",
-            Colour::Green.paint("Written successfully:"),
-            config.llvm_file
-        );
+        println!("{} {}", Colour::Green.paint("Written successfully:"), config.llvm_file);
     }
 
     if config.coda_flag {
@@ -113,27 +123,36 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
 
         // HENRY: this is horrible, but it works till i find the right way to get the basename
         let basename = config.dat_file.split("/").last().unwrap().split(".").next().unwrap();
-        let summary_file = fs::File::open(format!("{}/{}.json", config.llvm_folder, basename)).map_err(|e| panic!("{}", e))?;
+        let summary_file = fs::File::open(format!("{}/{}.json", config.llvm_folder, basename))
+            .map_err(|e| panic!("{}", e))?;
         let summary_reader = BufReader::new(summary_file);
-        let summary = serde_json::from_reader::<_, SummaryRoot>(summary_reader).map_err(|e| panic!("{}", e))?;
+        let summary = serde_json::from_reader::<_, SummaryRoot>(summary_reader)
+            .map_err(|e| panic!("{}", e))?;
 
         let coda_file = match config.coda_file {
             Some(coda_file) => coda_file,
             None => panic!("In order to generate Coda output, must provide a Coda output file."),
         };
 
-        compiler_interface::write_coda(&circuit, &program_archive, &summary, &circuit.coda_data, &coda_file)?;
+        compiler_interface::write_coda(
+            &circuit,
+            &program_archive,
+            &summary,
+            &circuit.coda_data,
+            &coda_file,
+        )?;
 
-        println!(
-        "{} {}",
-            Colour::Green.paint("Written successfully:"),
-            coda_file
-        );
+        println!("{} {}", Colour::Green.paint("Written successfully:"), coda_file);
     }
 
     match (config.wat_flag, config.wasm_flag) {
         (true, true) => {
-            compiler_interface::write_wasm(&circuit, &config.js_folder, &config.wasm_name, &config.wat_file)?;
+            compiler_interface::write_wasm(
+                &circuit,
+                &config.js_folder,
+                &config.wasm_name,
+                &config.wat_file,
+            )?;
             println!("{} {}", Colour::Green.paint("Written successfully:"), config.wat_file);
             let result = wat_to_wasm(&config.wat_file, &config.wasm_file);
             match result {
@@ -142,12 +161,21 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
                     return Err(());
                 }
                 Result::Ok(()) => {
-                    println!("{} {}", Colour::Green.paint("Written successfully:"), config.wasm_file);
+                    println!(
+                        "{} {}",
+                        Colour::Green.paint("Written successfully:"),
+                        config.wasm_file
+                    );
                 }
             }
         }
         (false, true) => {
-            compiler_interface::write_wasm(&circuit,  &config.js_folder, &config.wasm_name, &config.wat_file)?;
+            compiler_interface::write_wasm(
+                &circuit,
+                &config.js_folder,
+                &config.wasm_name,
+                &config.wat_file,
+            )?;
             let result = wat_to_wasm(&config.wat_file, &config.wasm_file);
             std::fs::remove_file(&config.wat_file).unwrap();
             match result {
@@ -156,12 +184,21 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
                     return Err(());
                 }
                 Result::Ok(()) => {
-                    println!("{} {}", Colour::Green.paint("Written successfully:"), config.wasm_file);
+                    println!(
+                        "{} {}",
+                        Colour::Green.paint("Written successfully:"),
+                        config.wasm_file
+                    );
                 }
             }
         }
         (true, false) => {
-            compiler_interface::write_wasm(&circuit,  &config.js_folder, &config.wasm_name, &config.wat_file)?;
+            compiler_interface::write_wasm(
+                &circuit,
+                &config.js_folder,
+                &config.wasm_name,
+                &config.wat_file,
+            )?;
             println!("{} {}", Colour::Green.paint("Written successfully:"), config.wat_file);
         }
         (false, false) => {}
@@ -169,7 +206,6 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
 
     Ok(())
 }
-
 
 fn wat_to_wasm(wat_file: &str, wasm_file: &str) -> Result<(), Report> {
     use std::fs::read_to_string;

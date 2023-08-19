@@ -1,3 +1,8 @@
+// pub mod mod_new;
+pub mod summary;
+
+use std::str::FromStr;
+
 /*
 Example:
 
@@ -44,9 +49,66 @@ let circuit_Bar = Hoare_circuit {..., body= body_Bar ("a", "b", "c") (tuple (var
 
 */
 
-use std::str::FromStr;
-use serde::Serialize;
-use serde::Deserialize;
+// use std::str::FromStr;
+// use serde::Serialize;
+// use serde::Deserialize;
+
+// #[derive(Debug, PartialEq, Eq, Clone)]
+// pub struct CodaCircuitData {
+//     pub field_tracking: Vec<String>,
+// }
+
+// impl Default for CodaCircuitData {
+//     fn default() -> Self {
+//         CodaCircuitData { field_tracking: Vec::new() }
+//     }
+// }
+
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// pub struct Meta {
+//     pub is_ir_ssa: bool,
+//     pub prime: String,
+// }
+
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// pub struct SignalSummary {
+//     pub name: String,
+//     pub visibility: String,
+//     pub idx: usize,
+//     pub public: bool,
+// }
+
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// pub struct SubcmpSummary {
+//     pub name: String,
+//     pub idx: usize,
+// }
+
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// pub struct TemplateSummary {
+//     pub name: String,
+//     pub main: bool,
+//     pub signals: Vec<SignalSummary>,
+//     pub subcmps: Vec<SubcmpSummary>,
+//     pub logic_fn_name: String,
+// }
+
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// pub struct FunctionSummary {
+//     pub name: String,
+//     pub params: Vec<String>,
+//     pub logic_fn_name: String,
+// }
+
+// #[derive(Serialize, Deserialize, Debug, Clone)]
+// pub struct SummaryRoot {
+//     pub version: String,
+//     pub compiler: String,
+//     pub framework: Option<String>,
+//     pub meta: Meta,
+//     pub components: Vec<TemplateSummary>,
+//     pub functions: Vec<FunctionSummary>,
+// }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CodaCircuitData {
@@ -57,52 +119,6 @@ impl Default for CodaCircuitData {
     fn default() -> Self {
         CodaCircuitData { field_tracking: Vec::new() }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Meta {
-    pub is_ir_ssa: bool,
-    pub prime: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SignalSummary {
-    pub name: String,
-    pub visibility: String,
-    pub idx: usize,
-    pub public: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SubcmpSummary {
-    pub name: String,
-    pub idx: usize,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TemplateSummary {
-    pub name: String,
-    pub main: bool,
-    pub signals: Vec<SignalSummary>,
-    pub subcmps: Vec<SubcmpSummary>,
-    pub logic_fn_name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct FunctionSummary {
-    pub name: String,
-    pub params: Vec<String>,
-    pub logic_fn_name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SummaryRoot {
-    pub version: String,
-    pub compiler: String,
-    pub framework: Option<String>,
-    pub meta: Meta,
-    pub components: Vec<TemplateSummary>,
-    pub functions: Vec<FunctionSummary>,
 }
 
 pub struct CodaProgram {
@@ -186,23 +202,11 @@ impl CodaTemplateInterface {
     }
 
     pub fn get_input_signals(&self) -> Vec<CodaTemplateSignal> {
-        self.signals
-            .iter()
-            .filter_map(|signal| match signal.visibility {
-                CodaVisibility::Input => Some(signal.clone()),
-                _ => None,
-            })
-            .collect()
+        self.signals.iter().filter(|signal| signal.visibility.is_input()).cloned().collect()
     }
 
     pub fn get_output_signals(&self) -> Vec<CodaTemplateSignal> {
-        self.signals
-            .iter()
-            .filter_map(|signal| match signal.visibility {
-                CodaVisibility::Output => Some(signal.clone()),
-                _ => None,
-            })
-            .collect()
+        self.signals.iter().filter(|signal| signal.visibility.is_output()).cloned().collect()
     }
 }
 
@@ -213,8 +217,8 @@ pub struct CodaTemplateSignal {
 }
 
 impl CodaTemplateSignal {
-    pub fn to_signal(&self) -> CodaVar {
-        CodaVar::Signal(self.name.clone())
+    pub fn to_var(&self) -> CodaVar {
+        CodaVar::Signal(self.clone())
     }
 
     pub fn to_subcomponent_signal(
@@ -283,6 +287,7 @@ impl CodaTemplate {
                 self.interface
                     .signals
                     .iter()
+                    .filter(|signal| signal.visibility.isnt_intermediate())
                     .map(|signal| signal.print_name_value())
                     .collect::<Vec<String>>()
                     .join(", "),
@@ -293,31 +298,26 @@ impl CodaTemplate {
                 .interface
                 .signals
                 .iter()
-                .filter(|signal| match signal.visibility {
-                    CodaVisibility::Input => true,
-                    _ => false,
-                })
+                .filter(|signal| signal.visibility.is_input())
                 .collect::<Vec<_>>();
 
             let outputs = self
                 .interface
                 .signals
                 .iter()
-                .filter(|signal| match signal.visibility {
-                    CodaVisibility::Output => true,
-                    _ => false,
-                })
+                .filter(|signal| signal.visibility.is_output())
                 .collect::<Vec<_>>();
 
             if outputs.len() == 1 {
                 let output = outputs[0];
-                let output_var = CodaVar::Signal(output.print_name_string());
+                let output_var = output.to_var();
                 str.push_str(&format!(
                     "let {} prefix ({}) output =\n  elet {} (call \"{}\" [{}]) @@\n  output\n\n",
                     self.interface.coda_print_body_name(),
                     self.interface
                         .signals
                         .iter()
+                        .filter(|signal| signal.visibility.isnt_intermediate())
                         .map(|signal| signal.print_name_value())
                         .collect::<Vec<_>>()
                         .join(", "),
@@ -325,7 +325,7 @@ impl CodaTemplate {
                     self.interface.coda_print_abstract_function_name(),
                     inputs
                         .iter()
-                        .map(|signal| CodaExpr::Var(signal.to_signal()).coda_print())
+                        .map(|signal| CodaExpr::Var(signal.to_var()).coda_print())
                         .collect::<Vec<_>>()
                         .join("; "),
                 ));
@@ -339,7 +339,7 @@ impl CodaTemplate {
                 // let mut results_strs: Vec<String> = Vec::new();
 
                 for (output_i, output) in outputs.iter().enumerate() {
-                    let component_var = output.to_signal();
+                    let component_var = output.to_var();
                     binds_str.push_str(&format!(
                         "elet {} (project {} {}) @@\n  ",
                         component_var.print_value(),
@@ -357,6 +357,7 @@ impl CodaTemplate {
                     self.interface
                         .signals
                         .iter()
+                        .filter(|signal| signal.visibility.isnt_intermediate())
                         .map(|signal| signal.print_name_value())
                         .collect::<Vec<_>>()
                         .join(", "),
@@ -364,7 +365,7 @@ impl CodaTemplate {
                     self.interface.coda_print_abstract_function_name(),
                     inputs
                         .iter()
-                        .map(|signal| CodaExpr::Var(signal.to_signal()).coda_print())
+                        .map(|signal| CodaExpr::Var(signal.to_var()).coda_print())
                         .collect::<Vec<_>>()
                         .join("; "),
                     binds_str,
@@ -375,159 +376,75 @@ impl CodaTemplate {
 
         // circuit
 
-        // match CODA_CIRCUIT_MODE {
-        //     CodaCircuitMode::Normal => str
-        //         .push_str(&CodaVar::Variable { name: signal.print_name_string(), fresh_index: 0 }),
-
-        //     CodaCircuitMode::Hoare => {
-        //         str.push_str(&CodaVar::Variable {
-        //             name: signal.print_name_string(),
-        //             fresh_index: 0,
-        //         });
-        //     }
-        // }
-
-        // TODO: recover what's necessary from this
-
-        // circuit
-
-        if !self.is_abstract {
-            match CODA_CIRCUIT_MODE {
-                CodaCircuitMode::Normal => {
-                    str.push_str(&format!(
-                        "let {} = Circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; dep=None; body= let prefix = {} in {} prefix ({}) (Expr.tuple [{}]) }}\n\n",
-                        // ocaml name
-                        self.interface.coda_print_template_name(),
-                        // template name
-                        self.interface.template_name,
-                        // input and output signals, where each signals is a tuple of its name (string) and type (must be a `field`, but can be refined manually)
-                        // inputs
-                        self.interface.get_input_signals().iter().map(|signal| format!("(\"{}\", field)", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-                        // outputs
-                        self.interface.get_output_signals().iter().map(|signal| format!("(\"{}\", field)", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-                        // body prefix
-                        "\"main_\"",
-                        // body name
-                        self.interface.coda_print_body_name(),
-                        // inputs signals' names
-                        self.interface
-                            .signals
-                            .iter()
-                            .map(|signal| format!("\"{}\"", signal.print_name_string()))
-                            .collect::<Vec<String>>()
-                            .join(", "),
-                        // tuple of the output signals (as expressions)
-                        self.interface.signals.iter().filter_map(|signal| match signal.visibility {
-                            // CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(CodaVariable{ name: signal.print_name_string(), fresh_index: 0})).coda_print()),
-                            // CodaVisibility::Output => Some(CodaVar::Signal(signal.print_name_string()).print_name_string()),
-                            CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(CodaVariable {name: signal.print_name_string(), fresh_index: 0})).coda_print()),
-                            _ => None
-                        })
+        match CODA_CIRCUIT_MODE {
+            CodaCircuitMode::Normal => {
+                str.push_str(&format!(
+                    "let {} =\n  Circuit\n    {{ name= \"{}\"\n    ; inputs= [{}]\n    ; outputs= [{}]\n    ; dep=None\n    ; body= let prefix = {} in {} prefix ({}) (Expr.tuple [{}]) }}\n\n",
+                    // ocaml name
+                    self.interface.coda_print_template_name(),
+                    // template name
+                    self.interface.template_name,
+                    // input and output signals, where each signals is a tuple of its name (string) and type (must be a `field`, but can be refined manually)
+                    // inputs
+                    self.interface.get_input_signals().iter().map(|signal| format!("(\"{}\", field)", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+                    // outputs
+                    self.interface.get_output_signals().iter().map(|signal| format!("(\"{}\", field)", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+                    // body prefix
+                    "\"main_\"",
+                    // body name
+                    self.interface.coda_print_body_name(),
+                    // inputs signals' names
+                    self.interface
+                        .signals
+                        .iter()
+                        .filter(|signal| signal.visibility.isnt_intermediate())
+                        .map(|signal| format!("\"{}\"", signal.print_name_string()))
                         .collect::<Vec<String>>()
-                        .join("; ")
-
-                    ))
-                }
-                CodaCircuitMode::Hoare => {
-                    str.push_str(&format!(
-                        "let {} = Hoare_circuit.to_circuit @@\n  Hoare_circuit {{\n  name= \"{}\";\n  inputs= [{}];\n  outputs= [{}];\n  preconditions= [];\n  postconditions= [];\n  body=\n  {} ({}) (Expr.tuple [{}]) }}\n\n",
-                        // ocaml name
-                        self.interface.coda_print_template_name(),
-                        // template name
-                        self.interface.template_name,
-                        // inputs
-                        self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-                        // outputs
-                        self.interface.get_output_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-                        // apply body to ...
-                        self.interface.coda_print_body_name(),
-                        // inputs signals' names
-                        self.interface
-                            .signals
-                            .iter()
-                            .map(|signal| format!("\"{}\"", signal.print_name_string()))
-                            .collect::<Vec<String>>()
-                            .join(", "),
-                        // tuple of the output signals (as expressions)
-                        self.interface.signals.iter().filter_map(|signal| match signal.visibility {
-                            CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(CodaVariable {name: signal.print_name_string(), fresh_index: 0})).coda_print()),
-                            _ => None
-                        })
-                        .collect::<Vec<String>>()
-                        .join("; ")
-                    ));
-                }
+                        .join(", "),
+                    // tuple of the output signals (as expressions)
+                    self.interface.signals.iter().filter_map(|signal| match signal.visibility {
+                        // CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(CodaVariable{ name: signal.print_name_string(), fresh_index: 0})).coda_print()),
+                        // CodaVisibility::Output => Some(CodaVar::Signal(signal.print_name_string()).print_name_string()),
+                        CodaVisibility::Output => Some(signal.print_name_string()),
+                        _ => None
+                    })
+                    .collect::<Vec<String>>()
+                    .join("; ")
+                ))
+            }
+            CodaCircuitMode::Hoare => {
+                // str.push_str(&format!(
+                //     "let {} = Hoare_circuit.to_circuit @@\n  Hoare_circuit {{\n  name= \"{}\";\n  inputs= [{}];\n  outputs= [{}];\n  preconditions= [];\n  postconditions= [];\n  body=\n  {} ({}) (Expr.tuple [{}]) }}\n\n",
+                //     // ocaml name
+                //     self.interface.coda_print_template_name(),
+                //     // template name
+                //     self.interface.template_name,
+                //     // inputs
+                //     self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+                //     // outputs
+                //     self.interface.get_output_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
+                //     // apply body to ...
+                //     self.interface.coda_print_body_name(),
+                //     // inputs signals' names
+                //     self.interface
+                //         .signals
+                //         .iter()
+                //         .map(|signal| format!("\"{}\"", signal.print_name_string()))
+                //         .collect::<Vec<String>>()
+                //         .join(", "),
+                //     // tuple of the output signals (as expressions)
+                //     self.interface.signals.iter().filter_map(|signal| match signal.visibility {
+                //         CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(CodaVariable {name: signal.print_name_string(), fresh_index: 0})).coda_print()),
+                //         _ => None
+                //     })
+                //     .collect::<Vec<String>>()
+                //     .join("; ")
+                // ));
+                todo!("temporarily disabled Hoare mode")
             }
         };
 
         str
-
-        //   if !self.is_abstract {
-        //       match CODA_CIRCUIT_MODE {
-        //           CodaCircuitMode::Normal => {
-        //               str.push_str(&format!(
-        //                   "let {} = Circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; dep=None; body= {} ({}) (Expr.tuple [{}]) }}\n\n",
-        //                   // ocaml name
-        //                   self.interface.coda_print_template_name(),
-        //                   // template name
-        //                   self.interface.template_name,
-        //                   // input and output signals, where each signals is a tuple of its name (string) and type (must be a `field`, but can be refined manually)
-        //                   // inputs
-        //                   self.interface.get_input_signals().iter().map(|signal| format!("(\"{}\", field)", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-        //                   // outputs
-        //                   self.interface.get_output_signals().iter().map(|signal| format!("(\"{}\", field)", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-        //                   // apply body to ...
-        //                   self.interface.coda_print_body_name(),
-        //                   // inputs signals' names
-        //                   self.interface
-        //                       .signals
-        //                       .iter()
-        //                       .map(|signal| format!("\"{}\"", signal.print_name_string()))
-        //                       .collect::<Vec<String>>()
-        //                       .join(", "),
-        //                   // tuple of the output signals (as expressions)
-        //                   self.interface.signals.iter().filter_map(|signal| match signal.visibility {
-        //                       CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(signal.print_name_string())).coda_print()),
-        //                       _ => None
-        //                   })
-        //                   .collect::<Vec<String>>()
-        //                   .join("; ")
-
-        //               ))
-        //           }
-
-        //           CodaCircuitMode::Hoare => {
-        //               str.push_str(&format!(
-        //                   "let {} = Hoare_circuit.to_circuit @@ Hoare_circuit {{ name= \"{}\"; inputs= [{}]; outputs= [{}]; preconditions= []; postconditions= []; body= {} ({}) (Expr.tuple [{}]) }}\n\n",
-        //                   // ocaml name
-        //                   self.interface.coda_print_template_name(),
-        //                   // template name
-        //                   self.interface.template_name,
-        //                   // inputs
-        //                   self.interface.get_input_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-        //                   // outputs
-        //                   self.interface.get_output_signals().iter().map(|signal| format!("Presignal \"{}\"", signal.print_name_string())).collect::<Vec<String>>().join("; "),
-        //                   // apply body to ...
-        //                   self.interface.coda_print_body_name(),
-        //                   // inputs signals' names
-        //                   self.interface
-        //                       .signals
-        //                       .iter()
-        //                       .map(|signal| format!("\"{}\"", signal.print_name_string()))
-        //                       .collect::<Vec<String>>()
-        //                       .join(", "),
-        //                   // tuple of the output signals (as expressions)
-        //                   self.interface.signals.iter().filter_map(|signal| match signal.visibility {
-        //                       CodaVisibility::Output => Some(CodaExpr::Var(CodaVar::Variable(signal.print_name_string())).coda_print()),
-        //                       _ => None
-        //                   })
-        //                   .collect::<Vec<String>>()
-        //                   .join("; ")
-        //               ));
-        //           }
-
-        //     str
-        // }
     }
 }
 
@@ -553,13 +470,14 @@ impl CodaStmt {
                 )
             }
             CodaStmt::CreateCmp { subcomponent, body } => format!(
-                "{} (prefix ^ \"sc{}_\") ({}) @@\n  {}",
+                "{} Base.(prefix ^ \"sc{}_\") ({}) @@\n  {}",
                 subcomponent.interface.coda_print_body_name(),
                 subcomponent.component_index,
                 subcomponent
                     .interface
                     .signals
                     .iter()
+                    .filter(|signal| signal.visibility.isnt_intermediate())
                     .map(|signal| signal
                         .to_subcomponent_signal(
                             &subcomponent.component_name,
@@ -707,6 +625,40 @@ pub enum CodaVisibility {
     Intermediate,
 }
 
+impl CodaVisibility {
+    pub fn isnt_intermediate(&self) -> bool {
+        match self {
+            CodaVisibility::Input => true,
+            CodaVisibility::Output => true,
+            CodaVisibility::Intermediate => false,
+        }
+    }
+
+    /// Returns `true` if the coda visibility is [`Input`].
+    ///
+    /// [`Input`]: CodaVisibility::Input
+    #[must_use]
+    pub fn is_input(&self) -> bool {
+        matches!(self, Self::Input)
+    }
+
+    /// Returns `true` if the coda visibility is [`Output`].
+    ///
+    /// [`Output`]: CodaVisibility::Output
+    #[must_use]
+    pub fn is_output(&self) -> bool {
+        matches!(self, Self::Output)
+    }
+
+    /// Returns `true` if the coda visibility is [`Intermediate`].
+    ///
+    /// [`Intermediate`]: CodaVisibility::Intermediate
+    #[must_use]
+    pub fn is_intermediate(&self) -> bool {
+        matches!(self, Self::Intermediate)
+    }
+}
+
 impl FromStr for CodaVisibility {
     type Err = ();
 
@@ -731,7 +683,7 @@ impl FromStr for CodaVisibility {
 
 #[derive(Clone, Debug)]
 pub enum CodaVar {
-    Signal(String),
+    Signal(CodaTemplateSignal),
     Variable(CodaVariable),
     SubcomponentSignal(CodaComponentName, usize, String),
 }
@@ -745,12 +697,12 @@ pub struct CodaVariable {
 impl CodaVar {
     pub fn print_name_string(&self) -> String {
         match self {
-            CodaVar::Signal(name) => format!("\"{}\"", string_to_ocaml_name(name)),
+            CodaVar::Signal(signal) => format!("\"{}\"", string_to_ocaml_name(&signal.name)),
             CodaVar::Variable(CodaVariable { name, fresh_index }) => {
                 if *fresh_index == 0 {
-                    format!("(prefix ^ \"{}\")", string_to_ocaml_name(name))
+                    format!("Base.(prefix ^ \"{}\")", string_to_ocaml_name(name))
                 } else {
-                    format!("(prefix ^ \"{}_{}\")", string_to_ocaml_name(name), fresh_index)
+                    format!("Base.(prefix ^ \"{}_{}\")", string_to_ocaml_name(name), fresh_index)
                 }
             }
             CodaVar::SubcomponentSignal(subcomponent_name, subcomponent_index, name) => {
@@ -767,12 +719,19 @@ impl CodaVar {
     pub fn print_value(&self) -> String {
         // Example: xs[0][1] ~~> x_0_1
         match self {
-            CodaVar::Signal(name) => string_to_ocaml_name(name),
+            // CodaVar::Signal(signal) => string_to_ocaml_name(&signal.name),
+            CodaVar::Signal(signal) => {
+                if signal.visibility.isnt_intermediate() {
+                    string_to_ocaml_name(&signal.name)
+                } else {
+                    format!("Base.(prefix ^ \"{}\")", string_to_ocaml_name(&signal.name))
+                }
+            }
             CodaVar::Variable(CodaVariable { name, fresh_index }) => {
                 if *fresh_index == 0 {
-                    format!("(prefix ^ \"{}\")", string_to_ocaml_name(name))
+                    format!("Base.(prefix ^ \"{}\")", string_to_ocaml_name(name))
                 } else {
-                    format!("(prefix ^ \"{}_{}\")", string_to_ocaml_name(name), fresh_index)
+                    format!("Base.(prefix ^ \"{}_{}\")", string_to_ocaml_name(name), fresh_index)
                 }
             }
             CodaVar::SubcomponentSignal(subcomponent_name, subcomponent_index, name) => {

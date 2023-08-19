@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::BufWriter;
-use code_producers::coda_elements::{SummaryRoot, CodaCircuitData};
+use code_producers::coda_elements::CodaCircuitData;
+use code_producers::coda_elements::summary::SummaryRoot;
 use program_structure::program_archive::ProgramArchive;
 pub use crate::circuit_design::circuit::{Circuit, CompilationFlags};
 pub use crate::hir::very_concrete_program::VCP;
@@ -12,7 +13,8 @@ pub struct Config {
 }
 
 pub fn run_compiler(vcp: VCP, config: Config, version: &str) -> Result<Circuit, ()> {
-    let flags = CompilationFlags { main_inputs_log: config.produce_input_log, wat_flag: config.wat_flag };
+    let flags =
+        CompilationFlags { main_inputs_log: config.produce_input_log, wat_flag: config.wat_flag };
     let circuit = Circuit::build(vcp, flags, version);
     if config.debug_output {
         produce_debug_output(&circuit)?;
@@ -20,7 +22,12 @@ pub fn run_compiler(vcp: VCP, config: Config, version: &str) -> Result<Circuit, 
     Ok(circuit)
 }
 
-pub fn write_wasm(circuit: &Circuit, js_folder: &str, wasm_name: &str, file: &str) -> Result<(), ()> {
+pub fn write_wasm(
+    circuit: &Circuit,
+    js_folder: &str,
+    wasm_name: &str,
+    file: &str,
+) -> Result<(), ()> {
     use std::path::Path;
     if Path::new(js_folder).is_dir() {
         std::fs::remove_dir_all(js_folder).map_err(|_err| {})?;
@@ -31,7 +38,13 @@ pub fn write_wasm(circuit: &Circuit, js_folder: &str, wasm_name: &str, file: &st
     circuit.produce_wasm(js_folder, wasm_name, &mut writer)
 }
 
-pub fn write_c(circuit: &Circuit, c_folder: &str, c_run_name: &str, c_file: &str, dat_file: &str) -> Result<(), ()> {
+pub fn write_c(
+    circuit: &Circuit,
+    c_folder: &str,
+    c_run_name: &str,
+    c_file: &str,
+    dat_file: &str,
+) -> Result<(), ()> {
     use std::path::Path;
     if Path::new(c_folder).is_dir() {
         std::fs::remove_dir_all(c_folder).map_err(|_err| {})?;
@@ -44,28 +57,36 @@ pub fn write_c(circuit: &Circuit, c_folder: &str, c_run_name: &str, c_file: &str
     circuit.produce_c(c_folder, c_run_name, &mut c_file, &mut dat_file)
 }
 
-pub fn write_llvm_ir(circuit: &mut Circuit, program_archive: &ProgramArchive, llvm_folder: &str, llvm_file: &str, clean_llvm: bool) -> Result<(), ()> {
+pub fn write_llvm_ir(
+    circuit: &mut Circuit,
+    program_archive: &ProgramArchive,
+    llvm_folder: &str,
+    llvm_file: &str,
+    clean_llvm: bool,
+) -> Result<(), ()> {
     use std::path::Path;
     if clean_llvm {
         if Path::new(llvm_folder).is_dir() {
-            std::fs::remove_dir_all(llvm_folder).map_err(|err| {
-                eprintln!("Error removing {}: {}", llvm_folder, err)
-            })?;
+            std::fs::remove_dir_all(llvm_folder)
+                .map_err(|err| eprintln!("Error removing {}: {}", llvm_folder, err))?;
         }
-        std::fs::create_dir(llvm_folder).map_err(|err| {
-            eprintln!("Error creating directory {}: {}", llvm_folder, err)
-        })?;
+        std::fs::create_dir(llvm_folder)
+            .map_err(|err| eprintln!("Error creating directory {}: {}", llvm_folder, err))?;
     }
-    let _ = File::create(llvm_file).map_err(|err| {
-        eprintln!("Error creating the LLVM file {}: {}", llvm_file, err)
-    })?;
+    let _ = File::create(llvm_file)
+        .map_err(|err| eprintln!("Error creating the LLVM file {}: {}", llvm_file, err))?;
     circuit.produce_llvm_ir(program_archive, &llvm_file)
 }
 
-pub fn write_coda(circuit: &Circuit, program_archive: &ProgramArchive, summary: &SummaryRoot, coda_data: &CodaCircuitData, coda_file: &str) -> Result<(), ()> {
-    let file = &mut File::create(coda_file).map_err(|err| {
-        eprintln!("Error creating the Coda file {}: {}", coda_file, err)
-    })?;
+pub fn write_coda(
+    circuit: &Circuit,
+    program_archive: &ProgramArchive,
+    summary: &SummaryRoot,
+    coda_data: &CodaCircuitData,
+    coda_file: &str,
+) -> Result<(), ()> {
+    let file = &mut File::create(coda_file)
+        .map_err(|err| eprintln!("Error creating the Coda file {}: {}", coda_file, err))?;
     circuit.produce_coda(program_archive, summary, file)
 }
 

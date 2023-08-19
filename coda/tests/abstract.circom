@@ -1,7 +1,19 @@
 template AbstractCircuit() {
 	signal input x;
-	signal output y;
+	signal y;
+	signal output z;
+
 	y <== x;
+	z <== y;
+}
+
+template XXX() {
+	signal input xxx;
+	signal yyy;
+	signal output zzz;
+
+	yyy <== xxx;
+	zzz <== yyy;
 }
 
 template Main() {
@@ -10,8 +22,14 @@ template Main() {
 
 	component ac = AbstractCircuit();
 
+	component xxx = XXX();
+
 	ac.x <== a;
-	b <== ac.y;
+	// b <== ac.z;
+
+	xxx.xxx <== ac.z;
+
+	b <== xxx.zzz;
 }
 
 component main = Main();

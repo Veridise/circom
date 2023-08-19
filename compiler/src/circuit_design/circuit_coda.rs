@@ -4,6 +4,8 @@ use crate::intermediate_representation::Instruction;
 use crate::intermediate_representation::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::coda_elements::*;
+use code_producers::coda_elements::summary::SummaryRoot;
+use code_producers::coda_elements::summary::TemplateSummary;
 use program_structure::program_archive::ProgramArchive;
 use super::circuit::Circuit;
 
@@ -151,7 +153,7 @@ impl CompileCoda for Circuit {
 
             coda_template_interfaces.push(CodaTemplateInterface {
                 template_id,
-                template_name,
+                template_name: template_name.to_string(),
                 signals,
                 variables,
             });
@@ -458,7 +460,7 @@ fn compile_coda_var(
 
     match &address_type {
         AddressType::Variable => CodaVar::Variable(ctx.get_variable_name_as_coda_variable(i)),
-        AddressType::Signal => CodaVar::Signal(ctx.get_signal(i).name.clone()),
+        AddressType::Signal => CodaVar::Signal(ctx.get_signal(i).clone()),
         AddressType::SubcmpSignal {
             cmp_address,
             uniform_parallel_value: _,
@@ -482,7 +484,7 @@ fn compile_coda_stmt_abstract(ctx: &CompileCodaContext) -> CodaStmt {
     let mut stmt = CodaStmt::Output;
     for signal in ctx.template_interface.signals.iter().rev() {
         stmt = CodaStmt::Let {
-            var: signal.to_signal(),
+            var: signal.to_var(),
             val: Box::new(CodaExpr::Star),
             body: Box::new(stmt),
         }

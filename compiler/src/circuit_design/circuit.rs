@@ -9,6 +9,7 @@ use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::coda_elements::*;
+use code_producers::coda_elements::summary::SummaryRoot;
 use code_producers::llvm_elements::array_switch::load_array_switch;
 use code_producers::wasm_elements::*;
 use code_producers::llvm_elements::*;
