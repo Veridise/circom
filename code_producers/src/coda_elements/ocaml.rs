@@ -39,11 +39,45 @@ pub enum OcamlExpr {
     Def(OcamlName, Box<OcamlExpr>, Box<OcamlExpr>),
     App(OcamlName, Vec<Box<OcamlExpr>>),
     Op(OcamlOp, Vec<Box<OcamlExpr>>),
+    Branch(Box<OcamlExpr>, Box<OcamlExpr>, Box<OcamlExpr>),
+    Record(OcamlName, Vec<(OcamlName, Box<OcamlExpr>)>),
+    List(Vec<Box<OcamlExpr>>),
+    Tuple(Vec<Box<OcamlExpr>>),
     String(String),
     Number(String),
 }
 
 impl OcamlExpr {
+    pub fn none() -> OcamlExpr {
+        OcamlExpr::var(OcamlName::new("None"))
+    }
+    pub fn some(e: OcamlExpr) -> OcamlExpr {
+        OcamlExpr::app(OcamlName::new("Some"), vec![e])
+    }
+
+    pub fn record(r: OcamlName, fs: Vec<(OcamlName, OcamlExpr)>) -> OcamlExpr {
+        let mut fs_new = Vec::new();
+        for (x, e) in fs {
+            fs_new.push((x, Box::new(e)))
+        }
+        OcamlExpr::Record(r, fs_new)
+    }
+
+    pub fn list(es: Vec<OcamlExpr>) -> OcamlExpr {
+        let mut es_new = Vec::new();
+        for e in es {
+            es_new.push(Box::new(e))
+        }
+        OcamlExpr::List(es_new)
+    }
+    pub fn tuple(es: Vec<OcamlExpr>) -> OcamlExpr {
+        let mut es_new = Vec::new();
+        for e in es {
+            es_new.push(Box::new(e))
+        }
+        OcamlExpr::Tuple(es_new)
+    }
+
     pub fn string(str: &str) -> OcamlExpr {
         OcamlExpr::String(str.to_string())
     }
@@ -62,6 +96,10 @@ impl OcamlExpr {
             args_new.push(Box::new(arg))
         }
         OcamlExpr::App(name, args_new)
+    }
+
+    pub fn branch(cond: OcamlExpr, then_: OcamlExpr, else_: OcamlExpr) -> OcamlExpr {
+        OcamlExpr::Branch(Box::new(cond), Box::new(then_), Box::new(else_))
     }
 
     pub fn def(name: OcamlName, imp: OcamlExpr, body: OcamlExpr) -> OcamlExpr {
@@ -98,6 +136,30 @@ impl OcamlExpr {
             OcamlExpr::Op(o, es) => o.ocaml_compile(es.iter().map(|e| e.ocaml_compile()).collect()),
             OcamlExpr::String(str) => format!("\"{}\"", str),
             OcamlExpr::Number(str) => str.to_string(),
+            OcamlExpr::Branch(e, e1, e2) => format!(
+                "if {} then {} else {}",
+                e.ocaml_compile(),
+                e1.ocaml_compile(),
+                e2.ocaml_compile()
+            ),
+            OcamlExpr::Record(r, xs) => {
+                let mut str = String::new();
+                str.push_str(&r.ocaml_compile());
+                str.push_str("{");
+                for (x, e) in xs {
+                    str.push_str(&format!(" {} = {};", x.ocaml_compile(), e.ocaml_compile()))
+                }
+                str.push_str("}");
+                str
+            }
+            OcamlExpr::List(es) => {
+                let es_strs = es.iter().map(|e| e.ocaml_compile()).collect::<Vec<_>>().join("; ");
+                format!("[{}]", es_strs)
+            }
+            OcamlExpr::Tuple(es) => {
+                let es_strs = es.iter().map(|e| e.ocaml_compile()).collect::<Vec<_>>().join(", ");
+                format!("({})", es_strs)
+            }
         }
     }
 }
@@ -122,6 +184,10 @@ impl OcamlName {
             }
         }
         Self { string: str.to_string() }
+    }
+
+    pub fn sub(&self, sub_name: &OcamlName) -> Self {
+        OcamlName::new(&format!("{}.{}", self.string, sub_name.string))
     }
 
     pub fn ocaml_compile(&self) -> String {
