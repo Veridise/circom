@@ -589,10 +589,7 @@ pub fn create_br<'a>(producer: &dyn LLVMIRProducer<'a>, bb: BasicBlock<'a>) -> A
     producer.llvm().builder.build_unconditional_branch(bb).as_any_value_enum()
 }
 
-pub fn find_function<'a>(
-    producer: &dyn LLVMIRProducer<'a>,
-    name: &str,
-) -> FunctionValue<'a> {
+pub fn find_function<'a>(producer: &dyn LLVMIRProducer<'a>, name: &str) -> FunctionValue<'a> {
     producer
         .llvm()
         .module
@@ -772,7 +769,7 @@ pub fn pointer_cast_with_name<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     from: PointerValue<'a>,
     to: PointerType<'a>,
-    name: &str
+    name: &str,
 ) -> PointerValue<'a> {
     producer.builder().build_pointer_cast(from, to, name)
 }

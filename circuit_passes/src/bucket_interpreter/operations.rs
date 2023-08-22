@@ -27,13 +27,9 @@ pub fn compute_operation(bucket: &ComputeBucket, stack: &Vec<Value>, p: &BigInt)
         OperatorType::BitOr => resolve_operation(value::bit_or_value, p, &stack),
         OperatorType::BitAnd => resolve_operation(value::bit_and_value, p, &stack),
         OperatorType::BitXor => resolve_operation(value::bit_xor_value, p, &stack),
-        OperatorType::PrefixSub => {
-            value::prefix_sub(&stack[0], p)
-        }
+        OperatorType::PrefixSub => value::prefix_sub(&stack[0], p),
         OperatorType::BoolNot => KnownU32((!stack[0].to_bool(p)).into()),
-        OperatorType::Complement => {
-            value::complement(&stack[0], p)
-        }
+        OperatorType::Complement => value::complement(&stack[0], p),
         OperatorType::ToAddress => value::to_address(&stack[0]),
         OperatorType::MulAddress => stack.iter().fold(KnownU32(1), value::mul_address),
         OperatorType::AddAddress => stack.iter().fold(KnownU32(0), value::add_address),
@@ -50,7 +46,7 @@ pub fn compute_offset(indexes: &Vec<usize>, lengths: &Vec<usize>) -> usize {
     }
     let mut total_offset = indexes.last().copied().expect("must contain some indexes!");
     let mut size_multiplier = lengths.last().copied().expect("must contain some array lengths!");
-    for i in (0..lengths.len()-1).rev() {
+    for i in (0..lengths.len() - 1).rev() {
         total_offset += indexes[i] * size_multiplier;
         size_multiplier *= lengths[i];
     }
@@ -84,7 +80,7 @@ mod test {
     fn test_increments() {
         let lengths = vec![5, 7];
         for i in 0..lengths[0] {
-            for j in 0..lengths[1]-1 {
+            for j in 0..lengths[1] - 1 {
                 let offset = compute_offset(&vec![i, j], &lengths);
                 let next_offset = compute_offset(&vec![i, j + 1], &lengths);
                 assert_eq!(offset + 1, next_offset);

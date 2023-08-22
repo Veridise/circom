@@ -1,5 +1,7 @@
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use crate::intermediate_representation::{BucketId, Instruction, InstructionList, InstructionPointer, new_id, SExp, ToSExp, UpdateId};
+use crate::intermediate_representation::{
+    BucketId, Instruction, InstructionList, InstructionPointer, new_id, SExp, ToSExp, UpdateId,
+};
 use crate::intermediate_representation::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
 use crate::translating_traits::WriteLLVMIR;
 
@@ -10,7 +12,7 @@ pub struct BlockBucket {
     pub line: usize,
     pub message_id: usize,
     pub body: InstructionList,
-    pub n_iters: usize
+    pub n_iters: usize,
 }
 
 impl IntoInstruction for BlockBucket {
@@ -46,7 +48,10 @@ impl ToString for BlockBucket {
             body = format!("{} - {};\n", body, i.to_string());
         }
         body = format!("{}]", body);
-        format!("BLOCK(line:{},template_id:{},n_iterations:{},body:{})", line, template_id, self.n_iters, body)
+        format!(
+            "BLOCK(line:{},template_id:{},n_iterations:{},body:{})",
+            line, template_id, self.n_iters, body
+        )
     }
 }
 
@@ -57,7 +62,7 @@ impl ToSExp for BlockBucket {
             SExp::Atom(format!("line:{}", self.line)),
             SExp::Atom(format!("template_id:{}", self.message_id)),
             SExp::Atom(format!("n_iterations:{}", self.n_iters)),
-            SExp::List(self.body.iter().map(|i| i.to_sexp()).collect())
+            SExp::List(self.body.iter().map(|i| i.to_sexp()).collect()),
         ])
     }
 }
@@ -72,7 +77,10 @@ impl UpdateId for BlockBucket {
 }
 
 impl WriteLLVMIR for BlockBucket {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a, 'b>(
+        &self,
+        producer: &'b dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
         let mut last = None;

@@ -1,5 +1,7 @@
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use crate::intermediate_representation::{BucketId, Instruction, InstructionPointer, new_id, SExp, ToSExp, UpdateId};
+use crate::intermediate_representation::{
+    BucketId, Instruction, InstructionPointer, new_id, SExp, ToSExp, UpdateId,
+};
 use crate::intermediate_representation::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
 use crate::translating_traits::WriteLLVMIR;
 
@@ -51,7 +53,10 @@ impl UpdateId for NopBucket {
 }
 
 impl WriteLLVMIR for NopBucket {
-    fn produce_llvm_ir<'a, 'b>(&self, _producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a, 'b>(
+        &self,
+        _producer: &'b dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>> {
         None
     }
 }
