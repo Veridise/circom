@@ -13,21 +13,20 @@ use crate::passes::memory::PassMemory;
 
 pub struct LoopUnrollPass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    memory: RefCell<PassMemory>,
+    memory: PassMemory,
     replacements: RefCell<BTreeMap<BucketId, InstructionPointer>>,
 }
 
 impl LoopUnrollPass {
     pub fn new(prime: &String) -> Self {
         LoopUnrollPass {
-            memory: PassMemory::new_cell(prime, String::from(""), Default::default()),
+            memory: PassMemory::new(prime, String::from(""), Default::default()),
             replacements: Default::default(),
         }
     }
 
     fn try_unroll_loop(&self, bucket: &LoopBucket, env: &Env) -> (Option<InstructionList>, usize) {
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
+        let interpreter = self.memory.build_interpreter(self);
         let mut block_body = vec![];
         let mut cond_result = Some(true);
         let mut env = env.clone();
@@ -55,8 +54,7 @@ impl LoopUnrollPass {
     // Will take the unrolled loop and interpretate it
     // checking if new loop buckets appear
     fn continue_inside(&self, bucket: &BlockBucket, env: &Env) {
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
+        let interpreter = self.memory.build_interpreter(self);
         interpreter.execute_block_bucket(bucket, env.clone(), true);
     }
 }
@@ -149,16 +147,16 @@ impl CircuitTransformationPass for LoopUnrollPass {
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.borrow_mut().fill_from_circuit(circuit);
+        self.memory.fill_from_circuit(circuit);
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.borrow_mut().set_scope(template);
-        self.memory.borrow().run_template(self, template);
+        self.memory.set_scope(template);
+        self.memory.run_template(self, template);
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.borrow().constant_fields.clone()
+        self.memory.get_field_constants_clone()
     }
 
     fn transform_loop_bucket(&self, bucket: &LoopBucket) -> InstructionPointer {

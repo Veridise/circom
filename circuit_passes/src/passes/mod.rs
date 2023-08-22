@@ -14,12 +14,12 @@ use crate::passes::checks::assert_unique_ids_in_circuit;
 
 mod conditional_flattening;
 mod loop_unroll;
-mod memory;
 mod simplification;
 mod deterministic_subcomponent_invocation;
 mod mapped_to_indexed;
 mod unknown_index_sanitization;
 mod checks;
+pub(crate) mod memory;
 
 macro_rules! pre_hook {
     ($name: ident, $bucket_ty: ty) => {

@@ -12,7 +12,7 @@ use crate::passes::memory::PassMemory;
 
 pub struct SimplificationPass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    memory: RefCell<PassMemory>,
+    memory: PassMemory,
     compute_replacements: RefCell<BTreeMap<ComputeBucket, Value>>,
     call_replacements: RefCell<BTreeMap<CallBucket, Value>>,
 }
@@ -20,7 +20,7 @@ pub struct SimplificationPass {
 impl SimplificationPass {
     pub fn new(prime: &String) -> Self {
         SimplificationPass {
-            memory: PassMemory::new_cell(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, "".to_string(), Default::default()),
             compute_replacements: Default::default(),
             call_replacements: Default::default(),
         }
@@ -42,8 +42,7 @@ impl InterpreterObserver for SimplificationPass {
 
     fn on_compute_bucket(&self, bucket: &ComputeBucket, env: &Env) -> bool {
         let env = env.clone();
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
+        let interpreter = self.memory.build_interpreter(self);
         let (eval, _) = interpreter.execute_compute_bucket(bucket, env, false);
         let eval = eval.expect("Compute bucket must produce a value!");
         if !eval.is_unknown() {
@@ -83,8 +82,7 @@ impl InterpreterObserver for SimplificationPass {
 
     fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> bool {
         let env = env.clone();
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
+        let interpreter = self.memory.build_interpreter(self);
         let (eval, _) = interpreter.execute_call_bucket(bucket, env, false);
         if let Some(eval) = eval {
             // Call buckets may not return a value directly
@@ -123,13 +121,12 @@ impl CircuitTransformationPass for SimplificationPass {
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.borrow().constant_fields.clone()
+        self.memory.get_field_constants_clone()
     }
 
     fn transform_compute_bucket(&self, bucket: &ComputeBucket) -> InstructionPointer {
         if let Some(value) = self.compute_replacements.borrow().get(&bucket) {
-            let constant_fields = &mut self.memory.borrow_mut().constant_fields;
-            return value.to_value_bucket(constant_fields).allocate();
+            return value.to_value_bucket(&self.memory).allocate();
         }
         ComputeBucket {
             id: new_id(),
@@ -145,8 +142,7 @@ impl CircuitTransformationPass for SimplificationPass {
 
     fn transform_call_bucket(&self, bucket: &CallBucket) -> InstructionPointer {
         if let Some(value) = self.call_replacements.borrow().get(&bucket) {
-            let constant_fields = &mut self.memory.borrow_mut().constant_fields;
-            return value.to_value_bucket(constant_fields).allocate();
+            return value.to_value_bucket(&self.memory).allocate();
         }
         CallBucket {
             id: new_id(),
@@ -163,11 +159,11 @@ impl CircuitTransformationPass for SimplificationPass {
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.borrow_mut().fill_from_circuit(circuit);
+        self.memory.fill_from_circuit(circuit);
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.borrow_mut().set_scope(template);
-        self.memory.borrow().run_template(self, template);
+        self.memory.set_scope(template);
+        self.memory.run_template(self, template);
     }
 }

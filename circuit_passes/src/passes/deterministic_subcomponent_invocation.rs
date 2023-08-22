@@ -11,14 +11,14 @@ use crate::passes::memory::PassMemory;
 
 pub struct DeterministicSubCmpInvokePass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    memory: RefCell<PassMemory>,
+    memory: PassMemory,
     replacements: RefCell<BTreeMap<AddressType, StatusInput>>,
 }
 
 impl DeterministicSubCmpInvokePass {
     pub fn new(prime: &String) -> Self {
         DeterministicSubCmpInvokePass {
-            memory: PassMemory::new_cell(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, "".to_string(), Default::default()),
             replacements: Default::default(),
         }
     }
@@ -35,8 +35,7 @@ impl DeterministicSubCmpInvokePass {
         } = address_type
         {
             let env = env.clone();
-            let mem = self.memory.borrow();
-            let interpreter = mem.build_interpreter(self);
+            let interpreter = self.memory.build_interpreter(self);
             let (addr, env) = interpreter.execute_instruction(cmp_address, env, false);
             let addr = addr
                 .expect("cmp_address instruction in SubcmpSignal must produce a value!")
@@ -130,16 +129,16 @@ impl CircuitTransformationPass for DeterministicSubCmpInvokePass {
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.borrow_mut().fill_from_circuit(circuit);
+        self.memory.fill_from_circuit(circuit);
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.borrow_mut().set_scope(template);
-        self.memory.borrow().run_template(self, template);
+        self.memory.set_scope(template);
+        self.memory.run_template(self, template);
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.borrow().constant_fields.clone()
+        self.memory.get_field_constants_clone()
     }
 
     fn transform_address_type(&self, address: &AddressType) -> AddressType {

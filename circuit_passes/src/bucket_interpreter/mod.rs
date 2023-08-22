@@ -4,8 +4,6 @@ pub mod observer;
 pub(crate) mod operations;
 
 use circom_algebra::modular_arithmetic;
-use code_producers::components::TemplateInstanceIOMap;
-use code_producers::llvm_elements::IndexMapping;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
@@ -15,17 +13,13 @@ use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
+use crate::passes::memory::PassMemory;
 
 pub struct BucketInterpreter<'a> {
-    _scope: &'a String,
-    _prime: &'a String,
-    pub constant_fields: &'a Vec<String>,
     pub(crate) observer: &'a dyn InterpreterObserver,
-    io_map: &'a TemplateInstanceIOMap,
+    mem: &'a PassMemory,
+    scope: String,
     p: BigInt,
-    signal_index_mapping: &'a IndexMapping,
-    variables_index_mapping: &'a IndexMapping,
-    component_addr_index_mapping: &'a IndexMapping,
 }
 
 pub type R<'a> = (Option<Value>, Env<'a>);
@@ -47,26 +41,12 @@ impl JoinSemiLattice for R<'_> {
 }
 
 impl<'a> BucketInterpreter<'a> {
-    pub fn init(
-        scope: &'a String,
-        prime: &'a String,
-        constant_fields: &'a Vec<String>,
-        observer: &'a dyn InterpreterObserver,
-        io_map: &'a TemplateInstanceIOMap,
-        signal_index_mapping: &'a IndexMapping,
-        variables_index_mapping: &'a IndexMapping,
-        component_addr_index_mapping: &'a IndexMapping,
-    ) -> Self {
+    pub fn init(observer: &'a dyn InterpreterObserver, mem: &'a PassMemory, scope: String) -> Self {
         BucketInterpreter {
-            _scope: scope,
-            _prime: prime,
-            constant_fields,
             observer,
-            io_map,
-            p: UsefulConstants::new(prime).get_p().clone(),
-            signal_index_mapping,
-            variables_index_mapping,
-            component_addr_index_mapping,
+            mem,
+            scope: scope.clone(),
+            p: UsefulConstants::new(mem.get_prime()).get_p().clone(),
         }
     }
 
@@ -91,33 +71,19 @@ impl<'a> BucketInterpreter<'a> {
         match bucket.dest_address_type {
             AddressType::Variable => {
                 let idx = self.get_id_from_indexed_location(&bucket.dest, env);
-                let indices = self
-                    .variables_index_mapping
-                    .get(&idx)
-                    .expect(
-                        format!(
-                            "Could not get idx {idx} from mapping. Min key {:?}. Max key {:?}",
-                            self.variables_index_mapping.keys().min(),
-                            self.variables_index_mapping.keys().max()
-                        )
-                        .as_str(),
-                    )
-                    .clone();
-                for index in indices {
+                for index in self.mem.get_variables_index_mapping(&self.scope, &idx) {
                     vars.push(index);
                 }
             }
             AddressType::Signal => {
                 let idx = self.get_id_from_indexed_location(&bucket.dest, env);
-                let indices = self.signal_index_mapping[&idx].clone();
-                for index in indices {
+                for index in self.mem.get_signal_index_mapping(&self.scope, &idx) {
                     signals.push(index);
                 }
             }
             AddressType::SubcmpSignal { .. } => {
                 let idx = self.get_id_from_indexed_location(&bucket.dest, env);
-                let indices = self.component_addr_index_mapping[&idx].clone();
-                for index in indices {
+                for index in self.mem.get_component_addr_index_mapping(&self.scope, &idx) {
                     subcmps.push(index);
                 }
             }
@@ -219,14 +185,14 @@ impl<'a> BucketInterpreter<'a> {
     ) -> R<'env> {
         (
             Some(match bucket.parse_as {
+                ValueType::U32 => KnownU32(bucket.value),
                 ValueType::BigInt => {
-                    let constant = &self.constant_fields[bucket.value];
+                    let constant = self.mem.get_field_constant(bucket.value);
                     KnownBigInt(
                         BigInt::parse_bytes(constant.as_bytes(), 10)
                             .expect(format!("Cannot parse constant {}", constant).as_str()),
                     )
                 }
-                ValueType::U32 => KnownU32(bucket.value),
             }),
             env,
         )
@@ -289,7 +255,7 @@ impl<'a> BucketInterpreter<'a> {
                     LocationRule::Mapped { signal_code, indexes } => {
                         let mut acc_env = env;
                         let io_def =
-                            &self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code];
+                            self.mem.get_iodef(&acc_env.get_subcmp_template_id(addr), signal_code);
                         let map_access = io_def.offset;
                         if indexes.len() > 0 {
                             let mut indexes_values = vec![];
@@ -381,7 +347,7 @@ impl<'a> BucketInterpreter<'a> {
                         let mut acc_env = env;
                         let name = Some(acc_env.get_subcmp_name(addr).clone());
                         let io_def =
-                            &self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code];
+                            self.mem.get_iodef(&acc_env.get_subcmp_template_id(addr), signal_code);
                         let map_access = io_def.offset;
                         if indexes.len() > 0 {
                             let mut indexes_values = vec![];

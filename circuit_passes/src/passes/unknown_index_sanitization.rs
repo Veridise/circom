@@ -83,7 +83,7 @@ impl<'a> ZeroingInterpreter<'a> {
 
 pub struct UnknownIndexSanitizationPass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    memory: RefCell<PassMemory>,
+    memory: PassMemory,
     load_replacements: RefCell<BTreeMap<LoadBucket, Range<usize>>>,
     store_replacements: RefCell<BTreeMap<StoreBucket, Range<usize>>>,
 }
@@ -94,7 +94,7 @@ pub struct UnknownIndexSanitizationPass {
 impl UnknownIndexSanitizationPass {
     pub fn new(prime: &String) -> Self {
         UnknownIndexSanitizationPass {
-            memory: PassMemory::new_cell(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, "".to_string(), Default::default()),
             load_replacements: Default::default(),
             store_replacements: Default::default(),
         }
@@ -106,16 +106,6 @@ impl UnknownIndexSanitizationPass {
         location: &LocationRule,
         env: &Env,
     ) -> Range<usize> {
-        let mem = self.memory.borrow();
-        let interpreter = ZeroingInterpreter::init(&mem.prime, &mem.constant_fields);
-        let current_scope = &mem.current_scope;
-
-        let mapping = match address {
-            AddressType::Variable => &mem.variables_index_mapping[current_scope],
-            AddressType::Signal => &mem.signal_index_mapping[current_scope],
-            AddressType::SubcmpSignal { .. } => &mem.component_addr_index_mapping[current_scope],
-        };
-
         /*
          * We assume locations are of the form:
          *      (base_offset + (mul_offset * UNKNOWN))
@@ -126,17 +116,25 @@ impl UnknownIndexSanitizationPass {
          * a similar pattern that is also handled here.
          */
         match location {
+            LocationRule::Mapped { .. } => unreachable!(),
             LocationRule::Indexed { location, .. } => {
+                let mem = &self.memory;
+                let constant_fields = mem.get_field_constants_clone();
+                let interpreter = ZeroingInterpreter::init(mem.get_prime(), &constant_fields);
                 let (res, _) = interpreter.execute_instruction(location, env.clone());
 
                 let offset = match res {
                     Some(KnownU32(base)) => base,
                     _ => unreachable!(),
                 };
-
-                mapping[&offset].clone()
+                match address {
+                    AddressType::Variable => mem.get_current_scope_variables_index_mapping(&offset),
+                    AddressType::Signal => mem.get_current_scope_signal_index_mapping(&offset),
+                    AddressType::SubcmpSignal { .. } => {
+                        mem.get_current_scope_component_addr_index_mapping(&offset)
+                    }
+                }
             }
-            LocationRule::Mapped { .. } => unreachable!(),
         }
     }
 
@@ -146,7 +144,7 @@ impl UnknownIndexSanitizationPass {
         location: &LocationRule,
         env: &Env,
     ) -> bool {
-        let mem = self.memory.borrow();
+        let mem = &self.memory;
         let interpreter = mem.build_interpreter(self);
 
         let resolved_addr = match location {
@@ -291,15 +289,15 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass {
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.borrow().constant_fields.clone()
+        self.memory.get_field_constants_clone()
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.borrow_mut().fill_from_circuit(circuit);
+        self.memory.fill_from_circuit(circuit);
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.borrow_mut().set_scope(template);
-        self.memory.borrow().run_template(self, template);
+        self.memory.set_scope(template);
+        self.memory.run_template(self, template);
     }
 }

@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use code_producers::components::TemplateInstanceIOMap;
+use std::ops::Range;
+use code_producers::components::{TemplateInstanceIOMap, IODef};
 use code_producers::llvm_elements::IndexMapping;
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
@@ -11,47 +12,46 @@ use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 
 pub struct PassMemory {
-    pub templates_library: TemplatesLibrary,
-    pub functions_library: FunctionsLibrary,
-    pub prime: String,
-    pub constant_fields: Vec<String>,
-    pub current_scope: String,
-    pub io_map: TemplateInstanceIOMap,
-    pub signal_index_mapping: HashMap<String, IndexMapping>,
-    pub variables_index_mapping: HashMap<String, IndexMapping>,
-    pub component_addr_index_mapping: HashMap<String, IndexMapping>,
+    // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
+    templates_library: RefCell<TemplatesLibrary>,
+    functions_library: RefCell<FunctionsLibrary>,
+    constant_fields: RefCell<Vec<String>>,
+    current_scope: RefCell<String>,
+    io_map: RefCell<TemplateInstanceIOMap>,
+    signal_index_mapping: RefCell<HashMap<String, IndexMapping>>,
+    variables_index_mapping: RefCell<HashMap<String, IndexMapping>>,
+    component_addr_index_mapping: RefCell<HashMap<String, IndexMapping>>,
+    prime: String,
 }
 
 impl PassMemory {
-    pub fn new_cell(
-        prime: &String,
-        current_scope: String,
-        io_map: TemplateInstanceIOMap,
-    ) -> RefCell<Self> {
-        RefCell::new(PassMemory {
+    pub fn new(prime: &String, current_scope: String, io_map: TemplateInstanceIOMap) -> Self {
+        PassMemory {
+            prime: prime.to_string(),
+            current_scope: RefCell::new(current_scope),
+            io_map: RefCell::new(io_map),
+            constant_fields: Default::default(),
             templates_library: Default::default(),
             functions_library: Default::default(),
-            prime: prime.to_string(),
-            constant_fields: vec![],
-            current_scope,
-            io_map,
             signal_index_mapping: Default::default(),
             variables_index_mapping: Default::default(),
             component_addr_index_mapping: Default::default(),
-        })
+        }
     }
 
-    pub fn set_scope(&mut self, template: &TemplateCode) {
-        self.current_scope = template.header.clone();
+    pub fn set_scope(&self, template: &TemplateCode) {
+        self.current_scope.replace(template.header.clone());
     }
 
     pub fn run_template(&self, observer: &dyn InterpreterObserver, template: &TemplateCode) {
-        assert!(!self.current_scope.is_empty());
+        assert!(!self.current_scope.borrow().is_empty());
         if cfg!(debug_assertions) {
-            println!("Running template {}", self.current_scope);
+            println!("Running template {}", self.current_scope.borrow());
         }
         let interpreter = self.build_interpreter(observer);
-        let env = Env::new(&self.templates_library, &self.functions_library, self);
+        let lib_t = self.templates_library.borrow();
+        let lib_f = self.functions_library.borrow();
+        let env = Env::new(&lib_t, &lib_f, self);
         interpreter.execute_instructions(&template.body, env, true);
     }
 
@@ -59,46 +59,86 @@ impl PassMemory {
         &'a self,
         observer: &'a dyn InterpreterObserver,
     ) -> BucketInterpreter {
-        self.build_interpreter_with_scope(observer, &self.current_scope)
+        self.build_interpreter_with_scope(observer, self.current_scope.borrow().to_string())
     }
 
     fn build_interpreter_with_scope<'a>(
         &'a self,
         observer: &'a dyn InterpreterObserver,
-        scope: &'a String,
+        scope: String,
     ) -> BucketInterpreter {
-        BucketInterpreter::init(
-            scope,
-            &self.prime,
-            &self.constant_fields,
-            observer,
-            &self.io_map,
-            &self.signal_index_mapping[scope],
-            &self.variables_index_mapping[scope],
-            &self.component_addr_index_mapping[scope],
-        )
+        BucketInterpreter::init(observer, self, scope)
     }
 
-    pub fn add_template(&mut self, template: &TemplateCode) {
-        self.templates_library.insert(template.header.clone(), (*template).clone());
+    pub fn add_template(&self, template: &TemplateCode) {
+        self.templates_library.borrow_mut().insert(template.header.clone(), (*template).clone());
     }
 
-    pub fn add_function(&mut self, function: &FunctionCode) {
-        self.functions_library.insert(function.header.clone(), (*function).clone());
+    pub fn add_function(&self, function: &FunctionCode) {
+        self.functions_library.borrow_mut().insert(function.header.clone(), (*function).clone());
     }
 
-    pub fn fill_from_circuit(&mut self, circuit: &Circuit) {
+    pub fn fill_from_circuit(&self, circuit: &Circuit) {
         for template in &circuit.templates {
             self.add_template(template);
         }
         for function in &circuit.functions {
             self.add_function(function);
         }
-        self.constant_fields = circuit.llvm_data.field_tracking.clone();
-        self.io_map = circuit.llvm_data.io_map.clone();
-        self.variables_index_mapping = circuit.llvm_data.variable_index_mapping.clone();
-        self.signal_index_mapping = circuit.llvm_data.signal_index_mapping.clone();
-        self.component_addr_index_mapping = circuit.llvm_data.component_index_mapping.clone();
+        self.constant_fields.replace(circuit.llvm_data.field_tracking.clone());
+        self.io_map.replace(circuit.llvm_data.io_map.clone());
+        self.variables_index_mapping.replace(circuit.llvm_data.variable_index_mapping.clone());
+        self.signal_index_mapping.replace(circuit.llvm_data.signal_index_mapping.clone());
+        self.component_addr_index_mapping
+            .replace(circuit.llvm_data.component_index_mapping.clone());
+    }
+
+    pub fn get_prime(&self) -> &String {
+        &self.prime
+    }
+
+    pub fn get_field_constant(&self, index: usize) -> String {
+        self.constant_fields.borrow()[index].clone()
+    }
+
+    pub fn get_field_constants_clone(&self) -> Vec<String> {
+        self.constant_fields.borrow().clone()
+    }
+
+    /// Stores a new constant and returns its index
+    pub fn add_field_constant(&self, new_value: String) -> usize {
+        let mut temp = self.constant_fields.borrow_mut();
+        let idx = temp.len();
+        temp.push(new_value);
+        idx
+    }
+
+    pub fn get_iodef(&self, template_id: &usize, signal_code: &usize) -> IODef {
+        self.io_map.borrow()[template_id][*signal_code].clone()
+    }
+
+    pub fn get_signal_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
+        self.signal_index_mapping.borrow()[scope][index].clone()
+    }
+
+    pub fn get_current_scope_signal_index_mapping(&self, index: &usize) -> Range<usize> {
+        self.get_signal_index_mapping(&self.current_scope.borrow(), index)
+    }
+
+    pub fn get_variables_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
+        self.variables_index_mapping.borrow()[scope][index].clone()
+    }
+
+    pub fn get_current_scope_variables_index_mapping(&self, index: &usize) -> Range<usize> {
+        self.get_variables_index_mapping(&self.current_scope.borrow(), index)
+    }
+
+    pub fn get_component_addr_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
+        self.component_addr_index_mapping.borrow()[scope][index].clone()
+    }
+
+    pub fn get_current_scope_component_addr_index_mapping(&self, index: &usize) -> Range<usize> {
+        self.get_component_addr_index_mapping(&self.current_scope.borrow(), index)
     }
 }
 
@@ -108,6 +148,6 @@ impl ContextSwitcher for PassMemory {
         interpreter: &'a BucketInterpreter<'a>,
         scope: &'a String,
     ) -> BucketInterpreter<'a> {
-        self.build_interpreter_with_scope(interpreter.observer, scope)
+        self.build_interpreter_with_scope(interpreter.observer, scope.to_string())
     }
 }

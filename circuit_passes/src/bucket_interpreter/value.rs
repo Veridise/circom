@@ -4,8 +4,8 @@ use compiler::num_bigint::BigInt;
 use compiler::num_traits::ToPrimitive;
 use compiler::intermediate_representation::new_id;
 use circom_algebra::modular_arithmetic;
-use circom_algebra::modular_arithmetic::ArithmeticError;
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
+use crate::passes::memory::PassMemory;
 
 pub trait JoinSemiLattice {
     fn join(&self, other: &Self) -> Self;
@@ -84,7 +84,7 @@ impl Value {
         }
     }
 
-    pub fn to_value_bucket(&self, constant_fields: &mut Vec<String>) -> ValueBucket {
+    pub fn to_value_bucket(&self, mem: &PassMemory) -> ValueBucket {
         match self {
             Unknown => panic!("Can't create a value bucket from an unknown value!"),
             KnownU32(n) => ValueBucket {
@@ -96,20 +96,15 @@ impl Value {
                 op_aux_no: 0,
                 value: *n,
             },
-            KnownBigInt(n) => {
-                let str_repr = n.to_string();
-                let idx = constant_fields.len();
-                constant_fields.push(str_repr);
-                ValueBucket {
-                    id: new_id(),
-                    source_file_id: None,
-                    line: 0,
-                    message_id: 0,
-                    parse_as: ValueType::BigInt,
-                    op_aux_no: 0,
-                    value: idx,
-                }
-            }
+            KnownBigInt(n) => ValueBucket {
+                id: new_id(),
+                source_file_id: None,
+                line: 0,
+                message_id: 0,
+                parse_as: ValueType::BigInt,
+                op_aux_no: 0,
+                value: mem.add_field_constant(n.to_string()),
+            },
         }
     }
 }
@@ -142,7 +137,7 @@ fn wrap_op_result(
     rhs: &Value,
     field: &BigInt,
     u32_op: impl Fn(&usize, &usize) -> usize,
-    bigint_op: impl Fn(&BigInt, &BigInt, &BigInt) -> Result<BigInt, ArithmeticError>,
+    bigint_op: impl Fn(&BigInt, &BigInt, &BigInt) -> Result<BigInt, modular_arithmetic::ArithmeticError>,
 ) -> Value {
     match (lhs, rhs) {
         (Unknown, _) => Unknown,

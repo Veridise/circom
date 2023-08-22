@@ -13,14 +13,14 @@ use crate::passes::memory::PassMemory;
 
 pub struct MappedToIndexedPass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    memory: RefCell<PassMemory>,
+    memory: PassMemory,
     replacements: RefCell<BTreeMap<LocationRule, LocationRule>>,
 }
 
 impl MappedToIndexedPass {
     pub fn new(prime: &String) -> Self {
         MappedToIndexedPass {
-            memory: PassMemory::new_cell(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, "".to_string(), Default::default()),
             replacements: Default::default(),
         }
     }
@@ -32,8 +32,7 @@ impl MappedToIndexedPass {
         signal_code: usize,
         env: &Env,
     ) -> LocationRule {
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
+        let interpreter = self.memory.build_interpreter(self);
 
         let (resolved_addr, acc_env) =
             interpreter.execute_instruction(cmp_address, env.clone(), false);
@@ -44,7 +43,8 @@ impl MappedToIndexedPass {
 
         let mut acc_env = acc_env;
         let name = acc_env.get_subcmp_name(resolved_addr).clone();
-        let io_def = &mem.io_map[&acc_env.get_subcmp_template_id(resolved_addr)][signal_code];
+        let io_def =
+            self.memory.get_iodef(&acc_env.get_subcmp_template_id(resolved_addr), &signal_code);
         let map_access = io_def.offset;
         if indexes.len() > 0 {
             let mut indexes_values = vec![];
@@ -54,15 +54,13 @@ impl MappedToIndexedPass {
                 acc_env = new_env;
             }
             let offset = compute_offset(&indexes_values, &io_def.lengths);
-            let mut unused = vec![];
             LocationRule::Indexed {
-                location: KnownU32(map_access + offset).to_value_bucket(&mut unused).allocate(),
+                location: KnownU32(map_access + offset).to_value_bucket(&self.memory).allocate(),
                 template_header: Some(name),
             }
         } else {
-            let mut unused = vec![];
             LocationRule::Indexed {
-                location: KnownU32(map_access).to_value_bucket(&mut unused).allocate(),
+                location: KnownU32(map_access).to_value_bucket(&self.memory).allocate(),
                 template_header: Some(name),
             }
         }
@@ -172,7 +170,7 @@ impl CircuitTransformationPass for MappedToIndexedPass {
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.borrow().constant_fields.clone()
+        self.memory.get_field_constants_clone()
     }
 
     /*
@@ -196,11 +194,11 @@ impl CircuitTransformationPass for MappedToIndexedPass {
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.borrow_mut().fill_from_circuit(circuit);
+        self.memory.fill_from_circuit(circuit);
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.borrow_mut().set_scope(template);
-        self.memory.borrow().run_template(self, template);
+        self.memory.set_scope(template);
+        self.memory.run_template(self, template);
     }
 }

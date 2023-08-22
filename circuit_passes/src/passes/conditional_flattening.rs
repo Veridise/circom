@@ -11,14 +11,14 @@ use crate::passes::memory::PassMemory;
 
 pub struct ConditionalFlattening {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    memory: RefCell<PassMemory>,
+    memory: PassMemory,
     replacements: RefCell<BTreeMap<BranchBucket, bool>>,
 }
 
 impl ConditionalFlattening {
     pub fn new(prime: &String) -> Self {
         ConditionalFlattening {
-            memory: PassMemory::new_cell(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, "".to_string(), Default::default()),
             replacements: Default::default(),
         }
     }
@@ -74,8 +74,7 @@ impl InterpreterObserver for ConditionalFlattening {
     }
 
     fn on_branch_bucket(&self, bucket: &BranchBucket, env: &Env) -> bool {
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
+        let interpreter = self.memory.build_interpreter(self);
         let (_, cond_result, _) = interpreter.execute_conditional_bucket(
             &bucket.cond,
             &bucket.if_branch,
@@ -112,16 +111,16 @@ impl CircuitTransformationPass for ConditionalFlattening {
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.borrow_mut().fill_from_circuit(circuit);
+        self.memory.fill_from_circuit(circuit);
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.borrow_mut().set_scope(template);
-        self.memory.borrow().run_template(self, template);
+        self.memory.set_scope(template);
+        self.memory.run_template(self, template);
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.borrow().constant_fields.clone()
+        self.memory.get_field_constants_clone()
     }
 
     fn transform_branch_bucket(&self, bucket: &BranchBucket) -> InstructionPointer {
