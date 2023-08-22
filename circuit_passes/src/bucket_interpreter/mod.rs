@@ -435,11 +435,7 @@ impl<'a> BucketInterpreter<'a> {
             env = new_env;
             args.push(value.expect("Function argument must produce a value!"));
         }
-
-        let any_unknown = args.iter().any(|v| v.is_unknown());
-
-        //let result = env.run_function(&bucket.symbol, self, args, observe);
-        let result = if any_unknown {
+        let result = if args.iter().any(|v| v.is_unknown()) {
             Unknown
         } else {
             env.run_function(&bucket.symbol, self, args, observe)

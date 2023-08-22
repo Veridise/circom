@@ -222,7 +222,7 @@ impl<'a> Env<'a> {
         count: usize,
         template_id: usize,
     ) -> Self {
-        let number_of_inputs = { self.templates_library[name].number_of_inputs };
+        let number_of_inputs = self.templates_library[name].number_of_inputs;
         let mut copy = self;
         for i in base_index..(base_index + count) {
             copy.subcmps.insert(i, SubcmpEnv::new(number_of_inputs, name, template_id));
