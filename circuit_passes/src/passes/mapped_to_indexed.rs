@@ -19,16 +19,24 @@ pub struct MappedToIndexedPass {
 
 impl MappedToIndexedPass {
     pub fn new(prime: &String) -> Self {
-        MappedToIndexedPass { memory: PassMemory::new_cell(prime, "".to_string(), Default::default()), replacements: Default::default() }
+        MappedToIndexedPass {
+            memory: PassMemory::new_cell(prime, "".to_string(), Default::default()),
+            replacements: Default::default(),
+        }
     }
 
-    fn transform_mapped_loc_to_indexed_loc(&self,
-        cmp_address: &InstructionPointer, indexes: &Vec<InstructionPointer>, signal_code: usize, env: &Env) -> LocationRule {
-
+    fn transform_mapped_loc_to_indexed_loc(
+        &self,
+        cmp_address: &InstructionPointer,
+        indexes: &Vec<InstructionPointer>,
+        signal_code: usize,
+        env: &Env,
+    ) -> LocationRule {
         let mem = self.memory.borrow();
         let interpreter = mem.build_interpreter(self);
 
-        let (resolved_addr, acc_env) = interpreter.execute_instruction(cmp_address, env.clone(), false);
+        let (resolved_addr, acc_env) =
+            interpreter.execute_instruction(cmp_address, env.clone(), false);
 
         let resolved_addr = resolved_addr
             .expect("cmp_address instruction in SubcmpSignal must produce a value!")
@@ -60,24 +68,30 @@ impl MappedToIndexedPass {
         }
     }
 
-    fn maybe_transform_location_rule(&self, address: &AddressType, location: &LocationRule, env: &Env) -> bool {
+    fn maybe_transform_location_rule(
+        &self,
+        address: &AddressType,
+        location: &LocationRule,
+        env: &Env,
+    ) -> bool {
         match address {
-            AddressType::Variable | AddressType::Signal => {
-                match location {
-                    LocationRule::Indexed { .. } => true,
-                    LocationRule::Mapped { .. } => unreachable!()
+            AddressType::Variable | AddressType::Signal => match location {
+                LocationRule::Indexed { .. } => true,
+                LocationRule::Mapped { .. } => unreachable!(),
+            },
+            AddressType::SubcmpSignal { cmp_address, .. } => match location {
+                LocationRule::Indexed { .. } => true,
+                LocationRule::Mapped { indexes, signal_code } => {
+                    let indexed_rule = self.transform_mapped_loc_to_indexed_loc(
+                        cmp_address,
+                        indexes,
+                        *signal_code,
+                        env,
+                    );
+                    self.replacements.borrow_mut().insert(location.clone(), indexed_rule);
+                    true
                 }
             },
-            AddressType::SubcmpSignal { cmp_address, .. } => {
-                match location {
-                    LocationRule::Indexed { .. } => true,
-                    LocationRule::Mapped { indexes, signal_code } => {
-                        let indexed_rule = self.transform_mapped_loc_to_indexed_loc(cmp_address, indexes, *signal_code, env);
-                        self.replacements.borrow_mut().insert(location.clone(), indexed_rule);
-                        true
-                    }
-                }
-            }
         }
     }
 }
@@ -177,7 +191,7 @@ impl CircuitTransformationPass for MappedToIndexedPass {
                 location: self.transform_instruction(location),
                 template_header: template_header.clone(),
             },
-            LocationRule::Mapped { .. } => unreachable!()
+            LocationRule::Mapped { .. } => unreachable!(),
         }
     }
 

@@ -49,7 +49,10 @@ impl<'a, 'b> LLVMIRProducer<'a> for TemplateLLVMIRProducer<'a, 'b> {
     }
 
     fn get_template_mem_arg(&self, run_fn: FunctionValue<'a>) -> ArrayValue<'a> {
-        run_fn.get_nth_param(self.template_ctx.signals_arg_offset as u32).unwrap().into_array_value()
+        run_fn
+            .get_nth_param(self.template_ctx.signals_arg_offset as u32)
+            .unwrap()
+            .into_array_value()
     }
 }
 
@@ -125,7 +128,7 @@ impl<'a> TemplateCtx<'a> {
     pub fn load_subcmp(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
-        id: AnyValueEnum<'a>
+        id: AnyValueEnum<'a>,
     ) -> PointerValue<'a> {
         create_gep(producer, self.subcmps, &[zero(producer), id.into_int_value()])
             .into_pointer_value()
@@ -137,8 +140,12 @@ impl<'a> TemplateCtx<'a> {
         producer: &dyn LLVMIRProducer<'a>,
         id: AnyValueEnum<'a>,
     ) -> PointerValue<'a> {
-        let signals = create_gep(producer, self.subcmps, &[zero(producer), id.into_int_value(), zero(producer)])
-            .into_pointer_value();
+        let signals = create_gep(
+            producer,
+            self.subcmps,
+            &[zero(producer), id.into_int_value(), zero(producer)],
+        )
+        .into_pointer_value();
         create_load(producer, signals).into_pointer_value()
     }
 
@@ -167,10 +174,7 @@ impl<'a> TemplateCtx<'a> {
     }
 
     /// Returns a pointer to the signal array
-    pub fn get_signal_array(
-        &self,
-        _producer: &dyn LLVMIRProducer<'a>,
-    ) -> AnyValueEnum<'a> {
+    pub fn get_signal_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {
         let signals = self.current_function.get_nth_param(self.signals_arg_offset as u32).unwrap();
         signals.into_pointer_value().into()
     }
@@ -186,10 +190,7 @@ impl<'a> BodyCtx<'a> for TemplateCtx<'a> {
         create_gep(producer, self.stack, &[zero(producer), index])
     }
 
-    fn get_variable_array(
-        &self,
-        _producer: &dyn LLVMIRProducer<'a>,
-    ) -> AnyValueEnum<'a> {
+    fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {
         self.stack.into()
     }
 }

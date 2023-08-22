@@ -14,19 +14,27 @@ fn main() {
         let path = entry.unwrap();
         create_dir_all(Path::new(&out_dir).join(path.parent().unwrap())).unwrap();
         copy(path.clone(), Path::new(&out_dir).join(path.clone())).unwrap();
-        let test_name = path.to_str().unwrap()
+        let test_name = path
+            .to_str()
+            .unwrap()
             .replace("/", "_")
             .replace(".circom", "")
             .replace("-", "_")
             .to_lowercase();
 
-        test_code = format!("
+        test_code = format!(
+            "
         {}
 
         #[test]
         fn {}() -> LitResult<()> {{
             lit_test(include_str!(\"{}\"), \"{}\")
-        }}", test_code, test_name, path.to_str().unwrap(), test_name);
+        }}",
+            test_code,
+            test_name,
+            path.to_str().unwrap(),
+            test_name
+        );
     }
 
     generate_file(&dest_path, test_code.as_bytes());

@@ -95,11 +95,11 @@ impl InterpreterObserver for DeterministicSubCmpInvokePass {
 
     fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> bool {
         match &bucket.return_info {
-            ReturnType::Intermediate {..} => true,
+            ReturnType::Intermediate { .. } => true,
             ReturnType::Final(data) => {
                 self.try_resolve_input_status(&data.dest_address_type, env);
                 true
-            },
+            }
         }
     }
 
