@@ -1,5 +1,7 @@
 // OcamlMod
 
+use std::fmt::format;
+
 pub struct OcamlMod {
     pub stmts: Vec<OcamlStmt>,
 }
@@ -20,6 +22,7 @@ impl OcamlMod {
 pub enum OcamlStmt {
     Open(OcamlName),
     Define(OcamlName, OcamlExpr),
+    Comment(String),
 }
 
 impl OcamlStmt {
@@ -29,6 +32,7 @@ impl OcamlStmt {
             OcamlStmt::Define(x, e) => {
                 format!("let {} = {}", x.ocaml_compile(), e.ocaml_compile())
             }
+            OcamlStmt::Comment(s) => format!("(* {} *)", s),
         }
     }
 }
