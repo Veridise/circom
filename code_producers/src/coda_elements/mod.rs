@@ -307,7 +307,7 @@ impl CodaSubcomponentSignal {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CodaVariable {
-    pub fresh_index: u32,
+    pub fresh_index: usize,
     pub string: String,
 }
 

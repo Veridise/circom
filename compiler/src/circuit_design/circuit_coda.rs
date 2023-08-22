@@ -116,7 +116,7 @@ fn pretty_print_instructions(instructions: &Vec<Box<Instruction>>) -> String {
 impl CompileCoda for Circuit {
     fn compile_coda(
         &self,
-        circuit: &Circuit,
+        _circuit: &Circuit,
         program_archive: &ProgramArchive,
         summary: &SummaryRoot,
     ) -> code_producers::coda_elements::CodaProgram {
@@ -229,34 +229,32 @@ impl CompileCoda for Circuit {
 
             // Some circuits are compiled to abstract Coda bodies
 
-            // println!("template_name: {}", template_name);
-            // panic!();
+            let body = if !interface.is_uninterpreted {
+                let mut variables: Vec<CodaVariable> = Vec::new();
+                for x in interface.variable_names.iter().cloned() {
+                    let fresh_index = variables.iter().filter(|y| y.string == x).count();
+                    variables.push(CodaVariable { fresh_index, string: x })
+                }
 
-            // TODO: dont compile body of abstract template, but also need to put something into `coda_program.templates` to keep indexing accurate right?
+                let mut values = Vec::new();
+                for x in &_circuit.coda_data.field_tracking {
+                    values.push(CodaValue::new(&x))
+                }
 
-            // if interface.is_uninterpreted {
-            //     let body = compile_coda_stmt_abstract(&CompileCodaContext::new(
-            //         circuit,
-            //         program_archive,
-            //         template_summary,
-            //         coda_template_interfaces.clone(),
-            //         &interface,
-            //         Vec::new(),
-            //         template_code_info.body.clone(),
-            //     ));
-            //     coda_program.templates.push(CodaTemplate { interface: interface.clone(), body })
-            // } else {
-            //     let body = compile_coda_stmt(&CompileCodaContext::new(
-            //         circuit,
-            //         program_archive,
-            //         template_summary,
-            //         coda_template_interfaces.clone(),
-            //         &interface,
-            //         Vec::new(),
-            //         template_code_info.body.clone(),
-            //     ));
-            //     coda_program.templates.push(CodaTemplate { interface: interface.clone(), body })
-            // }
+                let ctx = CodaCompileContext {
+                    variables,
+                    signals: interface.signals.clone(),
+                    subcomponents: Vec::new(),
+                    values,
+                };
+                let instruction_zipper: InstructionZipper =
+                    InstructionZipper { instructions: template_code_info.body.clone(), index: 0 };
+                Some(coda_compile_stmt(&ctx, instruction_zipper))
+            } else {
+                None
+            };
+
+            coda_program.templates.push(CodaTemplate { interface: interface.clone(), body })
         }
 
         println!(
@@ -294,9 +292,9 @@ impl CodaCompileContext {
 
     fn get_coda_output_signals(&self) -> Vec<CodaTemplateSignal> {
         let mut outputs = Vec::new();
-        for signal in self.signals {
+        for signal in &self.signals {
             if signal.visibility.is_output() {
-                outputs.push(signal)
+                outputs.push(signal.clone())
             }
         }
         outputs
@@ -320,7 +318,7 @@ impl InstructionZipper {
     }
 
     pub fn current_instruction(&self) -> Box<Instruction> {
-        self.instructions[self.index]
+        self.instructions[self.index].clone()
     }
 
     pub fn next(&self) -> Option<Self> {
@@ -364,10 +362,10 @@ fn coda_compile_named(
     address_type: &AddressType,
 ) -> CodaNamed {
     let loc_i = match location_rule {
-        LocationRule::Indexed { location, template_header } => {
+        LocationRule::Indexed { location, template_header: _ } => {
             from_constant_instruction(location.as_ref())
         }
-        LocationRule::Mapped { signal_code, indexes } => panic!(),
+        LocationRule::Mapped { signal_code: _, indexes: _ } => panic!(),
     };
     match address_type {
         AddressType::Variable => CodaNamed::Variable(ctx.get_coda_variable(loc_i).clone()),
@@ -377,9 +375,9 @@ fn coda_compile_named(
         }
         AddressType::SubcmpSignal {
             cmp_address,
-            uniform_parallel_value,
-            is_output,
-            input_information,
+            uniform_parallel_value: _,
+            is_output: _,
+            input_information: _,
         } => {
             let subcmp_i = from_constant_instruction(cmp_address);
             let subcmp: &CodaSubcomponent = ctx.get_coda_subcomponent(subcmp_i);
@@ -419,9 +417,10 @@ fn coda_compile_stmt(ctx: &CodaCompileContext, instruction_zipper: InstructionZi
             )
         }
 
-        Instruction::Block(block) => {
-            coda_compile_stmt(ctx, instruction_zipper.insert_instructions(block.body))
-        }
+        Instruction::Block(block) => coda_compile_stmt(
+            ctx,
+            instruction_zipper.insert_instructions(block.body.iter().cloned().collect()),
+        ),
 
         Instruction::Store(store) => {
             let named = coda_compile_named(ctx, &store.dest, &store.dest_address_type);
@@ -432,7 +431,7 @@ fn coda_compile_stmt(ctx: &CodaCompileContext, instruction_zipper: InstructionZi
 
         // Adds subcomponent to context, but doesn't actually "use" it right here,
         // since need to instantiate inputs first.
-        Instruction::CreateCmp(create_cmp) => panic!(),
+        Instruction::CreateCmp(create_cmp) => todo!(),
 
         // ----------------------------------------------------
         Instruction::Branch(_) => panic!(),
@@ -493,10 +492,10 @@ fn coda_compile_expr(ctx: &CodaCompileContext, instruction: &Instruction) -> Cod
         }
         Instruction::Call(call) => {
             let mut es = Vec::new();
-            for arg in call.arguments {
+            for arg in &call.arguments {
                 es.push(Box::new(coda_compile_expr(ctx, arg.as_ref())))
             }
-            CodaExpr::Call(call.symbol, es)
+            CodaExpr::Call(call.symbol.clone(), es)
         }
 
         // ----------------------------------------------------

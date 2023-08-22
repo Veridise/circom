@@ -41,7 +41,7 @@ pub trait CompileCoda {
         program_archive: &ProgramArchive,
         summary: &SummaryRoot,
     ) -> String {
-        self.compile_coda(circuit, program_archive, summary).coda_print()
+        self.compile_coda(circuit, program_archive, summary).coda_compile().ocaml_compile()
     }
 
     fn compile_coda(
