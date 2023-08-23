@@ -5,7 +5,7 @@ use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use code_producers::llvm_elements::functions::{create_bb};
+use code_producers::llvm_elements::functions::create_bb;
 use code_producers::llvm_elements::instructions::create_br;
 
 use code_producers::wasm_elements::*;
