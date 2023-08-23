@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, Ref};
 use std::collections::HashMap;
 use std::ops::Range;
 use code_producers::components::{TemplateInstanceIOMap, IODef};
@@ -7,7 +7,9 @@ use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use crate::bucket_interpreter::BucketInterpreter;
-use crate::bucket_interpreter::env::{ContextSwitcher, FunctionsLibrary, TemplatesLibrary};
+use crate::bucket_interpreter::env::{
+    ContextSwitcher, FunctionsLibrary, TemplatesLibrary, LibraryAccess,
+};
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 
@@ -49,9 +51,7 @@ impl PassMemory {
             println!("Running template {}", self.current_scope.borrow());
         }
         let interpreter = self.build_interpreter(observer);
-        let lib_t = self.templates_library.borrow();
-        let lib_f = self.functions_library.borrow();
-        let env = Env::new(&lib_t, &lib_f, self);
+        let env = Env::new(self, self);
         interpreter.execute_instructions(&template.body, env, true);
     }
 
@@ -149,5 +149,15 @@ impl ContextSwitcher for PassMemory {
         scope: &'a String,
     ) -> BucketInterpreter<'a> {
         self.build_interpreter_with_scope(interpreter.observer, scope.to_string())
+    }
+}
+
+impl LibraryAccess for PassMemory {
+    fn get_function(&self, name: &String) -> Ref<FunctionCode> {
+        Ref::map(self.functions_library.borrow(), |map| &map[name])
+    }
+
+    fn get_template(&self, name: &String) -> Ref<TemplateCode> {
+        Ref::map(self.templates_library.borrow(), |map| &map[name])
     }
 }

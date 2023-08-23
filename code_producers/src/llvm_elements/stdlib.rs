@@ -2,6 +2,8 @@
 
 use crate::llvm_elements::LLVMIRProducer;
 
+//NOTE: LLVM identifiers can use "." and circom cannot which makes checking for this prefix unambiguous.
+pub const GENERATED_FN_PREFIX: &str = "..generated..";
 pub const CONSTRAINT_VALUES_FN_NAME: &str = "__constraint_values";
 pub const CONSTRAINT_VALUE_FN_NAME: &str = "__constraint_value";
 pub const ASSERT_FN_NAME: &str = "__assert";

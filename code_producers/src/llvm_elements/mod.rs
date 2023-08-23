@@ -12,7 +12,7 @@ use inkwell::context::{Context, ContextRef};
 use inkwell::debug_info::{DebugInfoBuilder, DICompileUnit};
 use inkwell::module::Module;
 use inkwell::types::{AnyTypeEnum, BasicType, BasicTypeEnum, IntType};
-use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntValue};
+use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntValue, PointerValue};
 pub use inkwell::types::AnyType;
 pub use inkwell::values::{AnyValue, AnyValueEnum, FunctionValue, InstructionOpcode};
 pub use inkwell::debug_info::AsDIScope;
@@ -22,7 +22,6 @@ use program_structure::program_archive::ProgramArchive;
 use crate::components::TemplateInstanceIOMap;
 use crate::llvm_elements::types::bool_type;
 use crate::llvm_elements::instructions::create_alloca;
-use crate::llvm_elements::template::TemplateCtx;
 
 pub mod stdlib;
 pub mod template;
@@ -46,11 +45,44 @@ pub trait BodyCtx<'a> {
     fn get_variable_array(&self, producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a>;
 }
 
+pub trait TemplateCtx<'a> {
+    /// Returns the memory address of the subcomponent
+    fn load_subcmp(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+        id: AnyValueEnum<'a>,
+    ) -> PointerValue<'a>;
+
+    /// Creates the necessary code to load a subcomponent given the expression used as id
+    fn load_subcmp_addr(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+        id: AnyValueEnum<'a>,
+    ) -> PointerValue<'a>;
+
+    /// Creates the necessary code to load a subcomponent counter given the expression used as id
+    fn load_subcmp_counter(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+        id: AnyValueEnum<'a>,
+    ) -> PointerValue<'a>;
+
+    /// Returns a pointer to the signal associated to the index
+    fn get_signal(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+        index: IntValue<'a>,
+    ) -> AnyValueEnum<'a>;
+
+    /// Returns a pointer to the signal array
+    fn get_signal_array(&self, producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a>;
+}
+
 pub trait LLVMIRProducer<'a> {
     fn llvm(&self) -> &LLVM<'a>;
     fn context(&self) -> ContextRef<'a>;
     fn set_current_bb(&self, bb: BasicBlock<'a>);
-    fn template_ctx(&self) -> &TemplateCtx<'a>;
+    fn template_ctx(&self) -> &dyn TemplateCtx<'a>;
     fn body_ctx(&self) -> &dyn BodyCtx<'a>;
     fn current_function(&self) -> FunctionValue<'a>;
     fn builder(&self) -> &Builder<'a>;
@@ -100,7 +132,7 @@ impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
         self.llvm().builder.position_at_end(bb);
     }
 
-    fn template_ctx(&self) -> &TemplateCtx<'a> {
+    fn template_ctx(&self) -> &dyn TemplateCtx<'a> {
         panic!("The top level llvm producer does not hold a template context!");
     }
 

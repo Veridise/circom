@@ -34,13 +34,15 @@ pub trait CircuitTransformationPass {
         self.pre_hook_circuit(&circuit);
         let templates = circuit.templates.iter().map(|t| self.transform_template(t)).collect();
         let field_tracking = self.get_updated_field_constants();
-        Circuit {
+        let mut new_circuit = Circuit {
             wasm_producer: circuit.wasm_producer.clone(),
             c_producer: circuit.c_producer.clone(),
             llvm_data: circuit.llvm_data.clone_with_new_field_tracking(field_tracking),
             templates,
             functions: circuit.functions.iter().map(|f| self.transform_function(f)).collect(),
-        }
+        };
+        self.post_hook_circuit(&mut new_circuit);
+        new_circuit
     }
 
     fn get_updated_field_constants(&self) -> Vec<String>;
@@ -367,6 +369,8 @@ pub trait CircuitTransformationPass {
     fn transform_nop_bucket(&self, _bucket: &NopBucket) -> InstructionPointer {
         NopBucket { id: new_id() }.allocate()
     }
+
+    fn post_hook_circuit(&self, _cir: &mut Circuit) {}
 
     pre_hook!(pre_hook_circuit, Circuit);
     pre_hook!(pre_hook_template, TemplateCode);

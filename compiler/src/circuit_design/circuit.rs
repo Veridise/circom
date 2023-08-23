@@ -7,13 +7,15 @@ use crate::hir::very_concrete_program::VCP;
 use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::array_switch::load_array_switch;
-use code_producers::wasm_elements::*;
 use code_producers::llvm_elements::*;
+use code_producers::llvm_elements::array_switch::load_array_switch;
 use code_producers::llvm_elements::fr::load_fr;
-use code_producers::llvm_elements::functions::{create_function, FunctionLLVMIRProducer};
-use code_producers::llvm_elements::stdlib::load_stdlib;
+use code_producers::llvm_elements::functions::{
+    create_function, FunctionLLVMIRProducer, ExtractedFunctionLLVMIRProducer,
+};
+use code_producers::llvm_elements::stdlib::{load_stdlib, GENERATED_FN_PREFIX};
 use code_producers::llvm_elements::types::{bigint_type, void_type};
+use code_producers::wasm_elements::*;
 use program_structure::program_archive::ProgramArchive;
 
 pub struct CompilationFlags {
@@ -70,7 +72,31 @@ impl WriteLLVMIR for Circuit {
         let mut funcs = HashMap::new();
         for f in &self.functions {
             let name = f.header.as_str();
-            let arena_ty = bigint_type(producer).ptr_type(Default::default());
+            let param_types = if name.starts_with(GENERATED_FN_PREFIX) {
+                // Use the FunctionCodeInfo instance to generate the vector of parameter types.
+                let mut types = vec![];
+                for p in &f.params {
+                    // This section is a little more complicated than desired because IntType and ArrayType do
+                    //  not have a common Trait that defines the `array_type` and `ptr_type` member functions.
+                    let ty = match &p.length.len() {
+                        0 => bigint_type(producer).ptr_type(Default::default()),
+                        1 => bigint_type(producer)
+                            .array_type(p.length[0] as u32)
+                            .ptr_type(Default::default()),
+                        _ => {
+                            let mut temp = bigint_type(producer).array_type(p.length[0] as u32);
+                            for size in &p.length[1..] {
+                                temp = temp.array_type(*size as u32);
+                            }
+                            temp.ptr_type(Default::default())
+                        }
+                    };
+                    types.push(ty.into());
+                }
+                types
+            } else {
+                vec![bigint_type(producer).ptr_type(Default::default()).into()]
+            };
             let function = create_function(
                 producer,
                 f.get_source_file_id(),
@@ -79,9 +105,9 @@ impl WriteLLVMIR for Circuit {
                 name,
                 if f.returns.is_empty() || (f.returns.len() == 1 && *f.returns.get(0).unwrap() == 1)
                 {
-                    bigint_type(producer).fn_type(&[arena_ty.into()], false)
+                    bigint_type(producer).fn_type(&param_types, false)
                 } else {
-                    void_type(producer).fn_type(&[arena_ty.into()], false)
+                    void_type(producer).fn_type(&param_types, false)
                 },
             );
             funcs.insert(name, function);
@@ -89,9 +115,13 @@ impl WriteLLVMIR for Circuit {
 
         // Code for the functions
         for f in &self.functions {
-            let function_producer = FunctionLLVMIRProducer::new(producer, funcs[f.header.as_str()]);
-            Self::manage_debug_loc_from_curr(&function_producer, f.as_ref());
-            f.produce_llvm_ir(&function_producer);
+            let x: Box<dyn LLVMIRProducer<'_>> = if f.header.starts_with(GENERATED_FN_PREFIX) {
+                Box::new(ExtractedFunctionLLVMIRProducer::new(producer, funcs[f.header.as_str()]))
+            } else {
+                Box::new(FunctionLLVMIRProducer::new(producer, funcs[f.header.as_str()]))
+            };
+            Self::manage_debug_loc_from_curr(x.as_ref(), f.as_ref());
+            f.produce_llvm_ir(x.as_ref());
         }
 
         // Code for the templates

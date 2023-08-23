@@ -1,7 +1,12 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::vec;
+use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
+use code_producers::llvm_elements::fr::FR_IDENTITY_ARR_0_PTR;
+use compiler::circuit_design::function::{FunctionCodeInfo, FunctionCode};
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
+use compiler::hir::very_concrete_program::Param;
 use compiler::intermediate_representation::{
     BucketId, InstructionList, InstructionPointer, new_id, UpdateId,
 };
@@ -15,6 +20,7 @@ pub struct LoopUnrollPass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     memory: PassMemory,
     replacements: RefCell<BTreeMap<BucketId, InstructionPointer>>,
+    new_functions: RefCell<Vec<FunctionCode>>,
 }
 
 impl LoopUnrollPass {
@@ -22,33 +28,161 @@ impl LoopUnrollPass {
         LoopUnrollPass {
             memory: PassMemory::new(prime, String::from(""), Default::default()),
             replacements: Default::default(),
+            new_functions: Default::default(),
         }
     }
 
-    fn try_unroll_loop(&self, bucket: &LoopBucket, env: &Env) -> (Option<InstructionList>, usize) {
-        let interpreter = self.memory.build_interpreter(self);
-        let mut block_body = vec![];
-        let mut cond_result = Some(true);
-        let mut env = env.clone();
-        let mut iters = 0;
-        while cond_result.unwrap() {
-            let (_, new_cond, new_env) = interpreter.execute_loop_bucket_once(bucket, env, false);
-            if new_cond.is_none() {
-                return (None, 0); // If the conditional becomes Unknown just give up.
+    fn extract_body(&self, bucket: &LoopBucket) -> String {
+        // Copy loop body and add a "return void" at the end
+        let mut new_body = vec![];
+        for s in &bucket.body {
+            let mut copy = s.clone();
+            copy.update_id();
+            new_body.push(copy);
+        }
+        new_body.push(
+            ReturnBucket {
+                id: new_id(),
+                source_file_id: bucket.source_file_id,
+                line: bucket.line,
+                message_id: bucket.message_id,
+                with_size: usize::MAX, // size > 1 will produce "return void" LLVM instruction
+                value: NopBucket { id: new_id() }.allocate(),
             }
-            cond_result = new_cond;
-            env = new_env;
-            if let Some(true) = new_cond {
-                iters += 1;
-                for inst in &bucket.body {
-                    block_body.push(inst.clone());
+            .allocate(),
+        );
+        // Create new function to hold the copied body
+        let name = format!("{}loop.body.{}", GENERATED_FN_PREFIX, new_id());
+        let new_func = Box::new(FunctionCodeInfo {
+            source_file_id: bucket.source_file_id,
+            line: bucket.line,
+            name: name.clone(),
+            header: name.clone(),
+            body: new_body,
+            params: vec![
+                Param { name: String::from("signals"), length: vec![0] },
+                Param { name: String::from("lvars"), length: vec![0] },
+            ],
+            returns: vec![0], // this will produce void return type on the function
+            ..FunctionCodeInfo::default()
+        });
+        self.memory.add_function(&new_func);
+        self.new_functions.borrow_mut().push(new_func);
+        //
+        name
+    }
+
+    fn try_unroll_loop(&self, bucket: &LoopBucket, env: &Env) -> (Option<InstructionList>, usize) {
+        // Compute loop iteration count. If unknown, return immediately.
+        let loop_count;
+        {
+            let mut iters = 0;
+            let interpreter = self.memory.build_interpreter(self);
+            let mut inner_env = env.clone();
+            loop {
+                let (_, cond, new_env) =
+                    interpreter.execute_loop_bucket_once(bucket, inner_env, false);
+                match cond {
+                    // If the conditional becomes unknown just give up.
+                    None => return (None, 0),
+                    // When conditional becomes `false`, iteration count is complete.
+                    Some(false) => break,
+                    // Otherwise, continue counting.
+                    Some(true) => iters += 1,
+                }
+                inner_env = new_env;
+            }
+            loop_count = iters;
+        }
+
+        // If the loop body contains more than one instruction, extract it into a
+        // new function and generate 'loop_count' number of calls to that function.
+        // Otherwise, just duplicate the body 'loop_count' number of times.
+        let mut block_body = vec![];
+        match &bucket.body[..] {
+            [a] => {
+                for _ in 0..loop_count {
+                    let mut copy = a.clone();
+                    copy.update_id();
+                    block_body.push(copy);
+                }
+            }
+            b => {
+                assert!(b.len() > 1);
+                //
+                //TODO: If any subcmps are used inside the loop body, add an additional '[0 x i256]*' parameter on
+                //  the new function for each one that is used and pass the arena of each into the function call.
+                //
+                //TODO: Any value indexed by a variable that changes from one loop iteration to another needs to
+                //  be indexed outside of the function and then have just that pointer passed into the function.
+                //
+                let name = self.extract_body(bucket);
+                for _ in 0..loop_count {
+                    block_body.push(
+                        CallBucket {
+                            id: new_id(),
+                            source_file_id: bucket.source_file_id,
+                            line: bucket.line,
+                            message_id: bucket.message_id,
+                            symbol: name.clone(),
+                            return_info: ReturnType::Intermediate { op_aux_no: 0 },
+                            arena_size: 0, // size 0 indicates arguments should not be placed into an arena
+                            argument_types: vec![], // LLVM IR generation doesn't use this field
+                            arguments: vec![
+                                // Parameter for signals/arena
+                                LoadBucket {
+                                    id: new_id(),
+                                    source_file_id: bucket.source_file_id,
+                                    line: bucket.line,
+                                    message_id: bucket.message_id,
+                                    address_type: AddressType::Signal,
+                                    src: LocationRule::Indexed {
+                                        location: ValueBucket {
+                                            id: new_id(),
+                                            source_file_id: bucket.source_file_id,
+                                            line: bucket.line,
+                                            message_id: bucket.message_id,
+                                            parse_as: ValueType::U32,
+                                            op_aux_no: 0,
+                                            value: 0,
+                                        }
+                                        .allocate(),
+                                        template_header: None,
+                                    },
+                                    bounded_fn: Some(String::from(FR_IDENTITY_ARR_0_PTR)),
+                                }
+                                .allocate(),
+                                // Parameter for local vars
+                                LoadBucket {
+                                    id: new_id(),
+                                    source_file_id: bucket.source_file_id,
+                                    line: bucket.line,
+                                    message_id: bucket.message_id,
+                                    address_type: AddressType::Variable,
+                                    src: LocationRule::Indexed {
+                                        location: ValueBucket {
+                                            id: new_id(),
+                                            source_file_id: bucket.source_file_id,
+                                            line: bucket.line,
+                                            message_id: bucket.message_id,
+                                            parse_as: ValueType::U32,
+                                            op_aux_no: 0,
+                                            value: 0,
+                                        }
+                                        .allocate(),
+                                        template_header: None,
+                                    },
+                                    bounded_fn: Some(String::from(FR_IDENTITY_ARR_0_PTR)),
+                                }
+                                .allocate(),
+                            ],
+                        }
+                        .allocate(),
+                    );
                 }
             }
         }
-        for inst in &mut block_body {
-            inst.update_id();
-        }
-        (Some(block_body), iters)
+        (Some(block_body), loop_count)
     }
 
     // Will take the unrolled loop and interpretate it
@@ -148,6 +282,12 @@ impl CircuitTransformationPass for LoopUnrollPass {
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {
         self.memory.fill_from_circuit(circuit);
+    }
+
+    fn post_hook_circuit(&self, cir: &mut Circuit) {
+        for f in self.new_functions.borrow().iter() {
+            cir.functions.push(self.transform_function(&f));
+        }
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {

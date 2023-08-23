@@ -1,3 +1,4 @@
+use std::cell::Ref;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
@@ -14,6 +15,11 @@ pub trait ContextSwitcher {
         interpreter: &'a BucketInterpreter<'a>,
         scope: &'a String,
     ) -> BucketInterpreter<'a>;
+}
+
+pub trait LibraryAccess {
+    fn get_function(&self, name: &String) -> Ref<FunctionCode>;
+    fn get_template(&self, name: &String) -> Ref<TemplateCode>;
 }
 
 impl<L: JoinSemiLattice + Clone> JoinSemiLattice for HashMap<usize, L> {
@@ -97,8 +103,7 @@ pub struct Env<'a> {
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
     subcmps: HashMap<usize, SubcmpEnv<'a>>,
-    templates_library: &'a TemplatesLibrary,
-    functions_library: &'a FunctionsLibrary,
+    libs: &'a dyn LibraryAccess,
     context_switcher: &'a dyn ContextSwitcher,
 }
 
@@ -113,17 +118,12 @@ impl Display for Env<'_> {
 }
 
 impl<'a> Env<'a> {
-    pub fn new(
-        templates_library: &'a TemplatesLibrary,
-        functions_library: &'a FunctionsLibrary,
-        context_switcher: &'a dyn ContextSwitcher,
-    ) -> Self {
+    pub fn new(libs: &'a dyn LibraryAccess, context_switcher: &'a dyn ContextSwitcher) -> Self {
         Env {
             vars: Default::default(),
             signals: Default::default(),
             subcmps: Default::default(),
-            templates_library,
-            functions_library,
+            libs,
             context_switcher,
         }
     }
@@ -222,7 +222,7 @@ impl<'a> Env<'a> {
         count: usize,
         template_id: usize,
     ) -> Self {
-        let number_of_inputs = self.templates_library[name].number_of_inputs;
+        let number_of_inputs = self.libs.get_template(name).number_of_inputs;
         let mut copy = self;
         for i in base_index..(base_index + count) {
             copy.subcmps.insert(i, SubcmpEnv::new(number_of_inputs, name, template_id));
@@ -240,9 +240,8 @@ impl<'a> Env<'a> {
         if cfg!(debug_assertions) {
             println!("Running function {}", name);
         }
-        let code = &self.functions_library[name].body;
-        let mut function_env =
-            Env::new(self.templates_library, self.functions_library, self.context_switcher);
+        let code = &self.libs.get_function(name).body;
+        let mut function_env = Env::new(self.libs, self.context_switcher);
         for (id, arg) in args.iter().enumerate() {
             function_env = function_env.set_var(id, arg.clone());
         }
@@ -260,8 +259,7 @@ impl<'a> Env<'a> {
             vars: self.vars.join(&other.vars),
             signals: self.signals.join(&other.signals),
             subcmps: self.subcmps.join(&other.subcmps),
-            templates_library: self.templates_library,
-            functions_library: self.functions_library,
+            libs: self.libs,
             context_switcher: self.context_switcher,
         }
     }

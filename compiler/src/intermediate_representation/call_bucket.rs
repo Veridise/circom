@@ -107,10 +107,24 @@ impl WriteLLVMIR for CallBucket {
     ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
-        // Create array with arena_size size
-        let bigint_arr = bigint_type(producer).array_type(self.arena_size as u32);
-        let arena =
-            create_alloca(producer, bigint_arr.into(), format!("{}_arena", self.symbol).as_str());
+        // Check arena_size==0 which indicates arguments should not be placed into arena
+        let arena_size = self.arena_size;
+        if arena_size == 0 {
+            let mut args = vec![];
+            for arg in self.arguments.iter() {
+                args.push(to_basic_metadata_enum(
+                    arg.produce_llvm_ir(producer).expect("Call arguments must produce a value!"),
+                ));
+            }
+            let call_ret_val = create_call(producer, self.symbol.as_str(), &args);
+            return Some(call_ret_val);
+        } else {
+            // Create array with arena_size size
+            let arena = create_alloca(
+                producer,
+                bigint_type(producer).array_type(arena_size as u32).into(),
+                format!("{}_arena", self.symbol).as_str(),
+            );
 
         // Get the offsets based on the sizes of the arguments
         let offsets: Vec<usize> = self.argument_types.iter().scan(0, |state, arg_ty| {
@@ -153,47 +167,48 @@ impl WriteLLVMIR for CallBucket {
             }
         }
 
-        let arena = pointer_cast(
-            producer,
-            arena.into_pointer_value(),
-            bigint_type(producer).ptr_type(Default::default()),
-        );
+            let arena = pointer_cast(
+                producer,
+                arena.into_pointer_value(),
+                bigint_type(producer).ptr_type(Default::default()),
+            );
 
-        // Call function passing the array as argument
-        let call_ret_val = create_call(
-            producer,
-            self.symbol.as_str(),
-            &[to_basic_metadata_enum(arena.into())],
-        );
+            // Call function passing the array as argument
+            let call_ret_val = create_call(
+                producer,
+                self.symbol.as_str(),
+                &[to_basic_metadata_enum(arena.into())],
+            );
 
-        match &self.return_info {
-            ReturnType::Intermediate { op_aux_no } => {
-                todo!("ReturnType::Intermediate {:#?}", op_aux_no);
-            }
-            ReturnType::Final(data) => {
-                let size = data.context.size;
-                let source_of_store = if size == 1 {
-                    //For scalar returns, store the returned value to
-                    //  the proper index in the current function's arena.
-                    call_ret_val
-                } else {
-                    //For array returns, copy the data from the callee arena to the caller arena.
-                    create_gep(
+            match &self.return_info {
+                ReturnType::Intermediate { op_aux_no } => {
+                    todo!("ReturnType::Intermediate {:#?}", op_aux_no);
+                }
+                ReturnType::Final(data) => {
+                    let size = data.context.size;
+                    let source_of_store = if size == 1 {
+                        //For scalar returns, store the returned value to
+                        //  the proper index in the current function's arena.
+                        call_ret_val
+                    } else {
+                        //For array returns, copy the data from the callee arena to the caller arena.
+                        create_gep(
+                            producer,
+                            arena,
+                            &[i32_type(producer).const_int(self.arguments.len() as u64, false)],
+                        )
+                    };
+                    return StoreBucket::produce_llvm_ir(
                         producer,
-                        arena,
-                        &[i32_type(producer).const_int(self.arguments.len() as u64, false)],
-                    )
-                };
-                return StoreBucket::produce_llvm_ir(
-                    producer,
-                    Either::Left(source_of_store),
-                    &data.dest,
-                    &data.dest_address_type,
-                    InstrContext { size },
-                    &None,
-                );
-            }
-        };
+                        Either::Left(source_of_store),
+                        &data.dest,
+                        &data.dest_address_type,
+                        InstrContext { size },
+                        &None,
+                    );
+                }
+            };
+        }
     }
 }
 
