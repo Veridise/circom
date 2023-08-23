@@ -119,6 +119,11 @@ impl LoopUnrollPass {
                 let name = self.extract_body(bucket);
                 for _ in 0..loop_count {
                     block_body.push(
+                        // NOTE: CallBucket arguments must use a LoadBucket to reference the necessary pointers
+                        //  within the current body. However, it doesn't actually need to generate a load
+                        //  instruction to use these pointers as parameters to the function so we must use the
+                        //  `bounded_fn` field of the LoadBucket to specify the identity function to perform
+                        //  the "loading" (but really it just returns the pointer that was passed in).
                         CallBucket {
                             id: new_id(),
                             source_file_id: bucket.source_file_id,
