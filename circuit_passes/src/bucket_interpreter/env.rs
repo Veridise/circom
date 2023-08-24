@@ -6,9 +6,6 @@ use compiler::circuit_design::template::TemplateCode;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
 
-pub type TemplatesLibrary = HashMap<String, TemplateCode>;
-pub type FunctionsLibrary = HashMap<String, FunctionCode>;
-
 pub trait ContextSwitcher {
     fn switch<'a>(
         &'a self,
@@ -247,7 +244,7 @@ impl<'a> Env<'a> {
         }
         let interpreter = self.context_switcher.switch(interpreter, name);
         let r = interpreter.execute_instructions(
-            &code,
+            code,
             function_env,
             !interpreter.observer.ignore_function_calls() && observe,
         );

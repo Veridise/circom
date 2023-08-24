@@ -7,16 +7,16 @@ use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use crate::bucket_interpreter::BucketInterpreter;
-use crate::bucket_interpreter::env::{
-    ContextSwitcher, FunctionsLibrary, TemplatesLibrary, LibraryAccess,
-};
+use crate::bucket_interpreter::env::{ContextSwitcher, LibraryAccess};
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 
 pub struct PassMemory {
-    // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    templates_library: RefCell<TemplatesLibrary>,
-    functions_library: RefCell<FunctionsLibrary>,
+    // Wrapped in a RefCell because the reference to the static analysis is immutable but we need
+    //  mutability. In some cases, very fine-grained mutability which is why everything here is
+    //  wrapped separately and the template/function library values themselves are wrapped separately.
+    templates_library: RefCell<HashMap<String, TemplateCode>>,
+    functions_library: RefCell<HashMap<String, FunctionCode>>,
     constant_fields: RefCell<Vec<String>>,
     current_scope: RefCell<String>,
     io_map: RefCell<TemplateInstanceIOMap>,
