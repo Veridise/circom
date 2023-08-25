@@ -8,7 +8,8 @@ use code_producers::coda_elements::summary::SummaryRoot;
 use program_structure::program_archive::ProgramArchive;
 use super::circuit::Circuit;
 
-const UNINTERPRETED_CIRCUIT_NAMES: [&str; 9] = [
+const UNINTERPRETED_CIRCUIT_NAMES: [&str; 16] = [
+    "AbstractCircuit",
     "Poseidon",
     "PoseidonEx",
     "MultiMux1",
@@ -16,12 +17,14 @@ const UNINTERPRETED_CIRCUIT_NAMES: [&str; 9] = [
     "Mix",
     "MixS",
     "MixLast",
-    // "CalculateSecret",
-    // "CalculateIdentityCommitment",
-    // "MerkleTreeInclusionProof",
-    // "CalculateNullifierHash",
-    "AbstractCircuit",
+    "MultiMux1",
     "Num2Bits",
+    "Bits2Num",
+    "LessThan",
+    "IsEqual",
+    "GreaterEqThan",
+    "IsZero",
+    "Or",
 ];
 
 const __DEBUG: bool = true;
