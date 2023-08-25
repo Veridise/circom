@@ -1,15 +1,63 @@
-let body_A (a2, a1) body = elet a2 (var a1) @@ body
+let circuit_A = Circuit{
 
-let circuit_A = Hoare_circuit {name= "A", inputs= [Presignal "a1"], outputs= [Presignal "a2"], preconditions= [], postconditions= [], dep= None, body= body_A ("a2", "a1")}
+  name =
+  "circuit_A";
 
+  inputs =
+  [("a1", field)];
 
-let body_B (b2, b1) body = elet "a_a1" (var b1) @@ body_A ("a_a2", "a_a1") @@ elet b2 (var "a_a2") @@ body
+  outputs =
+  [("a2", field)];
 
-let circuit_B = Hoare_circuit {name= "B", inputs= [Presignal "b1"], outputs= [Presignal "b2"], preconditions= [], postconditions= [], dep= None, body= body_B ("b2", "b1")}
+  dep =
+  None;
 
+  body =
+  elet "a2" (var "a1") @@
+  (Expr.tuple [(var "a2")]);}
 
-let body_C (c2, c1) body = elet "a_a1" (var c1) @@ body_A ("a_a2", "a_a1") @@ elet "b_b1" (var "a_a2") @@ body_B ("b_b2", "b_b1") @@ elet c2 (var "b_b2") @@ body
+let circuit_B = Circuit{
 
-let circuit_C = Hoare_circuit {name= "C", inputs= [Presignal "c1"], outputs= [Presignal "c2"], preconditions= [], postconditions= [], dep= None, body= body_C ("c2", "c1")}
+  name =
+  "circuit_B";
 
+  inputs =
+  [("b1", field)];
+
+  outputs =
+  [("b2", field)];
+
+  dep =
+  None;
+
+  body =
+  elet "a__a1" (var "b1") @@
+  elet "a__result" (call "circuit_A" [(var "a2"); (var "a1")]) @@
+  elet "a__a2" (project (var "a__result") 0) @@
+  elet "b2" (var "a__a2") @@
+  (Expr.tuple [(var "b2")]);}
+
+let circuit_C = Circuit{
+
+  name =
+  "circuit_C";
+
+  inputs =
+  [("c1", field)];
+
+  outputs =
+  [("c2", field)];
+
+  dep =
+  None;
+
+  body =
+  elet "a__a1" (var "c1") @@
+  elet "a__result" (call "circuit_A" [(var "a2"); (var "a1")]) @@
+  elet "a__a2" (project (var "a__result") 0) @@
+  elet "b__b1" (var "a__a2") @@
+  elet "b__result" (call "circuit_B" [(var "b2"); (var "b1")]) @@
+  elet "b__b2" (project (var "b__result") 0) @@
+  elet "c2" (var "b__b2") @@
+  (Expr.tuple [(var "c2")]);}
 

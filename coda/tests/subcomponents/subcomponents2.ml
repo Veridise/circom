@@ -1,47 +1,57 @@
-open Ast
-open Dsl
-open Nice_dsl
-open Expr
-open Qual
-open Typ
-open TypRef
+let circuit_A = Circuit{
 
-let body_A prefix (y, x) output =
-    elet y (var x) @@
-    output
+  name =
+  "circuit_A";
 
-let circuit_A = Circuit { name= "A"; inputs= [("x", field)]; outputs= [("y", field)]; dep=None; body= let prefix = "main" in body_A prefix ("y", "x") (Expr.tuple [(var (prefix ^ "y"))]) }
+  inputs =
+  [("x", field)];
 
+  outputs =
+  [("y", field)];
 
-let body_Main prefix (y_0, y_1, y_2, y_3, x_0, x_1, x_2, x_3) output =
-    elet (prefix ^ "var_0_1") (F.const 4) @@
-    elet (prefix ^ "var_1_1") (F.const 0) @@
-    elet "a_0_x" (var x_0) @@
-    body_A (prefix ^ "sc0_") ("a_0_y", "a_0_x") @@
-    elet y_0 (var "a_0_y") @@
-    elet (prefix ^ "var_1_2") (F.const 0) @@
-    elet "a_1_x" (var x_1) @@
-    body_A (prefix ^ "sc1_") ("a_1_y", "a_1_x") @@
-    elet y_1 (var "a_1_y") @@
-    elet (prefix ^ "var_1_3") (F.const 0) @@
-    elet "a_2_x" (var x_2) @@
-    body_A (prefix ^ "sc2_") ("a_2_y", "a_2_x") @@
-    elet y_2 (var "a_2_y") @@
-    elet (prefix ^ "var_1_4") (F.const 0) @@
-    elet "a_3_x" (var x_3) @@
-    body_A (prefix ^ "sc3_") ("a_3_y", "a_3_x") @@
-    elet y_3 (var "a_3_y") @@
-    elet (prefix ^ "var_1_5") (F.const 0) @@
-    output
+  dep =
+  None;
 
-let circuit_Main = Circuit {
-    name= "Main";
-    inputs= [("x_0", field); ("x_1", field); ("x_2", field); ("x_3", field)];
-    outputs= [("y_0", field); ("y_1", field); ("y_2", field); ("y_3", field)];
-    dep=None;
-    body=
-        let prefix = "main" in
-        body_Main
-            prefix
-            ("y_0", "y_1", "y_2", "y_3", "x_0", "x_1", "x_2", "x_3") (Expr.tuple [(var (prefix ^ "y_0")); (var (prefix ^ "y_1")); (var (prefix ^ "y_2")); (var (prefix ^ "y_3"))])
-}
+  body =
+  elet "y" (var "x") @@
+  (Expr.tuple [(var "y")]);}
+
+let circuit_Main = Circuit{
+
+  name =
+  "circuit_Main";
+
+  inputs =
+  [("x_i0", field); ("x_i1", field); ("x_i2", field); ("x_i3", field)];
+
+  outputs =
+  [("y_i0", field); ("y_i1", field); ("y_i2", field); ("y_i3", field)];
+
+  dep =
+  None;
+
+  body =
+  elet "var0_f_1" (F.const 4) @@
+  elet "var1_f_1" (F.const 0) @@
+  elet "a_0__x" (var "x_i0") @@
+  elet "a_0__result" (call "circuit_A" [(var "a_0__x")]) @@
+  elet "a_0__y" (project (var "a_0__result") 0) @@
+  elet "y_i0" (var "a_0__y") @@
+  elet "var1_f_2" (F.const 666) @@
+  elet "a_1__x" (var "x_i1") @@
+  elet "a_1__result" (call "circuit_A" [(var "a_1__x")]) @@
+  elet "a_1__y" (project (var "a_1__result") 0) @@
+  elet "y_i1" (var "a_1__y") @@
+  elet "var1_f_3" (F.const 666) @@
+  elet "a_2__x" (var "x_i2") @@
+  elet "a_2__result" (call "circuit_A" [(var "a_2__x")]) @@
+  elet "a_2__y" (project (var "a_2__result") 0) @@
+  elet "y_i2" (var "a_2__y") @@
+  elet "var1_f_4" (F.const 666) @@
+  elet "a_3__x" (var "x_i3") @@
+  elet "a_3__result" (call "circuit_A" [(var "a_3__x")]) @@
+  elet "a_3__y" (project (var "a_3__result") 0) @@
+  elet "y_i3" (var "a_3__y") @@
+  elet "var1_f_5" (F.const 666) @@
+  (Expr.tuple [(var "y_i0"); (var "y_i1"); (var "y_i2"); (var "y_i3")]);}
+

@@ -59,4 +59,5 @@ template MultiAND(n) {
     }
 }
 
-component main = Foo(4);
+// component main = Foo(4);
+component main = AND();

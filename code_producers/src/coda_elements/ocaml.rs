@@ -1,7 +1,5 @@
 // OcamlMod
 
-use std::fmt::format;
-
 pub struct OcamlMod {
     pub stmts: Vec<OcamlStmt>,
 }
@@ -19,6 +17,7 @@ impl OcamlMod {
 
 // OcamlStmt
 
+#[derive(Debug)]
 pub enum OcamlStmt {
     Open(OcamlName),
     Define(OcamlName, OcamlExpr),
@@ -39,6 +38,7 @@ impl OcamlStmt {
 
 // OcamlExpr
 
+#[derive(Debug)]
 pub enum OcamlExpr {
     Def(OcamlName, Box<OcamlExpr>, Box<OcamlExpr>),
     App(OcamlName, Vec<Box<OcamlExpr>>),
@@ -121,13 +121,19 @@ impl OcamlExpr {
     pub fn ocaml_compile(&self) -> String {
         match &self {
             OcamlExpr::Def(x, e1, e2) => format!(
-                "let {} = {} in @@\n  {}",
+                "(let {} = {} in\n  {})",
                 x.ocaml_compile(),
                 e1.ocaml_compile(),
                 e2.ocaml_compile()
             ),
             OcamlExpr::App(x, es) => {
-                if es.len() == 0 {
+                if x.string.as_str().eq("elet") {
+                    let strs = es.iter().map(|e| e.ocaml_compile()).collect::<Vec<String>>();
+                    let str1 = &strs[0];
+                    let str2 = &strs[1];
+                    let str3 = &strs[2];
+                    format!("elet {} {} @@\n  {}", str1, str2, str3)
+                } else if es.len() == 0 {
                     format!("{}", x.ocaml_compile())
                 } else {
                     format!(
@@ -151,7 +157,11 @@ impl OcamlExpr {
                 str.push_str(&r.ocaml_compile());
                 str.push_str("{");
                 for (x, e) in xs {
-                    str.push_str(&format!(" {} = {};", x.ocaml_compile(), e.ocaml_compile()))
+                    str.push_str(&format!(
+                        "\n\n  {} =\n  {};",
+                        x.ocaml_compile(),
+                        e.ocaml_compile()
+                    ))
                 }
                 str.push_str("}");
                 str
@@ -170,13 +180,14 @@ impl OcamlExpr {
 
 // OcamlName
 
+#[derive(Debug)]
 pub struct OcamlName {
     pub string: String,
 }
 
 impl OcamlName {
     pub fn new(str: &str) -> Self {
-        let str = str.replace("[", "_").replace("]", "_");
+        let str = str.replace("[", "_i").replace("]", "");
         for (i, c) in str.chars().enumerate() {
             if !c.is_ascii() {
                 panic!("Invalid OCaml name (cannot have non-ASCII character): {}", str)
@@ -201,6 +212,7 @@ impl OcamlName {
 
 // OcamlOp
 
+#[derive(Debug)]
 pub struct OcamlOp {
     pub qualifier: Option<OcamlName>,
     pub string: String,

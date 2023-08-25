@@ -87,4 +87,5 @@ template Semaphore(nLevels) {
     nullifierHash <== calculateNullifierHash.out;
 }
 
+// TODO: can make this smaller? try 4 or 8
 component main {public [signalHash, externalNullifier]} = Semaphore(20);
