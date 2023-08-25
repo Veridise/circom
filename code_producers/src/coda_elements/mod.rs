@@ -431,6 +431,8 @@ pub enum CodaOp {
     Pow,
     Div,
     Mod,
+    ShiftR,
+    ShiftL,
 }
 
 impl CodaOp {
@@ -442,6 +444,8 @@ impl CodaOp {
             CodaOp::Pow => OcamlOp::new(Some(OcamlName::coda_module_field()), "^"),
             CodaOp::Div => OcamlOp::new(Some(OcamlName::coda_module_field()), "/"),
             CodaOp::Mod => OcamlOp::new(Some(OcamlName::coda_module_field()), "%"),
+            CodaOp::ShiftR => OcamlOp::new(Some(OcamlName::coda_module_field()), "%"),
+            CodaOp::ShiftL => OcamlOp::new(Some(OcamlName::coda_module_field()), "%"),
         }
     }
 }

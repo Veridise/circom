@@ -28,6 +28,11 @@ subcomponents2:
 xor:
 	cargo run -- coda/tests/gates/xor_test.circom --summary -o coda/tests/gates/ --coda --coda-output /Users/henry/Documents/Coda/dsl/circuits/circomlib/xor.ml
 
+# unirep
+
+unirep_userStateTransition:
+	cargo run -- coda/tests/unirep/userStateTransition_test.circom --summary -o coda/tests/unirep --coda --coda-output /Users/henry/Documents/Coda/dsl/circuits/unirep_auto/userStateTransition_auto.ml.gen
+
 # semaphore
 
 mux1:

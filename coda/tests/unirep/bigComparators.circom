@@ -1,5 +1,5 @@
-include "./comparators.circom";
-include "./bitify.circom";
+include "./circomlib/circuits/comparators.circom";
+include "./circomlib/circuits/bitify.circom";
 
 //~~ support comparisons of numbers up to the field size
 

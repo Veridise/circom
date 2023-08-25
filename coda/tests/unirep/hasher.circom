@@ -1,4 +1,4 @@
-include "./poseidon.circom";
+include "./circomlib/circuits/poseidon.circom";
 
 // attester_id, epoch, and nonce must be range checked
 // outside of this component

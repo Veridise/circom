@@ -1,8 +1,8 @@
 pragma circom 2.0.0;
 
-include "./poseidon.circom";
-include "./comparators.circom";
-include "./mux1.circom";
+include "./circomlib/circuits/poseidon.circom";
+include "./circomlib/circuits/comparators.circom";
+include "./circomlib/circuits/mux1.circom";
 include "./incrementalMerkleTree.circom";
 include "./hasher.circom";
 include "./bigComparators.circom";
@@ -17,7 +17,6 @@ template UserStateTransition(
   SUM_FIELD_COUNT,
   REPL_NONCE_BITS
 ) {
-	// TODO: is it sufficient to just satisfy these?
     assert(EPOCH_KEY_NONCE_PER_EPOCH < 2**8);
     assert(SUM_FIELD_COUNT < FIELD_COUNT);
 
