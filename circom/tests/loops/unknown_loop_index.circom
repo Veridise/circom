@@ -1,6 +1,6 @@
 pragma circom 2.0.0;
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s
+// RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s
 
 template Num2Bits(n) {
     signal input in;
@@ -65,3 +65,37 @@ template UnknownLoopIndex(n) {
 }
 
 component main = UnknownLoopIndex(100);
+
+//// Use the block labels to check that the loop is unrolled
+//CHECK-LABEL: define void @Num2Bits_{{[0-9]+}}_run
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-NOT: loop.cond{{.*}}:
+//CHECK-NOT: loop.body{{.*}}:
+//CHECK-NOT: loop.end{{.*}}:
+//CHECK: unrolled_loop{{.*}}:
+//CHECK-NOT: loop.cond{{.*}}:
+//CHECK-NOT: loop.body{{.*}}:
+//CHECK-NOT: loop.end{{.*}}:
+//CHECK:   }
+
+//// Use the block labels to check that no loop related blocks are present
+//CHECK-LABEL: define void @LessThan_{{[0-9]+}}_run
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-NOT: {{.*}}loop{{.*}}:
+//CHECK:   }
+
+//// Use the block labels to check that the loop is NOT unrolled
+//CHECK-LABEL: define void @CountDown_{{[0-9]+}}_run
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-NOT: unrolled_loop{{.*}}:
+//CHECK: loop.cond{{.*}}:
+//CHECK: loop.body{{.*}}:
+//CHECK: loop.end{{.*}}:
+//CHECK-NOT: unrolled_loop{{.*}}:
+//CHECK:   }
+
+//// Use the block labels to check that no loop related blocks are present
+//CHECK-LABEL: define void @UnknownLoopIndex_{{[0-9]+}}_run
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-NOT: {{.*}}loop{{.*}}:
+//CHECK:   }

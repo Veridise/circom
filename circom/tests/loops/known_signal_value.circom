@@ -12,17 +12,15 @@ template accumulate() {
     o <-- r;
 }
 
-template UnknownLoopOOB() {
-    signal input m; // Could be out of bounds
-    signal input n[2];
+template KnownLoopViaSignal() {
     signal output y;
 
     component a = accumulate();
-    a.i <-- m;
-    y <-- n[a.o];
+    a.i <-- 5;
+    y <-- a.o;
 }
 
-component main = UnknownLoopOOB();
+component main = KnownLoopViaSignal();
 
 //// Use the block labels to check that the loop is NOT unrolled
 //CHECK-LABEL: define void @accumulate_{{[0-9]+}}_run
@@ -35,7 +33,7 @@ component main = UnknownLoopOOB();
 //CHECK:   }
 
 //// Use the block labels to check that no loop related blocks are present
-//CHECK-LABEL: define void @UnknownLoopOOB_{{[0-9]+}}_run
+//CHECK-LABEL: define void @KnownLoopViaSignal_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK-NOT: {{.*}}loop{{.*}}:
 //CHECK:   }
