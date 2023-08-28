@@ -8,19 +8,11 @@ use code_producers::coda_elements::summary::SummaryRoot;
 use program_structure::program_archive::ProgramArchive;
 use super::circuit::Circuit;
 
-const UNINTERPRETED_CIRCUIT_NAMES: [&str; 9] = [
-    "AbstractCircuit",
-    "Poseidon",
-    "PoseidonEx",
-    "MultiMux1",
-    "Ark",
-    "Mix",
-    "MixS",
-    "MixLast",
-    "MultiMux1",
-];
+const UNINTERPRETED_CIRCUIT_NAMES: [&str; 8] =
+    ["AbstractCircuit", "PoseidonEx", "MultiMux1", "Ark", "Mix", "MixS", "MixLast", "MultiMux1"];
 
-const DUMMY_CIRCUIT_NAMES: [&str; 9] = [
+const DUMMY_CIRCUIT_NAMES: [&str; 10] = [
+    "Poseidon",
     "Num2Bits",
     "Bits2Num",
     "LessThan",
@@ -77,7 +69,7 @@ impl CompileCoda for Circuit {
         for (template_id, template_code_info) in self.templates.iter().enumerate() {
             let template_summary = summary.components[template_id].clone();
             let template_name = template_summary.name.clone();
-            let template_header = template_code_info.header.clone();
+            // let template_header = template_code_info.header.clone();
             let _template_data = program_archive.get_template_data(&template_name);
             // let template_code_info = circuit.get_template(template_id);
 
@@ -108,10 +100,39 @@ impl CompileCoda for Circuit {
                     CodaTemplateVariant::Normal
                 };
 
+            // let name = CodaTemplateName::new(template_name.clone());
+            // let name = CodaTemplateName::new(template_header.clone());
+
+            // Only use `_instN` suffix in name if there are multiple instances of this template.
+            let name = {
+                let mut instance_count = 0;
+                for cti in coda_template_interfaces.iter_mut() {
+                    if cti.name.eq_base(&template_name) {
+                        instance_count += 1;
+                        cti.name.init_zero_instance_number()
+                    }
+                }
+
+                // let instance_count = coda_template_interfaces
+                //     .iter()
+                //     .filter(|cti| cti.name.eq_base(&template_name))
+                //     .count();
+
+                // if instance_count == 0 {
+                //     CodaTemplateName::new(template_name, 0)
+                // } else {
+                //     CodaTemplateName::new(format!("{}_inst{}", template_name, instance_count))
+                // }
+
+                CodaTemplateName::new(
+                    template_name,
+                    if instance_count > 0 { Some(instance_count) } else { None },
+                )
+            };
+
             coda_template_interfaces.push(CodaTemplateInterface {
                 id: template_id,
-                // name: CodaTemplateName::new(template_name.clone()),
-                name: CodaTemplateName::new(template_header.clone()),
+                name,
                 signals,
                 variable_names: variables,
                 variant,
@@ -171,7 +192,7 @@ impl CompileCoda for Circuit {
             let body = match interface.variant {
                 CodaTemplateVariant::Normal => {
                     println!();
-                    println!("template '{}': compiling body...", interface.name.string);
+                    println!("template {:?}: compiling body...", interface.name);
                     let variables: Vec<_> = interface
                         .variable_names
                         .iter()
@@ -201,11 +222,11 @@ impl CompileCoda for Circuit {
                     Some(coda_compile_stmt(&ctx, instruction_zipper))
                 }
                 CodaTemplateVariant::Uninterpreted => {
-                    println!("template '{}': uninterpreted", interface.name.string);
+                    println!("template '{:?}': uninterpreted", interface.name);
                     None
                 }
                 CodaTemplateVariant::NonDet => {
-                    println!("template '{}': NonDet", interface.name.string);
+                    println!("template '{:?}': NonDet", interface.name);
                     // A tuple with the appropriate number of outputs in the output tuple.
                     let es: Vec<CodaExpr> = interface
                         .signals
