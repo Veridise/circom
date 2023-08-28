@@ -111,7 +111,14 @@ pub struct CodaTemplateInterface {
     pub name: CodaTemplateName,
     pub signals: Vec<CodaSignal>,
     pub variable_names: Vec<String>,
-    pub is_uninterpreted: bool,
+    pub variant: CodaTemplateVariant,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum CodaTemplateVariant {
+    Normal,
+    Uninterpreted,
+    NonDet,
 }
 
 // CodaTemplateSignal
@@ -492,9 +499,15 @@ impl CodaComponentName {
 
 impl OcamlExpr {
     pub fn coda_val(str: &str) -> OcamlExpr {
+        // OcamlExpr::app(
+        //     OcamlName::coda_module_field().sub(&OcamlName::new("const")),
+        //     vec![OcamlExpr::number(str)],
+        // )
+
+        // Need to use `const_of_string` since BigInts can be _too_ big for int literals in OCaml
         OcamlExpr::app(
-            OcamlName::coda_module_field().sub(&OcamlName::new("const")),
-            vec![OcamlExpr::number(str)],
+            OcamlName::coda_module_field().sub(&OcamlName::new("const_of_string")),
+            vec![OcamlExpr::string(str)],
         )
     }
 

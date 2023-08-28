@@ -23,6 +23,9 @@ subcomponents1:
 subcomponents2:
 	cargo run -- coda/tests/subcomponents/subcomponents2.circom --summary --coda --coda-output coda/tests/subcomponents/subcomponents2.ml -o coda/tests/subcomponents
 
+subcomponents3:
+	cargo run -- coda/tests/subcomponents/subcomponents3.circom --summary --coda --coda-output coda/tests/subcomponents/subcomponents3.ml -o coda/tests/subcomponents
+
 # gates
 
 xor:

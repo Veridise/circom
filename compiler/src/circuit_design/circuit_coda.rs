@@ -8,7 +8,7 @@ use code_producers::coda_elements::summary::SummaryRoot;
 use program_structure::program_archive::ProgramArchive;
 use super::circuit::Circuit;
 
-const UNINTERPRETED_CIRCUIT_NAMES: [&str; 16] = [
+const UNINTERPRETED_CIRCUIT_NAMES: [&str; 9] = [
     "AbstractCircuit",
     "Poseidon",
     "PoseidonEx",
@@ -18,119 +18,22 @@ const UNINTERPRETED_CIRCUIT_NAMES: [&str; 16] = [
     "MixS",
     "MixLast",
     "MultiMux1",
+];
+
+const DUMMY_CIRCUIT_NAMES: [&str; 9] = [
     "Num2Bits",
     "Bits2Num",
     "LessThan",
     "IsEqual",
     "GreaterEqThan",
+    "GreaterThan",
     "IsZero",
     "Or",
+    "ExtractBits",
 ];
 
 const __DEBUG: bool = true;
 // const __DEBUG: bool = false;
-
-fn pretty_print_input_information(input_information: &InputInformation) -> String {
-    match &input_information {
-        InputInformation::NoInput => format!("NoInput"),
-        InputInformation::Input { status } => match status {
-            StatusInput::Last => format!("Last"),
-            StatusInput::NoLast => format!("NoLast"),
-            StatusInput::Unknown => format!("Unknown"),
-        },
-    }
-}
-
-fn pretty_print_address_type(address_type: &AddressType) -> String {
-    match &address_type {
-        AddressType::Variable => format!("Variable"),
-        AddressType::Signal => format!("Signal"),
-        AddressType::SubcmpSignal {
-            cmp_address,
-            uniform_parallel_value: _,
-            is_output: _,
-            input_information,
-        } => format!(
-            "SubcmpSignal({}, {})",
-            pretty_print_instruction(&cmp_address),
-            pretty_print_input_information(&input_information)
-        ),
-    }
-}
-
-fn pretty_print_location_rule(location_rule: &LocationRule) -> String {
-    match &location_rule {
-        LocationRule::Indexed { location, template_header } => {
-            format!("Ix(loc={}, header={:?})", pretty_print_instruction(location), template_header)
-        }
-        LocationRule::Mapped { signal_code: _, indexes: _ } => panic!(),
-    }
-}
-
-fn pretty_print_instruction(instruction: &Instruction) -> String {
-    match instruction {
-        Instruction::Value(value) => format!("Value(value={}, parse_as={})", value.value, value.parse_as.to_string()),
-        Instruction::Load(load) => format!(
-            "Load(type={}, src={})",
-            pretty_print_address_type(&load.address_type),
-            pretty_print_location_rule(&load.src)
-        ),
-        Instruction::Store(store) => format!(
-            "Store(dest_type={}, dest={}, src={})",
-            pretty_print_address_type(&store.dest_address_type),
-            pretty_print_location_rule(&store.dest),
-            pretty_print_instruction(&store.src)
-        ),
-        Instruction::Compute(compute) => format!(
-            "Compute(op={}, arg0={}, arg1={})",
-            compute.op.to_string(),
-            pretty_print_instruction(&compute.stack[0]),
-            pretty_print_instruction(&compute.stack[1])
-        ),
-        Instruction::Branch(branch) => format!(
-            "Branch(cond={}, then={}, else={})",
-            pretty_print_instruction(branch.cond.as_ref()),
-            pretty_print_instructions(&branch.if_branch),
-            pretty_print_instructions(&branch.else_branch)
-        ),
-        Instruction::CreateCmp(create_cmp) => format!(
-            "CreateCmp(template_id={:?}, cmp_unique_id={:?}, symbol={:?}, sub_cmp_id={:?}, name_subcomponent={:?}, number_of_cmp={:?})",
-            create_cmp.template_id,
-            create_cmp.cmp_unique_id,
-            create_cmp.symbol,
-            pretty_print_instruction(create_cmp.sub_cmp_id.as_ref()),
-            create_cmp.name_subcomponent,
-            create_cmp.number_of_cmp
-        ),
-        Instruction::Constraint(constraint) => match &constraint {
-            ConstraintBucket::Substitution(sub) => {
-                format!("Sub({})", pretty_print_instruction(sub.as_ref()))
-            }
-            ConstraintBucket::Equality(eq) => {
-                format!("Eq({})", pretty_print_instruction(eq.as_ref()))
-            }
-        },
-        Instruction::Block(block) => format!("{{\n{}}}", pretty_print_instructions(&block.body).split("\n").map(|s| format!("  {}", s)).collect::<Vec<String>>().join("\n")),
-
-        Instruction::Call(call) => {
-            format!("Call({}, [{}])", call.symbol, call.arguments.iter().map(|arg| pretty_print_instruction(arg)).collect::<Vec<String>>().join(", "))
-        },
-        Instruction::Assert(ass) => format!("Assert({})", pretty_print_instruction(ass.evaluate.as_ref())),
-
-        Instruction::Return(_) => panic!(),
-        Instruction::Log(_) => panic!(),
-        Instruction::Loop(_) => panic!(),
-        Instruction::Nop(_) => panic!(),
-    }
-}
-
-fn pretty_print_instructions(instructions: &Vec<Box<Instruction>>) -> String {
-    let mut str = String::new();
-    for instruction in instructions {
-        str.push_str(&format!("{}\n", pretty_print_instruction(instruction.as_ref())));
-    }
-    str
-}
 
 impl CompileCoda for Circuit {
     fn compile_coda(
@@ -167,14 +70,21 @@ impl CompileCoda for Circuit {
                 variables
             };
 
-            let is_uninterpreted = UNINTERPRETED_CIRCUIT_NAMES.contains(&template_name.as_str());
+            let variant: CodaTemplateVariant =
+                if UNINTERPRETED_CIRCUIT_NAMES.contains(&template_name.as_str()) {
+                    CodaTemplateVariant::Uninterpreted
+                } else if DUMMY_CIRCUIT_NAMES.contains(&template_name.as_str()) {
+                    CodaTemplateVariant::NonDet
+                } else {
+                    CodaTemplateVariant::Normal
+                };
 
             coda_template_interfaces.push(CodaTemplateInterface {
                 id: template_id,
                 name: CodaTemplateName::new(template_name.clone()),
                 signals,
                 variable_names: variables,
-                is_uninterpreted,
+                variant,
             });
         }
 
@@ -231,39 +141,58 @@ impl CompileCoda for Circuit {
 
             // Some circuits are compiled to abstract Coda bodies
 
-            let body = if !interface.is_uninterpreted {
-                println!("compiling coda body for template '{}'...", interface.name.string);
-                // let mut variables: Vec<CodaVariable> = Vec::new();
-                // for x in interface.variable_names.iter().cloned() {
-                //     let fresh_index = variables.iter().filter(|y| y.string == x).count();
-                //     variables.push(CodaVariable { fresh_index, string: x })
-                // }
-                let variables: Vec<_> = interface
-                    .variable_names
-                    .iter()
-                    .map(|string| CodaVariable { string: string.clone(), fresh_index: 0 })
-                    .collect();
+            // let body = if !interface.is_uninterpreted {
 
-                let mut values = Vec::new();
-                for x in &_circuit.coda_data.field_tracking {
-                    values.push(CodaValue::new(&x))
+            // } else {
+            //     None
+            // };
+
+            let body = match interface.variant {
+                CodaTemplateVariant::Normal => {
+                    println!("template '{}': compiling body...", interface.name.string);
+                    let variables: Vec<_> = interface
+                        .variable_names
+                        .iter()
+                        .map(|string| CodaVariable { string: string.clone(), fresh_index: 0 })
+                        .collect();
+
+                    let mut values = Vec::new();
+                    for x in &_circuit.coda_data.field_tracking {
+                        values.push(CodaValue::new(&x))
+                    }
+
+                    let ctx = CodaCompileContext {
+                        template_interfaces: coda_template_interfaces.clone(),
+                        variables,
+                        variable_updates: Vec::new(),
+                        signals: interface.signals.clone(),
+                        subcomponents: Vec::new(),
+                        values,
+                        // indexed value out of bounds
+                        default_value: CodaValue::new("666"),
+                    };
+
+                    let instruction_zipper: InstructionZipper = InstructionZipper {
+                        instructions: template_code_info.body.clone(),
+                        index: 0,
+                    };
+                    Some(coda_compile_stmt(&ctx, instruction_zipper))
                 }
-
-                let ctx = CodaCompileContext {
-                    template_interfaces: coda_template_interfaces.clone(),
-                    variables,
-                    variable_updates: Vec::new(),
-                    signals: interface.signals.clone(),
-                    subcomponents: Vec::new(),
-                    values,
-                    // indexed value out of bounds
-                    default_value: CodaValue::new("666"),
-                };
-                let instruction_zipper: InstructionZipper =
-                    InstructionZipper { instructions: template_code_info.body.clone(), index: 0 };
-                Some(coda_compile_stmt(&ctx, instruction_zipper))
-            } else {
-                None
+                CodaTemplateVariant::Uninterpreted => {
+                    println!("template '{}': uninterpreted", interface.name.string);
+                    None
+                }
+                CodaTemplateVariant::NonDet => {
+                    println!("template '{}': NonDet", interface.name.string);
+                    // A tuple with the appropriate number of outputs in the output tuple.
+                    let es: Vec<CodaExpr> = interface
+                        .signals
+                        .iter()
+                        .filter(|signal| signal.visibility.is_output())
+                        .map(|_| CodaExpr::Star)
+                        .collect();
+                    Some(CodaStmt::Output(CodaExpr::coda_tuple_or_single(es)))
+                }
             };
 
             println!("finished compiling coda body");
@@ -445,7 +374,13 @@ fn coda_compile_stmt(ctx: &CodaCompileContext, instruction_zipper: InstructionZi
                 let s = coda_compile_next_stmt(ctx, instruction_zipper);
                 CodaStmt::AssertEqual(0, e0, e1, Box::new(s))
             }
-            _ => panic!(),
+            // `assert(e)` is the same as `assert(e == 1)`
+            instruction => {
+                let e0 = coda_compile_expr(ctx, &instruction);
+                let e1 = CodaExpr::Value(CodaValue::new("1"));
+                let s = coda_compile_next_stmt(ctx, instruction_zipper);
+                CodaStmt::AssertEqual(0, e0, e1, Box::new(s))
+            }
         },
 
         Instruction::Constraint(cstr) => {
@@ -629,4 +564,119 @@ fn from_constant_instruction(instruction: &Instruction) -> usize {
             instruction
         ),
     }
+}
+
+fn pretty_print_input_information(input_information: &InputInformation) -> String {
+    match &input_information {
+        InputInformation::NoInput => format!("NoInput"),
+        InputInformation::Input { status } => match status {
+            StatusInput::Last => format!("Last"),
+            StatusInput::NoLast => format!("NoLast"),
+            StatusInput::Unknown => format!("Unknown"),
+        },
+    }
+}
+
+fn pretty_print_address_type(address_type: &AddressType) -> String {
+    match &address_type {
+        AddressType::Variable => format!("Variable"),
+        AddressType::Signal => format!("Signal"),
+        AddressType::SubcmpSignal {
+            cmp_address,
+            uniform_parallel_value: _,
+            is_output: _,
+            input_information,
+        } => format!(
+            "SubcmpSignal({}, {})",
+            pretty_print_instruction(&cmp_address),
+            pretty_print_input_information(&input_information)
+        ),
+    }
+}
+
+fn pretty_print_location_rule(location_rule: &LocationRule) -> String {
+    match &location_rule {
+        LocationRule::Indexed { location, template_header } => {
+            format!("Ix(loc={}, header={:?})", pretty_print_instruction(location), template_header)
+        }
+        LocationRule::Mapped { signal_code: _, indexes: _ } => panic!(),
+    }
+}
+
+fn pretty_print_instruction(instruction: &Instruction) -> String {
+    match instruction {
+        Instruction::Value(value) => format!("Value(value={}, parse_as={})", value.value, value.parse_as.to_string()),
+        Instruction::Load(load) => format!(
+            "Load(type={}, src={})",
+            pretty_print_address_type(&load.address_type),
+            pretty_print_location_rule(&load.src)
+        ),
+        Instruction::Store(store) => format!(
+            "Store(dest_type={}, dest={}, src={})",
+            pretty_print_address_type(&store.dest_address_type),
+            pretty_print_location_rule(&store.dest),
+            pretty_print_instruction(&store.src)
+        ),
+        Instruction::Compute(compute) => {
+			if compute.stack.len() == 1 {
+				format!(
+					"Compute(op={}, arg0={}, arg1={})",
+					compute.op.to_string(),
+					pretty_print_instruction(&compute.stack[0]),
+					"NO SECOND ARG!"
+				)
+			} else if compute.stack.len() == 2 {
+				format!(
+					"Compute(op={}, arg0={}, arg1={})",
+					compute.op.to_string(),
+					pretty_print_instruction(&compute.stack[0]),
+					pretty_print_instruction(&compute.stack[1])
+				)
+			} else {
+				format!("a compute instruction has more than 2 args???: {:?}", compute)
+			}
+        },
+        Instruction::Branch(branch) => format!(
+            "Branch(cond={}, then={}, else={})",
+            pretty_print_instruction(branch.cond.as_ref()),
+            pretty_print_instructions(&branch.if_branch),
+            pretty_print_instructions(&branch.else_branch)
+        ),
+        Instruction::CreateCmp(create_cmp) => format!(
+            "CreateCmp(template_id={:?}, cmp_unique_id={:?}, symbol={:?}, sub_cmp_id={:?}, name_subcomponent={:?}, number_of_cmp={:?})",
+            create_cmp.template_id,
+            create_cmp.cmp_unique_id,
+            create_cmp.symbol,
+            pretty_print_instruction(create_cmp.sub_cmp_id.as_ref()),
+            create_cmp.name_subcomponent,
+            create_cmp.number_of_cmp
+        ),
+        Instruction::Constraint(constraint) => match &constraint {
+            ConstraintBucket::Substitution(sub) => {
+                format!("Sub({})", pretty_print_instruction(sub.as_ref()))
+            }
+            ConstraintBucket::Equality(eq) => {
+                format!("Eq({})", pretty_print_instruction(eq.as_ref()))
+            }
+        },
+        Instruction::Block(block) => format!("{{\n{}}}", pretty_print_instructions(&block.body).split("\n").map(|s| format!("  {}", s)).collect::<Vec<String>>().join("\n")),
+
+        Instruction::Call(call) => {
+            format!("Call({}, [{}])", call.symbol, call.arguments.iter().map(|arg| pretty_print_instruction(arg)).collect::<Vec<String>>().join(", "))
+        },
+        Instruction::Assert(ass) => format!("Assert({})", pretty_print_instruction(ass.evaluate.as_ref())),
+
+        Instruction::Return(_) => panic!(),
+        Instruction::Log(_) => panic!(),
+        Instruction::Loop(_) => panic!(),
+        Instruction::Nop(_) => panic!(),
+    }
+}
+
+fn pretty_print_instructions(instructions: &Vec<Box<Instruction>>) -> String {
+    let mut str = String::new();
+    for instruction in instructions {
+        str.push_str(&format!("{}\n", pretty_print_instruction(instruction.as_ref())));
+    }
+    str
 }
