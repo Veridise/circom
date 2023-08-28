@@ -61,3 +61,8 @@ semaphore:
 
 rln:
 	cargo run -- coda/tests/circom-rln/circuits/rln.circom --summary -o coda/tests/circom-rln/circuits/ --coda --coda-output /Users/henry/Documents/Coda/dsl/circuits/rln_auto/rln_auto.ml.gen
+
+# darkforest
+
+darkforest_init:
+	cargo run -- coda/tests/darkforest/init/circuit.circom --summary -o coda/tests/darkforest/init/ --coda --coda-output /Users/henry/Documents/Coda/dsl/circuits/darkforest_auto/init_auto.ml.gen
