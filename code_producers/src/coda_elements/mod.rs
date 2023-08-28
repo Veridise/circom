@@ -97,10 +97,11 @@ impl CodaTemplate {
                     body.coda_compile(),
                 ),
             ),
-            None => OcamlStmt::Comment(format!(
-                "The circuit \"{}\" is uninterpreted",
-                self.interface.name.string
-            )),
+            // None => OcamlStmt::Comment(format!(
+            //     "The circuit \"{}\" is uninterpreted",
+            //     self.interface.name.string
+            // )),
+            None => OcamlStmt::Pass,
         }
     }
 }
@@ -274,7 +275,7 @@ impl CodaStmt {
 
                 OcamlExpr::coda_let(
                     OcamlExpr::coda_name_string(&result_string),
-                    OcamlExpr::coda_call(&cmp.interface.name.string, inputs),
+                    cmp.interface.name.coda_call(inputs),
                     body,
                 )
             }
@@ -469,20 +470,51 @@ impl CodaOp {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct CodaTemplateName {
-    pub string: String,
+    string: String,
+    instance_number: Option<usize>,
 }
 
 impl CodaTemplateName {
-    pub fn new(string: String) -> Self {
-        Self { string }
+    pub fn new(string: String, instance_number: Option<usize>) -> Self {
+        Self { string, instance_number }
+    }
+
+    // pub fn set_instance_number(&mut self, instance_number: usize) {
+    //     self.instance_number = Some(instance_number)
+    // }
+
+    pub fn init_zero_instance_number(&mut self) {
+        match self.instance_number {
+            None => self.instance_number = Some(0),
+            Some(_) => {}
+        }
+    }
+
+    pub fn get_instance_number(&self) -> Option<usize> {
+        self.instance_number
+    }
+
+    pub fn eq_base(&self, other: &String) -> bool {
+        *self.string == *other
+    }
+
+    fn composite_name(&self) -> String {
+        match self.instance_number {
+            None => self.string.clone(),
+            Some(i) => format!("{}_inst{}", self.string, i),
+        }
     }
 
     fn coda_compile_circuit_name(&self) -> OcamlExpr {
-        OcamlExpr::string(&self.string)
+        OcamlExpr::string(&self.composite_name())
     }
 
     fn coda_compile_name(&self) -> OcamlName {
-        OcamlName::new(&format!("circuit_{}", self.string))
+        OcamlName::new(&format!("circuit_{}", self.composite_name()))
+    }
+
+    fn coda_call(&self, inputs: Vec<OcamlExpr>) -> OcamlExpr {
+        OcamlExpr::coda_call(&self.composite_name(), inputs)
     }
 }
 
