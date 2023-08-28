@@ -22,6 +22,7 @@ pub enum OcamlStmt {
     Open(OcamlName),
     Define(OcamlName, OcamlExpr),
     Comment(String),
+    Pass,
 }
 
 impl OcamlStmt {
@@ -32,6 +33,7 @@ impl OcamlStmt {
                 format!("let {} = {}", x.ocaml_compile(), e.ocaml_compile())
             }
             OcamlStmt::Comment(s) => format!("(* {} *)", s),
+            OcamlStmt::Pass => "".to_string(),
         }
     }
 }
