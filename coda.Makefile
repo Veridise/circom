@@ -56,3 +56,8 @@ tree:
 semaphore:
 	# cargo run -- coda/tests/semaphore/semaphore.circom --summary --coda --coda-output coda/tests/semaphore/semaphore.ml -o coda/tests/semaphore
 	cargo run -- coda/tests/semaphore/semaphore.circom --summary -o coda/tests/semaphore --coda --coda-output /Users/henry/Documents/Coda/dsl/circuits/semaphore_new/semaphore_new.ml.gen
+
+# rln
+
+rln:
+	cargo run -- coda/tests/circom-rln/circuits/rln.circom --summary -o coda/tests/circom-rln/circuits/ --coda --coda-output /Users/henry/Documents/Coda/dsl/circuits/rln_auto/rln_auto.ml.gen
