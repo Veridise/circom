@@ -2,10 +2,10 @@ mod mod_old;
 pub mod config;
 pub mod summary;
 pub mod ocaml;
-
 use std::str::FromStr;
-
 use self::ocaml::*;
+
+const __DEBUG: bool = false;
 
 // CodaCircuitData
 
@@ -29,6 +29,7 @@ pub struct CodaProgram {
 
 impl CodaProgram {
     pub fn coda_compile(&self) -> OcamlMod {
+        println!();
         println!("CodaProgram::coda_compile");
         let stmts = self.templates.iter().map(|template| template.coda_compile()).collect();
         OcamlMod { stmts }
@@ -51,6 +52,7 @@ pub struct CodaTemplate {
 
 impl CodaTemplate {
     pub fn coda_compile(&self) -> OcamlStmt {
+        println!();
         println!("CodaTemplate::coda_compile: name = {}", self.interface.name.string);
 
         let inputs = self
@@ -222,7 +224,9 @@ pub enum CodaStmt {
 
 impl CodaStmt {
     fn coda_compile(&self) -> OcamlExpr {
-        println!("CodaStmt::coda_compile: self = {:?}", self);
+        if __DEBUG {
+            println!("CodaStmt::coda_compile: self = {:?}", self);
+        }
         match self {
             CodaStmt::Define(n, e, s) => {
                 OcamlExpr::coda_let(n.coda_compile_string(), e.coda_compile(), s.coda_compile())
@@ -310,7 +314,9 @@ impl CodaExpr {
     }
 
     pub fn coda_compile(&self) -> OcamlExpr {
-        println!("CodaExpr::coda_compile: self = {:?}", self);
+        if __DEBUG {
+            println!("CodaExpr::coda_compile: self = {:?}", self);
+        }
         match self {
             CodaExpr::Named(n) => n.coda_compile_expr(),
             CodaExpr::Value(v) => v.coda_compile(),
@@ -343,7 +349,9 @@ pub enum CodaNamed {
 
 impl CodaNamed {
     fn coda_compile_expr(&self) -> OcamlExpr {
-        println!("CodaNamed::coda_compile: self = {:?}", self);
+        if __DEBUG {
+            println!("CodaNamed::coda_compile: self = {:?}", self);
+        }
         match &self {
             CodaNamed::Signal(s) => s.coda_compile_expr(),
             CodaNamed::SubcomponentSignal(s) => s.coda_compile(),

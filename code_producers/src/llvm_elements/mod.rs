@@ -43,10 +43,7 @@ pub trait BodyCtx<'a> {
         index: IntValue<'a>,
     ) -> AnyValueEnum<'a>;
 
-    fn get_variable_array(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-    ) -> AnyValueEnum<'a>;
+    fn get_variable_array(&self, producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a>;
 }
 
 pub trait LLVMIRProducer<'a> {
@@ -62,7 +59,6 @@ pub trait LLVMIRProducer<'a> {
 }
 
 pub type IndexMapping = HashMap<usize, Range<usize>>;
-
 
 #[derive(Default, Eq, PartialEq, Debug)]
 pub struct LLVMCircuitData {

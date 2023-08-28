@@ -32,8 +32,8 @@ const DUMMY_CIRCUIT_NAMES: [&str; 9] = [
     "ExtractBits",
 ];
 
-const __DEBUG: bool = true;
-// const __DEBUG: bool = false;
+// const __DEBUG: bool = true;
+const __DEBUG: bool = false;
 
 impl CompileCoda for Circuit {
     fn compile_coda(
@@ -44,11 +44,40 @@ impl CompileCoda for Circuit {
     ) -> code_producers::coda_elements::CodaProgram {
         let mut coda_program = CodaProgram::default();
 
+        {
+            println!("====[ templates ]====");
+            for template in &self.templates {
+                println!("template:");
+                println!("  - name: {}", template.name);
+                println!("  - header: {}", template.header);
+                println!("  - number_of_components: {}", template.number_of_components);
+            }
+            println!();
+
+            println!("====[ components ]====");
+            let component_index_mapping: &std::collections::HashMap<
+                String,
+                std::collections::HashMap<usize, std::ops::Range<usize>>,
+            > = &self.llvm_data.component_index_mapping;
+
+            for (name, map) in component_index_mapping.iter() {
+                println!("BEGIN component: {}:", name);
+                for (i, r) in map.iter() {
+                    println!("- (i, r) = ({i}, {r:?})");
+                }
+                println!("END component: {}:", name);
+                println!();
+            }
+
+            // panic!("[breakpoint]");
+        }
+
         // accumulate coda_template_interfaces
         let coda_template_interfaces: &mut Vec<CodaTemplateInterface> = &mut Vec::new();
         for (template_id, template_code_info) in self.templates.iter().enumerate() {
             let template_summary = summary.components[template_id].clone();
             let template_name = template_summary.name.clone();
+            let template_header = template_code_info.header.clone();
             let _template_data = program_archive.get_template_data(&template_name);
             // let template_code_info = circuit.get_template(template_id);
 
@@ -81,7 +110,8 @@ impl CompileCoda for Circuit {
 
             coda_template_interfaces.push(CodaTemplateInterface {
                 id: template_id,
-                name: CodaTemplateName::new(template_name.clone()),
+                // name: CodaTemplateName::new(template_name.clone()),
+                name: CodaTemplateName::new(template_header.clone()),
                 signals,
                 variable_names: variables,
                 variant,
@@ -89,21 +119,20 @@ impl CompileCoda for Circuit {
         }
 
         // accumulate coda_program.templates
-        let mut done_template_names: Vec<String> = Vec::new();
+        println!("Accumulate coda_program.templates");
         for (template_id, template_code_info) in self.templates.iter().enumerate() {
-            if done_template_names
-                .iter()
-                .find(|template_name| *template_name.as_str() == *template_code_info.name.as_str())
-                .is_some()
-            {
-                continue;
-            }
-            done_template_names.push(template_code_info.name.clone());
-
             let template_summary = &summary.components[template_id];
             let template_name = &template_summary.name;
+            let template_header = &template_code_info.header;
             let _template_data = program_archive.get_template_data(template_name);
+
+            println!("Accumulate: {template_header} (template_id = {template_id})");
+
             // let _template_code_info = circuit.get_template(template_id);
+
+            // let interface =
+            //     coda_template_interfaces.iter().find(|cti| cti.id == template_id).unwrap();
+
             let interface =
                 coda_template_interfaces.iter().find(|cti| cti.id == template_id).unwrap();
 
@@ -139,16 +168,9 @@ impl CompileCoda for Circuit {
                 );
             }
 
-            // Some circuits are compiled to abstract Coda bodies
-
-            // let body = if !interface.is_uninterpreted {
-
-            // } else {
-            //     None
-            // };
-
             let body = match interface.variant {
                 CodaTemplateVariant::Normal => {
+                    println!();
                     println!("template '{}': compiling body...", interface.name.string);
                     let variables: Vec<_> = interface
                         .variable_names
@@ -340,17 +362,23 @@ fn coda_compile_next_stmt(
     ctx: &CodaCompileContext,
     instruction_zipper: InstructionZipper,
 ) -> CodaStmt {
-    println!(
-        "coda_compile_next_stmt({})",
-        pretty_print_instruction(instruction_zipper.current_instruction().as_ref())
-    );
+    if __DEBUG {
+        println!(
+            "coda_compile_next_stmt({})",
+            pretty_print_instruction(instruction_zipper.current_instruction().as_ref()),
+        );
+    }
     match instruction_zipper.next() {
         Some(new_instruction_zipper) => {
-            println!("coda_compile_next_stmt: SOME(new_instruction_zipper)");
+            if __DEBUG {
+                println!("coda_compile_next_stmt: SOME(new_instruction_zipper)");
+            }
             coda_compile_stmt(ctx, new_instruction_zipper)
         }
         None => {
-            println!("coda_compile_next_stmt: NONE");
+            if __DEBUG {
+                println!("coda_compile_next_stmt: NONE");
+            }
             // There are no next instructions, so end with the resulting output as a
             // tuple of the processing template's output signals.
             let output_signals: Vec<CodaSignal> = ctx.get_coda_output_signals();
@@ -362,10 +390,12 @@ fn coda_compile_next_stmt(
 }
 
 fn coda_compile_stmt(ctx: &CodaCompileContext, instruction_zipper: InstructionZipper) -> CodaStmt {
-    println!(
-        "coda_compile_stmt({})",
-        pretty_print_instruction(instruction_zipper.current_instruction().as_ref())
-    );
+    if __DEBUG {
+        println!(
+            "coda_compile_stmt({})",
+            pretty_print_instruction(instruction_zipper.current_instruction().as_ref())
+        );
+    }
     match instruction_zipper.current_instruction().as_ref() {
         Instruction::Assert(ass) => match ass.evaluate.as_ref() {
             Instruction::Compute(ComputeBucket { op: OperatorType::Eq(_), stack, .. }) => {
@@ -457,12 +487,21 @@ fn coda_compile_stmt(ctx: &CodaCompileContext, instruction_zipper: InstructionZi
         // Adds subcomponent to context, but doesn't actually "use" it right here,
         // since need to instantiate inputs first.
         Instruction::CreateCmp(create_cmp) => {
+            println!("Instruction::CreateCmp:");
+            println!("  - cmp_unique_id: {}", create_cmp.cmp_unique_id);
+            println!("  - component_offset: {}", create_cmp.component_offset);
+            println!("  - component_offset_jump: {}", create_cmp.component_offset_jump);
+
             let mut subcomponents = ctx.subcomponents.clone();
             let index = from_constant_instruction(create_cmp.sub_cmp_id.as_ref());
+            println!("  - index: {}", index);
             let template_id = create_cmp.template_id;
+            println!("  - template_id: {}", template_id);
             let interface = ctx.get_coda_template_interface(template_id).clone();
+            let number_of_cmp = create_cmp.number_of_cmp;
+            println!("  - number_of_cmp: {}", number_of_cmp);
 
-            for i in 0..create_cmp.number_of_cmp {
+            for i in 0..number_of_cmp {
                 let index = index + i;
                 let name = if i == 0 {
                     CodaComponentName::new(format!("{}", create_cmp.name_subcomponent))
@@ -490,7 +529,9 @@ fn coda_compile_stmt(ctx: &CodaCompileContext, instruction_zipper: InstructionZi
 }
 
 fn coda_compile_expr(ctx: &CodaCompileContext, instruction: &Instruction) -> CodaExpr {
-    println!("coda_compile_expr({})", pretty_print_instruction(instruction));
+    if __DEBUG {
+        println!("coda_compile_expr({})", pretty_print_instruction(instruction));
+    }
     match &instruction {
         Instruction::Load(load) => {
             CodaExpr::Named(coda_compile_named(ctx, &load.src, &load.address_type))
