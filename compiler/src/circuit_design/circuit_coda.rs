@@ -588,7 +588,7 @@ fn coda_compile_expr(ctx: &CodaCompileContext, instruction: &Instruction) -> Cod
                 OperatorType::BitOr => panic!(),
                 OperatorType::BitAnd => panic!(),
                 OperatorType::BitXor => panic!(),
-                OperatorType::PrefixSub => panic!(),
+                OperatorType::PrefixSub => panic!(), // TODO: used in hydra-s1
                 OperatorType::BoolNot => panic!(),
                 OperatorType::Complement => panic!(),
                 OperatorType::ToAddress => panic!(),
