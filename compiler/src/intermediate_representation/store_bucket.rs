@@ -189,7 +189,7 @@ impl StoreBucket{
                 match status {
                     StatusInput::Last => {
                         let run_fn = run_fn_name(sub_cmp_name.expect("Could not get the name of the subcomponent"));
-                        // If we reach this point gep is the address of the subcomponent so we ca just reuse it
+                        // If we reach this point gep is the address of the subcomponent so we can just reuse it
                         let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
                         let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
                         create_call(producer, run_fn.as_str(), &[subcmp.into()]);

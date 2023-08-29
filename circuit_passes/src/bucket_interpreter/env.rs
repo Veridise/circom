@@ -1,19 +1,19 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use code_producers::llvm_elements::instructions::create_phi;
-
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use crate::bucket_interpreter::BucketInterpreter;
+use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
 
 pub type TemplatesLibrary = HashMap<String, TemplateCode>;
 pub type FunctionsLibrary = HashMap<String, FunctionCode>;
 
-use crate::bucket_interpreter::BucketInterpreter;
-use crate::bucket_interpreter::observer::InterpreterObserver;
-use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
-
 pub trait ContextSwitcher {
-    fn switch<'a>(&'a self, interpreter: &'a BucketInterpreter<'a>, scope: &'a String) -> BucketInterpreter<'a>;
+    fn switch<'a>(
+        &'a self,
+        interpreter: &'a BucketInterpreter<'a>,
+        scope: &'a String,
+    ) -> BucketInterpreter<'a>;
 }
 
 impl<L: JoinSemiLattice + Clone> JoinSemiLattice for HashMap<usize, L> {
@@ -39,7 +39,7 @@ pub struct SubcmpEnv<'a> {
     pub signals: HashMap<usize, Value>,
     counter: usize,
     name: &'a String,
-    template_id: usize
+    template_id: usize,
 }
 
 impl JoinSemiLattice for SubcmpEnv<'_> {
@@ -50,7 +50,7 @@ impl JoinSemiLattice for SubcmpEnv<'_> {
             signals: self.signals.join(&other.signals),
             counter: std::cmp::min(self.counter, other.counter),
             name: self.name,
-            template_id: self.template_id
+            template_id: self.template_id,
         }
     }
 }
@@ -76,12 +76,6 @@ impl<'a> SubcmpEnv<'a> {
         copy
     }
 
-    pub fn set_signals(self, signals: HashMap<usize, Value>) -> SubcmpEnv<'a> {
-        let mut copy = self;
-        copy.signals = signals;
-        copy
-    }
-
     pub fn counter_is_zero(&self) -> bool {
         self.counter == 0
     }
@@ -97,37 +91,6 @@ impl<'a> SubcmpEnv<'a> {
     }
 }
 
-// /// Very inefficient
-// #[derive(Default)]
-// pub struct EnvSet<'a> {
-//     envs: Vec<Env<'a>>
-// }
-//
-// impl EnvSet<'_> {
-//     pub fn new() -> Self {
-//         EnvSet {
-//             envs: Default::default()
-//         }
-//     }
-//
-//     pub fn contains(&self, env: &Env) -> bool {
-//         for e in &self.envs {
-//             if e == env {
-//                 return true;
-//             }
-//         }
-//         false
-//     }
-//
-//     pub fn add(&self, env: &Env) -> EnvSet {
-//         let mut new = vec![env.clone()];
-//         for e in &self.envs {
-//             new.push(e.clone())
-//         }
-//         EnvSet { envs: new }
-//     }
-// }
-
 // An immutable env that returns a new copy when modified
 #[derive(Clone)]
 pub struct Env<'a> {
@@ -136,24 +99,32 @@ pub struct Env<'a> {
     subcmps: HashMap<usize, SubcmpEnv<'a>>,
     templates_library: &'a TemplatesLibrary,
     functions_library: &'a FunctionsLibrary,
-    context_switcher: &'a dyn ContextSwitcher
+    context_switcher: &'a dyn ContextSwitcher,
 }
 
 impl Display for Env<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\n  vars = {:?}\n  signals = {:?}\n  subcmps = {:?}", self.vars, self.signals, self.subcmps)
+        write!(
+            f,
+            "\n  vars = {:?}\n  signals = {:?}\n  subcmps = {:?}",
+            self.vars, self.signals, self.subcmps
+        )
     }
 }
 
 impl<'a> Env<'a> {
-    pub fn new(templates_library: &'a TemplatesLibrary, functions_library: &'a FunctionsLibrary, context_switcher: &'a dyn ContextSwitcher) -> Self {
+    pub fn new(
+        templates_library: &'a TemplatesLibrary,
+        functions_library: &'a FunctionsLibrary,
+        context_switcher: &'a dyn ContextSwitcher,
+    ) -> Self {
         Env {
             vars: Default::default(),
             signals: Default::default(),
             subcmps: Default::default(),
             templates_library,
             functions_library,
-            context_switcher
+            context_switcher,
         }
     }
 
@@ -193,12 +164,6 @@ impl<'a> Env<'a> {
         copy
     }
 
-    pub fn set_signals(self, signals: HashMap<usize, Value>) -> Self {
-        let mut copy = self;
-        copy.signals = signals;
-        copy
-    }
-
     pub fn set_signal(self, idx: usize, value: Value) -> Self {
         let mut copy = self;
         copy.signals.insert(idx, value);
@@ -208,7 +173,10 @@ impl<'a> Env<'a> {
     /// Sets all the signals of the subcmp to UNK
     pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Self {
         let mut copy = self;
-        let subcmp_env = copy.subcmps.remove(&subcmp_idx).expect(format!("Can't set a signal of subcomponent {}", subcmp_idx).as_str());
+        let subcmp_env = copy
+            .subcmps
+            .remove(&subcmp_idx)
+            .expect(format!("Can't set a signal of subcomponent {}", subcmp_idx).as_str());
         copy.subcmps.insert(subcmp_idx, subcmp_env.reset());
         copy
     }
@@ -216,22 +184,21 @@ impl<'a> Env<'a> {
     pub fn set_subcmp_signal(self, subcmp_idx: usize, signal_idx: usize, value: Value) -> Self {
         //let subcmp = &self.subcmps[&subcmp_idx];
         let mut copy = self;
-        let subcmp_env = copy.subcmps.remove(&subcmp_idx).expect(format!("Can't set a signal of subcomponent {}", subcmp_idx).as_str());
+        let subcmp_env = copy
+            .subcmps
+            .remove(&subcmp_idx)
+            .expect(format!("Can't set a signal of subcomponent {}", subcmp_idx).as_str());
         copy.subcmps.insert(subcmp_idx, subcmp_env.set_signal(signal_idx, value));
         copy
     }
 
     pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Self {
         let mut copy = self;
-        let subcmp_env = copy.subcmps.remove(&subcmp_idx).expect(format!("Can't decrease counter of subcomponent {}", subcmp_idx).as_str());
+        let subcmp_env = copy
+            .subcmps
+            .remove(&subcmp_idx)
+            .expect(format!("Can't decrease counter of subcomponent {}", subcmp_idx).as_str());
         copy.subcmps.insert(subcmp_idx, subcmp_env.decrease_counter());
-        copy
-    }
-
-    pub fn set_subcmp_signals(self, subcmp_idx: usize, signals: HashMap<usize, Value>) -> Self {
-        let mut copy = self;
-        let subcmp_env = copy.subcmps.remove(&subcmp_idx).expect(format!("Can't decrease counter of subcomponent {}", subcmp_idx).as_str());
-        copy.subcmps.insert(subcmp_idx, subcmp_env.set_signals(signals));
         copy
     }
 
@@ -248,25 +215,34 @@ impl<'a> Env<'a> {
         self
     }
 
-    pub fn create_subcmp(self, name: &'a String, base_index: usize, count: usize, template_id: usize) -> Self {
-        let number_of_inputs = {
-            self.templates_library[name].number_of_inputs
-        };
+    pub fn create_subcmp(
+        self,
+        name: &'a String,
+        base_index: usize,
+        count: usize,
+        template_id: usize,
+    ) -> Self {
+        let number_of_inputs = { self.templates_library[name].number_of_inputs };
         let mut copy = self;
         for i in base_index..(base_index + count) {
-            copy.subcmps
-                .insert(i, SubcmpEnv::new(number_of_inputs, name, template_id));
+            copy.subcmps.insert(i, SubcmpEnv::new(number_of_inputs, name, template_id));
         }
         copy
     }
 
-    pub fn run_function(&self, name: &String,
-                        interpreter: &BucketInterpreter,
-                        args: Vec<Value>,
-                        observe: bool) -> Value {
-        if cfg!(debug_assertions) { println!("Running {}", name); }
+    pub fn run_function(
+        &self,
+        name: &String,
+        interpreter: &BucketInterpreter,
+        args: Vec<Value>,
+        observe: bool,
+    ) -> Value {
+        if cfg!(debug_assertions) {
+            println!("Running function {}", name);
+        }
         let code = &self.functions_library[name].body;
-        let mut function_env = Env::new(self.templates_library, self.functions_library, self.context_switcher);
+        let mut function_env =
+            Env::new(self.templates_library, self.functions_library, self.context_switcher);
         for (id, arg) in args.iter().enumerate() {
             function_env = function_env.set_var(id, arg.clone());
         }
@@ -274,7 +250,8 @@ impl<'a> Env<'a> {
         let r = interpreter.execute_instructions(
             &code,
             function_env,
-            !interpreter.observer.ignore_function_calls() && observe);
+            !interpreter.observer.ignore_function_calls() && observe,
+        );
         r.0.expect("Function must return a value!")
     }
 
@@ -285,7 +262,7 @@ impl<'a> Env<'a> {
             subcmps: self.subcmps.join(&other.subcmps),
             templates_library: self.templates_library,
             functions_library: self.functions_library,
-            context_switcher: self.context_switcher
+            context_switcher: self.context_switcher,
         }
     }
 }

@@ -43,10 +43,7 @@ pub trait BodyCtx<'a> {
         index: IntValue<'a>,
     ) -> AnyValueEnum<'a>;
 
-    fn get_variable_array(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-    ) -> AnyValueEnum<'a>;
+    fn get_variable_array(&self, producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a>;
 }
 
 pub trait LLVMIRProducer<'a> {
@@ -62,7 +59,6 @@ pub trait LLVMIRProducer<'a> {
 }
 
 pub type IndexMapping = HashMap<usize, Range<usize>>;
-
 
 #[derive(Default, Eq, PartialEq, Debug)]
 pub struct LLVMCircuitData {
@@ -294,13 +290,13 @@ impl<'a> LLVM<'a> {
         }
         // Run module verification
         self.module.verify().map_err(|llvm_err| {
+            eprintln!("Generated LLVM:");
+            self.module.print_to_stderr();
             eprintln!(
                 "{}: {}",
                 Colour::Red.paint("LLVM Module verification failed"),
                 llvm_err.to_string()
             );
-            eprintln!("Generated LLVM:");
-            self.module.print_to_stderr();
         })?;
         // Verify that bitcode can be written, parsed, and re-verified
         {

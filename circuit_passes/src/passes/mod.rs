@@ -1,25 +1,14 @@
-use code_producers::llvm_elements::LLVMCircuitData;
+use std::cell::RefCell;
 use compiler::circuit_design::function::{FunctionCode, FunctionCodeInfo};
 use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer, new_id};
-
-
-use std::cell::RefCell;
-
-use compiler::intermediate_representation::ir_interface::{
-    Allocate, AssertBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket,
-    CreateCmpBucket, LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket,
-    StoreBucket, BlockBucket, ValueBucket, AddressType, ReturnType, FinalData, LogBucketArg,
-};
-
+use compiler::intermediate_representation::ir_interface::*;
 use crate::passes::{
     conditional_flattening::ConditionalFlattening,
     deterministic_subcomponent_invocation::DeterministicSubCmpInvokePass,
-    loop_unroll::LoopUnrollPass,
-    mapped_to_indexed::MappedToIndexedPass,
-    simplification::SimplificationPass,
-    unknown_index_sanitization::UnknownIndexSanitizationPass,
+    loop_unroll::LoopUnrollPass, mapped_to_indexed::MappedToIndexedPass,
+    simplification::SimplificationPass, unknown_index_sanitization::UnknownIndexSanitizationPass,
 };
 use crate::passes::checks::assert_unique_ids_in_circuit;
 
@@ -39,6 +28,8 @@ macro_rules! pre_hook {
 }
 
 pub trait CircuitTransformationPass {
+    fn name(&self) -> &str;
+
     fn transform_circuit(&self, circuit: &Circuit) -> Circuit {
         self.pre_hook_circuit(&circuit);
         let templates = circuit.templates.iter().map(|t| self.transform_template(t)).collect();
@@ -148,7 +139,8 @@ pub trait CircuitTransformationPass {
             parse_as: bucket.parse_as,
             op_aux_no: bucket.op_aux_no,
             value: bucket.value,
-        }.allocate()
+        }
+        .allocate()
     }
 
     fn transform_address_type(&self, address: &AddressType) -> AddressType {
@@ -367,15 +359,13 @@ pub trait CircuitTransformationPass {
             line: bucket.line,
             message_id: bucket.message_id,
             body: self.transform_instructions(&bucket.body),
-            n_iters: bucket.n_iters
+            n_iters: bucket.n_iters,
         }
         .allocate()
     }
 
     fn transform_nop_bucket(&self, _bucket: &NopBucket) -> InstructionPointer {
-        NopBucket {
-            id: new_id()
-        }.allocate()
+        NopBucket { id: new_id() }.allocate()
     }
 
     pre_hook!(pre_hook_circuit, Circuit);
@@ -442,6 +432,9 @@ impl PassManager {
     pub fn transform_circuit(&self, circuit: Circuit) -> Circuit {
         let mut transformed_circuit = circuit;
         for pass in self.passes.borrow().iter() {
+            if cfg!(debug_assertions) {
+                println!("Do {}...", pass.name());
+            }
             transformed_circuit = pass.transform_circuit(&transformed_circuit);
             assert_unique_ids_in_circuit(&transformed_circuit);
         }

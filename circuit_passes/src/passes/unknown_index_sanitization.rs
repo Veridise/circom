@@ -1,43 +1,29 @@
-use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
-
+use std::collections::BTreeMap;
+use std::ops::Range;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{Instruction, InstructionPointer, new_id, BucketId};
-use compiler::intermediate_representation::ir_interface::{AddressType, Allocate, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket, CreateCmpBucket, LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket, StoreBucket, ValueBucket, OperatorType, ValueType, ReturnType};
+use compiler::intermediate_representation::{Instruction, InstructionPointer, new_id};
+use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
-use compiler::num_traits::{int, Zero};
-use std::ops::Range;
+use code_producers::llvm_elements::array_switch::{get_array_load_symbol, get_array_store_symbol};
 use program_structure::constants::UsefulConstants;
-use code_producers::llvm_elements::array_switch::{load_array_switch, get_array_load_symbol, get_array_store_symbol};
-
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::{BucketInterpreter, value, R};
+use crate::bucket_interpreter::R;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::operations::compute_operation;
-use crate::bucket_interpreter::value::{mod_value, resolve_operation, Value, Value::KnownU32, Value::KnownBigInt};
+use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
 use crate::passes::CircuitTransformationPass;
 use crate::passes::memory::PassMemory;
 
-
 struct ZeroingInterpreter<'a> {
-    prime: &'a String,
     pub constant_fields: &'a Vec<String>,
-    p: BigInt
+    p: BigInt,
 }
 
 impl<'a> ZeroingInterpreter<'a> {
-
-    pub fn init(
-        prime: &'a String,
-        constant_fields: &'a Vec<String>,
-    ) -> Self {
-        ZeroingInterpreter {
-            prime,
-            constant_fields,
-            p: UsefulConstants::new(prime).get_p().clone()
-        }
+    pub fn init(prime: &'a String, constant_fields: &'a Vec<String>) -> Self {
+        ZeroingInterpreter { constant_fields, p: UsefulConstants::new(prime).get_p().clone() }
     }
 
     pub fn execute_value_bucket<'env>(&self, bucket: &ValueBucket, env: Env<'env>) -> R<'env> {
@@ -52,15 +38,19 @@ impl<'a> ZeroingInterpreter<'a> {
                 }
                 ValueType::U32 => KnownU32(bucket.value),
             }),
-            env
+            env,
         )
     }
 
-    pub fn execute_load_bucket<'env>(&self, bucket: &'env LoadBucket, env: Env<'env>) -> R<'env> {
+    pub fn execute_load_bucket<'env>(&self, _bucket: &'env LoadBucket, env: Env<'env>) -> R<'env> {
         (Some(KnownU32(0)), env)
     }
 
-    pub fn execute_compute_bucket<'env>(&self, bucket: &'env ComputeBucket, env: Env<'env>) -> R<'env> {
+    pub fn execute_compute_bucket<'env>(
+        &self,
+        bucket: &'env ComputeBucket,
+        env: Env<'env>,
+    ) -> R<'env> {
         let mut stack = vec![];
         let mut env = env;
         for i in &bucket.stack {
@@ -77,7 +67,11 @@ impl<'a> ZeroingInterpreter<'a> {
         (computed_value, env)
     }
 
-    pub fn execute_instruction<'env>(&self, inst: &'env InstructionPointer, env: Env<'env>) -> R<'env> {
+    pub fn execute_instruction<'env>(
+        &self,
+        inst: &'env InstructionPointer,
+        env: Env<'env>,
+    ) -> R<'env> {
         match inst.as_ref() {
             Instruction::Value(b) => self.execute_value_bucket(b, env),
             Instruction::Load(b) => self.execute_load_bucket(b, env),
@@ -94,7 +88,6 @@ pub struct UnknownIndexSanitizationPass {
     store_replacements: RefCell<BTreeMap<StoreBucket, Range<usize>>>,
 }
 
-
 /**
  * The goal of this pass is to
  */
@@ -107,7 +100,12 @@ impl UnknownIndexSanitizationPass {
         }
     }
 
-    fn find_bounds(&self, address: &AddressType, location: &LocationRule, env: &Env) -> Range<usize> {
+    fn find_bounds(
+        &self,
+        address: &AddressType,
+        location: &LocationRule,
+        env: &Env,
+    ) -> Range<usize> {
         let mem = self.memory.borrow();
         let interpreter = ZeroingInterpreter::init(&mem.prime, &mem.constant_fields);
         let current_scope = &mem.current_scope;
@@ -115,7 +113,7 @@ impl UnknownIndexSanitizationPass {
         let mapping = match address {
             AddressType::Variable => &mem.variables_index_mapping[current_scope],
             AddressType::Signal => &mem.signal_index_mapping[current_scope],
-            AddressType::SubcmpSignal { cmp_address, .. } => &mem.component_addr_index_mapping[current_scope],
+            AddressType::SubcmpSignal { .. } => &mem.component_addr_index_mapping[current_scope],
         };
 
         /*
@@ -124,7 +122,7 @@ impl UnknownIndexSanitizationPass {
          * So, if we set the unknown value to 0, we will compute the base offset,
          * which will let us look up the range of the underlying array.
          *
-         * The expression above is for 1-D arrays, multidimensional arrays follow 
+         * The expression above is for 1-D arrays, multidimensional arrays follow
          * a similar pattern that is also handled here.
          */
         match location {
@@ -137,27 +135,31 @@ impl UnknownIndexSanitizationPass {
                 };
 
                 mapping[&offset].clone()
-            },
+            }
             LocationRule::Mapped { .. } => unreachable!(),
         }
     }
 
-    fn is_location_unknown(&self, address: &AddressType, location: &LocationRule, env: &Env) -> bool {
+    fn is_location_unknown(
+        &self,
+        _address: &AddressType,
+        location: &LocationRule,
+        env: &Env,
+    ) -> bool {
         let mem = self.memory.borrow();
         let interpreter = mem.build_interpreter(self);
 
         let resolved_addr = match location {
             LocationRule::Indexed { location, .. } => {
-                let (r, acc_env) = interpreter.execute_instruction(location, env.clone(), false);
+                let (r, _) = interpreter.execute_instruction(location, env.clone(), false);
                 r.expect("location must produce a value!")
-            },
+            }
             LocationRule::Mapped { .. } => unreachable!(),
         };
 
         resolved_addr.is_unknown()
     }
 }
-
 
 /**
  * The goal is to replace:
@@ -247,6 +249,9 @@ impl InterpreterObserver for UnknownIndexSanitizationPass {
 }
 
 impl CircuitTransformationPass for UnknownIndexSanitizationPass {
+    fn name(&self) -> &str {
+        "UnknownIndexSanitizationPass"
+    }
 
     fn transform_load_bucket(&self, bucket: &LoadBucket) -> InstructionPointer {
         let bounded_fn_symbol = match self.load_replacements.borrow().get(bucket) {

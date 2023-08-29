@@ -27,16 +27,64 @@ pub fn compute_operation(bucket: &ComputeBucket, stack: &Vec<Value>, p: &BigInt)
         OperatorType::BitOr => resolve_operation(value::bit_or_value, p, &stack),
         OperatorType::BitAnd => resolve_operation(value::bit_and_value, p, &stack),
         OperatorType::BitXor => resolve_operation(value::bit_xor_value, p, &stack),
-        OperatorType::PrefixSub => {
-            value::prefix_sub(&stack[0], p)
-        }
+        OperatorType::PrefixSub => value::prefix_sub(&stack[0], p),
         OperatorType::BoolNot => KnownU32((!stack[0].to_bool(p)).into()),
-        OperatorType::Complement => {
-            value::complement(&stack[0], p)
-        }
+        OperatorType::Complement => value::complement(&stack[0], p),
         OperatorType::ToAddress => value::to_address(&stack[0]),
         OperatorType::MulAddress => stack.iter().fold(KnownU32(1), value::mul_address),
         OperatorType::AddAddress => stack.iter().fold(KnownU32(0), value::add_address),
     });
     computed_value
+}
+
+pub fn compute_offset(indexes: &Vec<usize>, lengths: &Vec<usize>) -> usize {
+    // Lengths are in order, i.e. arr[x][y] => [x, y], same with indices
+    // arr[x][y] is x arrays of length y, laid out sequentially
+    if indexes.len() != lengths.len() {
+        // I did check, both "indexes" and "indices" are valid plurals
+        panic!("must have the same number of indexes and array lengths!");
+    }
+    let mut total_offset = indexes.last().copied().expect("must contain some indexes!");
+    let mut size_multiplier = lengths.last().copied().expect("must contain some array lengths!");
+    for i in (0..lengths.len() - 1).rev() {
+        total_offset += indexes[i] * size_multiplier;
+        size_multiplier *= lengths[i];
+    }
+    total_offset
+}
+
+#[cfg(test)]
+mod test {
+    use super::compute_offset;
+
+    #[test]
+    fn test_expected_offset() {
+        let offset = compute_offset(&vec![1, 1], &vec![5, 3]);
+        assert_eq!(4, offset);
+    }
+
+    #[test]
+    fn test_offsets() {
+        let lengths = vec![5, 3, 7];
+        for i in 0..lengths[0] {
+            for j in 0..lengths[1] {
+                for k in 0..lengths[2] {
+                    let offset = compute_offset(&vec![i, j, k], &lengths);
+                    assert_eq!((i * 21) + (j * 7) + k, offset, "i={}, j={}, k={}", i, j, k);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_increments() {
+        let lengths = vec![5, 7];
+        for i in 0..lengths[0] {
+            for j in 0..lengths[1] - 1 {
+                let offset = compute_offset(&vec![i, j], &lengths);
+                let next_offset = compute_offset(&vec![i, j + 1], &lengths);
+                assert_eq!(offset + 1, next_offset);
+            }
+        }
+    }
 }

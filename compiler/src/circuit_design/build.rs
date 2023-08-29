@@ -1,14 +1,14 @@
+use std::collections::{BTreeMap, HashMap};
 use crate::circuit_design::circuit::{Circuit, CompilationFlags};
 use crate::circuit_design::function::FunctionCodeInfo;
 use crate::circuit_design::template::TemplateCodeInfo;
 use crate::hir::very_concrete_program::*;
-use crate::intermediate_representation::{Instruction, translate};
-use crate::intermediate_representation::translate::{CodeInfo, FieldTracker, TemplateDB, ParallelClusters, SSACollector, SSA};
+use crate::intermediate_representation::translate;
+use crate::intermediate_representation::translate::{CodeInfo, FieldTracker, TemplateDB, ParallelClusters, SSACollector};
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
-use program_structure::file_definition::FileLibrary;
-use std::collections::{BTreeMap, HashMap};
 use code_producers::llvm_elements::LLVMCircuitData;
+use program_structure::file_definition::FileLibrary;
 
 #[cfg(debug_assertions)]
 fn matching_lengths_and_offsets(list: &InputOutputList) {

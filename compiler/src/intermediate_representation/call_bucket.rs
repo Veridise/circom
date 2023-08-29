@@ -1,4 +1,3 @@
-use std::path::is_separator;
 use either::Either;
 use super::ir_interface::*;
 use crate::translating_traits::*;

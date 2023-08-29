@@ -1,5 +1,7 @@
 use code_producers::c_elements::CProducer;
-use code_producers::llvm_elements::{LLVMInstruction, new_constraint, to_basic_metadata_enum, LLVMIRProducer};
+use code_producers::llvm_elements::{
+    LLVMInstruction, new_constraint, to_basic_metadata_enum, LLVMIRProducer,
+};
 use code_producers::llvm_elements::instructions::{create_call, create_load, get_instruction_arg};
 use code_producers::llvm_elements::stdlib::{CONSTRAINT_VALUE_FN_NAME, CONSTRAINT_VALUES_FN_NAME};
 use code_producers::wasm_elements::WASMProducer;
@@ -10,21 +12,21 @@ use crate::translating_traits::{WriteC, WriteLLVMIR, WriteWasm};
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ConstraintBucket {
     Substitution(InstructionPointer),
-    Equality(InstructionPointer)
+    Equality(InstructionPointer),
 }
 
 impl ConstraintBucket {
     pub fn unwrap(&self) -> &InstructionPointer {
         match self {
             ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i
+            ConstraintBucket::Equality(i) => i,
         }
     }
 
     pub fn unwrap_mut(&mut self) -> &mut InstructionPointer {
         match self {
             ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i
+            ConstraintBucket::Equality(i) => i,
         }
     }
 }
@@ -45,20 +47,23 @@ impl ObtainMeta for ConstraintBucket {
     fn get_source_file_id(&self) -> &Option<usize> {
         match self {
             ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i
-        }.get_source_file_id()
+            ConstraintBucket::Equality(i) => i,
+        }
+        .get_source_file_id()
     }
     fn get_line(&self) -> usize {
         match self {
             ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i
-        }.get_line()
+            ConstraintBucket::Equality(i) => i,
+        }
+        .get_line()
     }
     fn get_message_id(&self) -> usize {
         match self {
             ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i
-        }.get_message_id()
+            ConstraintBucket::Equality(i) => i,
+        }
+        .get_message_id()
     }
 }
 
@@ -68,18 +73,16 @@ impl ToString for ConstraintBucket {
             "CONSTRAINT:{}",
             match self {
                 ConstraintBucket::Substitution(i) => i,
-                ConstraintBucket::Equality(i) => i
-            }.to_string()
+                ConstraintBucket::Equality(i) => i,
+            }
+            .to_string()
         )
     }
 }
 
 impl ToSExp for ConstraintBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("CONSTRAINT".to_string()),
-            self.unwrap().to_sexp(),
-        ])
+        SExp::List(vec![SExp::Atom("CONSTRAINT".to_string()), self.unwrap().to_sexp()])
     }
 }
 
@@ -90,14 +93,19 @@ impl UpdateId for ConstraintBucket {
 }
 
 impl WriteLLVMIR for ConstraintBucket {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a, 'b>(
+        &self,
+        producer: &'b dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
         // TODO: Create the constraint call
         let prev = match self {
             ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i
-        }.produce_llvm_ir(producer).expect("A constrained instruction MUST produce a value!");
+            ConstraintBucket::Equality(i) => i,
+        }
+        .produce_llvm_ir(producer)
+        .expect("A constrained instruction MUST produce a value!");
 
         const STORE_SRC_IDX: u32 = 1;
         const STORE_DST_IDX: u32 = 0;
@@ -107,20 +115,27 @@ impl WriteLLVMIR for ConstraintBucket {
             ConstraintBucket::Substitution(_) => {
                 let lhs = get_instruction_arg(prev.into_instruction_value(), STORE_DST_IDX);
                 let rhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_SRC_IDX);
-                let rhs = create_load(producer,rhs_ptr.into_pointer_value());
+                let rhs = create_load(producer, rhs_ptr.into_pointer_value());
                 let constr = new_constraint(producer);
-                let call = create_call(producer,CONSTRAINT_VALUES_FN_NAME, &[
-                    to_basic_metadata_enum(lhs),
-                    to_basic_metadata_enum(rhs),
-                    to_basic_metadata_enum(constr)]);
+                let call = create_call(
+                    producer,
+                    CONSTRAINT_VALUES_FN_NAME,
+                    &[
+                        to_basic_metadata_enum(lhs),
+                        to_basic_metadata_enum(rhs),
+                        to_basic_metadata_enum(constr),
+                    ],
+                );
                 Some(call)
             }
             ConstraintBucket::Equality(_) => {
                 let bool = get_instruction_arg(prev.into_instruction_value(), ASSERT_IDX);
                 let constr = new_constraint(producer);
-                let call = create_call(producer, CONSTRAINT_VALUE_FN_NAME, &[
-                    to_basic_metadata_enum(bool),
-                    to_basic_metadata_enum(constr)]);
+                let call = create_call(
+                    producer,
+                    CONSTRAINT_VALUE_FN_NAME,
+                    &[to_basic_metadata_enum(bool), to_basic_metadata_enum(constr)],
+                );
                 Some(call)
             }
         }
@@ -131,8 +146,9 @@ impl WriteWasm for ConstraintBucket {
     fn produce_wasm(&self, producer: &WASMProducer) -> Vec<String> {
         match self {
             ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i
-        }.produce_wasm(producer)
+            ConstraintBucket::Equality(i) => i,
+        }
+        .produce_wasm(producer)
     }
 }
 
@@ -140,7 +156,8 @@ impl WriteC for ConstraintBucket {
     fn produce_c(&self, producer: &CProducer, is_parallel: Option<bool>) -> (Vec<String>, String) {
         match self {
             ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i
-        }.produce_c(producer, is_parallel)
+            ConstraintBucket::Equality(i) => i,
+        }
+        .produce_c(producer, is_parallel)
     }
 }

@@ -1,18 +1,17 @@
 use std::collections::HashMap;
 use std::fs::File;
-use compiler::hir::very_concrete_program::{Component, TemplateInstance, VCP};
-use compiler::intermediate_representation::translate::{initialize_signals, SignalInfo, State, TemplateDB};
-use program_structure::ast::SignalType;
+use compiler::hir::very_concrete_program::{TemplateInstance, VCP};
+use compiler::intermediate_representation::translate::{initialize_signals, SignalInfo, State};
 use code_producers::llvm_elements::{build_fn_name, run_fn_name};
-use serde::Serialize;
 use constant_tracking::ConstantTracker;
+use program_structure::ast::SignalType;
 use program_structure::file_definition::FileLibrary;
-
+use serde::Serialize;
 
 #[derive(Serialize)]
 struct Meta {
     is_ir_ssa: bool,
-    prime: String
+    prime: String,
 }
 
 #[derive(Serialize)]
@@ -20,13 +19,13 @@ struct SignalSummary {
     name: String,
     visibility: String,
     idx: usize,
-    public: bool
+    public: bool,
 }
 
 #[derive(Serialize)]
 struct SubcmpSummary {
     name: String,
-    idx: usize
+    idx: usize,
 }
 
 #[derive(Serialize)]
@@ -54,12 +53,12 @@ pub struct SummaryRoot {
     framework: Option<String>,
     meta: Meta,
     components: Vec<TemplateSummary>,
-    functions: Vec<FunctionSummary>
+    functions: Vec<FunctionSummary>,
 }
 
 fn index_names(lengths: &[usize]) -> Vec<String> {
     if lengths.is_empty() {
-        return vec!["".to_string()]
+        return vec!["".to_string()];
     }
     let hd = lengths[0];
     let tl = &lengths[1..lengths.len()];
@@ -81,11 +80,12 @@ fn unroll_signal(name: &String, info: &SignalInfo, idx: usize) -> Vec<SignalSumm
             visibility: match info.signal_type {
                 SignalType::Output => "output",
                 SignalType::Input => "input",
-                SignalType::Intermediate => "intermediate"
-            }.to_string(),
+                SignalType::Intermediate => "intermediate",
+            }
+            .to_string(),
             public: false,
-            idx
-        }]
+            idx,
+        }];
     }
     let mut signals = vec![];
 
@@ -95,10 +95,11 @@ fn unroll_signal(name: &String, info: &SignalInfo, idx: usize) -> Vec<SignalSumm
             visibility: match info.signal_type {
                 SignalType::Output => "output",
                 SignalType::Input => "input",
-                SignalType::Intermediate => "intermediate"
-            }.to_string(),
+                SignalType::Intermediate => "intermediate",
+            }
+            .to_string(),
             idx: idx + offset,
-            public: false
+            public: false,
         })
     }
 
@@ -107,38 +108,19 @@ fn unroll_signal(name: &String, info: &SignalInfo, idx: usize) -> Vec<SignalSumm
 
 fn unroll_subcmp(name: &String, lengths: &[usize], idx: usize) -> Vec<SubcmpSummary> {
     if lengths.is_empty() {
-        return vec![SubcmpSummary {
-            name: name.to_string(),
-            idx
-        }]
+        return vec![SubcmpSummary { name: name.to_string(), idx }];
     }
 
     let mut subcmps = vec![];
 
-    for (offset, indices)  in index_names(lengths).iter().enumerate() {
-        subcmps.push(SubcmpSummary {
-            name: format!("{name}{indices}"),
-            idx: idx + offset
-        })
+    for (offset, indices) in index_names(lengths).iter().enumerate() {
+        subcmps.push(SubcmpSummary { name: format!("{name}{indices}"), idx: idx + offset })
     }
 
     subcmps
 }
 
 impl SummaryRoot {
-    fn prepare_template_instances(templates: &[TemplateInstance]) -> HashMap<usize, &TemplateInstance> {
-        templates.iter().map(|i| (i.template_id, i)).collect()
-    }
-
-    fn prepare_signals(template: &TemplateInstance) -> HashMap<String, SignalInfo> {
-        let mut signal_info = HashMap::new();
-        for signal in template.signals.clone() {
-            let info = SignalInfo{ signal_type: signal.xtype, lengths: signal.lengths};
-            signal_info.insert(signal.name, info);
-        }
-        signal_info
-    }
-
     fn create_state(template: &TemplateInstance) -> State {
         State::new(
             template.template_id,
@@ -187,7 +169,7 @@ impl SummaryRoot {
             subcmps,
             signals,
             logic_fn_name: run_fn_name(template.template_header.clone()),
-            constructor_fn_name: build_fn_name(template.template_header.clone())
+            constructor_fn_name: build_fn_name(template.template_header.clone()),
         }
     }
 

@@ -2,9 +2,8 @@ use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use assert_cmd::Command;
-use assert_fs::fixture::ChildPath;
 use assert_fs::NamedTempFile;
-use assert_fs::prelude::{FileTouch, FileWriteStr, PathChild};
+use assert_fs::prelude::FileWriteStr;
 use lazy_static::lazy_static;
 use regex::Regex;
 use rand::{distributions::Alphanumeric, Rng}; // 0.8

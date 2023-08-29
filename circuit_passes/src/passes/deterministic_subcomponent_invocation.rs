@@ -1,17 +1,9 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-
-use compiler::intermediate_representation::ir_interface::{
-    AddressType, AssertBucket, BlockBucket, BranchBucket, CallBucket, ComputeBucket,
-    ConstraintBucket, CreateCmpBucket, InputInformation, LoadBucket, LocationRule, LogBucket,
-    LoopBucket, NopBucket, ReturnBucket, StatusInput, StoreBucket, ValueBucket,
-};
+use compiler::intermediate_representation::ir_interface::*;
 use compiler::intermediate_representation::ir_interface::StatusInput::{Last, NoLast};
-
-use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::passes::CircuitTransformationPass;
@@ -30,6 +22,29 @@ impl DeterministicSubCmpInvokePass {
             replacements: Default::default(),
         }
     }
+
+    pub fn try_resolve_input_status(&self, address_type: &AddressType, env: &Env) {
+        // If the address of the subcomponent input information is unknown, then
+        // If executing this instruction would result in calling the subcomponent we replace it with Last
+        //    Will result in calling if the counter is at one because after the execution it will be 0
+        // If not replace with NoLast
+        if let AddressType::SubcmpSignal {
+            input_information: InputInformation::Input { status: StatusInput::Unknown },
+            cmp_address,
+            ..
+        } = address_type
+        {
+            let env = env.clone();
+            let mem = self.memory.borrow();
+            let interpreter = mem.build_interpreter(self);
+            let (addr, env) = interpreter.execute_instruction(cmp_address, env, false);
+            let addr = addr
+                .expect("cmp_address instruction in SubcmpSignal must produce a value!")
+                .get_u32();
+            let new_status = if env.subcmp_counter_equal_to(addr, 1) { Last } else { NoLast };
+            self.replacements.borrow_mut().insert(address_type.clone(), new_status);
+        }
+    }
 }
 
 impl InterpreterObserver for DeterministicSubCmpInvokePass {
@@ -42,26 +57,7 @@ impl InterpreterObserver for DeterministicSubCmpInvokePass {
     }
 
     fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> bool {
-        let env = env.clone();
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
-        // If the address of the subcomponent input information is unk, then
-        // If executing this store bucket would result in calling the subcomponent we replace it with Last
-        //    Will result in calling if the counter is at one because after the execution it will be 0
-        // If not replace with NoLast
-        if let AddressType::SubcmpSignal {
-            input_information: InputInformation::Input { status: StatusInput::Unknown },
-            cmp_address,
-            ..
-        } = &bucket.dest_address_type
-        {
-            let (addr, env) = interpreter.execute_instruction(cmp_address, env, false);
-            let addr = addr
-                .expect("cmp_address instruction in StoreBucket SubcmpSignal must produce a value!")
-                .get_u32();
-            let new_status = if env.subcmp_counter_equal_to(addr, 1) { Last } else { NoLast };
-            self.replacements.borrow_mut().insert(bucket.dest_address_type.clone(), new_status);
-        }
+        self.try_resolve_input_status(&bucket.dest_address_type, env);
         true
     }
 
@@ -97,8 +93,14 @@ impl InterpreterObserver for DeterministicSubCmpInvokePass {
         true
     }
 
-    fn on_call_bucket(&self, _bucket: &CallBucket, _env: &Env) -> bool {
-        true
+    fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> bool {
+        match &bucket.return_info {
+            ReturnType::Intermediate { .. } => true,
+            ReturnType::Final(data) => {
+                self.try_resolve_input_status(&data.dest_address_type, env);
+                true
+            }
+        }
     }
 
     fn on_branch_bucket(&self, _bucket: &BranchBucket, _env: &Env) -> bool {
@@ -123,6 +125,10 @@ impl InterpreterObserver for DeterministicSubCmpInvokePass {
 }
 
 impl CircuitTransformationPass for DeterministicSubCmpInvokePass {
+    fn name(&self) -> &str {
+        "DeterministicSubCmpInvokePass"
+    }
+
     fn pre_hook_circuit(&self, circuit: &Circuit) {
         self.memory.borrow_mut().fill_from_circuit(circuit);
     }
