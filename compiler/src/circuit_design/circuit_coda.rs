@@ -10,8 +10,11 @@ use super::circuit::Circuit;
 
 const UNINTERPRETED_CIRCUIT_NAMES: [&str; 0] = [];
 
-const NONDET_CIRCUIT_NAMES: [&str; 37] = [
+const NONDET_CIRCUIT_NAMES: [&str; 39] = [
     "SegmentMulAny",
+    "SegmentMulFix",
+    "EscalarMulFix",
+    "WindowMulFix",
     "Montgomery2Edwards",
     "BinSum",
     "Not",
@@ -46,7 +49,6 @@ const NONDET_CIRCUIT_NAMES: [&str; 37] = [
     "IsZero",
     "Or",
     "ExtractBits",
-    "SegmentMulAny",
     "Montgomery2Edwards",
 ];
 

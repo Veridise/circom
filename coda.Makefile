@@ -66,3 +66,8 @@ rln:
 
 darkforest_init:
 	cargo run -- coda/tests/darkforest/init/circuit.circom --summary -o coda/tests/darkforest/init/ --coda --coda-output /Users/henry/Documents/Coda/dsl/circuits/darkforest_auto/init_auto.ml.gen
+
+# hydra-s1
+
+hydra-s1:
+	cargo run -- coda/tests/hydra_auto/circuits/hydra-s1.circom --summary -o coda/tests/hydra-s1/circuits/ --coda --coda-output /Users/henry/Documents/Coda/dsl/circuits/hydra_auto/hydra_auto.ml.gen
