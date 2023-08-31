@@ -8,10 +8,34 @@ use code_producers::coda_elements::summary::SummaryRoot;
 use program_structure::program_archive::ProgramArchive;
 use super::circuit::Circuit;
 
-const UNINTERPRETED_CIRCUIT_NAMES: [&str; 8] =
-    ["AbstractCircuit", "PoseidonEx", "MultiMux1", "Ark", "Mix", "MixS", "MixLast", "MultiMux1"];
+const UNINTERPRETED_CIRCUIT_NAMES: [&str; 0] = [];
 
-const DUMMY_CIRCUIT_NAMES: [&str; 10] = [
+const NONDET_CIRCUIT_NAMES: [&str; 37] = [
+    "SegmentMulAny",
+    "Montgomery2Edwards",
+    "BinSum",
+    "Not",
+    "Xor",
+    "And",
+    "Nand",
+    "MiMCSponge",
+    "AND",
+    "MultiAND",
+    "EscalarProduct",
+    "MultiMux1",
+    "Mux3",
+    "EdDSAPoseidonVerifier",
+    "Sign",
+    "Switcher",
+    "XOR",
+    "AbstractCircuit",
+    "PoseidonEx",
+    "MultiMux1",
+    "Ark",
+    "Mix",
+    "MixS",
+    "MixLast",
+    "MultiMux1",
     "Poseidon",
     "Num2Bits",
     "Bits2Num",
@@ -22,6 +46,8 @@ const DUMMY_CIRCUIT_NAMES: [&str; 10] = [
     "IsZero",
     "Or",
     "ExtractBits",
+    "SegmentMulAny",
+    "Montgomery2Edwards",
 ];
 
 // const __DEBUG: bool = true;
@@ -94,7 +120,7 @@ impl CompileCoda for Circuit {
             let variant: CodaTemplateVariant =
                 if UNINTERPRETED_CIRCUIT_NAMES.contains(&template_name.as_str()) {
                     CodaTemplateVariant::Uninterpreted
-                } else if DUMMY_CIRCUIT_NAMES.contains(&template_name.as_str()) {
+                } else if NONDET_CIRCUIT_NAMES.contains(&template_name.as_str()) {
                     CodaTemplateVariant::NonDet
                 } else {
                     CodaTemplateVariant::Normal
@@ -588,7 +614,7 @@ fn coda_compile_expr(ctx: &CodaCompileContext, instruction: &Instruction) -> Cod
                 OperatorType::BitOr => panic!(),
                 OperatorType::BitAnd => panic!(),
                 OperatorType::BitXor => panic!(),
-                OperatorType::PrefixSub => panic!(), // TODO: used in hydra-s1
+                OperatorType::PrefixSub => todo!("used in hydra-s1"),
                 OperatorType::BoolNot => panic!(),
                 OperatorType::Complement => panic!(),
                 OperatorType::ToAddress => panic!(),
