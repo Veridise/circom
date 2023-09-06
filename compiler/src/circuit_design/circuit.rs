@@ -127,6 +127,7 @@ impl WriteLLVMIR for Circuit {
                     }
                 } else {
                     // multiple dimensions must return via pointer argument
+                    //  and zero dimensions indicates void return
                     void_type(producer).fn_type(&param_types, false)
                 },
             );

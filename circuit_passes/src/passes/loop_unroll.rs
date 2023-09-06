@@ -489,7 +489,7 @@ impl LoopUnrollPass {
             ..FunctionCodeInfo::default()
         });
         // Store the function to be transformed and added to circuit later
-        self.new_body_functions.borrow_mut().push(new_func); 
+        self.new_body_functions.borrow_mut().push(new_func);
         func_name
     }
 
@@ -834,6 +834,15 @@ impl CircuitTransformationPass for LoopUnrollPass {
     }
 
     fn post_hook_circuit(&self, cir: &mut Circuit) {
+        // Normalize return type on source functions for "WriteLLVMIR for Circuit"
+        //  which treats a 1-D vector of size 1 as a scalar return and an empty
+        //  vector as "void" return type (the initial Circuit builder uses empty
+        //  for scalar returns because it doesn't consider "void" return possible).
+        for f in &mut cir.functions {
+            if f.returns.is_empty() {
+                f.returns = vec![1];
+            }
+        }
         // Transform and add the new body functions
         for f in self.new_body_functions.borrow().iter() {
             cir.functions.push(self.transform_function(&f));
