@@ -154,6 +154,10 @@ impl<'a> Env<'a> {
         self.subcmps.get(&subcmp_idx).unwrap().counter_equal_to(value)
     }
 
+    pub fn get_vars_clone(&self) -> HashMap<usize, Value> {
+        self.vars.clone()
+    }
+
     // WRITE OPERATIONS
     pub fn set_var(self, idx: usize, value: Value) -> Self {
         let mut copy = self;

@@ -45,7 +45,10 @@ impl Default for Circuit {
 }
 
 impl WriteLLVMIR for Circuit {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a, 'b>(
+        &self,
+        producer: &'b dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>> {
         // Code for prelude
 
         // Code for standard library?
@@ -54,7 +57,11 @@ impl WriteLLVMIR for Circuit {
 
         // Generate all the switch functions
         let mut ranges = HashSet::new();
-        let mappings = [&self.llvm_data.signal_index_mapping, &self.llvm_data.variable_index_mapping, &self.llvm_data.component_index_mapping];
+        let mappings = [
+            &self.llvm_data.signal_index_mapping,
+            &self.llvm_data.variable_index_mapping,
+            &self.llvm_data.component_index_mapping,
+        ];
 
         for mapping in mappings {
             for range_mapping in mapping.values() {
@@ -103,13 +110,34 @@ impl WriteLLVMIR for Circuit {
                 f.get_line(),
                 f.name.as_str(),
                 name,
-                if f.returns.is_empty() || (f.returns.len() == 1 && *f.returns.get(0).unwrap() == 1)
-                {
-                    bigint_type(producer).fn_type(&param_types, false)
+                if f.returns.len() == 1 {
+                    let single_size = *f.returns.get(0).unwrap();
+                    if single_size == 0 {
+                        //single dimension of size 0 indicates [0 x i256]* should be used
+                        bigint_type(producer)
+                            .array_type(0)
+                            .ptr_type(Default::default())
+                            .fn_type(&param_types, false)
+                    } else if single_size == 1 {
+                        // single dimension of size 1 is a scalar
+                        bigint_type(producer).fn_type(&param_types, false)
+                    } else {
+                        // single dimension size>1 must return via pointer argument
+                        void_type(producer).fn_type(&param_types, false)
+                    }
                 } else {
+                    // multiple dimensions must return via pointer argument
                     void_type(producer).fn_type(&param_types, false)
                 },
             );
+
+            // Preserve names (only for generated b/c source functions use only 1 argument)
+            if name.starts_with(GENERATED_FN_PREFIX) {
+                for (i, p) in f.params.iter().enumerate() {
+                    function.get_nth_param(i as u32).unwrap().set_name(&p.name);
+                }
+            }
+
             funcs.insert(name, function);
         }
 

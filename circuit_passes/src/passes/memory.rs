@@ -148,7 +148,7 @@ impl ContextSwitcher for PassMemory {
         interpreter: &'a BucketInterpreter<'a>,
         scope: &'a String,
     ) -> BucketInterpreter<'a> {
-        self.build_interpreter_with_scope(interpreter.observer, scope.to_string())
+        self.build_interpreter_with_scope(interpreter.observer, scope.clone())
     }
 }
 

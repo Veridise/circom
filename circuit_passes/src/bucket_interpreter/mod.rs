@@ -45,12 +45,12 @@ impl<'a> BucketInterpreter<'a> {
         BucketInterpreter {
             observer,
             mem,
-            scope: scope.clone(),
+            scope,
             p: UsefulConstants::new(mem.get_prime()).get_p().clone(),
         }
     }
 
-    fn get_id_from_indexed_location(&self, location: &LocationRule, env: &Env) -> usize {
+    pub fn get_index_from_location(&self, location: &LocationRule, env: &Env) -> usize {
         match location {
             LocationRule::Indexed { location, .. } => {
                 let (idx, _) = self.execute_instruction(location, env.clone(), false);
@@ -70,19 +70,19 @@ impl<'a> BucketInterpreter<'a> {
     ) {
         match bucket.dest_address_type {
             AddressType::Variable => {
-                let idx = self.get_id_from_indexed_location(&bucket.dest, env);
+                let idx = self.get_index_from_location(&bucket.dest, env);
                 for index in self.mem.get_variables_index_mapping(&self.scope, &idx) {
                     vars.push(index);
                 }
             }
             AddressType::Signal => {
-                let idx = self.get_id_from_indexed_location(&bucket.dest, env);
+                let idx = self.get_index_from_location(&bucket.dest, env);
                 for index in self.mem.get_signal_index_mapping(&self.scope, &idx) {
                     signals.push(index);
                 }
             }
             AddressType::SubcmpSignal { .. } => {
-                let idx = self.get_id_from_indexed_location(&bucket.dest, env);
+                let idx = self.get_index_from_location(&bucket.dest, env);
                 for index in self.mem.get_component_addr_index_mapping(&self.scope, &idx) {
                     subcmps.push(index);
                 }
@@ -556,16 +556,16 @@ impl<'a> BucketInterpreter<'a> {
         return match cond_bool_result {
             None => (None, None, env),
             Some(true) => {
-                if cfg!(debug_assertions) {
-                    println!("Running then branch");
-                }
+                // if cfg!(debug_assertions) {
+                //     println!("Running then branch");
+                // }
                 let (ret, env) = self.execute_instructions(&true_branch, env, observe);
                 (ret, Some(true), env)
             }
             Some(false) => {
-                if cfg!(debug_assertions) {
-                    println!("Running else branch");
-                }
+                // if cfg!(debug_assertions) {
+                //     println!("Running else branch");
+                // }
                 let (ret, env) = self.execute_instructions(&false_branch, env, observe);
                 (ret, Some(false), env)
             }

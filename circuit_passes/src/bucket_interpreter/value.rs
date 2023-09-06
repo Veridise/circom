@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use compiler::intermediate_representation::ir_interface::{ValueBucket, ValueType};
 use compiler::num_bigint::BigInt;
 use compiler::num_traits::ToPrimitive;
@@ -14,7 +14,7 @@ pub trait JoinSemiLattice {
 /// Poor man's lattice that gives up the moment values are not equal
 /// It's a join semi lattice with a top (Unknown)
 /// Not a complete lattice because there is no bottom
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Value {
     Unknown,
     KnownU32(usize),
@@ -22,6 +22,16 @@ pub enum Value {
 }
 
 impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Unknown => write!(f, "Unknown"),
+            KnownU32(n) => write!(f, "{}", n),
+            KnownBigInt(n) => write!(f, "{}", n),
+        }
+    }
+}
+
+impl Debug for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Unknown => write!(f, "Unknown"),
@@ -54,7 +64,7 @@ impl Value {
     pub fn get_bigint_as_string(&self) -> String {
         match self {
             KnownBigInt(b) => b.to_string(),
-            _ => panic!("Can't extract a string representation of a non big int"),
+            _ => panic!("Value is not a KnownBigInt! {:?}", self),
         }
     }
 
