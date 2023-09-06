@@ -11,6 +11,7 @@ use inkwell::builder::Builder;
 use inkwell::context::{Context, ContextRef};
 use inkwell::debug_info::{DebugInfoBuilder, DICompileUnit};
 use inkwell::module::Module;
+use inkwell::passes::PassManager;
 use inkwell::types::{AnyTypeEnum, BasicType, BasicTypeEnum, IntType};
 use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntValue, PointerValue};
 pub use inkwell::types::AnyType;
@@ -316,6 +317,10 @@ impl<'a> LLVM<'a> {
     }
 
     pub fn write_to_file(&self, path: &str) -> Result<(), ()> {
+        let pm = PassManager::create(());
+        pm.add_always_inliner_pass();
+        pm.run_on(&self.module);
+
         // Must finalize all debug info before running the verifier
         for dbg in self.debug.values() {
             dbg.0.finalize();
