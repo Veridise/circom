@@ -1,6 +1,6 @@
 pragma circom 2.0.0;
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s
+// RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
 template InnerLoops(n, m) {
     signal input in[m];
@@ -17,8 +17,8 @@ template InnerLoops(n, m) {
 
 component main = InnerLoops(2, 3);
 
-//signal_arena = { out, in[0], in[1], in[2] }
-//lvars = { n, m, b[0], b[1], i, j }
+// %0 (i.e. signal arena) = { out, in[0], in[1], in[2] }
+// %lvars = { n, m, b[0], b[1], i, j }
 
 //CHECK-LABEL: define void @InnerLoops_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])

@@ -4,6 +4,7 @@ pub mod observer;
 pub(crate) mod operations;
 
 use circom_algebra::modular_arithmetic;
+use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR};
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
@@ -14,6 +15,7 @@ use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
 use crate::passes::memory::PassMemory;
+use crate::passes::LOOP_BODY_FN_PREFIX;
 
 pub struct BucketInterpreter<'a> {
     pub(crate) observer: &'a dyn InterpreterObserver,
@@ -428,28 +430,38 @@ impl<'a> BucketInterpreter<'a> {
         env: Env<'env>,
         observe: bool,
     ) -> R<'env> {
-        let mut args = vec![];
         let mut env = env;
-        for i in &bucket.arguments {
-            let (value, new_env) = self.execute_instruction(i, env, observe);
-            env = new_env;
-            args.push(value.expect("Function argument must produce a value!"));
-        }
-        let result = if args.iter().any(|v| v.is_unknown()) {
+        let res = if bucket.symbol.starts_with(LOOP_BODY_FN_PREFIX) {
+            // The extracted loop body functions can change any values in the environment via the
+            //  parameters passed to it. For now, use the naive approach of setting everything to
+            //  Unknown. This could be improved with special handling for these types of functions.
+            env = env.set_all_to_unk();
+            Unknown
+        } else if bucket.symbol.eq(FR_IDENTITY_ARR_PTR) || bucket.symbol.eq(FR_INDEX_ARR_PTR) {
             Unknown
         } else {
-            env.run_function(&bucket.symbol, self, args, observe)
+            let mut args = vec![];
+            for i in &bucket.arguments {
+                let (value, new_env) = self.execute_instruction(i, env, observe);
+                env = new_env;
+                args.push(value.expect("Function argument must produce a value!"));
+            }
+            if args.iter().any(|v| v.is_unknown()) {
+                Unknown
+            } else {
+                env.run_function(&bucket.symbol, self, args, observe)
+            }
         };
 
-        // Write the result in the destination according to the address type
+        // Write the result in the destination according to the ReturnType
         match &bucket.return_info {
-            ReturnType::Intermediate { .. } => (Some(result), env),
+            ReturnType::Intermediate { .. } => (Some(res), env),
             ReturnType::Final(final_data) => (
                 None,
                 self.store_value_in_address(
                     &final_data.dest_address_type,
                     &final_data.dest,
-                    result,
+                    res,
                     env,
                     observe,
                 ),

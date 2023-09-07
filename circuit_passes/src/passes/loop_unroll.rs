@@ -2,20 +2,19 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::vec;
-use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR};
 use compiler::circuit_design::function::{FunctionCodeInfo, FunctionCode};
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::hir::very_concrete_program::Param;
 use compiler::intermediate_representation::{
-    BucketId, InstructionList, InstructionPointer, new_id, UpdateId, ToSExp,
+    BucketId, InstructionList, InstructionPointer, new_id, UpdateId,
 };
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::value::Value;
-use crate::passes::CircuitTransformationPass;
+use crate::passes::{CircuitTransformationPass, LOOP_BODY_FN_PREFIX};
 use crate::passes::memory::PassMemory;
 
 struct VariableValues<'a> {
@@ -477,7 +476,7 @@ impl LoopUnrollPass {
         );
         // Create new function to hold the copied body
         // NOTE: Must start with `GENERATED_FN_PREFIX` to use `ExtractedFunctionCtx`
-        let func_name = format!("{}loop.body.{}", GENERATED_FN_PREFIX, new_id());
+        let func_name = format!("{}{}", LOOP_BODY_FN_PREFIX, new_id());
         let new_func = Box::new(FunctionCodeInfo {
             source_file_id: bucket.source_file_id,
             line: bucket.line,
@@ -696,13 +695,15 @@ impl LoopUnrollPass {
                         args.push(Self::new_storage_ptr_ref(bucket, AddressType::Variable));
                         // Parameter for signals/arena
                         args.push(Self::new_storage_ptr_ref(bucket, AddressType::Signal));
-                        //Additional parameters for variant vector/array access within the loop
-                        for a in &iter_to_loc[&iter_num] {
-                            args.push(Self::new_indexed_storage_ptr_ref(
-                                bucket,
-                                a.0.clone(),
-                                a.1.get_u32(),
-                            ));
+                        // Additional parameters for variant vector/array access within the loop
+                        if !iter_to_loc.is_empty() {
+                            for a in &iter_to_loc[&iter_num] {
+                                args.push(Self::new_indexed_storage_ptr_ref(
+                                    bucket,
+                                    a.0.clone(),
+                                    a.1.get_u32(),
+                                ));
+                            }
                         }
                         block_body.push(
                             CallBucket {

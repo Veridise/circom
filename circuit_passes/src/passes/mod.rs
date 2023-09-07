@@ -4,6 +4,7 @@ use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
+use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use crate::passes::{
     conditional_flattening::ConditionalFlattening,
     deterministic_subcomponent_invocation::DeterministicSubCmpInvokePass,
@@ -20,6 +21,8 @@ mod mapped_to_indexed;
 mod unknown_index_sanitization;
 mod checks;
 pub(crate) mod memory;
+
+pub const LOOP_BODY_FN_PREFIX: &str = const_format::concatcp!(GENERATED_FN_PREFIX, "loop.body.");
 
 macro_rules! pre_hook {
     ($name: ident, $bucket_ty: ty) => {
