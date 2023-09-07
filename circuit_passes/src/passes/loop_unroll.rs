@@ -885,7 +885,7 @@ mod test {
         AddressType, Allocate, ComputeBucket, InstrContext, LoadBucket, LocationRule, LoopBucket,
         OperatorType, StoreBucket, ValueBucket, ValueType,
     };
-    use crate::passes::CircuitTransformationPass;
+    use crate::passes::{CircuitTransformationPass, LOOP_BODY_FN_PREFIX};
     use crate::passes::loop_unroll::LoopUnrollPass;
 
     #[test]
@@ -902,7 +902,15 @@ mod test {
         }
         assert_ne!(circuit, new_circuit);
         match new_circuit.templates[0].body.last().unwrap().as_ref() {
-            Instruction::Block(b) => assert_eq!(b.body.len(), 10), // 5 iterations unrolled times 2 statements in the loop body
+            Instruction::Block(b) => {
+                // 5 iterations unrolled into 5 call statements targeting extracted loop body functions
+                assert_eq!(b.body.len(), 5);
+                assert!(b.body.iter().all(|s| if let Instruction::Call(c) = s.as_ref() {
+                    c.symbol.starts_with(LOOP_BODY_FN_PREFIX)
+                } else {
+                    false
+                }));
+            }
             _ => assert!(false),
         }
     }
