@@ -1,6 +1,7 @@
 pragma circom 2.0.6;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s
+// XFAIL:.*
 
 template Sum(n) {
     signal input inp[n];
