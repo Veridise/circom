@@ -317,6 +317,7 @@ impl<'a> LLVM<'a> {
     }
 
     pub fn write_to_file(&self, path: &str) -> Result<(), ()> {
+        // Run LLVM IR inliner for the FR_IDENTITY_ARR_PTR and FR_INDEX_ARR_PTR functions
         let pm = PassManager::create(());
         pm.add_always_inliner_pass();
         pm.run_on(&self.module);

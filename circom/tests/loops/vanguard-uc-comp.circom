@@ -27,8 +27,8 @@ component main = Num2Bits(2);
 // NOTE: The order of `fixed*` parameters corresponding to use sites in the body is non-deterministic.
 //
 //CHECK-LABEL: define void @..generated..loop.body.
-//CHECK-SAME: [[$FNUM:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, [0 x i256]* %fixed_0, [0 x i256]* %fixed_1, [0 x i256]* %fixed_2, [0 x i256]* %fixed_3) {{.*}} {
-//CHECK-NEXT: ..generated..loop.body.{{.*}}[[$FNUM]]:
+//CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, [0 x i256]* %fixed_0, [0 x i256]* %fixed_1, [0 x i256]* %fixed_2, [0 x i256]* %fixed_3){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.{{.*}}[[$F_ID]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
@@ -102,7 +102,7 @@ component main = Num2Bits(2);
 //CHECK-NEXT:   %11 = bitcast i256* %10 to [0 x i256]*
 //CHECK-NEXT:   %12 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 0
 //CHECK-NEXT:   %13 = bitcast i256* %12 to [0 x i256]*
-//CHECK-NEXT:   call void @..generated..loop.body.{{.*}}[[$FNUM]]([0 x i256]* %5, [0 x i256]* %0, [0 x i256]* %7, [0 x i256]* %9, [0 x i256]* %11, [0 x i256]* %13)
+//CHECK-NEXT:   call void @..generated..loop.body.{{.*}}[[$F_ID]]([0 x i256]* %5, [0 x i256]* %0, [0 x i256]* %7, [0 x i256]* %9, [0 x i256]* %11, [0 x i256]* %13)
 //CHECK-NEXT:   %14 = bitcast [4 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %15 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 1
 //CHECK-NEXT:   %16 = bitcast i256* %15 to [0 x i256]*
@@ -112,7 +112,7 @@ component main = Num2Bits(2);
 //CHECK-NEXT:   %20 = bitcast i256* %19 to [0 x i256]*
 //CHECK-NEXT:   %21 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 1
 //CHECK-NEXT:   %22 = bitcast i256* %21 to [0 x i256]*
-//CHECK-NEXT:   call void @..generated..loop.body.{{.*}}[[$FNUM]]([0 x i256]* %14, [0 x i256]* %0, [0 x i256]* %16, [0 x i256]* %18, [0 x i256]* %20, [0 x i256]* %22)
+//CHECK-NEXT:   call void @..generated..loop.body.{{.*}}[[$F_ID]]([0 x i256]* %14, [0 x i256]* %0, [0 x i256]* %16, [0 x i256]* %18, [0 x i256]* %20, [0 x i256]* %22)
 //CHECK-NEXT:   br label %assert{{[0-9]+}}
 //CHECK-EMPTY: 
 //CHECK-NEXT: assert{{[0-9]+}}:
