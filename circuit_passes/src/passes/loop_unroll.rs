@@ -17,6 +17,7 @@ use crate::bucket_interpreter::value::Value;
 use crate::passes::{CircuitTransformationPass, LOOP_BODY_FN_PREFIX};
 use crate::passes::memory::PassMemory;
 
+const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = true;
 struct VariableValues<'a> {
     pub env_at_header: Env<'a>,
     pub loadstore_to_index: HashMap<BucketId, (AddressType, Value)>, // key is load/store bucket ID
@@ -668,7 +669,7 @@ impl LoopUnrollPass {
         // println!("recorder = {:?}", recorder); //TODO: TEMP
 
         let mut block_body = vec![];
-        if recorder.is_safe_to_move() {
+        if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() {
             // If the loop body contains more than one instruction, extract it into a new
             // function and generate 'recorder.get_iter()' number of calls to that function.
             // Otherwise, just duplicate the body 'recorder.get_iter()' number of times.
