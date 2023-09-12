@@ -7,10 +7,6 @@ use circom_algebra::modular_arithmetic;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
 
-pub trait JoinSemiLattice {
-    fn join(&self, other: &Self) -> Self;
-}
-
 /// Poor man's lattice that gives up the moment values are not equal
 /// It's a join semi lattice with a top (Unknown)
 /// Not a complete lattice because there is no bottom
@@ -37,18 +33,6 @@ impl Debug for Value {
             Unknown => write!(f, "Unknown"),
             KnownU32(n) => write!(f, "{}", n),
             KnownBigInt(n) => write!(f, "BigInt({})", n),
-        }
-    }
-}
-
-impl JoinSemiLattice for Value {
-    /// a ⊔ b = a    iff a = b
-    /// a ⊔ b = UNK  otherwise
-    fn join(&self, other: &Self) -> Self {
-        if self == other {
-            self.clone()
-        } else {
-            Unknown
         }
     }
 }

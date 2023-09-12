@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use crate::bucket_interpreter::BucketInterpreter;
-use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
+use crate::bucket_interpreter::value::Value;
 
 pub trait ContextSwitcher {
     fn switch<'a>(
@@ -19,43 +19,12 @@ pub trait LibraryAccess {
     fn get_template(&self, name: &String) -> Ref<TemplateCode>;
 }
 
-impl<L: JoinSemiLattice + Clone> JoinSemiLattice for HashMap<usize, L> {
-    fn join(&self, other: &Self) -> Self {
-        let mut new: HashMap<usize, L> = Default::default();
-        for (k, v) in self {
-            new.insert(*k, v.clone());
-        }
-
-        for (k, v) in other {
-            if new.contains_key(&k) {
-                new.get_mut(&k).unwrap().join(v);
-            } else {
-                new.insert(*k, v.clone());
-            }
-        }
-        new
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SubcmpEnv<'a> {
     pub signals: HashMap<usize, Value>,
     counter: usize,
     name: &'a String,
     template_id: usize,
-}
-
-impl JoinSemiLattice for SubcmpEnv<'_> {
-    fn join(&self, other: &Self) -> Self {
-        assert_eq!(self.name, other.name);
-        assert_eq!(self.template_id, other.template_id);
-        SubcmpEnv {
-            signals: self.signals.join(&other.signals),
-            counter: std::cmp::min(self.counter, other.counter),
-            name: self.name,
-            template_id: self.template_id,
-        }
-    }
 }
 
 impl<'a> SubcmpEnv<'a> {
@@ -267,15 +236,5 @@ impl<'a> Env<'a> {
             !interpreter.observer.ignore_function_calls() && observe,
         );
         r.0.expect("Function must return a value!")
-    }
-
-    pub fn join(&self, other: &Self) -> Self {
-        Env {
-            vars: self.vars.join(&other.vars),
-            signals: self.signals.join(&other.signals),
-            subcmps: self.subcmps.join(&other.subcmps),
-            libs: self.libs,
-            context_switcher: self.context_switcher,
-        }
     }
 }

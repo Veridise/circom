@@ -14,7 +14,7 @@ use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::operations::compute_offset;
-use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
+use crate::bucket_interpreter::value::Value;
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
 use crate::passes::LOOP_BODY_FN_PREFIX;
 
@@ -26,22 +26,6 @@ pub struct BucketInterpreter<'a> {
 }
 
 pub type R<'a> = (Option<Value>, Env<'a>);
-
-impl JoinSemiLattice for Option<Value> {
-    fn join(&self, other: &Self) -> Self {
-        match (self, other) {
-            (x, None) => x.clone(),
-            (None, x) => x.clone(),
-            (Some(x), Some(y)) => Some(x.join(y)),
-        }
-    }
-}
-
-impl JoinSemiLattice for R<'_> {
-    fn join(&self, other: &Self) -> Self {
-        (self.0.join(&other.0), self.1.join(&other.1))
-    }
-}
 
 impl<'a> BucketInterpreter<'a> {
     pub fn init(observer: &'a dyn InterpreterObserver, mem: &'a PassMemory, scope: String) -> Self {
