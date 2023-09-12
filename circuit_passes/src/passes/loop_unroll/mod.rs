@@ -5,7 +5,6 @@ mod body_extractor;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::vec;
-use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{
@@ -13,9 +12,9 @@ use compiler::intermediate_representation::{
 };
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::passes::CircuitTransformationPass;
-use crate::passes::memory::PassMemory;
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 
 use self::body_extractor::LoopBodyExtractor;

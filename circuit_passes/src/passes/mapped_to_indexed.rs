@@ -5,11 +5,11 @@ use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::intermediate_representation::{InstructionPointer, UpdateId};
 use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::Value::KnownU32;
 use crate::passes::CircuitTransformationPass;
-use crate::passes::memory::PassMemory;
 
 pub struct MappedToIndexedPass {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability

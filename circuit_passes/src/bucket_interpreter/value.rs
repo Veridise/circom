@@ -4,8 +4,8 @@ use compiler::num_bigint::BigInt;
 use compiler::num_traits::ToPrimitive;
 use compiler::intermediate_representation::new_id;
 use circom_algebra::modular_arithmetic;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
-use crate::passes::memory::PassMemory;
 
 pub trait JoinSemiLattice {
     fn join(&self, other: &Self) -> Self;

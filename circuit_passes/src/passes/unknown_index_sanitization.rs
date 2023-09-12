@@ -9,12 +9,12 @@ use compiler::num_bigint::BigInt;
 use code_producers::llvm_elements::array_switch::{get_array_load_symbol, get_array_store_symbol};
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::R;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::operations::compute_operation;
+use crate::bucket_interpreter::R;
 use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
 use crate::passes::CircuitTransformationPass;
-use crate::passes::memory::PassMemory;
 
 struct ZeroingInterpreter<'a> {
     pub constant_fields: &'a Vec<String>,

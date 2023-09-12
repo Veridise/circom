@@ -20,7 +20,6 @@ mod deterministic_subcomponent_invocation;
 mod mapped_to_indexed;
 mod unknown_index_sanitization;
 mod checks;
-pub(crate) mod memory;
 
 pub const LOOP_BODY_FN_PREFIX: &str = const_format::concatcp!(GENERATED_FN_PREFIX, "loop.body.");
 
