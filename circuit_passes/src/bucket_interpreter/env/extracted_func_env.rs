@@ -5,7 +5,7 @@ use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use super::{Env, ContextSwitcher, LibraryAccess};
+use super::{Env, LibraryAccess};
 
 /// This Env is used to process functions created when extracting loop bodies into
 /// `LOOP_BODY_FN_PREFIX` functions.
@@ -17,15 +17,6 @@ pub struct ExtractedFuncEnvData<'a> {
 impl Display for ExtractedFuncEnvData<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.base.fmt(f)
-    }
-}
-impl ContextSwitcher for ExtractedFuncEnvData<'_> {
-    fn switch<'a>(
-        &'a self,
-        interpreter: &'a BucketInterpreter<'a>,
-        scope: &String,
-    ) -> BucketInterpreter<'a> {
-        self.base.switch(interpreter, scope)
     }
 }
 
@@ -56,6 +47,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn get_subcmp_signal(&self, subcmp_idx: usize, signal_idx: usize) -> Value {
         //NOTE: `signal_idx` will always be 0 for the fixed* parameters
+        assert_eq!(signal_idx, 0);
         println!("TODO: must handle args here in addition to subcomps");
         // self.base.get_subcmp_signal(subcmp_idx, signal_idx)
         Value::Unknown

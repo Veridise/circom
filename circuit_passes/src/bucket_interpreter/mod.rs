@@ -4,7 +4,6 @@ pub mod memory;
 pub mod observer;
 pub(crate) mod operations;
 
-use std::cell::Ref;
 use std::vec;
 use circom_algebra::modular_arithmetic;
 use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR};
@@ -19,7 +18,7 @@ use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::Value;
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
 use crate::passes::LOOP_BODY_FN_PREFIX;
-use self::env::{LibraryAccess, ContextSwitcher};
+use self::env::LibraryAccess;
 
 pub struct BucketInterpreter<'a> {
     pub(crate) observer: &'a dyn InterpreterObserver,
@@ -410,40 +409,39 @@ impl<'a> BucketInterpreter<'a> {
         (computed_value, env)
     }
 
-    fn run_function<'env>(
-        &self,
-        env: Env<'env>,
-        name: &String,
-        args: Vec<Value>,
-        observe: bool,
-    ) -> R<'env> {
+    fn run_function_loopbody<'env>(&self, name: &String, env: Env<'env>, observe: bool) -> R<'env> {
         if cfg!(debug_assertions) {
             println!("Running function {}", name);
         }
-        let mut new_env = if name.starts_with(LOOP_BODY_FN_PREFIX) {
-            Env::new_extracted_func_env(env)
-        } else {
-            //TODO: this passes lifetime 'a references into the Env which could be the one
-            //  returned which is why the lifetime 'a must outlife the return lifetime 'env
-            Env::new_standard_env(self.mem, self.mem)
-            // todo!()
-        };
-        for (id, arg) in args.iter().enumerate() {
-            new_env = new_env.set_var(id, arg.clone());
-        }
-
-        let instructions = &self.mem.get_function(name).body;
-        let interp = self.mem.switch(self, name);
+        let mut res = (None, Env::new_extracted_func_env(env.clone()));
+        let interp = self.mem.build_interpreter_with_scope(self.observer, name.clone());
         let observe = observe && !interp.observer.ignore_function_calls();
-        let mut last = (None, new_env);
+        let instructions = &env.get_function(name).body;
         unsafe {
             let ptr = instructions.as_ptr();
             for i in 0..instructions.len() {
                 let inst = ptr.add(i).as_ref().unwrap();
-                last = interp.execute_instruction(inst, last.1, observe);
+                res = interp.execute_instruction(inst, res.1, observe);
             }
         }
-        last
+        res
+    }
+
+    fn run_function_basic<'env>(&self, name: &String, args: Vec<Value>, observe: bool) -> Value {
+        if cfg!(debug_assertions) {
+            println!("Running function {}", name);
+        }
+        let mut new_env = Env::new_standard_env(self.mem);
+        for (id, arg) in args.iter().enumerate() {
+            new_env = new_env.set_var(id, arg.clone());
+        }
+        let interp = self.mem.build_interpreter_with_scope(self.observer, name.clone());
+        let (v, _) = interp.execute_instructions(
+            &self.mem.get_function(name).body,
+            new_env,
+            observe && !interp.observer.ignore_function_calls(),
+        );
+        v.expect("Function must produce a value!")
     }
 
     pub fn execute_call_bucket<'env>(
@@ -460,7 +458,7 @@ impl<'a> BucketInterpreter<'a> {
             // The extracted loop body functions can change any values in the environment
             //  via the parameters passed to it. So interpret the function and keep the
             //  resulting Env (as if the function had executed inline).
-            self.run_function(env, &bucket.symbol, vec![], observe)
+            self.run_function_loopbody(&bucket.symbol, env, observe)
         } else {
             let mut args = vec![];
             for i in &bucket.arguments {
@@ -468,14 +466,12 @@ impl<'a> BucketInterpreter<'a> {
                 env = new_env;
                 args.push(value.expect("Function argument must produce a value!"));
             }
-            if args.iter().any(|v| v.is_unknown()) {
-                (Some(Unknown), env)
+            let v = if args.iter().any(|v| v.is_unknown()) {
+                Unknown
             } else {
-                // Ignore the resulting Env from the callee function, using the one in the current caller
-                let (v, _) = self.run_function(env.clone(), &bucket.symbol, args, observe);
-                v.as_ref().expect("Function argument must produce a value!");
-                (v, env)
-            }
+                self.run_function_basic(&bucket.symbol, args, observe)
+            };
+            (Some(v), env)
         };
 
         // Write the result in the destination according to the ReturnType

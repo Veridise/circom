@@ -14,14 +14,6 @@ mod standard_env;
 mod unrolled_block_env;
 mod extracted_func_env;
 
-pub trait ContextSwitcher {
-    fn switch<'a>(
-        &'a self,
-        interpreter: &'a BucketInterpreter<'a>,
-        scope: &String,
-    ) -> BucketInterpreter<'a>;
-}
-
 pub trait LibraryAccess {
     fn get_function(&self, name: &String) -> Ref<FunctionCode>;
     fn get_template(&self, name: &String) -> Ref<TemplateCode>;
@@ -89,20 +81,6 @@ impl Display for Env<'_> {
     }
 }
 
-impl ContextSwitcher for Env<'_> {
-    fn switch<'a>(
-        &'a self,
-        interpreter: &'a BucketInterpreter<'a>,
-        scope: &String,
-    ) -> BucketInterpreter<'a> {
-        match self {
-            Env::Standard(d) => d.switch(interpreter, scope),
-            Env::UnrolledBlock(d) => d.switch(interpreter, scope),
-            Env::ExtractedFunction(d) => d.switch(interpreter, scope),
-        }
-    }
-}
-
 impl LibraryAccess for Env<'_> {
     fn get_function(&self, name: &String) -> Ref<FunctionCode> {
         match self {
@@ -122,11 +100,8 @@ impl LibraryAccess for Env<'_> {
 }
 
 impl<'a> Env<'a> {
-    pub fn new_standard_env(
-        libs: &'a dyn LibraryAccess,
-        context_switcher: &'a dyn ContextSwitcher,
-    ) -> Self {
-        Env::Standard(StandardEnvData::new(libs, context_switcher))
+    pub fn new_standard_env(libs: &'a dyn LibraryAccess) -> Self {
+        Env::Standard(StandardEnvData::new(libs))
     }
 
     pub fn new_unroll_block_env(inner: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {

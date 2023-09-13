@@ -5,7 +5,7 @@ use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use super::{SubcmpEnv, ContextSwitcher, LibraryAccess};
+use super::{SubcmpEnv, LibraryAccess};
 
 #[derive(Clone)]
 pub struct StandardEnvData<'a> {
@@ -13,7 +13,6 @@ pub struct StandardEnvData<'a> {
     pub signals: HashMap<usize, Value>,
     pub subcmps: HashMap<usize, SubcmpEnv>,
     pub libs: &'a dyn LibraryAccess,
-    pub context_switcher: &'a dyn ContextSwitcher,
 }
 
 impl Display for StandardEnvData<'_> {
@@ -23,16 +22,6 @@ impl Display for StandardEnvData<'_> {
             "\n  vars = {:?}\n  signals = {:?}\n  subcmps = {:?}",
             self.vars, self.signals, self.subcmps
         )
-    }
-}
-
-impl ContextSwitcher for StandardEnvData<'_> {
-    fn switch<'a>(
-        &'a self,
-        interpreter: &'a BucketInterpreter<'a>,
-        scope: &String,
-    ) -> BucketInterpreter<'a> {
-        self.context_switcher.switch(interpreter, scope)
     }
 }
 
@@ -47,13 +36,12 @@ impl LibraryAccess for StandardEnvData<'_> {
 }
 
 impl<'a> StandardEnvData<'a> {
-    pub fn new(libs: &'a dyn LibraryAccess, context_switcher: &'a dyn ContextSwitcher) -> Self {
+    pub fn new(libs: &'a dyn LibraryAccess) -> Self {
         StandardEnvData {
             vars: Default::default(),
             signals: Default::default(),
             subcmps: Default::default(),
             libs,
-            context_switcher,
         }
     }
 

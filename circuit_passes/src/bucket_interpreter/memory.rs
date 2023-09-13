@@ -7,8 +7,7 @@ use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use crate::bucket_interpreter::BucketInterpreter;
-use crate::bucket_interpreter::env::{ContextSwitcher, LibraryAccess};
-use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::env::{Env, LibraryAccess};
 use crate::bucket_interpreter::observer::InterpreterObserver;
 
 pub struct PassMemory {
@@ -41,6 +40,21 @@ impl PassMemory {
         }
     }
 
+    pub fn build_interpreter<'a>(
+        &'a self,
+        observer: &'a dyn InterpreterObserver,
+    ) -> BucketInterpreter {
+        self.build_interpreter_with_scope(observer, self.current_scope.borrow().to_string())
+    }
+
+    pub fn build_interpreter_with_scope<'a>(
+        &'a self,
+        observer: &'a dyn InterpreterObserver,
+        scope: String,
+    ) -> BucketInterpreter {
+        BucketInterpreter::init(observer, self, scope)
+    }
+
     pub fn set_scope(&self, template: &TemplateCode) {
         self.current_scope.replace(template.header.clone());
     }
@@ -51,23 +65,8 @@ impl PassMemory {
             println!("Running template {}", self.current_scope.borrow());
         }
         let interpreter = self.build_interpreter(observer);
-        let env = Env::new_standard_env(self, self);
+        let env = Env::new_standard_env(self);
         interpreter.execute_instructions(&template.body, env, true);
-    }
-
-    pub fn build_interpreter<'a>(
-        &'a self,
-        observer: &'a dyn InterpreterObserver,
-    ) -> BucketInterpreter {
-        self.build_interpreter_with_scope(observer, self.current_scope.borrow().to_string())
-    }
-
-    fn build_interpreter_with_scope<'a>(
-        &'a self,
-        observer: &'a dyn InterpreterObserver,
-        scope: String,
-    ) -> BucketInterpreter {
-        BucketInterpreter::init(observer, self, scope)
     }
 
     pub fn add_template(&self, template: &TemplateCode) {
@@ -139,16 +138,6 @@ impl PassMemory {
 
     pub fn get_current_scope_component_addr_index_mapping(&self, index: &usize) -> Range<usize> {
         self.get_component_addr_index_mapping(&self.current_scope.borrow(), index)
-    }
-}
-
-impl ContextSwitcher for PassMemory {
-    fn switch<'a>(
-        &'a self,
-        interpreter: &'a BucketInterpreter<'a>,
-        scope: &String,
-    ) -> BucketInterpreter<'a> {
-        self.build_interpreter_with_scope(interpreter.observer, scope.clone())
     }
 }
 

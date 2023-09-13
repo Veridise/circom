@@ -8,7 +8,7 @@ use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::LOOP_BODY_FN_PREFIX;
 use crate::passes::loop_unroll::body_extractor::LoopBodyExtractor;
-use super::{Env, ContextSwitcher, LibraryAccess};
+use super::{Env, LibraryAccess};
 
 /// This Env is used by the loop unroller to process the BlockBucket containing a
 /// unrolled loop specifically handling the case where the LibraryAccess does not
@@ -23,16 +23,6 @@ pub struct UnrolledBlockEnvData<'a> {
 impl Display for UnrolledBlockEnvData<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         self.base.fmt(f)
-    }
-}
-
-impl ContextSwitcher for UnrolledBlockEnvData<'_> {
-    fn switch<'a>(
-        &'a self,
-        interpreter: &'a BucketInterpreter<'a>,
-        scope: &String,
-    ) -> BucketInterpreter<'a> {
-        self.base.switch(interpreter, scope)
     }
 }
 
