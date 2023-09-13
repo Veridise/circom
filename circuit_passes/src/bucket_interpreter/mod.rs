@@ -4,6 +4,8 @@ pub mod memory;
 pub mod observer;
 pub(crate) mod operations;
 
+use std::cell::Ref;
+use std::vec;
 use circom_algebra::modular_arithmetic;
 use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR};
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
@@ -17,6 +19,7 @@ use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::Value;
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
 use crate::passes::LOOP_BODY_FN_PREFIX;
+use self::env::{LibraryAccess, ContextSwitcher};
 
 pub struct BucketInterpreter<'a> {
     pub(crate) observer: &'a dyn InterpreterObserver,
@@ -225,12 +228,10 @@ impl<'a> BucketInterpreter<'a> {
                 }
             }
             AddressType::SubcmpSignal { cmp_address, .. } => {
+                println!("Load SubcmpSignal: {}", cmp_address.to_string());
                 let (addr, env) = self.execute_instruction(cmp_address, env, observe);
-                let addr = addr
-                    .expect(
-                        "cmp_address instruction in StoreBucket SubcmpSignal must produce a value!",
-                    )
-                    .get_u32();
+                let addr =
+                    addr.expect("cmp_address in SubcmpSignal must produce a value!").get_u32();
                 let continue_observing =
                     if observe { self.observer.on_location_rule(&bucket.src, &env) } else { false };
                 let (idx, env) = match &bucket.src {
@@ -409,6 +410,45 @@ impl<'a> BucketInterpreter<'a> {
         (computed_value, env)
     }
 
+    fn run_function<'env>(
+        &self,
+        env: Env<'env>,
+        name: &String,
+        interpreter: &BucketInterpreter,
+        args: Vec<Value>,
+        observe: bool,
+    ) -> R<'env> {
+        if cfg!(debug_assertions) {
+            println!("Running function {}", name);
+        }
+        let mut new_env = if name.starts_with(LOOP_BODY_FN_PREFIX) {
+            Env::new_extracted_func_env(env)
+        } else {
+            Env::new_standard_env(self.mem, self.mem)
+        };
+        for (id, arg) in args.iter().enumerate() {
+            new_env = new_env.set_var(id, arg.clone());
+        }
+
+        // let instructions = &func.body;
+        let instructions = Ref::map(self.mem.get_function(name), |f| &f.body);
+        let interp = self.mem.switch(interpreter, name);
+        // let temp = interp.execute_instructions(
+        //     &instructions,
+        //     new_env,
+        //     observe && !interp.observer.ignore_function_calls(),
+        // );
+        // temp
+        let observe = observe && !interp.observer.ignore_function_calls();
+        let mut last = (None, new_env);
+        for inst in instructions.iter() {
+            last = self.execute_instruction(inst, last.1, observe);
+        }
+        last //TODO: how can I make this work!?
+             // (last.0, last.1.clone()) // or this?
+             //                          // (last.0, env.clone())
+    }
+
     pub fn execute_call_bucket<'env>(
         &self,
         bucket: &'env CallBucket,
@@ -416,14 +456,13 @@ impl<'a> BucketInterpreter<'a> {
         observe: bool,
     ) -> R<'env> {
         let mut env = env;
-        let res = if bucket.symbol.starts_with(LOOP_BODY_FN_PREFIX) {
-            // The extracted loop body functions can change any values in the environment via the
-            //  parameters passed to it. For now, use the naive approach of setting everything to
-            //  Unknown. This could be improved with special handling for these types of functions.
-            env = env.set_all_to_unk();
-            Unknown
-        } else if bucket.symbol.eq(FR_IDENTITY_ARR_PTR) || bucket.symbol.eq(FR_INDEX_ARR_PTR) {
-            Unknown
+        let res = if bucket.symbol.eq(FR_IDENTITY_ARR_PTR) || bucket.symbol.eq(FR_INDEX_ARR_PTR) {
+            (Some(Unknown), env)
+        } else if bucket.symbol.starts_with(LOOP_BODY_FN_PREFIX) {
+            // The extracted loop body functions can change any values in the environment
+            //  via the parameters passed to it. So interpret the function and keep the
+            //  resulting Env (as if the function had executed inline).
+            self.run_function(env, &bucket.symbol, self, vec![], observe)
         } else {
             let mut args = vec![];
             for i in &bucket.arguments {
@@ -432,22 +471,24 @@ impl<'a> BucketInterpreter<'a> {
                 args.push(value.expect("Function argument must produce a value!"));
             }
             if args.iter().any(|v| v.is_unknown()) {
-                Unknown
+                (Some(Unknown), env)
             } else {
-                env.run_function(&bucket.symbol, self, args, observe)
+                // Ignore the resulting Env from the callee function, using the one in the current caller
+                let (v, _) = self.run_function(env.clone(), &bucket.symbol, self, args, observe);
+                (v, env)
             }
         };
 
         // Write the result in the destination according to the ReturnType
         match &bucket.return_info {
-            ReturnType::Intermediate { .. } => (Some(res), env),
+            ReturnType::Intermediate { .. } => res,
             ReturnType::Final(final_data) => (
                 None,
                 self.store_value_in_address(
                     &final_data.dest_address_type,
                     &final_data.dest,
-                    res,
-                    env,
+                    res.0.expect("Function must return a value!"),
+                    res.1,
                     observe,
                 ),
             ),

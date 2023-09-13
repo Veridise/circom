@@ -51,7 +51,7 @@ impl PassMemory {
             println!("Running template {}", self.current_scope.borrow());
         }
         let interpreter = self.build_interpreter(observer);
-        let env = Env::new(self, self);
+        let env = Env::new_standard_env(self, self);
         interpreter.execute_instructions(&template.body, env, true);
     }
 
@@ -146,7 +146,7 @@ impl ContextSwitcher for PassMemory {
     fn switch<'a>(
         &'a self,
         interpreter: &'a BucketInterpreter<'a>,
-        scope: &'a String,
+        scope: &String,
     ) -> BucketInterpreter<'a> {
         self.build_interpreter_with_scope(interpreter.observer, scope.clone())
     }

@@ -14,12 +14,12 @@ use crate::passes::{
 use crate::passes::checks::assert_unique_ids_in_circuit;
 
 mod conditional_flattening;
-mod loop_unroll;
 mod simplification;
 mod deterministic_subcomponent_invocation;
 mod mapped_to_indexed;
 mod unknown_index_sanitization;
 mod checks;
+pub mod loop_unroll;
 
 pub const LOOP_BODY_FN_PREFIX: &str = const_format::concatcp!(GENERATED_FN_PREFIX, "loop.body.");
 

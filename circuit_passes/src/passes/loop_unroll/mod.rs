@@ -1,6 +1,6 @@
 mod loop_env_recorder;
 mod extracted_location_updater;
-mod body_extractor;
+pub mod body_extractor;
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -120,7 +120,8 @@ impl LoopUnrollPass {
     fn continue_inside(&self, bucket: &BlockBucket, env: &Env) {
         println!("\ncontinue_inside {:?} with {} ", bucket, env);
         let interpreter = self.memory.build_interpreter(self);
-        interpreter.execute_block_bucket(bucket, env.clone(), true);
+        let env = Env::new_unroll_block_env(env.clone(), &self.extractor);
+        interpreter.execute_block_bucket(bucket, env, true);
     }
 }
 
