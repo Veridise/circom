@@ -414,7 +414,6 @@ impl<'a> BucketInterpreter<'a> {
         &self,
         env: Env<'env>,
         name: &String,
-        interpreter: &BucketInterpreter,
         args: Vec<Value>,
         observe: bool,
     ) -> R<'env> {
@@ -424,29 +423,27 @@ impl<'a> BucketInterpreter<'a> {
         let mut new_env = if name.starts_with(LOOP_BODY_FN_PREFIX) {
             Env::new_extracted_func_env(env)
         } else {
+            //TODO: this passes lifetime 'a references into the Env which could be the one
+            //  returned which is why the lifetime 'a must outlife the return lifetime 'env
             Env::new_standard_env(self.mem, self.mem)
+            // todo!()
         };
         for (id, arg) in args.iter().enumerate() {
             new_env = new_env.set_var(id, arg.clone());
         }
 
-        // let instructions = &func.body;
-        let instructions = Ref::map(self.mem.get_function(name), |f| &f.body);
-        let interp = self.mem.switch(interpreter, name);
-        // let temp = interp.execute_instructions(
-        //     &instructions,
-        //     new_env,
-        //     observe && !interp.observer.ignore_function_calls(),
-        // );
-        // temp
+        let instructions = &self.mem.get_function(name).body;
+        let interp = self.mem.switch(self, name);
         let observe = observe && !interp.observer.ignore_function_calls();
         let mut last = (None, new_env);
-        for inst in instructions.iter() {
-            last = self.execute_instruction(inst, last.1, observe);
+        unsafe {
+            let ptr = instructions.as_ptr();
+            for i in 0..instructions.len() {
+                let inst = ptr.add(i).as_ref().unwrap();
+                last = interp.execute_instruction(inst, last.1, observe);
+            }
         }
-        last //TODO: how can I make this work!?
-             // (last.0, last.1.clone()) // or this?
-             //                          // (last.0, env.clone())
+        last
     }
 
     pub fn execute_call_bucket<'env>(
@@ -456,13 +453,14 @@ impl<'a> BucketInterpreter<'a> {
         observe: bool,
     ) -> R<'env> {
         let mut env = env;
+        // let res = (Some(Unknown), env);
         let res = if bucket.symbol.eq(FR_IDENTITY_ARR_PTR) || bucket.symbol.eq(FR_INDEX_ARR_PTR) {
             (Some(Unknown), env)
         } else if bucket.symbol.starts_with(LOOP_BODY_FN_PREFIX) {
             // The extracted loop body functions can change any values in the environment
             //  via the parameters passed to it. So interpret the function and keep the
             //  resulting Env (as if the function had executed inline).
-            self.run_function(env, &bucket.symbol, self, vec![], observe)
+            self.run_function(env, &bucket.symbol, vec![], observe)
         } else {
             let mut args = vec![];
             for i in &bucket.arguments {
@@ -474,7 +472,8 @@ impl<'a> BucketInterpreter<'a> {
                 (Some(Unknown), env)
             } else {
                 // Ignore the resulting Env from the callee function, using the one in the current caller
-                let (v, _) = self.run_function(env.clone(), &bucket.symbol, self, args, observe);
+                let (v, _) = self.run_function(env.clone(), &bucket.symbol, args, observe);
+                v.as_ref().expect("Function argument must produce a value!");
                 (v, env)
             }
         };
