@@ -88,6 +88,11 @@ impl<'a> ExtractedFuncEnvData<'a> {
         ExtractedFuncEnvData { base: Box::new(self.base.set_signal(idx, value)) }
     }
 
+    pub fn set_all_to_unk(self) -> Self {
+        todo!();
+        ExtractedFuncEnvData { base: Box::new(self.base.set_all_to_unk()) }
+    }
+
     pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Self {
         todo!();
         ExtractedFuncEnvData { base: Box::new(self.base.set_subcmp_to_unk(subcmp_idx)) }

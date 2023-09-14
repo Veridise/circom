@@ -86,10 +86,13 @@ impl WriteLLVMIR for Circuit {
                     // This section is a little more complicated than desired because IntType and ArrayType do
                     //  not have a common Trait that defines the `array_type` and `ptr_type` member functions.
                     let ty = match &p.length.len() {
+                        // [] -> i256*
                         0 => bigint_type(producer).ptr_type(Default::default()),
+                        // [A] -> [A x i256]*
                         1 => bigint_type(producer)
                             .array_type(p.length[0] as u32)
                             .ptr_type(Default::default()),
+                        // [A,B,C,...] -> [C x [B x [A x i256]*]*]*
                         _ => {
                             let mut temp = bigint_type(producer).array_type(p.length[0] as u32);
                             for size in &p.length[1..] {

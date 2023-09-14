@@ -305,6 +305,7 @@ fn identity_arr_ptr_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
 
 fn index_arr_ptr_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let bigint_ty = bigint_type(producer);
+    let ret_ty = bigint_ty.ptr_type(Default::default());
     let val_ty = bigint_ty.array_type(0).ptr_type(Default::default());
     let func = create_function(
         producer,
@@ -312,7 +313,7 @@ fn index_arr_ptr_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
         0,
         "",
         FR_INDEX_ARR_PTR,
-        val_ty.fn_type(&[val_ty.into(), bigint_ty.into()], false),
+        ret_ty.fn_type(&[val_ty.into(), bigint_ty.into()], false),
     );
     add_inline_attribute(producer, func);
 
@@ -325,8 +326,7 @@ fn index_arr_ptr_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     producer.set_current_bb(main);
     let gep =
         create_gep(producer, arr.into_pointer_value(), &[zero(producer), idx.into_int_value()]);
-    let cast = producer.llvm().builder.build_bitcast(gep.into_pointer_value(), val_ty, "");
-    create_return(producer, cast.into_pointer_value());
+    create_return(producer, gep.into_pointer_value());
 }
 
 pub fn load_fr<'a>(producer: &dyn LLVMIRProducer<'a>) {

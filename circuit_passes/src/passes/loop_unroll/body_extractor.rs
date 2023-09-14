@@ -83,7 +83,8 @@ impl LoopBodyExtractor {
             Param { name: String::from("signals"), length: vec![0] },
         ];
         for i in 0..bucket_arg_order.len() {
-            params.push(Param { name: format!("fixed_{}", i), length: vec![0] });
+            // Use empty vector for the length to denote scalar (non-array) arguments
+            params.push(Param { name: format!("fixed_{}", i), length: vec![] });
         }
 
         // Copy loop body and add a "return void" at the end
@@ -196,7 +197,8 @@ impl LoopBodyExtractor {
             .0
     }
 
-    //return value key is iteration number
+    // Key for the returned map is iteration number.
+    // The BTreeMap that is returned maps bucket to fixed* argument index.
     fn compute_extra_args(
         recorder: &EnvRecorder,
     ) -> (HashMap<usize, Vec<(AddressType, Value)>>, BTreeMap<BucketId, usize>) {

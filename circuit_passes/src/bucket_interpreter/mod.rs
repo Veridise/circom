@@ -451,14 +451,17 @@ impl<'a> BucketInterpreter<'a> {
         observe: bool,
     ) -> R<'env> {
         let mut env = env;
-        // let res = (Some(Unknown), env);
         let res = if bucket.symbol.eq(FR_IDENTITY_ARR_PTR) || bucket.symbol.eq(FR_INDEX_ARR_PTR) {
             (Some(Unknown), env)
         } else if bucket.symbol.starts_with(LOOP_BODY_FN_PREFIX) {
             // The extracted loop body functions can change any values in the environment
             //  via the parameters passed to it. So interpret the function and keep the
             //  resulting Env (as if the function had executed inline).
-            self.run_function_loopbody(&bucket.symbol, env, observe)
+            // self.run_function_loopbody(&bucket.symbol, env, observe)
+            //
+            //TODO: TEMP: old approach
+            env = env.set_all_to_unk();
+            (Some(Unknown), env)
         } else {
             let mut args = vec![];
             for i in &bucket.arguments {

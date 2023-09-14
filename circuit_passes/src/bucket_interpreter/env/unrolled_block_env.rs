@@ -95,6 +95,13 @@ impl<'a> UnrolledBlockEnvData<'a> {
         }
     }
 
+    pub fn set_all_to_unk(self) -> Self {
+        UnrolledBlockEnvData {
+            base: Box::new(self.base.set_all_to_unk()),
+            extractor: self.extractor,
+        }
+    }
+
     pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Self {
         UnrolledBlockEnvData {
             base: Box::new(self.base.set_subcmp_to_unk(subcmp_idx)),
