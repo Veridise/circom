@@ -60,7 +60,7 @@ impl ToString for TemplateCodeInfo {
 impl WriteLLVMIR for TemplateCodeInfo {
     fn produce_llvm_ir<'ctx, 'prod>(&self, producer: &'prod dyn LLVMIRProducer<'ctx>) -> Option<LLVMInstruction<'ctx>> {
         let void = void_type(producer);
-        let n_signals = self.number_of_inputs + self.number_of_outputs;
+        let n_signals = self.number_of_inputs + self.number_of_outputs + self.number_of_intermediates;
         let template_struct = create_template_struct(producer, n_signals);
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
