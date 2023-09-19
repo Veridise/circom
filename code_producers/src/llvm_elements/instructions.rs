@@ -137,6 +137,76 @@ pub fn create_pow<'a, T: IntMathValue<'a> + Copy>(
     create_pow_with_name(producer, in_func, lhs, rhs, "")
 }
 
+// for(int i = 0; i < len; i++)
+//   dst[i] = src[i]
+pub fn create_array_copy_with_name<'a, T: IntMathValue<'a>>(
+    producer: &dyn LLVMIRProducer<'a>,
+    in_func: FunctionValue<'a>,
+    src: PointerValue<'a>,
+    dst: PointerValue<'a>,
+    len: T,
+    _name: &str,
+) {
+    let bldr = &producer.llvm().builder;
+    let int_ty = len.as_any_value_enum().get_type().into_int_type();
+
+    //// Loop blocks
+    let bb_lp_cond = create_bb(producer, in_func, "loop.cond.copy");
+    let bb_lp_body = create_bb(producer, in_func, "loop.body.copy");
+    let bb_lp_end = create_bb(producer, in_func, "loop.end.copy");
+
+    //// Pre-loop initialization
+    let ptr_lp_var = bldr.build_alloca(int_ty, "i");
+    bldr.build_store(ptr_lp_var, int_ty.const_int(0, false));
+    create_br(producer, bb_lp_cond);
+
+    //// Loop condition block
+    // if (i < len)
+    producer.set_current_bb(bb_lp_cond);
+    let res_cond = create_lt_with_name(
+        producer,
+        create_load_with_name(producer, ptr_lp_var, "idx_val_for_loop_cond").into_int_value(),
+        len.as_any_value_enum().into_int_value(),
+        "idx_is_less_than_array_len"
+    );
+    // then go to loop, else exit
+    create_conditional_branch(producer, res_cond.into_int_value(), bb_lp_body, bb_lp_end);
+
+    //// Loop body block
+    producer.set_current_bb(bb_lp_body);
+    // i
+    let cur_idx = create_load_with_name(producer, ptr_lp_var, "current_idx").into_int_value();
+    // src[i]
+    let src_ptr = create_gep_with_name(producer, src, &[cur_idx], "src_ptr_at_idx").into_pointer_value();
+    let src_val = create_load_with_name(producer, src_ptr, "src_val_at_idx");
+    // dst[i]
+    let dst_ptr = create_gep_with_name(producer, dst, &[cur_idx], "dst_ptr_at_idx").into_pointer_value();
+    // dst[i] = src[i]
+    create_store(producer, dst_ptr, src_val);
+
+    // i = i + 1
+    let res_add = create_add_with_name(
+        producer,
+        cur_idx,
+        int_ty.const_int(1, false),
+        "next_idx"
+    );
+    bldr.build_store(ptr_lp_var, res_add.into_int_value());
+    create_br(producer, bb_lp_cond);
+
+    producer.set_current_bb(bb_lp_end);
+}
+
+pub fn create_array_copy<'a, T: IntMathValue<'a>>(
+    producer: &dyn LLVMIRProducer<'a>,
+    in_func: FunctionValue<'a>,
+    src: PointerValue<'a>,
+    dst: PointerValue<'a>,
+    len: T,
+) {
+    create_array_copy_with_name(producer, in_func, src, dst, len, "")
+}
+
 pub fn create_add_with_name<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
