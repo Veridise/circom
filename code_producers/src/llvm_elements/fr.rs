@@ -9,6 +9,7 @@ use crate::llvm_elements::instructions::{
 };
 use crate::llvm_elements::types::{bigint_type, bool_type, i32_type, void_type};
 
+use super::instructions::create_array_copy;
 use super::instructions::{create_inv, create_return_void};
 
 pub const FR_ADD_FN_NAME: &str = "fr_add";
@@ -261,7 +262,12 @@ pub fn array_copy_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     );
     let main = create_bb(producer, func, FR_ARRAY_COPY_FN_NAME);
     producer.set_current_bb(main);
-    //TODO: may need to implement the body of this method
+
+    let src = func.get_nth_param(0).unwrap();
+    let dst = func.get_nth_param(1).unwrap();
+    let len = func.get_nth_param(2).unwrap();
+    create_array_copy(producer, func, src.into_pointer_value(), dst.into_pointer_value(), len.into_int_value());
+
     create_return_void(producer);
 }
 
