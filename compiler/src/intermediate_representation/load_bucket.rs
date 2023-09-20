@@ -87,33 +87,44 @@ impl WriteLLVMIR for LoadBucket {
         // If we have bounds for an unknown index, we will get the base address and let the function check the bounds
         let load = match &self.bounded_fn {
             Some(name) => {
-                let arr_ptr = match &self.address_type {
-                    AddressType::Variable => producer.body_ctx().get_variable_array(producer),
-                    AddressType::Signal => producer.template_ctx().get_signal_array(producer),
-                    AddressType::SubcmpSignal { cmp_address, .. } => {
-                        let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                        let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        create_gep(producer, subcmp, &[zero(producer)])
-                    },
-                }.into_pointer_value();
-                let arr_ptr = pointer_cast(producer, arr_ptr, array_ptr_ty(producer));
-                create_call(producer, name.as_str(), &[arr_ptr.into(), index.into()])
+                let get_ptr = || {
+                    let arr_ptr = match &self.address_type {
+                        AddressType::Variable => producer.body_ctx().get_variable_array(producer),
+                        AddressType::Signal => producer.template_ctx().get_signal_array(producer),
+                        AddressType::SubcmpSignal { cmp_address, counter_override, .. } => {
+                            let addr = cmp_address.produce_llvm_ir(producer)
+                                .expect("The address of a subcomponent must yield a value!");
+                            if *counter_override {
+                                return producer.template_ctx().load_subcmp_counter(producer, addr)
+                            } else {
+                                let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
+                                create_gep(producer, subcmp, &[zero(producer)])
+                            }
+                        }
+                    };
+                    pointer_cast(producer, arr_ptr.into_pointer_value(), array_ptr_ty(producer))
+                };
+                create_call(producer, name.as_str(), &[get_ptr().into(), index.into()])
             },
             None => {
                 let gep = match &self.address_type {
-                    AddressType::Variable => producer.body_ctx().get_variable(producer, index),
-                    AddressType::Signal => producer.template_ctx().get_signal(producer, index),
-                    AddressType::SubcmpSignal { cmp_address, ..  } => {
+                    AddressType::Variable => producer.body_ctx().get_variable(producer, index).into_pointer_value(),
+                    AddressType::Signal => producer.template_ctx().get_signal(producer, index).into_pointer_value(),
+                    AddressType::SubcmpSignal { cmp_address, counter_override, ..  } => {
                         let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                        let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        if subcmp.get_type().get_element_type().is_array_type() {
-                            create_gep(producer, subcmp, &[zero(producer), index])
+                        if *counter_override {
+                            producer.template_ctx().load_subcmp_counter(producer, addr)
                         } else {
-                            assert_eq!(zero(producer), index);
-                            create_gep(producer, subcmp, &[index])
+                            let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
+                            if subcmp.get_type().get_element_type().is_array_type() {
+                                create_gep(producer, subcmp, &[zero(producer), index]).into_pointer_value()
+                            } else {
+                                assert_eq!(zero(producer), index);
+                                create_gep(producer, subcmp, &[index]).into_pointer_value()
+                            }
                         }
                     }
-                }.into_pointer_value();
+                };
                 create_load(producer, gep)
             },
         };

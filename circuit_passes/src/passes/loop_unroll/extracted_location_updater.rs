@@ -19,6 +19,7 @@ impl ExtractedFunctionLocationUpdater {
             bucket.address_type = AddressType::SubcmpSignal {
                 cmp_address: new_u32_value(bucket, x),
                 uniform_parallel_value: None,
+                counter_override: false,
                 is_output: false,
                 input_information: InputInformation::NoInput,
             };
@@ -45,6 +46,7 @@ impl ExtractedFunctionLocationUpdater {
             bucket.dest_address_type = AddressType::SubcmpSignal {
                 cmp_address: new_u32_value(bucket, x),
                 uniform_parallel_value: None,
+                counter_override: false,
                 is_output: false,
                 input_information: InputInformation::NoInput,
             };

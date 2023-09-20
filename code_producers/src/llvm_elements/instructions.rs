@@ -5,7 +5,7 @@ use inkwell::values::{
     AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue,
     InstructionOpcode, InstructionValue, IntMathValue, IntValue, PhiValue, PointerValue,
 };
-use crate::llvm_elements::{LLVMIRProducer};
+use crate::llvm_elements::LLVMIRProducer;
 use crate::llvm_elements::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
 use crate::llvm_elements::functions::create_bb;
 use crate::llvm_elements::types::{bigint_type, i32_type};

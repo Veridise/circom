@@ -164,9 +164,9 @@ pub fn reduce_address_type(at: AddressType) -> AddressType {
     match at {
         Variable => Variable,
         Signal => Signal,
-        SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information } => {
+        SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information, counter_override} => {
             let cmp_address = Allocate::allocate(reduce_instruction(*cmp_address));
-            SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information }
+            SubcmpSignal { cmp_address, uniform_parallel_value, is_output, input_information, counter_override}
         }
     }
 }

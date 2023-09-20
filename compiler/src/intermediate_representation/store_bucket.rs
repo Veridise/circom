@@ -185,14 +185,14 @@ impl StoreBucket{
             }
         }
 
-        let sub_cmp_name = match &dest {
-            LocationRule::Indexed { template_header, .. } => template_header.clone(),
-            LocationRule::Mapped { .. } => None
-        };
         // If the input information is unknown add a check that checks the counter and if its zero call the subcomponent
         // If its last just call run directly
         if let AddressType::SubcmpSignal { input_information, cmp_address, .. } = &dest_address_type {
             if let InputInformation::Input { status } = input_information {
+                let sub_cmp_name = match &dest {
+                    LocationRule::Indexed { template_header, .. } => template_header.clone(),
+                    LocationRule::Mapped { .. } => None
+                };
                 match status {
                     StatusInput::Last => {
                         let run_fn = run_fn_name(sub_cmp_name.expect("Could not get the name of the subcomponent"));

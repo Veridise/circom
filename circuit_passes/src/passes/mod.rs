@@ -154,11 +154,13 @@ pub trait CircuitTransformationPass {
                 uniform_parallel_value,
                 is_output,
                 input_information,
+                counter_override,
             } => AddressType::SubcmpSignal {
                 cmp_address: self.transform_instruction(cmp_address),
                 uniform_parallel_value: uniform_parallel_value.clone(),
                 is_output: *is_output,
                 input_information: input_information.clone(),
+                counter_override: *counter_override,
             },
             x => x.clone(),
         }

@@ -13,7 +13,7 @@ pub use super::store_bucket::StoreBucket;
 pub use super::log_bucket::LogBucketArg;
 pub use super::types::{InstrContext, ValueType};
 pub use super::value_bucket::ValueBucket;
-pub use super::constraint_bucket::{ConstraintBucket};
+pub use super::constraint_bucket::ConstraintBucket;
 pub use super::block_bucket::BlockBucket;
 pub use super::nop_bucket::NopBucket;
 
