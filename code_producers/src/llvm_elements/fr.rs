@@ -282,7 +282,13 @@ fn array_copy_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let src = func.get_nth_param(0).unwrap();
     let dst = func.get_nth_param(1).unwrap();
     let len = func.get_nth_param(2).unwrap();
-    create_array_copy(producer, func, src.into_pointer_value(), dst.into_pointer_value(), len.into_int_value());
+    create_array_copy(
+        producer,
+        func,
+        src.into_pointer_value(),
+        dst.into_pointer_value(),
+        len.into_int_value(),
+    );
 
     create_return_void(producer);
 }

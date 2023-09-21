@@ -126,46 +126,66 @@ impl WriteLLVMIR for CallBucket {
                 format!("{}_arena", self.symbol).as_str(),
             );
 
-        // Get the offsets based on the sizes of the arguments
-        let offsets: Vec<usize> = self.argument_types.iter().scan(0, |state, arg_ty| {
-            let curr_offset = *state;
-            *state = *state + arg_ty.size;
-            Some(curr_offset)
-        }).collect();
+            // Get the offsets based on the sizes of the arguments
+            let offsets: Vec<usize> = self
+                .argument_types
+                .iter()
+                .scan(0, |state, arg_ty| {
+                    let curr_offset = *state;
+                    *state = *state + arg_ty.size;
+                    Some(curr_offset)
+                })
+                .collect();
 
-        // Copy arguments into elements of the arena by indexing order (arg 0 -> arena 0, arg 1 -> arena 1, etc)
-        for ((arg, arg_ty), offset) in self
-            .arguments
-            .iter()
-            .zip(&self.argument_types)
-            .zip(offsets)
-        {
-            let i = create_literal_u32(producer, offset as u64);
-            let ptr = create_gep(producer, arena.into_pointer_value(), &[zero(producer), i]).into_pointer_value();
-            if arg_ty.size > 1 {
-                let src_arg = match arg.as_ref() {
-                    Instruction::Load(v) => {
-                        let index = v.src.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
-                        let gep = match &v.address_type {
-                            AddressType::Variable => producer.body_ctx().get_variable(producer, index),
-                            AddressType::Signal => producer.template_ctx().get_signal(producer, index),
-                            AddressType::SubcmpSignal { cmp_address, ..  } => {
-                                let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                                let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                                create_gep(producer, subcmp, &[zero(producer), index])
+            // Copy arguments into elements of the arena by indexing order (arg 0 -> arena 0, arg 1 -> arena 1, etc)
+            for ((arg, arg_ty), offset) in
+                self.arguments.iter().zip(&self.argument_types).zip(offsets)
+            {
+                let i = create_literal_u32(producer, offset as u64);
+                let ptr = create_gep(producer, arena.into_pointer_value(), &[zero(producer), i])
+                    .into_pointer_value();
+                if arg_ty.size > 1 {
+                    let src_arg = match arg.as_ref() {
+                        Instruction::Load(v) => {
+                            let index = v
+                                .src
+                                .produce_llvm_ir(producer)
+                                .expect("We need to produce some kind of instruction!")
+                                .into_int_value();
+                            let gep = match &v.address_type {
+                                AddressType::Variable => {
+                                    producer.body_ctx().get_variable(producer, index)
+                                }
+                                AddressType::Signal => {
+                                    producer.template_ctx().get_signal(producer, index)
+                                }
+                                AddressType::SubcmpSignal { cmp_address, .. } => {
+                                    let addr = cmp_address.produce_llvm_ir(producer).expect(
+                                        "The address of a subcomponent must yield a value!",
+                                    );
+                                    let subcmp =
+                                        producer.template_ctx().load_subcmp_addr(producer, addr);
+                                    create_gep(producer, subcmp, &[zero(producer), index])
+                                }
                             }
-                        }.into_pointer_value();
-                        gep
-                    },
-                    _ => unreachable!(),
-                };
-                let len_arg = create_literal_u32(producer, arg_ty.size as u64);
-                create_call(producer, FR_ARRAY_COPY_FN_NAME, &[src_arg.into(), ptr.into(), len_arg.into()]);
-            } else {
-                let arg_load = arg.produce_llvm_ir(producer).expect("Call arguments must produce a value!");
-                create_store(producer, ptr, arg_load);
+                            .into_pointer_value();
+                            gep
+                        }
+                        _ => unreachable!(),
+                    };
+                    let len_arg = create_literal_u32(producer, arg_ty.size as u64);
+                    create_call(
+                        producer,
+                        FR_ARRAY_COPY_FN_NAME,
+                        &[src_arg.into(), ptr.into(), len_arg.into()],
+                    );
+                } else {
+                    let arg_load = arg
+                        .produce_llvm_ir(producer)
+                        .expect("Call arguments must produce a value!");
+                    create_store(producer, ptr, arg_load);
+                }
             }
-        }
 
             let arena = pointer_cast(
                 producer,
