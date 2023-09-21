@@ -9,17 +9,19 @@ use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::Value::KnownU32;
-use crate::passes::CircuitTransformationPass;
+use super::{CircuitTransformationPass, GlobalPassData};
 
-pub struct MappedToIndexedPass {
+pub struct MappedToIndexedPass<'d> {
+    global_data: &'d RefCell<GlobalPassData>,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     memory: PassMemory,
     replacements: RefCell<BTreeMap<LocationRule, LocationRule>>,
 }
 
-impl MappedToIndexedPass {
-    pub fn new(prime: &String) -> Self {
+impl<'d> MappedToIndexedPass<'d> {
+    pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         MappedToIndexedPass {
+            global_data,
             memory: PassMemory::new(prime, "".to_string(), Default::default()),
             replacements: Default::default(),
         }
@@ -32,7 +34,7 @@ impl MappedToIndexedPass {
         signal_code: usize,
         env: &Env,
     ) -> LocationRule {
-        let interpreter = self.memory.build_interpreter(self);
+        let interpreter = self.memory.build_interpreter(self.global_data, self);
 
         let (resolved_addr, acc_env) =
             interpreter.execute_instruction(cmp_address, env.clone(), false);
@@ -94,7 +96,7 @@ impl MappedToIndexedPass {
     }
 }
 
-impl InterpreterObserver for MappedToIndexedPass {
+impl InterpreterObserver for MappedToIndexedPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -164,7 +166,7 @@ impl InterpreterObserver for MappedToIndexedPass {
     }
 }
 
-impl CircuitTransformationPass for MappedToIndexedPass {
+impl CircuitTransformationPass for MappedToIndexedPass<'_> {
     fn name(&self) -> &str {
         "MappedToIndexedPass"
     }
@@ -199,6 +201,6 @@ impl CircuitTransformationPass for MappedToIndexedPass {
 
     fn pre_hook_template(&self, template: &TemplateCode) {
         self.memory.set_scope(template);
-        self.memory.run_template(self, template);
+        self.memory.run_template(self.global_data, self, template);
     }
 }

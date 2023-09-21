@@ -317,7 +317,7 @@ impl<'a> LLVM<'a> {
     }
 
     pub fn write_to_file(&self, path: &str) -> Result<(), ()> {
-        // Run LLVM IR inliner for the FR_IDENTITY_ARR_PTR and FR_INDEX_ARR_PTR functions
+        // Run LLVM IR inliner for the FR_IDENTITY_* and FR_INDEX_ARR_PTR functions
         let pm = PassManager::create(());
         pm.add_always_inliner_pass();
         pm.run_on(&self.module);
@@ -328,8 +328,7 @@ impl<'a> LLVM<'a> {
         }
         // Run module verification
         self.module.verify().map_err(|llvm_err| {
-            eprintln!("Generated LLVM:");
-            self.module.print_to_stderr();
+            self.dump_module_to_stderr();
             eprintln!(
                 "{}: {}",
                 Colour::Red.paint("LLVM Module verification failed"),
@@ -364,6 +363,11 @@ impl<'a> LLVM<'a> {
                 llvm_err.to_string()
             );
         })
+    }
+
+    pub fn dump_module_to_stderr(&self) {
+        eprintln!("Generated LLVM:");
+        self.module.print_to_stderr();
     }
 }
 

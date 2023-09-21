@@ -1,5 +1,5 @@
 use std::cell::Ref;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
@@ -9,17 +9,17 @@ use super::{SubcmpEnv, LibraryAccess};
 
 #[derive(Clone)]
 pub struct StandardEnvData<'a> {
-    pub vars: HashMap<usize, Value>,
-    pub signals: HashMap<usize, Value>,
-    pub subcmps: HashMap<usize, SubcmpEnv>,
-    pub libs: &'a dyn LibraryAccess,
+    vars: HashMap<usize, Value>,
+    signals: HashMap<usize, Value>,
+    subcmps: HashMap<usize, SubcmpEnv>,
+    libs: &'a dyn LibraryAccess,
 }
 
 impl Display for StandardEnvData<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(
             f,
-            "\n  vars = {:?}\n  signals = {:?}\n  subcmps = {:?}",
+            "StandardEnv{{\n  vars = {:?}\n  signals = {:?}\n  subcmps = {:?}}}",
             self.vars, self.signals, self.subcmps
         )
     }
@@ -76,6 +76,13 @@ impl<'a> StandardEnvData<'a> {
 
     pub fn get_vars_clone(&self) -> HashMap<usize, Value> {
         self.vars.clone()
+    }
+
+    pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
+        self.vars.iter().fold(BTreeMap::new(), |mut acc, e| {
+            acc.insert(*e.0, e.1.clone());
+            acc
+        })
     }
 
     // WRITE OPERATIONS

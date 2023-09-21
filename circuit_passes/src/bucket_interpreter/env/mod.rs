@@ -1,11 +1,11 @@
 use std::cell::Ref;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use crate::passes::loop_unroll::body_extractor::LoopBodyExtractor;
+use crate::passes::loop_unroll::body_extractor::{LoopBodyExtractor, ToOriginalLocation};
 use self::extracted_func_env::ExtractedFuncEnvData;
 use self::standard_env::StandardEnvData;
 use self::unrolled_block_env::UnrolledBlockEnvData;
@@ -108,8 +108,15 @@ impl<'a> Env<'a> {
         Env::UnrolledBlock(UnrolledBlockEnvData::new(inner, extractor))
     }
 
-    pub fn new_extracted_func_env(inner: Env<'a>) -> Self {
-        Env::ExtractedFunction(ExtractedFuncEnvData::new(inner))
+    pub fn new_extracted_func_env(inner: Env<'a>, remap: ToOriginalLocation) -> Self {
+        Env::ExtractedFunction(ExtractedFuncEnvData::new(inner, remap))
+    }
+
+    pub fn peel_extracted_func(self) -> Self {
+        match self {
+            Env::ExtractedFunction(d) => d.get_base(),
+            _ => self,
+        }
     }
 
     // READ OPERATIONS
@@ -174,6 +181,14 @@ impl<'a> Env<'a> {
             Env::Standard(d) => d.get_vars_clone(),
             Env::UnrolledBlock(d) => d.get_vars_clone(),
             Env::ExtractedFunction(d) => d.get_vars_clone(),
+        }
+    }
+
+    pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
+        match self {
+            Env::Standard(d) => d.get_vars_sort(),
+            Env::UnrolledBlock(d) => d.get_vars_sort(),
+            Env::ExtractedFunction(d) => d.get_vars_sort(),
         }
     }
 

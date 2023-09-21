@@ -135,33 +135,29 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for FunctionLLVMIRProducer<'ctx, 'prod> {
 
 struct ExtractedFunctionCtx<'a> {
     current_function: FunctionValue<'a>,
-    lvars: PointerValue<'a>,
-    signals: Option<PointerValue<'a>>,
-    other: Vec<PointerValue<'a>>,
+    // NOTE: The 'lvars' [0 x i256]* parameter must always be present (at position 0).
+    //  The 'signals' [0 x i256]* parameter (at position 1) is optional (to allow
+    //  this to handle the generated array index load functions for the unroller).
+    args: Vec<PointerValue<'a>>,
 }
 
 impl<'a> ExtractedFunctionCtx<'a> {
     fn new(current_function: FunctionValue<'a>) -> Self {
-        // NOTE: The 'lvars' [0 x i256]* parameter must always be present.
-        //  The 'signals' [0 x i256]* parameter is optional (to allow this to
-        //  handle the generated array index load functions for the unroller).
         ExtractedFunctionCtx {
             current_function,
-            lvars: current_function
-                .get_nth_param(0)
-                .expect("Function must have at least 1 argument for lvar array!")
-                .into_pointer_value(),
-            signals: current_function.get_nth_param(1).map(|x| x.into_pointer_value()),
-            other: current_function
+            args: current_function
                 .get_param_iter()
-                .skip(2)
                 .map(|x| x.into_pointer_value())
                 .collect::<Vec<_>>(),
         }
     }
 
+    fn get_lvars_ptr(&self) -> PointerValue<'a> {
+        *self.args.get(0).expect("Function must have at least 1 argument for lvar array!")
+    }
+
     fn get_signals_ptr(&self) -> PointerValue<'a> {
-        self.signals.expect(
+        *self.args.get(1).expect(
             format!("No signals argument for {:?}", self.current_function.get_name()).as_str(),
         )
     }
@@ -174,11 +170,11 @@ impl<'a> BodyCtx<'a> for ExtractedFunctionCtx<'a> {
         index: IntValue<'a>,
     ) -> AnyValueEnum<'a> {
         //'gep' must read through the pointer with 0 and then index the array
-        create_gep(producer, self.lvars, &[zero(producer), index])
+        create_gep(producer, self.get_lvars_ptr(), &[zero(producer), index])
     }
 
     fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {
-        self.lvars.into()
+        self.get_lvars_ptr().into()
     }
 }
 
@@ -191,7 +187,7 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
         //NOTE: only used by CreateCmpBucket::produce_llvm_ir
         //TODO: I think instead of ID defining an array index in the gep, it will need to define a static index
         //  in an array of subcomponents in this context (i.e. self.subcmps[id] with offsets [0,0]).
-        todo!("load_subcmp {} from {:?}", _id, self.other);
+        todo!("load_subcmp {} from {:?}", _id, self.args);
         //create_gep(producer, self.subcmps, &[zero(producer), id.into_int_value()]).into_pointer_value()
     }
 
@@ -204,7 +200,7 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
             .into_int_value()
             .get_zero_extended_constant()
             .expect("must reference a constant argument index");
-        *self.other.get(num as usize).expect("must reference a known argument index")
+        *self.args.get(num as usize).expect("must reference a known argument index")
     }
 
     fn load_subcmp_counter(
@@ -212,7 +208,7 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
         producer: &dyn LLVMIRProducer<'a>,
         _id: AnyValueEnum<'a>,
     ) -> PointerValue<'a> {
-        // Use null pointer to force StoreBucket::produce_llvm_ir to skip counter increment
+        // Use null pointer to force StoreBucket::produce_llvm_ir to skip counter increment.
         producer.context().i32_type().ptr_type(Default::default()).const_null()
     }
 

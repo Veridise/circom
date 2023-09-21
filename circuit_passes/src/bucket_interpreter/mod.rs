@@ -4,6 +4,7 @@ pub mod memory;
 pub mod observer;
 pub(crate) mod operations;
 
+use std::cell::RefCell;
 use std::vec;
 use circom_algebra::modular_arithmetic;
 use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR};
@@ -15,13 +16,13 @@ use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::operations::compute_offset;
-use crate::bucket_interpreter::value::Value;
-use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
-use crate::passes::LOOP_BODY_FN_PREFIX;
+use crate::bucket_interpreter::value::Value::{self, KnownBigInt, KnownU32, Unknown};
+use crate::passes::{LOOP_BODY_FN_PREFIX, GlobalPassData};
 use self::env::LibraryAccess;
 
-pub struct BucketInterpreter<'a> {
-    pub(crate) observer: &'a dyn InterpreterObserver,
+pub struct BucketInterpreter<'a, 'd> {
+    global_data: &'d RefCell<GlobalPassData>,
+    observer: &'a dyn InterpreterObserver,
     mem: &'a PassMemory,
     scope: String,
     p: BigInt,
@@ -29,9 +30,15 @@ pub struct BucketInterpreter<'a> {
 
 pub type R<'a> = (Option<Value>, Env<'a>);
 
-impl<'a> BucketInterpreter<'a> {
-    pub fn init(observer: &'a dyn InterpreterObserver, mem: &'a PassMemory, scope: String) -> Self {
+impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
+    pub fn init(
+        global_data: &'d RefCell<GlobalPassData>,
+        observer: &'a dyn InterpreterObserver,
+        mem: &'a PassMemory,
+        scope: String,
+    ) -> Self {
         BucketInterpreter {
+            global_data,
             observer,
             mem,
             scope,
@@ -227,7 +234,6 @@ impl<'a> BucketInterpreter<'a> {
                 }
             }
             AddressType::SubcmpSignal { cmp_address, .. } => {
-                println!("Load SubcmpSignal: {}", cmp_address.to_string());
                 let (addr, env) = self.execute_instruction(cmp_address, env, observe);
                 let addr =
                     addr.expect("cmp_address in SubcmpSignal must produce a value!").get_u32();
@@ -312,6 +318,10 @@ impl<'a> BucketInterpreter<'a> {
                 }
             }
             AddressType::SubcmpSignal { cmp_address, input_information, .. } => {
+                println!(
+                    "cmp_address = {:?}, input_information = {:?}",
+                    cmp_address, input_information
+                );
                 let (addr, env) = self.execute_instruction(cmp_address, env, observe);
                 let addr = addr
                     .expect(
@@ -412,9 +422,16 @@ impl<'a> BucketInterpreter<'a> {
     fn run_function_loopbody<'env>(&self, name: &String, env: Env<'env>, observe: bool) -> R<'env> {
         if cfg!(debug_assertions) {
             println!("Running function {}", name);
-        }
-        let mut res = (None, Env::new_extracted_func_env(env.clone()));
-        let interp = self.mem.build_interpreter_with_scope(self.observer, name.clone());
+        };
+        let mut res: R<'env> = (
+            None,
+            Env::new_extracted_func_env(
+                env.clone(),
+                self.global_data.borrow().extract_func_orig_loc[name][&env.get_vars_sort()].clone(),
+            ),
+        );
+        let interp =
+            self.mem.build_interpreter_with_scope(self.global_data, self.observer, name.clone());
         let observe = observe && !interp.observer.ignore_function_calls();
         let instructions = &env.get_function(name).body;
         unsafe {
@@ -424,7 +441,8 @@ impl<'a> BucketInterpreter<'a> {
                 res = interp.execute_instruction(inst, res.1, observe);
             }
         }
-        res
+        //Remove the Env::ExtractedFunction wrapper
+        (res.0, res.1.peel_extracted_func())
     }
 
     fn run_function_basic<'env>(&self, name: &String, args: Vec<Value>, observe: bool) -> Value {
@@ -435,7 +453,8 @@ impl<'a> BucketInterpreter<'a> {
         for (id, arg) in args.iter().enumerate() {
             new_env = new_env.set_var(id, arg.clone());
         }
-        let interp = self.mem.build_interpreter_with_scope(self.observer, name.clone());
+        let interp =
+            self.mem.build_interpreter_with_scope(self.global_data, self.observer, name.clone());
         let (v, _) = interp.execute_instructions(
             &self.mem.get_function(name).body,
             new_env,
@@ -457,11 +476,7 @@ impl<'a> BucketInterpreter<'a> {
             // The extracted loop body functions can change any values in the environment
             //  via the parameters passed to it. So interpret the function and keep the
             //  resulting Env (as if the function had executed inline).
-            // self.run_function_loopbody(&bucket.symbol, env, observe)
-            //
-            //TODO: TEMP: old approach
-            env = env.set_all_to_unk();
-            (Some(Unknown), env)
+            self.run_function_loopbody(&bucket.symbol, env, observe)
         } else {
             let mut args = vec![];
             for i in &bucket.arguments {
@@ -476,6 +491,9 @@ impl<'a> BucketInterpreter<'a> {
             };
             (Some(v), env)
         };
+        // println!("[execute_call_bucket] {:?}", bucket);
+        // println!(" -> value = {:?}", res.0);
+        // println!(" -> new env = {}", res.1);
 
         // Write the result in the destination according to the ReturnType
         match &bucket.return_info {

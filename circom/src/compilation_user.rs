@@ -1,13 +1,11 @@
 use ansi_term::Colour;
 use circuit_passes::passes::PassManager;
-use compiler::compiler_interface;
-use compiler::compiler_interface::{Config, VCP};
+use compiler::compiler_interface::{self, Config, VCP};
 use program_structure::error_definition::Report;
 use program_structure::error_code::ReportCode;
 use program_structure::file_definition::FileLibrary;
 use program_structure::program_archive::ProgramArchive;
 use crate::VERSION;
-
 
 pub struct CompilerConfig {
     pub js_folder: String,
@@ -61,16 +59,16 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
     }
 
     if config.llvm_flag {
-        // Only run this passes if we are going to generate LLVM code
+        // Only run the passes if we are going to generate LLVM code
         let pm = PassManager::new();
         circuit = pm
-            .schedule_loop_unroll_pass(prime)
-            .schedule_conditional_flattening_pass(prime)
-            .schedule_mapped_to_indexed_pass(prime)
-            .schedule_unknown_index_sanitization_pass(prime)
-            .schedule_simplification_pass(prime)
-            .schedule_deterministic_subcmp_invoke_pass(prime)
-            .transform_circuit(circuit);
+            .schedule_loop_unroll_pass()
+            .schedule_conditional_flattening_pass()
+            .schedule_mapped_to_indexed_pass()
+            .schedule_unknown_index_sanitization_pass()
+            .schedule_simplification_pass()
+            .schedule_deterministic_subcmp_invoke_pass()
+            .transform_circuit(circuit, prime);
         compiler_interface::write_llvm_ir(
             &mut circuit,
             &program_archive,
@@ -78,11 +76,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
             &config.llvm_file,
             config.clean_llvm,
         )?;
-        println!(
-          "{} {}",
-            Colour::Green.paint("Written successfully:"),
-            config.llvm_file
-        );
+        println!("{} {}", Colour::Green.paint("Written successfully:"), config.llvm_file);
     }
 
     match (config.wat_flag, config.wasm_flag) {
@@ -123,7 +117,6 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
 
     Ok(())
 }
-
 
 fn wat_to_wasm(wat_file: &str, wasm_file: &str) -> Result<(), Report> {
     use std::fs::read_to_string;

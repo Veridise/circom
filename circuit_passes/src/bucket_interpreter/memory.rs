@@ -9,6 +9,7 @@ use compiler::compiler_interface::Circuit;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::env::{Env, LibraryAccess};
 use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::passes::GlobalPassData;
 
 pub struct PassMemory {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need
@@ -26,9 +27,9 @@ pub struct PassMemory {
 }
 
 impl PassMemory {
-    pub fn new(prime: &String, current_scope: String, io_map: TemplateInstanceIOMap) -> Self {
+    pub fn new(prime: String, current_scope: String, io_map: TemplateInstanceIOMap) -> Self {
         PassMemory {
-            prime: prime.to_string(),
+            prime,
             current_scope: RefCell::new(current_scope),
             io_map: RefCell::new(io_map),
             constant_fields: Default::default(),
@@ -40,31 +41,42 @@ impl PassMemory {
         }
     }
 
-    pub fn build_interpreter<'a>(
+    pub fn build_interpreter<'a, 'd: 'a>(
         &'a self,
+        global_data: &'d RefCell<GlobalPassData>,
         observer: &'a dyn InterpreterObserver,
     ) -> BucketInterpreter {
-        self.build_interpreter_with_scope(observer, self.current_scope.borrow().to_string())
+        self.build_interpreter_with_scope(
+            global_data,
+            observer,
+            self.current_scope.borrow().to_string(),
+        )
     }
 
-    pub fn build_interpreter_with_scope<'a>(
+    pub fn build_interpreter_with_scope<'a, 'd: 'a>(
         &'a self,
+        global_data: &'d RefCell<GlobalPassData>,
         observer: &'a dyn InterpreterObserver,
         scope: String,
     ) -> BucketInterpreter {
-        BucketInterpreter::init(observer, self, scope)
+        BucketInterpreter::init(global_data, observer, self, scope)
     }
 
     pub fn set_scope(&self, template: &TemplateCode) {
         self.current_scope.replace(template.header.clone());
     }
 
-    pub fn run_template(&self, observer: &dyn InterpreterObserver, template: &TemplateCode) {
+    pub fn run_template<'d>(
+        &self,
+        global_data: &'d RefCell<GlobalPassData>,
+        observer: &dyn InterpreterObserver,
+        template: &TemplateCode,
+    ) {
         assert!(!self.current_scope.borrow().is_empty());
         if cfg!(debug_assertions) {
             println!("Running template {}", self.current_scope.borrow());
         }
-        let interpreter = self.build_interpreter(observer);
+        let interpreter = self.build_interpreter(global_data, observer);
         let env = Env::new_standard_env(self);
         interpreter.execute_instructions(&template.body, env, true);
     }

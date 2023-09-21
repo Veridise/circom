@@ -13,3 +13,4 @@ code_producers = {path = "../code_producers"}
 intervallum = "1.4.0"
 circom_algebra = {path = "../circom_algebra"}
 const_format = "0.2.31"
+indexmap = "2.0.0"

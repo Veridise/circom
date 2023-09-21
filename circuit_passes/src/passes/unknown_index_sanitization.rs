@@ -14,7 +14,7 @@ use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::operations::compute_operation;
 use crate::bucket_interpreter::R;
 use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
-use crate::passes::CircuitTransformationPass;
+use super::{CircuitTransformationPass, GlobalPassData};
 
 struct ZeroingInterpreter<'a> {
     pub constant_fields: &'a Vec<String>,
@@ -81,7 +81,8 @@ impl<'a> ZeroingInterpreter<'a> {
     }
 }
 
-pub struct UnknownIndexSanitizationPass {
+pub struct UnknownIndexSanitizationPass<'d> {
+    global_data: &'d RefCell<GlobalPassData>,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     memory: PassMemory,
     load_replacements: RefCell<BTreeMap<LoadBucket, Range<usize>>>,
@@ -91,9 +92,10 @@ pub struct UnknownIndexSanitizationPass {
 /**
  * The goal of this pass is to
  */
-impl UnknownIndexSanitizationPass {
-    pub fn new(prime: &String) -> Self {
+impl<'d> UnknownIndexSanitizationPass<'d> {
+    pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         UnknownIndexSanitizationPass {
+            global_data,
             memory: PassMemory::new(prime, "".to_string(), Default::default()),
             load_replacements: Default::default(),
             store_replacements: Default::default(),
@@ -145,7 +147,7 @@ impl UnknownIndexSanitizationPass {
         env: &Env,
     ) -> bool {
         let mem = &self.memory;
-        let interpreter = mem.build_interpreter(self);
+        let interpreter = mem.build_interpreter(self.global_data, self);
 
         let resolved_addr = match location {
             LocationRule::Indexed { location, .. } => {
@@ -164,7 +166,7 @@ impl UnknownIndexSanitizationPass {
  * - loads with a function call that returns the loaded value
  * - stores with a function call that performs the store
  */
-impl InterpreterObserver for UnknownIndexSanitizationPass {
+impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -246,7 +248,7 @@ impl InterpreterObserver for UnknownIndexSanitizationPass {
     }
 }
 
-impl CircuitTransformationPass for UnknownIndexSanitizationPass {
+impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
     fn name(&self) -> &str {
         "UnknownIndexSanitizationPass"
     }
@@ -298,6 +300,6 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass {
 
     fn pre_hook_template(&self, template: &TemplateCode) {
         self.memory.set_scope(template);
-        self.memory.run_template(self, template);
+        self.memory.run_template(self.global_data, self, template);
     }
 }

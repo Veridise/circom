@@ -1,9 +1,8 @@
 use std::cell::Ref;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
-
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::LOOP_BODY_FN_PREFIX;
@@ -22,7 +21,9 @@ pub struct UnrolledBlockEnvData<'a> {
 
 impl Display for UnrolledBlockEnvData<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        self.base.fmt(f)
+        write!(f, "UnrolledBlockEnv{{")?;
+        self.base.fmt(f)?;
+        write!(f, "}}")
     }
 }
 
@@ -79,6 +80,10 @@ impl<'a> UnrolledBlockEnvData<'a> {
 
     pub fn get_vars_clone(&self) -> HashMap<usize, Value> {
         self.base.get_vars_clone()
+    }
+
+    pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
+        self.base.get_vars_sort()
     }
 
     pub fn set_var(self, idx: usize, value: Value) -> Self {

@@ -1,17 +1,22 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, Ref};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+use indexmap::IndexMap;
 use compiler::intermediate_representation::BucketId;
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::value::Value;
+use crate::passes::GlobalPassData;
+use super::body_extractor::{UnrolledIterLvars, ToOriginalLocation};
 
 /// Holds values of index variables at array loads/stores within a loop
 pub struct VariableValues<'a> {
     pub env_at_header: Env<'a>,
-    pub loadstore_to_index: HashMap<BucketId, (AddressType, Value)>, // key is load/store bucket ID
+    /// The key is the ID of the load/store bucket where the reference is located.
+    /// NOTE: uses IndexMap to preserve insertion order to stabilize test output.
+    pub loadstore_to_index: IndexMap<BucketId, (AddressType, Value)>,
 }
 
 impl<'a> VariableValues<'a> {
@@ -31,16 +36,17 @@ impl Debug for VariableValues<'_> {
     }
 }
 
-pub struct EnvRecorder<'a> {
+pub struct EnvRecorder<'a, 'd> {
+    global_data: &'d RefCell<GlobalPassData>,
     mem: &'a PassMemory,
     // NOTE: RefCell is needed here because the instance of this struct is borrowed by
     //  the main interpreter while we also need to mutate these internal structures.
     current_iter_num: RefCell<usize>,
     safe_to_move: RefCell<bool>,
-    pub vals_per_iteration: RefCell<HashMap<usize, VariableValues<'a>>>, // key is iteration number
+    vals_per_iteration: RefCell<HashMap<usize, VariableValues<'a>>>, // key is iteration number
 }
 
-impl Debug for EnvRecorder<'_> {
+impl Debug for EnvRecorder<'_, '_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -52,14 +58,19 @@ impl Debug for EnvRecorder<'_> {
     }
 }
 
-impl<'a> EnvRecorder<'a> {
-    pub fn new(mem: &'a PassMemory) -> Self {
+impl<'a, 'd> EnvRecorder<'a, 'd> {
+    pub fn new(global_data: &'d RefCell<GlobalPassData>, mem: &'a PassMemory) -> Self {
         EnvRecorder {
+            global_data,
             mem,
             vals_per_iteration: Default::default(),
             current_iter_num: RefCell::new(0),
             safe_to_move: RefCell::new(true),
         }
+    }
+
+    pub fn get_vals_per_iter(&self) -> Ref<HashMap<usize, VariableValues<'a>>> {
+        self.vals_per_iteration.borrow()
     }
 
     pub fn is_safe_to_move(&self) -> bool {
@@ -86,6 +97,20 @@ impl<'a> EnvRecorder<'a> {
         self.vals_per_iteration.borrow().get(&iter).unwrap().env_at_header.clone()
     }
 
+    pub fn record_reverse_arg_mapping(
+        &self,
+        extract_func: String,
+        iter_env: UnrolledIterLvars,
+        value: ToOriginalLocation,
+    ) {
+        self.global_data
+            .borrow_mut()
+            .extract_func_orig_loc
+            .entry(extract_func)
+            .or_default()
+            .insert(iter_env, value);
+    }
+
     fn record_memloc_at_bucket(&self, bucket_id: &BucketId, addr_ty: AddressType, val: Value) {
         let iter = self.get_iter();
         assert!(self.vals_per_iteration.borrow().contains_key(&iter));
@@ -97,52 +122,77 @@ impl<'a> EnvRecorder<'a> {
             .insert(*bucket_id, (addr_ty, val));
     }
 
-    fn compute_index(&self, loc: &LocationRule, env: &Env) -> Value {
-        match loc {
-            LocationRule::Mapped { .. } => {
-                todo!(); //not sure if/how to handle that
-            }
-            LocationRule::Indexed { location, .. } => {
-                // Evaluate the index using the current environment and using the environment from the
-                //  loop header. If either is Unknown or they do not give the same value, then it is
-                //  not safe to move the loop body to another function because the index computation may
-                //  not give the same result when done at the call site, outside of the new function.
-                let interp = self.mem.build_interpreter(self);
-                let (idx_loc, _) = interp.execute_instruction(location, env.clone(), false);
-                // println!("--   LOC: var/sig[{:?}]", idx_loc); //TODO: TEMP
-                if let Some(idx_loc) = idx_loc {
-                    let (idx_header, _) =
-                        interp.execute_instruction(location, self.get_header_env_clone(), false);
-                    if let Some(idx_header) = idx_header {
-                        if Value::eq(&idx_header, &idx_loc) {
-                            return idx_loc;
-                        }
-                    }
+    fn compute_index_from_inst(&self, env: &Env, location: &InstructionPointer) -> Value {
+        // Evaluate the index using the current environment and using the environment from the
+        //  loop header. If either is Unknown or they do not give the same value, then it is
+        //  not safe to move the loop body to another function because the index computation may
+        //  not give the same result when done at the call site, outside of the new function.
+        let interp = self.mem.build_interpreter(self.global_data, self);
+        let (idx_loc, _) = interp.execute_instruction(location, env.clone(), false);
+        // println!("--   LOC: var/sig[{:?}]", idx_loc); //TODO: TEMP
+        if let Some(idx_loc) = idx_loc {
+            let (idx_header, _) =
+                interp.execute_instruction(location, self.get_header_env_clone(), false);
+            if let Some(idx_header) = idx_header {
+                if Value::eq(&idx_header, &idx_loc) {
+                    return idx_loc;
                 }
-                Value::Unknown
             }
+        }
+        Value::Unknown
+    }
+
+    fn compute_index_from_rule(&self, env: &Env, loc: &LocationRule) -> Value {
+        match loc {
+            LocationRule::Mapped { .. } => todo!(), //not sure if/how to handle that
+            LocationRule::Indexed { location, .. } => self.compute_index_from_inst(env, location),
         }
     }
 
-    fn check(&self, bucket_id: &BucketId, addr_ty: &AddressType, loc: &LocationRule, env: &Env) {
-        let val_result = self.compute_index(loc, env);
-        if val_result == Value::Unknown {
-            println!("NOT safe to move {}: {:?}[{:?}]", bucket_id, addr_ty, loc); //TODO: TEMP
+    fn visit(&self, bucket_id: &BucketId, addr_ty: &AddressType, loc: &LocationRule, env: &Env) {
+        let loc_result = self.compute_index_from_rule(env, loc);
+        if loc_result == Value::Unknown {
             self.safe_to_move.replace(false);
         }
-        //NOTE: must record even when Unknown to ensure that Unknown
-        //  value is not confused with missing values for an iteration
-        //  that can be caused by conditionals within the loop.
-        self.record_memloc_at_bucket(bucket_id, addr_ty.clone(), val_result);
+        //NOTE: must record even when Unknown to ensure that Unknown value is not confused with
+        //  missing values for an iteration that can be caused by conditionals within the loop.
+        if let AddressType::SubcmpSignal {
+            cmp_address,
+            uniform_parallel_value,
+            is_output,
+            input_information,
+            counter_override,
+        } = addr_ty
+        {
+            let addr_result = self.compute_index_from_inst(env, cmp_address);
+            self.record_memloc_at_bucket(
+                bucket_id,
+                AddressType::SubcmpSignal {
+                    cmp_address: {
+                        if addr_result == Value::Unknown {
+                            self.safe_to_move.replace(false);
+                        }
+                        addr_result.to_value_bucket(self.mem).allocate()
+                    },
+                    uniform_parallel_value: uniform_parallel_value.clone(),
+                    is_output: *is_output,
+                    input_information: input_information.clone(),
+                    counter_override: *counter_override,
+                },
+                loc_result,
+            );
+        } else {
+            self.record_memloc_at_bucket(bucket_id, addr_ty.clone(), loc_result);
+        }
     }
 }
 
-impl InterpreterObserver for EnvRecorder<'_> {
+impl InterpreterObserver for EnvRecorder<'_, '_> {
     fn on_load_bucket(&self, bucket: &LoadBucket, env: &Env) -> bool {
         if let Some(_) = bucket.bounded_fn {
             todo!(); //not sure if/how to handle that
         }
-        self.check(&bucket.id, &bucket.address_type, &bucket.src, env);
+        self.visit(&bucket.id, &bucket.address_type, &bucket.src, env);
         true
     }
 
@@ -150,7 +200,7 @@ impl InterpreterObserver for EnvRecorder<'_> {
         if let Some(_) = bucket.bounded_fn {
             todo!(); //not sure if/how to handle that
         }
-        self.check(&bucket.id, &bucket.dest_address_type, &bucket.dest, env);
+        self.visit(&bucket.id, &bucket.dest_address_type, &bucket.dest, env);
         true
     }
 

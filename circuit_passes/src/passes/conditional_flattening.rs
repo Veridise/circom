@@ -7,24 +7,26 @@ use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
-use crate::passes::CircuitTransformationPass;
+use super::{CircuitTransformationPass, GlobalPassData};
 
-pub struct ConditionalFlattening {
+pub struct ConditionalFlatteningPass<'d> {
+    global_data: &'d RefCell<GlobalPassData>,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     memory: PassMemory,
     replacements: RefCell<BTreeMap<BranchBucket, bool>>,
 }
 
-impl ConditionalFlattening {
-    pub fn new(prime: &String) -> Self {
-        ConditionalFlattening {
+impl<'d> ConditionalFlatteningPass<'d> {
+    pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
+        ConditionalFlatteningPass {
+            global_data,
             memory: PassMemory::new(prime, "".to_string(), Default::default()),
             replacements: Default::default(),
         }
     }
 }
 
-impl InterpreterObserver for ConditionalFlattening {
+impl InterpreterObserver for ConditionalFlatteningPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -74,7 +76,7 @@ impl InterpreterObserver for ConditionalFlattening {
     }
 
     fn on_branch_bucket(&self, bucket: &BranchBucket, env: &Env) -> bool {
-        let interpreter = self.memory.build_interpreter(self);
+        let interpreter = self.memory.build_interpreter(self.global_data, self);
         let (_, cond_result, _) = interpreter.execute_conditional_bucket(
             &bucket.cond,
             &bucket.if_branch,
@@ -105,7 +107,7 @@ impl InterpreterObserver for ConditionalFlattening {
     }
 }
 
-impl CircuitTransformationPass for ConditionalFlattening {
+impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
     fn name(&self) -> &str {
         "ConditionalFlattening"
     }
@@ -116,7 +118,7 @@ impl CircuitTransformationPass for ConditionalFlattening {
 
     fn pre_hook_template(&self, template: &TemplateCode) {
         self.memory.set_scope(template);
-        self.memory.run_template(self, template);
+        self.memory.run_template(self.global_data, self, template);
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {

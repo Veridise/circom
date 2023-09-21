@@ -7,17 +7,19 @@ use compiler::intermediate_representation::ir_interface::StatusInput::{Last, NoL
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
-use crate::passes::CircuitTransformationPass;
+use super::{CircuitTransformationPass, GlobalPassData};
 
-pub struct DeterministicSubCmpInvokePass {
+pub struct DeterministicSubCmpInvokePass<'d> {
+    global_data: &'d RefCell<GlobalPassData>,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     memory: PassMemory,
     replacements: RefCell<BTreeMap<AddressType, StatusInput>>,
 }
 
-impl DeterministicSubCmpInvokePass {
-    pub fn new(prime: &String) -> Self {
+impl<'d> DeterministicSubCmpInvokePass<'d> {
+    pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         DeterministicSubCmpInvokePass {
+            global_data,
             memory: PassMemory::new(prime, "".to_string(), Default::default()),
             replacements: Default::default(),
         }
@@ -35,7 +37,7 @@ impl DeterministicSubCmpInvokePass {
         } = address_type
         {
             let env = env.clone();
-            let interpreter = self.memory.build_interpreter(self);
+            let interpreter = self.memory.build_interpreter(self.global_data, self);
             let (addr, env) = interpreter.execute_instruction(cmp_address, env, false);
             let addr = addr
                 .expect("cmp_address instruction in SubcmpSignal must produce a value!")
@@ -46,7 +48,7 @@ impl DeterministicSubCmpInvokePass {
     }
 }
 
-impl InterpreterObserver for DeterministicSubCmpInvokePass {
+impl InterpreterObserver for DeterministicSubCmpInvokePass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -123,7 +125,7 @@ impl InterpreterObserver for DeterministicSubCmpInvokePass {
     }
 }
 
-impl CircuitTransformationPass for DeterministicSubCmpInvokePass {
+impl CircuitTransformationPass for DeterministicSubCmpInvokePass<'_> {
     fn name(&self) -> &str {
         "DeterministicSubCmpInvokePass"
     }
@@ -134,7 +136,7 @@ impl CircuitTransformationPass for DeterministicSubCmpInvokePass {
 
     fn pre_hook_template(&self, template: &TemplateCode) {
         self.memory.set_scope(template);
-        self.memory.run_template(self, template);
+        self.memory.run_template(self.global_data, self, template);
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {

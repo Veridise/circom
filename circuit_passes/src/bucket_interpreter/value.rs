@@ -10,7 +10,7 @@ use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
 /// Poor man's lattice that gives up the moment values are not equal
 /// It's a join semi lattice with a top (Unknown)
 /// Not a complete lattice because there is no bottom
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Value {
     Unknown,
     KnownU32(usize),

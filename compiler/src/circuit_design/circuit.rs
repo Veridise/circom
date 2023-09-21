@@ -62,7 +62,6 @@ impl WriteLLVMIR for Circuit {
             &self.llvm_data.variable_index_mapping,
             &self.llvm_data.component_index_mapping,
         ];
-
         for mapping in mappings {
             for range_mapping in mapping.values() {
                 for range in range_mapping.values() {
@@ -70,7 +69,6 @@ impl WriteLLVMIR for Circuit {
                 }
             }
         }
-
         for range in ranges {
             load_array_switch(producer, range);
         }
@@ -85,17 +83,17 @@ impl WriteLLVMIR for Circuit {
                 for p in &f.params {
                     // This section is a little more complicated than desired because IntType and ArrayType do
                     //  not have a common Trait that defines the `array_type` and `ptr_type` member functions.
-                    let ty = match &p.length.len() {
+                    let ty = match &p.length[..] {
                         // [] -> i256*
-                        0 => bigint_type(producer).ptr_type(Default::default()),
+                        [] => bigint_type(producer).ptr_type(Default::default()),
                         // [A] -> [A x i256]*
-                        1 => bigint_type(producer)
-                            .array_type(p.length[0] as u32)
-                            .ptr_type(Default::default()),
+                        [a] => {
+                            bigint_type(producer).array_type(*a as u32).ptr_type(Default::default())
+                        }
                         // [A,B,C,...] -> [C x [B x [A x i256]*]*]*
-                        _ => {
-                            let mut temp = bigint_type(producer).array_type(p.length[0] as u32);
-                            for size in &p.length[1..] {
+                        [a, rest @ ..] => {
+                            let mut temp = bigint_type(producer).array_type(*a as u32);
+                            for size in rest {
                                 temp = temp.array_type(*size as u32);
                             }
                             temp.ptr_type(Default::default())
@@ -145,22 +143,29 @@ impl WriteLLVMIR for Circuit {
             funcs.insert(name, function);
         }
 
-        // Code for the functions
+        // Code for the functions (except for generated functions)
+        let mut generated_functions = vec![];
         for f in &self.functions {
-            let x: Box<dyn LLVMIRProducer<'_>> = if f.header.starts_with(GENERATED_FN_PREFIX) {
-                Box::new(ExtractedFunctionLLVMIRProducer::new(producer, funcs[f.header.as_str()]))
+            if f.header.starts_with(GENERATED_FN_PREFIX) {
+                // Hold for later because the body could reference templates
+                //  and the LLVM functions for templates were not pre-defined.
+                generated_functions.push(f);
             } else {
-                Box::new(FunctionLLVMIRProducer::new(producer, funcs[f.header.as_str()]))
-            };
-            Self::manage_debug_loc_from_curr(x.as_ref(), f.as_ref());
-            f.produce_llvm_ir(x.as_ref());
+                let current_function = funcs[f.header.as_str()];
+                f.produce_llvm_ir(&FunctionLLVMIRProducer::new(producer, current_function));
+            }
         }
 
         // Code for the templates
         for t in &self.templates {
-            println!("Generating code for {}", t.header);
-            // code.append(&mut t.produce_llvm_ir(producer));
             t.produce_llvm_ir(producer);
+        }
+
+        // Code for generated functions
+        for f in generated_functions {
+            assert!(f.header.starts_with(GENERATED_FN_PREFIX));
+            let current_function = funcs[f.header.as_str()];
+            f.produce_llvm_ir(&ExtractedFunctionLLVMIRProducer::new(producer, current_function));
         }
 
         // Code for prologue

@@ -1,19 +1,105 @@
 use std::cell::{RefCell, Ref};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::vec;
-use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR};
+use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR, FR_PTR_CAST_I32_I256};
 use compiler::circuit_design::function::{FunctionCodeInfo, FunctionCode};
 use compiler::hir::very_concrete_program::Param;
 use compiler::intermediate_representation::{
     BucketId, InstructionList, InstructionPointer, new_id, UpdateId,
 };
 use compiler::intermediate_representation::ir_interface::*;
+use indexmap::IndexSet;
 use crate::bucket_interpreter::value::Value;
-use crate::passes::loop_unroll::extracted_location_updater::ExtractedFunctionLocationUpdater;
 use crate::passes::LOOP_BODY_FN_PREFIX;
+use crate::passes::loop_unroll::extracted_location_updater::ExtractedFunctionLocationUpdater;
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
-
 use super::new_u32_value;
+
+pub type FuncArgIdx = usize;
+pub type AddressOffset = usize;
+pub type UnrolledIterLvars = BTreeMap<usize, Value>;
+pub type ToOriginalLocation = HashMap<FuncArgIdx, (AddressType, AddressOffset)>;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub enum ArgIndex {
+    Signal(FuncArgIdx),
+    SubCmp { signal: FuncArgIdx, arena: FuncArgIdx, counter: FuncArgIdx },
+}
+
+impl ArgIndex {
+    pub fn get_signal_idx(&self) -> FuncArgIdx {
+        match *self {
+            ArgIndex::Signal(signal) => signal,
+            ArgIndex::SubCmp { signal, .. } => signal,
+        }
+    }
+}
+
+/// Need this structure to skip id/metadata fields in ValueBucket when using as map key
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+struct SubcmpSignalHashFix {
+    cmp_address_parse_as: ValueType,
+    cmp_address_op_aux_no: usize,
+    cmp_address_value: usize,
+    uniform_parallel_value: Option<bool>,
+    is_output: bool,
+    input_information: InputInformation,
+    counter_override: bool,
+}
+
+impl SubcmpSignalHashFix {
+    fn convert(addr: &AddressType) -> SubcmpSignalHashFix {
+        if let AddressType::SubcmpSignal {
+            cmp_address,
+            uniform_parallel_value,
+            is_output,
+            input_information,
+            counter_override,
+        } = addr
+        {
+            if let Instruction::Value(ValueBucket { parse_as, op_aux_no, value, .. }) =
+                **cmp_address
+            {
+                return SubcmpSignalHashFix {
+                    cmp_address_parse_as: parse_as,
+                    cmp_address_op_aux_no: op_aux_no,
+                    cmp_address_value: value,
+                    uniform_parallel_value: uniform_parallel_value.clone(),
+                    is_output: is_output.clone(),
+                    input_information: input_information.clone(),
+                    counter_override: counter_override.clone(),
+                };
+            }
+        }
+        panic!("improper AddressType given")
+    }
+}
+
+struct ExtraArgsResult {
+    bucket_to_itr_to_ref: HashMap<BucketId, Vec<Option<(AddressType, AddressOffset)>>>,
+    bucket_to_args: HashMap<BucketId, ArgIndex>,
+    num_args: usize,
+}
+
+impl ExtraArgsResult {
+    fn get_passing_refs_for_itr(
+        &self,
+        iter_num: usize,
+    ) -> Vec<(&(AddressType, AddressOffset), ArgIndex)> {
+        self.bucket_to_itr_to_ref
+            .iter()
+            .map(|(k, v)| (v[iter_num].as_ref().unwrap(), self.bucket_to_args[k]))
+            .collect()
+    }
+
+    fn get_reverse_passing_refs_for_itr(&self, iter_num: usize) -> ToOriginalLocation {
+        self.bucket_to_itr_to_ref.iter().fold(ToOriginalLocation::new(), |mut acc, (k, v)| {
+            let (addr_ty, addr_offset) = v[iter_num].as_ref().unwrap();
+            acc.insert(self.bucket_to_args[k].get_signal_idx(), (addr_ty.clone(), *addr_offset));
+            acc
+        })
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct LoopBodyExtractor {
@@ -25,34 +111,55 @@ impl LoopBodyExtractor {
         self.new_body_functions.borrow()
     }
 
-    pub fn extract(
+    pub fn extract<'a>(
         &self,
         bucket: &LoopBucket,
-        recorder: &EnvRecorder,
+        recorder: &'a EnvRecorder<'a, '_>,
         unrolled: &mut InstructionList,
     ) {
         assert!(bucket.body.len() > 1);
-        let (iter_to_loc, mut bucket_arg_order) = Self::compute_extra_args(&recorder);
-        let name = self.build_new_body(bucket, &mut bucket_arg_order);
+        let extra_arg_info = Self::compute_extra_args(&recorder);
+        let name = self.build_new_body(
+            bucket,
+            extra_arg_info.bucket_to_args.clone(),
+            extra_arg_info.num_args,
+        );
         for iter_num in 0..recorder.get_iter() {
             // NOTE: CallBucket arguments must use a LoadBucket to reference the necessary pointers
             //  within the current body. However, it doesn't actually need to generate a load
             //  instruction to use these pointers as parameters to the function so we must use the
             //  `bounded_fn` field of the LoadBucket to specify the identity function to perform
             //  the "loading" (but really it just returns the pointer that was passed in).
-            let mut args = InstructionList::default();
+            let mut args = Self::new_filled_vec(
+                extra_arg_info.num_args,
+                Box::new(Instruction::Nop(NopBucket { id: 0 })),
+            );
             // Parameter for local vars
-            args.push(Self::new_storage_ptr_ref(bucket, AddressType::Variable));
+            args[0] = Self::new_storage_ptr_ref(bucket, AddressType::Variable);
             // Parameter for signals/arena
-            args.push(Self::new_storage_ptr_ref(bucket, AddressType::Signal));
-            // Additional parameters for variant vector/array access within the loop
-            if !iter_to_loc.is_empty() {
-                for a in &iter_to_loc[&iter_num] {
-                    args.push(Self::new_indexed_storage_ptr_ref(
-                        bucket,
-                        a.0.clone(),
-                        a.1.get_u32(),
-                    ));
+            args[1] = Self::new_storage_ptr_ref(bucket, AddressType::Signal);
+            // Additional parameters for subcmps and variant array indexing within the loop
+            for ((at, val), ai) in extra_arg_info.get_passing_refs_for_itr(iter_num) {
+                match ai {
+                    ArgIndex::Signal(signal) => {
+                        args[signal] = Self::new_indexed_storage_ptr_ref(bucket, at.clone(), *val)
+                    }
+                    ArgIndex::SubCmp { signal, arena, counter } => {
+                        // Pass entire subcomponent arena for calling the 'template_run' function
+                        args[arena] = Self::new_storage_ptr_ref(bucket, at.clone());
+                        // Pass specific signal referenced
+                        args[signal] = Self::new_indexed_storage_ptr_ref(bucket, at.clone(), *val);
+                        // Pass subcomponent counter reference
+                        if let AddressType::SubcmpSignal { cmp_address, .. } = &at {
+                            //TODO: may only need to add this when is_output=true but have to skip adding the Param too in that case.
+                            args[counter] = Self::new_subcmp_counter_storage_ptr_ref(
+                                bucket,
+                                cmp_address.clone(),
+                            );
+                        } else {
+                            unreachable!()
+                        }
+                    }
                 }
             }
             unrolled.push(
@@ -69,38 +176,66 @@ impl LoopBodyExtractor {
                 }
                 .allocate(),
             );
+
+            recorder.record_reverse_arg_mapping(
+                name.clone(),
+                recorder.get_vals_per_iter().get(&iter_num).unwrap().env_at_header.get_vars_sort(),
+                extra_arg_info.get_reverse_passing_refs_for_itr(iter_num),
+            );
         }
     }
 
     fn build_new_body(
         &self,
         bucket: &LoopBucket,
-        bucket_arg_order: &mut BTreeMap<BucketId, usize>,
+        mut bucket_to_args: HashMap<BucketId, ArgIndex>,
+        num_args: usize,
     ) -> String {
-        // NOTE: must create parameter list before 'bucket_arg_order' is modified
-        let mut params = vec![
-            Param { name: String::from("lvars"), length: vec![0] },
-            Param { name: String::from("signals"), length: vec![0] },
-        ];
-        for i in 0..bucket_arg_order.len() {
-            // Use empty vector for the length to denote scalar (non-array) arguments
-            params.push(Param { name: format!("fixed_{}", i), length: vec![] });
+        // NOTE: must create parameter list before 'bucket_to_args' is modified
+        // Since the ArgIndex instances could have indices in any random order,
+        //  create the vector of required size and then set elements by index.
+        let mut params = Self::new_filled_vec(
+            num_args,
+            Param { name: String::from("EMPTY"), length: vec![usize::MAX] },
+        );
+        params[0] = Param { name: String::from("lvars"), length: vec![0] };
+        params[1] = Param { name: String::from("signals"), length: vec![0] };
+        for (i, arg_index) in bucket_to_args.values().enumerate() {
+            match arg_index {
+                ArgIndex::Signal(signal) => {
+                    //Single signal uses scalar pointer
+                    params[*signal] = Param { name: format!("fix_{}", i), length: vec![] };
+                }
+                ArgIndex::SubCmp { signal, arena, counter } => {
+                    //Subcomponent arena requires array pointer but the others are scalar
+                    params[*arena] = Param { name: format!("sub_{}", i), length: vec![0] };
+                    params[*signal] = Param { name: format!("subfix_{}", i), length: vec![] };
+                    params[*counter] = Param { name: format!("subc_{}", i), length: vec![] };
+                }
+            }
         }
 
         // Copy loop body and add a "return void" at the end
         let mut new_body = vec![];
         for s in &bucket.body {
             let mut copy: InstructionPointer = s.clone();
-            if !bucket_arg_order.is_empty() {
-                //Traverse each cloned statement before calling `update_id()` and replace the
-                //  old location reference with reference to the proper argument. Mappings are
-                //  removed as they are processed so no change is needed once the map is empty.
-                ExtractedFunctionLocationUpdater::check_instruction(&mut copy, bucket_arg_order);
-            }
+            //Traverse each cloned statement before calling `update_id()` and replace the
+            //  old location reference with reference to the proper argument. Mappings are
+            //  removed as they are processed so no change is needed once the map is empty.
+            let suffix = if !bucket_to_args.is_empty() {
+                let mut upd = ExtractedFunctionLocationUpdater::new();
+                upd.check_instruction(&mut copy, &mut bucket_to_args);
+                upd.insert_after
+            } else {
+                InstructionList::default()
+            };
             copy.update_id();
             new_body.push(copy);
+            for s in suffix {
+                new_body.push(s);
+            }
         }
-        assert!(bucket_arg_order.is_empty());
+        assert!(bucket_to_args.is_empty());
         new_body.push(
             ReturnBucket {
                 id: new_id(),
@@ -164,7 +299,7 @@ impl LoopBodyExtractor {
     fn new_indexed_storage_ptr_ref(
         bucket: &dyn ObtainMeta,
         addr_type: AddressType,
-        index: usize,
+        index: AddressOffset,
     ) -> InstructionPointer {
         CallBucket {
             id: new_id(),
@@ -183,79 +318,153 @@ impl LoopBodyExtractor {
         .allocate()
     }
 
-    fn is_all_same(data: &[usize]) -> bool {
-        data.iter()
-            .fold((true, None), {
-                |acc, elem| {
-                    if acc.1.is_some() {
-                        (acc.0 && (acc.1.unwrap() == elem), Some(elem))
-                    } else {
-                        (true, Some(elem))
-                    }
+    fn new_subcmp_counter_storage_ptr_ref(
+        bucket: &dyn ObtainMeta,
+        sub_cmp_id: InstructionPointer,
+    ) -> InstructionPointer {
+        Self::new_custom_fn_load_bucket(
+            bucket,
+            FR_PTR_CAST_I32_I256,
+            AddressType::SubcmpSignal {
+                cmp_address: sub_cmp_id,
+                uniform_parallel_value: Option::None,
+                is_output: false,
+                input_information: InputInformation::NoInput,
+                counter_override: true,
+            },
+            new_u32_value(bucket, usize::MAX), //index is ignored for these
+        )
+    }
+
+    fn all_same<T>(data: T) -> bool
+    where
+        T: Iterator,
+        T::Item: PartialEq,
+    {
+        data.fold((true, None), {
+            |acc, elem| {
+                if acc.1.is_some() {
+                    (acc.0 && (acc.1.unwrap() == elem), Some(elem))
+                } else {
+                    (true, Some(elem))
                 }
-            })
-            .0
+            }
+        })
+        .0
     }
 
     // Key for the returned map is iteration number.
-    // The BTreeMap that is returned maps bucket to fixed* argument index.
-    fn compute_extra_args(
-        recorder: &EnvRecorder,
-    ) -> (HashMap<usize, Vec<(AddressType, Value)>>, BTreeMap<BucketId, usize>) {
-        let mut iter_to_loc: HashMap<usize, Vec<(AddressType, Value)>> = HashMap::default();
-        let mut bucket_arg_order = BTreeMap::new();
-        let vpi = recorder.vals_per_iteration.borrow();
-        let all_loadstore_bucket_ids: HashSet<&BucketId> =
+    // The HashMap that is returned maps bucket to fixed* argument index.
+    fn compute_extra_args<'a>(recorder: &'a EnvRecorder<'a, '_>) -> ExtraArgsResult {
+        // Table structure indexed first by load/store BucketId, then by iteration number.
+        //  View the first (BucketId) as columns and the second (iteration number) as rows.
+        //  The data reference is wrapped in Option to allow for some iterations that don't
+        //  execute a specific bucket due to conditional branches within the loop body.
+        //  When comparing values across iterations, ignore those cases where there is no
+        //  value for a certain iteration and only check among those iterations that have a
+        //  value because it doesn't matter what parameter is passed in for those iterations
+        //  that do not execute that specific bucket. This is the reason it was important to
+        //  store Unknown values in the `loadstore_to_index` index as well, so they are not
+        //  confused with values that simply don't exist.
+        let mut bucket_to_itr_to_ref: HashMap<BucketId, Vec<Option<(AddressType, AddressOffset)>>> =
+            HashMap::new();
+        //
+        let mut bucket_to_args: HashMap<BucketId, ArgIndex> = HashMap::new();
+        let vpi = recorder.get_vals_per_iter();
+        // NOTE: starts at 2 because the current component's signal arena and lvars are first.
+        let mut next_idx: FuncArgIdx = 2;
+        // First step is to collect all location references into the 'bucket_to_itr_to_ref' table.
+        // NOTE: collect to IndexSet to preserve insertion order to stabilize test output.
+        let all_loadstore_bucket_ids: IndexSet<&BucketId> =
             vpi.values().flat_map(|x| x.loadstore_to_index.keys()).collect();
-        // println!("all_loadstore_bucket_ids = {:?}", all_loadstore_bucket_ids);
         for id in all_loadstore_bucket_ids {
-            // Check if the computed index value is the same across all iterations for this BucketId.
-            //  If it is not the same in all iterations, then it needs to be passed as a separate
-            //  parameter to the new function.
-            // NOTE: Some iterations of the loop may have no mapping for certain BucketIds because
-            //  conditional branches can make certain buckets unused in some iterations. Just ignore
-            //  those cases where there is no value for a certain iteration and check among those
-            //  iterations that have a value. This is the reason it was important to store Unknown
-            //  values in the `loadstore_to_index` index as well, so they are not confused with
-            //  missing values.
-            let mut next_iter_to_store = 0;
-            let mut prev_val = None;
-            for curr_iter in 0..recorder.get_iter() {
-                let curr_val = vpi[&curr_iter].loadstore_to_index.get(id);
-                if curr_val.is_some() {
-                    if prev_val.is_none() {
-                        //initial state
-                        prev_val = curr_val;
-                    } else {
-                        assert!(prev_val.is_some() && curr_val.is_some());
-                        let prev_val_pair = prev_val.unwrap();
-                        let curr_val_pair = curr_val.unwrap();
-                        assert_eq!(prev_val_pair.0, curr_val_pair.0); //AddressType always matches
-                        if !Value::eq(&prev_val_pair.1, &curr_val_pair.1) {
-                            assert!(!prev_val_pair.1.is_unknown() && !curr_val_pair.1.is_unknown());
-                            // Store current Value for current iteration
-                            iter_to_loc.entry(curr_iter).or_default().push(curr_val_pair.clone());
-                            // Store previous Value for all iterations that did have the same
-                            //  value (or None) and have not yet been stored.
-                            for j in next_iter_to_store..curr_iter {
-                                iter_to_loc.entry(j).or_default().push(prev_val_pair.clone());
-                            }
-                            // Update for next iteration
-                            next_iter_to_store = curr_iter + 1;
-                            prev_val = curr_val;
-                        }
-                    }
-                }
+            let column = bucket_to_itr_to_ref.entry(*id).or_default();
+            for iter_num in 0..recorder.get_iter() {
+                let temp = vpi[&iter_num].loadstore_to_index.get(id);
+                // ASSERT: index values are known in every (available) iteration
+                assert!(temp.is_none() || !temp.unwrap().1.is_unknown());
+                column.push(temp.map(|(a, v)| (a.clone(), v.get_u32())));
             }
-            //ASSERT: All vectors have the same length at the end of each iteration
-            assert!(Self::is_all_same(&iter_to_loc.values().map(|x| x.len()).collect::<Vec<_>>()));
-            //ASSERT: Value was added for every iteration or for no iterations
-            assert!(next_iter_to_store == 0 || next_iter_to_store == recorder.get_iter());
-            //
-            if next_iter_to_store != 0 {
-                bucket_arg_order.insert(id.clone(), bucket_arg_order.len());
+            // ASSERT: same AddressType kind for this bucket in every (available) iteration
+            assert!(Self::all_same(
+                column.iter().filter_map(|x| x.as_ref()).map(|x| std::mem::discriminant(&x.0))
+            ));
+
+            // Check if the computed index value for this bucket is the same across all iterations (where it is
+            //  not None, see earlier comment). If it is not, then an extra function argument is needed for it.
+            //  Actually, check not only the computed index Value but the AddressType as well to capture when
+            //  it's a SubcmpSignal referencing a different subcomponent (the AddressType::cmp_address field
+            //  was also interpreted within the EnvRecorder so this comparison will be accurate).
+            if !Self::all_same(column.iter().filter_map(|x| x.as_ref())) {
+                bucket_to_args.insert(*id, ArgIndex::Signal(next_idx));
+                next_idx += 1;
             }
         }
-        (iter_to_loc, bucket_arg_order)
+        //ASSERT: All columns have the same length (i.e. the number of iterations)
+        assert!(bucket_to_itr_to_ref.values().all(|x| x.len() == recorder.get_iter()));
+
+        // Also, if it's a subcomponent reference, then extra arguments are needed for it's
+        //  signal arena and counter (because subcomponents are not included by default like
+        //  the current component's signal arena and lvars are).
+        // Find groups of BucketId that use the same SubcmpSignal (to reduce number of arguments).
+        //  A group must have this same property in all iterations in order to be safe to combine.
+        let mut safe_groups: BTreeMap<SubcmpSignalHashFix, HashSet<BucketId>> = Default::default();
+        for iter_num in 0..recorder.get_iter() {
+            let grps: BTreeMap<SubcmpSignalHashFix, HashSet<BucketId>> = bucket_to_itr_to_ref
+                .iter()
+                .map(|(k, col)| (k, &col[iter_num]))
+                .fold(BTreeMap::new(), |mut r, (b, a)| {
+                    if let Some((at, _)) = a {
+                        if let AddressType::SubcmpSignal { .. } = at {
+                            r.entry(SubcmpSignalHashFix::convert(&at)).or_default().insert(*b);
+                        }
+                    }
+                    r
+                });
+            if iter_num == 0 {
+                safe_groups = grps;
+            } else {
+                safe_groups.retain(|_, v| grps.values().any(|x| x == v));
+            }
+            if safe_groups.is_empty() {
+                break;
+            }
+        }
+        for (_, buckets) in safe_groups.iter() {
+            let arena_idx: FuncArgIdx = next_idx;
+            let counter_idx: FuncArgIdx = next_idx + 1;
+            next_idx += 2;
+            for b in buckets {
+                if let Some(ArgIndex::Signal(sig)) = bucket_to_args.get(b) {
+                    bucket_to_args.insert(
+                        *b,
+                        ArgIndex::SubCmp { signal: *sig, arena: arena_idx, counter: counter_idx },
+                    );
+                } else {
+                    //TODO: What to do when the signal index w/in the subcomp was not variant?
+                    //  Should I just add a parameter anyway? It doesn't hurt to do that so
+                    //  I guess that's the approach to take for now.
+                    bucket_to_args.insert(
+                        *b,
+                        ArgIndex::SubCmp {
+                            signal: next_idx,
+                            arena: arena_idx,
+                            counter: counter_idx,
+                        },
+                    );
+                    next_idx += 1;
+                }
+            }
+        }
+
+        //Keep only the table columns where extra parameters are necessary
+        bucket_to_itr_to_ref.retain(|k, _| bucket_to_args.contains_key(k));
+        ExtraArgsResult { bucket_to_itr_to_ref, bucket_to_args, num_args: next_idx }
+    }
+
+    fn new_filled_vec<T: Clone>(new_len: usize, value: T) -> Vec<T> {
+        let mut result = Vec::with_capacity(new_len);
+        result.resize(new_len, value);
+        result
     }
 }

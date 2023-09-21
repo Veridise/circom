@@ -14,9 +14,8 @@ use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
-use crate::passes::CircuitTransformationPass;
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
-
+use super::{CircuitTransformationPass, GlobalPassData};
 use self::body_extractor::LoopBodyExtractor;
 
 const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = true;
@@ -34,16 +33,18 @@ pub fn new_u32_value(bucket: &dyn ObtainMeta, val: usize) -> InstructionPointer 
     .allocate()
 }
 
-pub struct LoopUnrollPass {
+pub struct LoopUnrollPass<'d> {
+    global_data: &'d RefCell<GlobalPassData>,
     memory: PassMemory,
     extractor: LoopBodyExtractor,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     replacements: RefCell<BTreeMap<BucketId, InstructionPointer>>,
 }
 
-impl LoopUnrollPass {
-    pub fn new(prime: &String) -> Self {
+impl<'d> LoopUnrollPass<'d> {
+    pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         LoopUnrollPass {
+            global_data,
             memory: PassMemory::new(prime, String::from(""), Default::default()),
             replacements: Default::default(),
             extractor: Default::default(),
@@ -62,11 +63,11 @@ impl LoopUnrollPass {
             println!("LOOP ENTRY env {}", env); //TODO: TEMP
         }
         // Compute loop iteration count. If unknown, return immediately.
-        let recorder = EnvRecorder::new(&self.memory);
+        let recorder = EnvRecorder::new(self.global_data, &self.memory);
         {
             //TODO: This has the wrong scope if an inner function w/ fixed params will be processed! Need test case for it.
             //  Can't make it crash. Maybe it's not activating in current setup, it was only when I tried to process the other functions?
-            let interpreter = self.memory.build_interpreter(&recorder);
+            let interpreter = self.memory.build_interpreter(self.global_data, &recorder);
             let mut inner_env = env.clone();
             loop {
                 recorder.record_env_at_header(inner_env.clone());
@@ -119,13 +120,13 @@ impl LoopUnrollPass {
     // checking if new loop buckets appear
     fn continue_inside(&self, bucket: &BlockBucket, env: &Env) {
         println!("\ncontinue_inside {:?} with {} ", bucket, env);
-        let interpreter = self.memory.build_interpreter(self);
+        let interpreter = self.memory.build_interpreter(self.global_data, self);
         let env = Env::new_unroll_block_env(env.clone(), &self.extractor);
         interpreter.execute_block_bucket(bucket, env, true);
     }
 }
 
-impl InterpreterObserver for LoopUnrollPass {
+impl InterpreterObserver for LoopUnrollPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -207,7 +208,7 @@ impl InterpreterObserver for LoopUnrollPass {
     }
 }
 
-impl CircuitTransformationPass for LoopUnrollPass {
+impl CircuitTransformationPass for LoopUnrollPass<'_> {
     fn name(&self) -> &str {
         "LoopUnrollPass"
     }
@@ -234,7 +235,7 @@ impl CircuitTransformationPass for LoopUnrollPass {
 
     fn pre_hook_template(&self, template: &TemplateCode) {
         self.memory.set_scope(template);
-        self.memory.run_template(self, template);
+        self.memory.run_template(self.global_data, self, template);
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
@@ -259,6 +260,7 @@ impl CircuitTransformationPass for LoopUnrollPass {
 
 #[cfg(test)]
 mod test {
+    use std::cell::RefCell;
     use std::collections::HashMap;
     use compiler::circuit_design::template::TemplateCodeInfo;
     use compiler::compiler_interface::Circuit;
@@ -267,13 +269,14 @@ mod test {
         AddressType, Allocate, ComputeBucket, InstrContext, LoadBucket, LocationRule, LoopBucket,
         OperatorType, StoreBucket, ValueBucket, ValueType,
     };
-    use crate::passes::{CircuitTransformationPass, LOOP_BODY_FN_PREFIX};
+    use crate::passes::{CircuitTransformationPass, LOOP_BODY_FN_PREFIX, GlobalPassData};
     use crate::passes::loop_unroll::LoopUnrollPass;
 
     #[test]
     fn test_loop_unrolling() {
         let prime = "goldilocks".to_string();
-        let pass = LoopUnrollPass::new(&prime);
+        let global_data = RefCell::new(GlobalPassData::new());
+        let pass = LoopUnrollPass::new(prime, &global_data);
         let mut circuit = example_program();
         circuit.llvm_data.variable_index_mapping.insert("test_0".to_string(), HashMap::new());
         circuit.llvm_data.signal_index_mapping.insert("test_0".to_string(), HashMap::new());

@@ -21,7 +21,7 @@ component main = Num2Bits(4);
 
 //CHECK-LABEL: define void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.{{.*}}[[$F_ID_1]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
 //CHECK-NEXT: store{{[0-9]+}}:
@@ -75,13 +75,13 @@ component main = Num2Bits(4);
 //CHECK-LABEL: define void @Num2Bits_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK:      unrolled_loop{{[0-9]+}}:
 //CHECK-NEXT:   %4 = bitcast [4 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   call void @..generated..loop.body.{{.*}}[[$F_ID_1]]([0 x i256]* %4, [0 x i256]* %0)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %4, [0 x i256]* %0)
 //CHECK-NEXT:   %5 = bitcast [4 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   call void @..generated..loop.body.{{.*}}[[$F_ID_1]]([0 x i256]* %5, [0 x i256]* %0)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %5, [0 x i256]* %0)
 //CHECK-NEXT:   %6 = bitcast [4 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   call void @..generated..loop.body.{{.*}}[[$F_ID_1]]([0 x i256]* %6, [0 x i256]* %0)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %6, [0 x i256]* %0)
 //CHECK-NEXT:   %7 = bitcast [4 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   call void @..generated..loop.body.{{.*}}[[$F_ID_1]]([0 x i256]* %7, [0 x i256]* %0)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %7, [0 x i256]* %0)
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:
