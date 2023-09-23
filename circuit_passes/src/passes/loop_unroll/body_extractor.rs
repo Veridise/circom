@@ -1,7 +1,7 @@
 use std::cell::{RefCell, Ref};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::vec;
-use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR, FR_PTR_CAST_I32_I256};
+use code_producers::llvm_elements::fr::*;
 use compiler::circuit_design::function::{FunctionCodeInfo, FunctionCode};
 use compiler::hir::very_concrete_program::Param;
 use compiler::intermediate_representation::{
@@ -85,17 +85,21 @@ impl ExtraArgsResult {
     fn get_passing_refs_for_itr(
         &self,
         iter_num: usize,
-    ) -> Vec<(&(AddressType, AddressOffset), ArgIndex)> {
+    ) -> Vec<(&Option<(AddressType, AddressOffset)>, ArgIndex)> {
         self.bucket_to_itr_to_ref
             .iter()
-            .map(|(k, v)| (v[iter_num].as_ref().unwrap(), self.bucket_to_args[k]))
+            .map(|(k, v)| (&v[iter_num], self.bucket_to_args[k]))
             .collect()
     }
 
     fn get_reverse_passing_refs_for_itr(&self, iter_num: usize) -> ToOriginalLocation {
         self.bucket_to_itr_to_ref.iter().fold(ToOriginalLocation::new(), |mut acc, (k, v)| {
-            let (addr_ty, addr_offset) = v[iter_num].as_ref().unwrap();
-            acc.insert(self.bucket_to_args[k].get_signal_idx(), (addr_ty.clone(), *addr_offset));
+            if let Some((addr_ty, addr_offset)) = v[iter_num].as_ref() {
+                acc.insert(
+                    self.bucket_to_args[k].get_signal_idx(),
+                    (addr_ty.clone(), *addr_offset),
+                );
+            }
             acc
         })
     }
@@ -139,27 +143,41 @@ impl LoopBodyExtractor {
             // Parameter for signals/arena
             args[1] = Self::new_storage_ptr_ref(bucket, AddressType::Signal);
             // Additional parameters for subcmps and variant array indexing within the loop
-            for ((at, val), ai) in extra_arg_info.get_passing_refs_for_itr(iter_num) {
-                match ai {
-                    ArgIndex::Signal(signal) => {
-                        args[signal] = Self::new_indexed_storage_ptr_ref(bucket, at.clone(), *val)
-                    }
-                    ArgIndex::SubCmp { signal, arena, counter } => {
-                        // Pass entire subcomponent arena for calling the 'template_run' function
-                        args[arena] = Self::new_storage_ptr_ref(bucket, at.clone());
-                        // Pass specific signal referenced
-                        args[signal] = Self::new_indexed_storage_ptr_ref(bucket, at.clone(), *val);
-                        // Pass subcomponent counter reference
-                        if let AddressType::SubcmpSignal { cmp_address, .. } = &at {
-                            //TODO: may only need to add this when is_output=true but have to skip adding the Param too in that case.
-                            args[counter] = Self::new_subcmp_counter_storage_ptr_ref(
-                                bucket,
-                                cmp_address.clone(),
-                            );
-                        } else {
-                            unreachable!()
+            for (loc, ai) in extra_arg_info.get_passing_refs_for_itr(iter_num) {
+                match loc {
+                    None => match ai {
+                        ArgIndex::Signal(signal) => {
+                            args[signal] = Self::new_null_ptr(bucket, FR_NULL_I256_PTR);
                         }
-                    }
+                        ArgIndex::SubCmp { signal, arena, counter } => {
+                            args[signal] = Self::new_null_ptr(bucket, FR_NULL_I256_PTR);
+                            args[arena] = Self::new_null_ptr(bucket, FR_NULL_I256_ARR_PTR);
+                            args[counter] = Self::new_null_ptr(bucket, FR_NULL_I256_PTR);
+                        }
+                    },
+                    Some((at, val)) => match ai {
+                        ArgIndex::Signal(signal) => {
+                            args[signal] =
+                                Self::new_indexed_storage_ptr_ref(bucket, at.clone(), *val)
+                        }
+                        ArgIndex::SubCmp { signal, arena, counter } => {
+                            // Pass specific signal referenced
+                            args[signal] =
+                                Self::new_indexed_storage_ptr_ref(bucket, at.clone(), *val);
+                            // Pass entire subcomponent arena for calling the 'template_run' function
+                            args[arena] = Self::new_storage_ptr_ref(bucket, at.clone());
+                            // Pass subcomponent counter reference
+                            if let AddressType::SubcmpSignal { cmp_address, .. } = &at {
+                                //TODO: may only need to add this when is_output=true but have to skip adding the Param too in that case.
+                                args[counter] = Self::new_subcmp_counter_storage_ptr_ref(
+                                    bucket,
+                                    cmp_address.clone(),
+                                );
+                            } else {
+                                unreachable!()
+                            }
+                        }
+                    },
                 }
             }
             unrolled.push(
@@ -334,6 +352,21 @@ impl LoopBodyExtractor {
             },
             new_u32_value(bucket, usize::MAX), //index is ignored for these
         )
+    }
+
+    fn new_null_ptr(bucket: &dyn ObtainMeta, null_fun: &str) -> InstructionPointer {
+        CallBucket {
+            id: new_id(),
+            source_file_id: bucket.get_source_file_id().clone(),
+            line: bucket.get_line(),
+            message_id: bucket.get_message_id(),
+            symbol: String::from(null_fun),
+            return_info: ReturnType::Intermediate { op_aux_no: 0 },
+            arena_size: 0, // size 0 indicates arguments should not be placed into an arena
+            argument_types: vec![], // LLVM IR generation doesn't use this field
+            arguments: vec![],
+        }
+        .allocate()
     }
 
     fn all_same<T>(data: T) -> bool
