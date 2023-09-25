@@ -1,5 +1,5 @@
 use std::cell::{RefCell, Ref};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
 use indexmap::IndexMap;
 use compiler::intermediate_representation::BucketId;
@@ -43,7 +43,8 @@ pub struct EnvRecorder<'a, 'd> {
     //  the main interpreter while we also need to mutate these internal structures.
     current_iter_num: RefCell<usize>,
     safe_to_move: RefCell<bool>,
-    vals_per_iteration: RefCell<HashMap<usize, VariableValues<'a>>>, // key is iteration number
+    //NOTE: use BTreeMap instead of HashMap for consistent ordering of args in test cases
+    vals_per_iteration: RefCell<BTreeMap<usize, VariableValues<'a>>>, // key is iteration number
 }
 
 impl Debug for EnvRecorder<'_, '_> {
@@ -69,7 +70,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         }
     }
 
-    pub fn get_vals_per_iter(&self) -> Ref<HashMap<usize, VariableValues<'a>>> {
+    pub fn get_vals_per_iter(&self) -> Ref<BTreeMap<usize, VariableValues<'a>>> {
         self.vals_per_iteration.borrow()
     }
 
