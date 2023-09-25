@@ -430,8 +430,9 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 self.global_data.borrow().extract_func_orig_loc[name][&env.get_vars_sort()].clone(),
             ),
         );
-        let interp =
-            self.mem.build_interpreter_with_scope(self.global_data, self.observer, name.clone());
+        //NOTE: Do not change scope for the new interpreter because the mem lookups within
+        //  `get_write_operations_in_store_bucket` need to use the original function context.
+        let interp = self.mem.build_interpreter(self.global_data, self.observer);
         let observe = observe && !interp.observer.ignore_function_calls();
         let instructions = &env.get_function(name).body;
         unsafe {
