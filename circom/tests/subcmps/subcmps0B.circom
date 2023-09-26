@@ -26,8 +26,8 @@ template SubCmps0B(n) {
 component main = SubCmps0B(2);
 
 //CHECK-LABEL: define void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %fix_[[X3:[0-9]+]], i256* %subfix_[[X4:[0-9]+]],
-//CHECK-SAME: i256* %subfix_[[X5:[0-9]+]], [0 x i256]* %sub_[[X6:[0-9]+]], i256* %subc_[[X7:[0-9]+]], [0 x i256]* %sub_[[X8:[0-9]+]], i256* %subc_[[X9:[0-9]+]]){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %fix_[[X3:[0-9]+]],
+//CHECK-SAME: i256* %subfix_[[X4:[0-9]+]], i256* %subfix_[[X5:[0-9]+]], [0 x i256]* %sub_[[X1]], i256* %subc_[[X1]], [0 x i256]* %sub_[[X5]], i256* %subc_[[X5]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
@@ -39,8 +39,8 @@ component main = SubCmps0B(2);
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %3 = getelementptr [0 x i256], [0 x i256]* %sub_[[X6]], i32 0
-//CHECK-NEXT:   call void @IsZero_0_run([0 x i256]* %sub_[[X6]])
+//CHECK-NEXT:   %3 = getelementptr [0 x i256], [0 x i256]* %sub_[[X1]], i32 0
+//CHECK-NEXT:   call void @IsZero_0_run([0 x i256]* %sub_[[X1]])
 //CHECK-NEXT:   br label %store3
 //CHECK-EMPTY: 
 //CHECK-NEXT: store3:
