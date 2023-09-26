@@ -25,39 +25,39 @@ template SubCmps0D(n) {
 component main = SubCmps0D(3);
 
 //CHECK-LABEL: define void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %subfix_[[X0:[0-9]+]], i256* %fix_[[X1:[0-9]+]], i256* %subfix_[[X2:[0-9]+]], i256* %fix_[[X3:[0-9]+]],
-//CHECK-SAME: i256* %fix_[[X4:[0-9]+]], i256* %subfix_[[X5:[0-9]+]], [0 x i256]* %sub_[[X2]], i256* %subc_[[X2]], [0 x i256]* %sub_[[X5]], i256* %subc_[[X5]]){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %subfix_[[X3:[0-9]+]],
+//CHECK-SAME: i256* %fix_[[X4:[0-9]+]], i256* %fix_[[X5:[0-9]+]], i256* %subfix_[[X6:[0-9]+]], [0 x i256]* %sub_[[X6]], i256* %subc_[[X6]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %0 = getelementptr i256, i256* %fix_[[X1]], i32 0
+//CHECK-NEXT:   %0 = getelementptr i256, i256* %fix_[[X2]], i32 0
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %subfix_[[X0]], i32 0
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %subfix_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %1, i256* %2, align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %3 = getelementptr [0 x i256], [0 x i256]* %sub_[[X2]], i32 0
-//CHECK-NEXT:   call void @Add_0_run([0 x i256]* %sub_[[X2]])
+//CHECK-NEXT:   %3 = getelementptr [0 x i256], [0 x i256]* %sub_[[X6]], i32 0
+//CHECK-NEXT:   call void @Add_0_run([0 x i256]* %sub_[[X6]])
 //CHECK-NEXT:   br label %store3
 //CHECK-EMPTY: 
 //CHECK-NEXT: store3:
-//CHECK-NEXT:   %4 = getelementptr i256, i256* %fix_[[X3]], i32 0
+//CHECK-NEXT:   %4 = getelementptr i256, i256* %fix_[[X4]], i32 0
 //CHECK-NEXT:   %5 = load i256, i256* %4, align 4
-//CHECK-NEXT:   %6 = getelementptr i256, i256* %subfix_[[X2]], i32 0
+//CHECK-NEXT:   %6 = getelementptr i256, i256* %subfix_[[X3]], i32 0
 //CHECK-NEXT:   store i256 %5, i256* %6, align 4
 //CHECK-NEXT:   br label %store4
 //CHECK-EMPTY: 
 //CHECK-NEXT: store4:
-//CHECK-NEXT:   %7 = getelementptr [0 x i256], [0 x i256]* %sub_[[X2]], i32 0
-//CHECK-NEXT:   call void @Add_0_run([0 x i256]* %sub_[[X2]])
+//CHECK-NEXT:   %7 = getelementptr [0 x i256], [0 x i256]* %sub_[[X6]], i32 0
+//CHECK-NEXT:   call void @Add_0_run([0 x i256]* %sub_[[X6]])
 //CHECK-NEXT:   br label %store5
 //CHECK-EMPTY: 
 //CHECK-NEXT: store5:
-//CHECK-NEXT:   %8 = getelementptr i256, i256* %subfix_[[X5]], i32 0
+//CHECK-NEXT:   %8 = getelementptr i256, i256* %subfix_[[X6]], i32 0
 //CHECK-NEXT:   %9 = load i256, i256* %8, align 4
-//CHECK-NEXT:   %10 = getelementptr i256, i256* %fix_[[X4]], i32 0
+//CHECK-NEXT:   %10 = getelementptr i256, i256* %fix_[[X5]], i32 0
 //CHECK-NEXT:   store i256 %9, i256* %10, align 4
 //CHECK-NEXT:   br label %store6
 //CHECK-EMPTY: 
@@ -100,106 +100,91 @@ component main = SubCmps0D(3);
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %1 = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 0
-//CHECK-NEXT:   store i256 3, i256* %1, align 4
+//CHECK-NEXT:   %[[T01:[0-9]+]] = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 0
+//CHECK-NEXT:   store i256 3, i256* %[[T01]], align 4
 //CHECK-NEXT:   br label %create_cmp2
 //CHECK-EMPTY: 
 //CHECK-NEXT: create_cmp2:
-//CHECK-NEXT:   %2 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0
-//CHECK-NEXT:   call void @Add_0_build({ [0 x i256]*, i32 }* %2)
-//CHECK-NEXT:   %3 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1
-//CHECK-NEXT:   call void @Add_0_build({ [0 x i256]*, i32 }* %3)
-//CHECK-NEXT:   %4 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2
-//CHECK-NEXT:   call void @Add_0_build({ [0 x i256]*, i32 }* %4)
+//CHECK-NEXT:   %[[T02:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0
+//CHECK-NEXT:   call void @Add_0_build({ [0 x i256]*, i32 }* %[[T02]])
+//CHECK-NEXT:   %[[T03:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1
+//CHECK-NEXT:   call void @Add_0_build({ [0 x i256]*, i32 }* %[[T03]])
+//CHECK-NEXT:   %[[T04:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2
+//CHECK-NEXT:   call void @Add_0_build({ [0 x i256]*, i32 }* %[[T04]])
 //CHECK-NEXT:   br label %store3
 //CHECK-EMPTY: 
 //CHECK-NEXT: store3:
-//CHECK-NEXT:   %5 = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   store i256 0, i256* %5, align 4
+//CHECK-NEXT:   %[[T05:[0-9]+]] = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 1
+//CHECK-NEXT:   store i256 0, i256* %[[T05]], align 4
 //CHECK-NEXT:   br label %unrolled_loop4
 //CHECK-EMPTY: 
 //CHECK-NEXT: unrolled_loop4:
-//CHECK-NEXT:   %6 = bitcast [2 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %7 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
-//CHECK-NEXT:   %8 = load [0 x i256]*, [0 x i256]** %7, align 8
-//CHECK-NEXT:   %9 = getelementptr [0 x i256], [0 x i256]* %8, i32 0
-//CHECK-NEXT:   %10 = getelementptr [0 x i256], [0 x i256]* %9, i32 0, i256 1
-//CHECK-NEXT:   %11 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 3
-//CHECK-NEXT:   %12 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
-//CHECK-NEXT:   %13 = load [0 x i256]*, [0 x i256]** %12, align 8
-//CHECK-NEXT:   %14 = getelementptr [0 x i256], [0 x i256]* %13, i32 0
-//CHECK-NEXT:   %15 = getelementptr [0 x i256], [0 x i256]* %14, i32 0, i256 2
-//CHECK-NEXT:   %16 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 3
-//CHECK-NEXT:   %17 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 0
-//CHECK-NEXT:   %18 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
-//CHECK-NEXT:   %19 = load [0 x i256]*, [0 x i256]** %18, align 8
-//CHECK-NEXT:   %20 = getelementptr [0 x i256], [0 x i256]* %19, i32 0
-//CHECK-NEXT:   %21 = getelementptr [0 x i256], [0 x i256]* %20, i32 0, i256 0
-//CHECK-NEXT:   %22 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
-//CHECK-NEXT:   %23 = load [0 x i256]*, [0 x i256]** %22, align 8
-//CHECK-NEXT:   %24 = getelementptr [0 x i256], [0 x i256]* %23, i32 0
-//CHECK-NEXT:   %25 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 1
-//CHECK-NEXT:   %26 = bitcast i32* %25 to i256*
-//CHECK-NEXT:   %27 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
-//CHECK-NEXT:   %28 = load [0 x i256]*, [0 x i256]** %27, align 8
-//CHECK-NEXT:   %29 = getelementptr [0 x i256], [0 x i256]* %28, i32 0
-//CHECK-NEXT:   %30 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 1
-//CHECK-NEXT:   %31 = bitcast i32* %30 to i256*
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %6, [0 x i256]* %0, i256* %10, i256* %11, i256* %15, i256* %16, i256* %17, i256* %21, [0 x i256]* %24, i256* %26, [0 x i256]* %29, i256* %31)
-//CHECK-NEXT:   %32 = bitcast [2 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %33 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
-//CHECK-NEXT:   %34 = load [0 x i256]*, [0 x i256]** %33, align 8
-//CHECK-NEXT:   %35 = getelementptr [0 x i256], [0 x i256]* %34, i32 0
-//CHECK-NEXT:   %36 = getelementptr [0 x i256], [0 x i256]* %35, i32 0, i256 1
-//CHECK-NEXT:   %37 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 4
-//CHECK-NEXT:   %38 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
-//CHECK-NEXT:   %39 = load [0 x i256]*, [0 x i256]** %38, align 8
-//CHECK-NEXT:   %40 = getelementptr [0 x i256], [0 x i256]* %39, i32 0
-//CHECK-NEXT:   %41 = getelementptr [0 x i256], [0 x i256]* %40, i32 0, i256 2
-//CHECK-NEXT:   %42 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 4
-//CHECK-NEXT:   %43 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 1
-//CHECK-NEXT:   %44 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
-//CHECK-NEXT:   %45 = load [0 x i256]*, [0 x i256]** %44, align 8
-//CHECK-NEXT:   %46 = getelementptr [0 x i256], [0 x i256]* %45, i32 0
-//CHECK-NEXT:   %47 = getelementptr [0 x i256], [0 x i256]* %46, i32 0, i256 0
-//CHECK-NEXT:   %48 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
-//CHECK-NEXT:   %49 = load [0 x i256]*, [0 x i256]** %48, align 8
-//CHECK-NEXT:   %50 = getelementptr [0 x i256], [0 x i256]* %49, i32 0
-//CHECK-NEXT:   %51 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 1
-//CHECK-NEXT:   %52 = bitcast i32* %51 to i256*
-//CHECK-NEXT:   %53 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
-//CHECK-NEXT:   %54 = load [0 x i256]*, [0 x i256]** %53, align 8
-//CHECK-NEXT:   %55 = getelementptr [0 x i256], [0 x i256]* %54, i32 0
-//CHECK-NEXT:   %56 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 1
-//CHECK-NEXT:   %57 = bitcast i32* %56 to i256*
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %32, [0 x i256]* %0, i256* %36, i256* %37, i256* %41, i256* %42, i256* %43, i256* %47, [0 x i256]* %50, i256* %52, [0 x i256]* %55, i256* %57)
-//CHECK-NEXT:   %58 = bitcast [2 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %59 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 0
-//CHECK-NEXT:   %60 = load [0 x i256]*, [0 x i256]** %59, align 8
-//CHECK-NEXT:   %61 = getelementptr [0 x i256], [0 x i256]* %60, i32 0
-//CHECK-NEXT:   %62 = getelementptr [0 x i256], [0 x i256]* %61, i32 0, i256 1
-//CHECK-NEXT:   %63 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 5
-//CHECK-NEXT:   %64 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 0
-//CHECK-NEXT:   %65 = load [0 x i256]*, [0 x i256]** %64, align 8
-//CHECK-NEXT:   %66 = getelementptr [0 x i256], [0 x i256]* %65, i32 0
-//CHECK-NEXT:   %67 = getelementptr [0 x i256], [0 x i256]* %66, i32 0, i256 2
-//CHECK-NEXT:   %68 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 5
-//CHECK-NEXT:   %69 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 2
-//CHECK-NEXT:   %70 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 0
-//CHECK-NEXT:   %71 = load [0 x i256]*, [0 x i256]** %70, align 8
-//CHECK-NEXT:   %72 = getelementptr [0 x i256], [0 x i256]* %71, i32 0
-//CHECK-NEXT:   %73 = getelementptr [0 x i256], [0 x i256]* %72, i32 0, i256 0
-//CHECK-NEXT:   %74 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 0
-//CHECK-NEXT:   %75 = load [0 x i256]*, [0 x i256]** %74, align 8
-//CHECK-NEXT:   %76 = getelementptr [0 x i256], [0 x i256]* %75, i32 0
-//CHECK-NEXT:   %77 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 1
-//CHECK-NEXT:   %78 = bitcast i32* %77 to i256*
-//CHECK-NEXT:   %79 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 0
-//CHECK-NEXT:   %80 = load [0 x i256]*, [0 x i256]** %79, align 8
-//CHECK-NEXT:   %81 = getelementptr [0 x i256], [0 x i256]* %80, i32 0
-//CHECK-NEXT:   %82 = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 1
-//CHECK-NEXT:   %83 = bitcast i32* %82 to i256*
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %58, [0 x i256]* %0, i256* %62, i256* %63, i256* %67, i256* %68, i256* %69, i256* %73, [0 x i256]* %76, i256* %78, [0 x i256]* %81, i256* %83)
+//CHECK-NEXT:   %[[T06:[0-9]+]] = bitcast [2 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T07:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
+//CHECK-NEXT:   %[[T08:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T07]], align 8
+//CHECK-NEXT:   %[[T09:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T08]], i32 0
+//CHECK-NEXT:   %[[T10:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T09]], i32 0, i256 1
+//CHECK-NEXT:   %[[T11:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 3
+//CHECK-NEXT:   %[[T12:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
+//CHECK-NEXT:   %[[T13:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T12]], align 8
+//CHECK-NEXT:   %[[T14:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T13]], i32 0
+//CHECK-NEXT:   %[[T15:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T14]], i32 0, i256 2
+//CHECK-NEXT:   %[[T16:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 3
+//CHECK-NEXT:   %[[T17:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 0
+//CHECK-NEXT:   %[[T18:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
+//CHECK-NEXT:   %[[T19:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T18]], align 8
+//CHECK-NEXT:   %[[T20:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T19]], i32 0
+//CHECK-NEXT:   %[[T21:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T20]], i32 0, i256 0
+//CHECK-NEXT:   %[[T22:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
+//CHECK-NEXT:   %[[T23:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T22]], align 8
+//CHECK-NEXT:   %[[T24:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T23]], i32 0
+//CHECK-NEXT:   %[[T25:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 1
+//CHECK-NEXT:   %[[T26:[0-9]+]] = bitcast i32* %[[T25]] to i256*
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T06]], [0 x i256]* %0, i256* %[[T10]], i256* %[[T11]], i256* %[[T15]], i256* %[[T16]], i256* %[[T17]], i256* %[[T21]], [0 x i256]* %[[T24]], i256* %[[T26]])
+//CHECK-NEXT:   %[[T27:[0-9]+]] = bitcast [2 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T28:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
+//CHECK-NEXT:   %[[T29:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T28]], align 8
+//CHECK-NEXT:   %[[T30:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T29]], i32 0
+//CHECK-NEXT:   %[[T31:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T30]], i32 0, i256 1
+//CHECK-NEXT:   %[[T32:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 4
+//CHECK-NEXT:   %[[T33:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
+//CHECK-NEXT:   %[[T34:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T33]], align 8
+//CHECK-NEXT:   %[[T35:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T34]], i32 0
+//CHECK-NEXT:   %[[T36:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T35]], i32 0, i256 2
+//CHECK-NEXT:   %[[T37:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 4
+//CHECK-NEXT:   %[[T38:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 1
+//CHECK-NEXT:   %[[T39:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
+//CHECK-NEXT:   %[[T40:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T39]], align 8
+//CHECK-NEXT:   %[[T41:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T40]], i32 0
+//CHECK-NEXT:   %[[T42:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T41]], i32 0, i256 0
+//CHECK-NEXT:   %[[T43:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
+//CHECK-NEXT:   %[[T44:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T43]], align 8
+//CHECK-NEXT:   %[[T45:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T44]], i32 0
+//CHECK-NEXT:   %[[T46:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 1
+//CHECK-NEXT:   %[[T47:[0-9]+]] = bitcast i32* %[[T46]] to i256*
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T27]], [0 x i256]* %0, i256* %[[T31]], i256* %[[T32]], i256* %[[T36]], i256* %[[T37]], i256* %[[T38]], i256* %[[T42]], [0 x i256]* %[[T45]], i256* %[[T47]])
+//CHECK-NEXT:   %[[T48:[0-9]+]] = bitcast [2 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T49:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 0
+//CHECK-NEXT:   %[[T50:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T49]], align 8
+//CHECK-NEXT:   %[[T51:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T50]], i32 0
+//CHECK-NEXT:   %[[T52:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T51]], i32 0, i256 1
+//CHECK-NEXT:   %[[T53:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 5
+//CHECK-NEXT:   %[[T54:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 0
+//CHECK-NEXT:   %[[T55:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T54]], align 8
+//CHECK-NEXT:   %[[T56:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T55]], i32 0
+//CHECK-NEXT:   %[[T57:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T56]], i32 0, i256 2
+//CHECK-NEXT:   %[[T58:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 5
+//CHECK-NEXT:   %[[T59:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 2
+//CHECK-NEXT:   %[[T60:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 0
+//CHECK-NEXT:   %[[T61:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T60]], align 8
+//CHECK-NEXT:   %[[T62:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T61]], i32 0
+//CHECK-NEXT:   %[[T63:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T62]], i32 0, i256 0
+//CHECK-NEXT:   %[[T64:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 0
+//CHECK-NEXT:   %[[T65:[0-9]+]] = load [0 x i256]*, [0 x i256]** %[[T64]], align 8
+//CHECK-NEXT:   %[[T66:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[T65]], i32 0
+//CHECK-NEXT:   %[[T67:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 1
+//CHECK-NEXT:   %[[T68:[0-9]+]] = bitcast i32* %[[T67]] to i256*
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T48]], [0 x i256]* %0, i256* %[[T52]], i256* %[[T53]], i256* %[[T57]], i256* %[[T58]], i256* %[[T59]], i256* %[[T63]], [0 x i256]* %[[T66]], i256* %[[T68]])
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:

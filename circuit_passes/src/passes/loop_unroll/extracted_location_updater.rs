@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use code_producers::llvm_elements::fr::FR_IDENTITY_ARR_PTR;
 use compiler::intermediate_representation::{BucketId, InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
@@ -17,7 +17,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_load_bucket(
         &mut self,
         bucket: &mut LoadBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         if let Some(ai) = bucket_arg_order.remove(&bucket.id) {
             // Update the location information to reference the argument
@@ -46,7 +46,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_store_bucket(
         &mut self,
         bucket: &mut StoreBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         // Check the source/RHS of the store in either case
         self.check_instruction(&mut bucket.src, bucket_arg_order);
@@ -120,7 +120,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_location_rule(
         &mut self,
         location_rule: &mut LocationRule,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         match location_rule {
             LocationRule::Indexed { location, .. } => {
@@ -133,7 +133,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_address_type(
         &mut self,
         addr_type: &mut AddressType,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         if let AddressType::SubcmpSignal { cmp_address, .. } = addr_type {
             self.check_instruction(cmp_address, bucket_arg_order);
@@ -143,7 +143,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_compute_bucket(
         &mut self,
         bucket: &mut ComputeBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instructions(&mut bucket.stack, bucket_arg_order);
     }
@@ -151,7 +151,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_assert_bucket(
         &mut self,
         bucket: &mut AssertBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instruction(&mut bucket.evaluate, bucket_arg_order);
     }
@@ -159,7 +159,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_loop_bucket(
         &mut self,
         bucket: &mut LoopBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instruction(&mut bucket.continue_condition, bucket_arg_order);
         self.check_instructions(&mut bucket.body, bucket_arg_order);
@@ -168,7 +168,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_create_cmp_bucket(
         &mut self,
         bucket: &mut CreateCmpBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instruction(&mut bucket.sub_cmp_id, bucket_arg_order);
     }
@@ -176,7 +176,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_constraint_bucket(
         &mut self,
         bucket: &mut ConstraintBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instruction(
             match bucket {
@@ -190,7 +190,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_block_bucket(
         &mut self,
         bucket: &mut BlockBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instructions(&mut bucket.body, bucket_arg_order);
     }
@@ -198,7 +198,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_call_bucket(
         &mut self,
         bucket: &mut CallBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instructions(&mut bucket.arguments, bucket_arg_order);
     }
@@ -206,7 +206,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_branch_bucket(
         &mut self,
         bucket: &mut BranchBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instruction(&mut bucket.cond, bucket_arg_order);
         self.check_instructions(&mut bucket.if_branch, bucket_arg_order);
@@ -216,7 +216,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_return_bucket(
         &mut self,
         bucket: &mut ReturnBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instruction(&mut bucket.value, bucket_arg_order);
     }
@@ -224,7 +224,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_log_bucket(
         &mut self,
         bucket: &mut LogBucket,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         for arg in &mut bucket.argsprint {
             if let LogBucketArg::LogExp(i) = arg {
@@ -234,13 +234,13 @@ impl ExtractedFunctionLocationUpdater {
     }
 
     //Nothing to do
-    fn check_value_bucket(&mut self, _: &mut ValueBucket, _: &mut HashMap<BucketId, ArgIndex>) {}
-    fn check_nop_bucket(&mut self, _: &mut NopBucket, _: &mut HashMap<BucketId, ArgIndex>) {}
+    fn check_value_bucket(&mut self, _: &mut ValueBucket, _: &mut IndexMap<BucketId, ArgIndex>) {}
+    fn check_nop_bucket(&mut self, _: &mut NopBucket, _: &mut IndexMap<BucketId, ArgIndex>) {}
 
     fn check_instructions(
         &mut self,
         insts: &mut Vec<InstructionPointer>,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         for i in insts {
             self.check_instruction(i, bucket_arg_order);
@@ -250,7 +250,7 @@ impl ExtractedFunctionLocationUpdater {
     pub fn check_instruction(
         &mut self,
         inst: &mut InstructionPointer,
-        bucket_arg_order: &mut HashMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         match inst.as_mut() {
             Instruction::Value(ref mut b) => self.check_value_bucket(b, bucket_arg_order),

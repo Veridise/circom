@@ -1,6 +1,7 @@
 use std::cell::{RefCell, Ref};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::vec;
+use indexmap::{IndexMap, IndexSet};
 use code_producers::llvm_elements::fr::*;
 use compiler::circuit_design::function::{FunctionCodeInfo, FunctionCode};
 use compiler::hir::very_concrete_program::Param;
@@ -8,7 +9,6 @@ use compiler::intermediate_representation::{
     BucketId, InstructionList, InstructionPointer, new_id, UpdateId,
 };
 use compiler::intermediate_representation::ir_interface::*;
-use indexmap::IndexSet;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::LOOP_BODY_FN_PREFIX;
 use crate::passes::loop_unroll::extracted_location_updater::ExtractedFunctionLocationUpdater;
@@ -35,15 +35,16 @@ impl ArgIndex {
     }
 }
 
-/// Need this structure to skip id/metadata fields in ValueBucket when using as map key
+/// Need this structure to skip id/metadata fields in ValueBucket when using as map key.
+/// Also, the input/output stuff doesn't matter since the extra arguments that are added
+/// based on this are only used to trigger generation of the run function after all of
+/// the inputs have been assigned.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct SubcmpSignalHashFix {
     cmp_address_parse_as: ValueType,
     cmp_address_op_aux_no: usize,
     cmp_address_value: usize,
     uniform_parallel_value: Option<bool>,
-    is_output: bool,
-    input_information: InputInformation,
     counter_override: bool,
 }
 
@@ -52,9 +53,8 @@ impl SubcmpSignalHashFix {
         if let AddressType::SubcmpSignal {
             cmp_address,
             uniform_parallel_value,
-            is_output,
-            input_information,
             counter_override,
+            ..
         } = addr
         {
             if let Instruction::Value(ValueBucket { parse_as, op_aux_no, value, .. }) =
@@ -65,8 +65,6 @@ impl SubcmpSignalHashFix {
                     cmp_address_op_aux_no: op_aux_no,
                     cmp_address_value: value,
                     uniform_parallel_value: uniform_parallel_value.clone(),
-                    is_output: is_output.clone(),
-                    input_information: input_information.clone(),
                     counter_override: counter_override.clone(),
                 };
             }
@@ -77,7 +75,7 @@ impl SubcmpSignalHashFix {
 
 struct ExtraArgsResult {
     bucket_to_itr_to_ref: HashMap<BucketId, Vec<Option<(AddressType, AddressOffset)>>>,
-    bucket_to_args: HashMap<BucketId, ArgIndex>,
+    bucket_to_args: IndexMap<BucketId, ArgIndex>,
     num_args: usize,
 }
 
@@ -206,7 +204,7 @@ impl LoopBodyExtractor {
     fn build_new_body(
         &self,
         bucket: &LoopBucket,
-        mut bucket_to_args: HashMap<BucketId, ArgIndex>,
+        mut bucket_to_args: IndexMap<BucketId, ArgIndex>,
         num_args: usize,
     ) -> String {
         // NOTE: must create parameter list before 'bucket_to_args' is modified
@@ -402,7 +400,7 @@ impl LoopBodyExtractor {
         let mut bucket_to_itr_to_ref: HashMap<BucketId, Vec<Option<(AddressType, AddressOffset)>>> =
             HashMap::new();
         //
-        let mut bucket_to_args: HashMap<BucketId, ArgIndex> = HashMap::new();
+        let mut bucket_to_args: IndexMap<BucketId, ArgIndex> = IndexMap::new();
         let vpi = recorder.get_vals_per_iter();
         // NOTE: starts at 2 because the current component's signal arena and lvars are first.
         let mut next_idx: FuncArgIdx = 2;
@@ -441,9 +439,9 @@ impl LoopBodyExtractor {
         //  the current component's signal arena and lvars are).
         // Find groups of BucketId that use the same SubcmpSignal (to reduce number of arguments).
         //  A group must have this same property in all iterations in order to be safe to combine.
-        let mut safe_groups: BTreeMap<SubcmpSignalHashFix, HashSet<BucketId>> = Default::default();
+        let mut safe_groups: BTreeMap<SubcmpSignalHashFix, IndexSet<BucketId>> = Default::default();
         for iter_num in 0..recorder.get_iter() {
-            let grps: BTreeMap<SubcmpSignalHashFix, HashSet<BucketId>> = bucket_to_itr_to_ref
+            let grps: BTreeMap<SubcmpSignalHashFix, IndexSet<BucketId>> = bucket_to_itr_to_ref
                 .iter()
                 .map(|(k, col)| (k, &col[iter_num]))
                 .fold(BTreeMap::new(), |mut r, (b, a)| {
@@ -454,6 +452,7 @@ impl LoopBodyExtractor {
                     }
                     r
                 });
+            // Assume all groups are safe until proven otherwise. So if there are none at any point, just quit.
             if iter_num == 0 {
                 safe_groups = grps;
             } else {
