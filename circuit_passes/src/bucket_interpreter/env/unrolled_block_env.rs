@@ -50,6 +50,10 @@ impl<'a> UnrolledBlockEnvData<'a> {
         UnrolledBlockEnvData { base: Box::new(base), extractor }
     }
 
+    pub fn inside_loopbody_func_body(&self) -> bool {
+        false
+    }
+
     pub fn get_var(&self, idx: usize) -> Value {
         self.base.get_var(idx)
     }

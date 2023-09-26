@@ -47,6 +47,10 @@ impl<'a> ExtractedFuncEnvData<'a> {
         ExtractedFuncEnvData { base: Box::new(inner), remap }
     }
 
+    pub fn inside_loopbody_func_body(&self) -> bool {
+        true
+    }
+
     pub fn get_base(self) -> Env<'a> {
         *self.base
     }

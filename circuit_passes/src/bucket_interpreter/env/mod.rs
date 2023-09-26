@@ -100,6 +100,14 @@ impl LibraryAccess for Env<'_> {
 }
 
 impl<'a> Env<'a> {
+    pub fn inside_loopbody_func_body(&self) -> bool {
+        match self {
+            Env::Standard(e) => e.inside_loopbody_func_body(),
+            Env::UnrolledBlock(e) => e.inside_loopbody_func_body(),
+            Env::ExtractedFunction(e) => e.inside_loopbody_func_body()
+        }
+    }
+
     pub fn new_standard_env(libs: &'a dyn LibraryAccess) -> Self {
         Env::Standard(StandardEnvData::new(libs))
     }

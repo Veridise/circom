@@ -246,6 +246,10 @@ impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
     fn ignore_subcmp_calls(&self) -> bool {
         false
     }
+
+    fn ignore_loopbody_function_calls(&self) -> bool {
+        true // ?
+    }
 }
 
 impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
