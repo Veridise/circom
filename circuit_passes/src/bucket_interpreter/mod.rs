@@ -318,10 +318,10 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 }
             }
             AddressType::SubcmpSignal { cmp_address, input_information, .. } => {
-                println!(
-                    "cmp_address = {:?}, input_information = {:?}",
-                    cmp_address, input_information
-                );
+                // println!(
+                //     "cmp_address = {:?}, input_information = {:?}",
+                //     cmp_address, input_information
+                // );
                 let (addr, env) = self.execute_instruction(cmp_address, env, observe);
                 let addr = addr
                     .expect(
