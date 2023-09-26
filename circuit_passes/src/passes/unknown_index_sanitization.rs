@@ -252,6 +252,10 @@ impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
     fn ignore_subcmp_calls(&self) -> bool {
         false
     }
+
+    fn ignore_loopbody_function_calls(&self) -> bool {
+        true // ?
+    }
 }
 
 fn do_array_union(a: &HashSet<Range<usize>>, b: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {

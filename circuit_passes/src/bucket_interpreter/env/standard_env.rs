@@ -46,6 +46,10 @@ impl<'a> StandardEnvData<'a> {
     }
 
     // READ OPERATIONS
+    pub fn inside_loopbody_func_body(&self) -> bool {
+        false
+    }
+
     pub fn get_var(&self, idx: usize) -> Value {
         self.vars.get(&idx).unwrap_or_default().clone()
     }

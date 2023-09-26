@@ -77,7 +77,7 @@ impl ExtractedFunctionLocationUpdater {
                             //  Last here could result in the run function being called too soon.
                             //SEE: circom/tests/subcmps/subcmps0C.circom
                             input_information: InputInformation::Input {
-                                status: StatusInput::Last,
+                                status: StatusInput::Unknown, // We don't know but we need to make the subsequent passes fix this
                             },
                         },
                         dest: LocationRule::Indexed {

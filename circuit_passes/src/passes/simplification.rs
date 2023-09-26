@@ -116,6 +116,10 @@ impl InterpreterObserver for SimplificationPass<'_> {
     fn ignore_subcmp_calls(&self) -> bool {
         true
     }
+
+    fn ignore_loopbody_function_calls(&self) -> bool {
+        true
+    }
 }
 
 impl CircuitTransformationPass for SimplificationPass<'_> {

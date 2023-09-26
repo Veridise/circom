@@ -164,6 +164,10 @@ impl InterpreterObserver for MappedToIndexedPass<'_> {
     fn ignore_subcmp_calls(&self) -> bool {
         true
     }
+
+    fn ignore_loopbody_function_calls(&self) -> bool {
+        false
+    }
 }
 
 impl CircuitTransformationPass for MappedToIndexedPass<'_> {
