@@ -368,6 +368,7 @@ pub trait CircuitTransformationPass {
             message_id: bucket.message_id,
             body: self.transform_instructions(&bucket.body),
             n_iters: bucket.n_iters,
+            label: bucket.label.clone(),
         }
         .allocate()
     }
@@ -408,8 +409,10 @@ pub enum PassKind {
 }
 
 pub struct GlobalPassData {
-    /// Created during loop unrolling, maps generated function name + Env::get_vars_sort
-    /// to location reference in the original function.
+    /// Created during loop unrolling, maps generated function name + UnrolledIterLvars
+    /// (from Env::get_vars_sort) to location reference in the original function. Used
+    /// by ExtractedFuncEnvData to access the original function's Env via the extracted
+    /// function's parameter references.
     pub extract_func_orig_loc: HashMap<String, BTreeMap<UnrolledIterLvars, ToOriginalLocation>>,
 }
 

@@ -13,6 +13,7 @@ pub struct BlockBucket {
     pub message_id: usize,
     pub body: InstructionList,
     pub n_iters: usize,
+    pub label: String,
 }
 
 impl IntoInstruction for BlockBucket {

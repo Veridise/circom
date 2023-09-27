@@ -159,6 +159,7 @@ impl InterpreterObserver for LoopUnrollPass<'_> {
                 message_id: bucket.message_id,
                 body: block_body,
                 n_iters,
+                label: String::from("unrolled_loop"),
             };
             self.continue_inside(&block, env);
             self.replacements.borrow_mut().insert(bucket.id, block.allocate());

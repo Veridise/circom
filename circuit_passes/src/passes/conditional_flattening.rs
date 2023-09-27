@@ -135,18 +135,20 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
                 message_id: bucket.message_id,
                 body: code.clone(),
                 n_iters: 1,
+                label: format!("fold_{}", side),
             };
-            return self.transform_block_bucket(&block);
+            self.transform_block_bucket(&block)
+        } else {
+            BranchBucket {
+                id: new_id(),
+                source_file_id: bucket.source_file_id,
+                line: bucket.line,
+                message_id: bucket.message_id,
+                cond: self.transform_instruction(&bucket.cond),
+                if_branch: self.transform_instructions(&bucket.if_branch),
+                else_branch: self.transform_instructions(&bucket.else_branch),
+            }
+            .allocate()
         }
-        BranchBucket {
-            id: new_id(),
-            source_file_id: bucket.source_file_id,
-            line: bucket.line,
-            message_id: bucket.message_id,
-            cond: self.transform_instruction(&bucket.cond),
-            if_branch: self.transform_instructions(&bucket.if_branch),
-            else_branch: self.transform_instructions(&bucket.else_branch),
-        }
-        .allocate()
     }
 }
