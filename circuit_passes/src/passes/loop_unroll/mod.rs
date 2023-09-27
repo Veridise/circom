@@ -70,8 +70,6 @@ impl<'d> LoopUnrollPass<'d> {
         // Compute loop iteration count. If unknown, return immediately.
         let recorder = EnvRecorder::new(self.global_data, &self.memory);
         {
-            //TODO: This has the wrong scope if an inner function w/ fixed params will be processed! Need test case for it.
-            //  Can't make it crash. Maybe it's not activating in current setup, it was only when I tried to process the other functions?
             let interpreter = self.memory.build_interpreter(self.global_data, &recorder);
             let mut inner_env = env.clone();
             loop {

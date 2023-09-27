@@ -134,7 +134,7 @@ impl LoopBodyExtractor {
             //  the "loading" (but really it just returns the pointer that was passed in).
             let mut args = Self::new_filled_vec(
                 extra_arg_info.num_args,
-                Box::new(Instruction::Nop(NopBucket { id: 0 })),
+                NopBucket { id: 0 }.allocate(), // garbage fill
             );
             // Parameter for local vars
             args[0] = Self::new_storage_ptr_ref(bucket, AddressType::Variable);
@@ -384,8 +384,12 @@ impl LoopBodyExtractor {
         .0
     }
 
-    // Key for the returned map is iteration number.
-    // The HashMap that is returned maps bucket to fixed* argument index.
+    /// The ideal scenario for extracting the loop body into a new function is to only
+    /// need 2 function arguments, lvars and signals. However, we want to avoid variable
+    /// indexing within the extracted function so we include extra pointer arguments
+    /// that allow the indexing to happen in the original body where the loop will be
+    /// unrolled and the indexing will become known constant values. This computes the
+    /// extra arguments that will be needed.
     fn compute_extra_args<'a>(recorder: &'a EnvRecorder<'a, '_>) -> ExtraArgsResult {
         // Table structure indexed first by load/store BucketId, then by iteration number.
         //  View the first (BucketId) as columns and the second (iteration number) as rows.
@@ -452,7 +456,7 @@ impl LoopBodyExtractor {
                     }
                     r
                 });
-            // Assume all groups are safe until proven otherwise. So if there are none at any point, just quit.
+            // Assume all groups are safe until proven otherwise. So if it's empty at any point, just quit.
             if iter_num == 0 {
                 safe_groups = grps;
             } else {

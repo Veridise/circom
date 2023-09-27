@@ -2,7 +2,7 @@ use std::cell::{RefCell, Ref};
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
 use indexmap::IndexMap;
-use compiler::intermediate_representation::{BucketId, new_id};
+use compiler::intermediate_representation::BucketId;
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
@@ -172,7 +172,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
                     cmp_address: {
                         if addr_result == Value::Unknown {
                             self.safe_to_move.replace(false);
-                            NopBucket { id: new_id() }.allocate()
+                            NopBucket { id: 0 }.allocate()
                         } else {
                             addr_result.to_value_bucket(self.mem).allocate()
                         }
