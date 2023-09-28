@@ -300,7 +300,7 @@ impl LoopBodyExtractor {
         // NOTE: starts at 2 because the current component's signal arena and lvars are first.
         let mut next_idx: FuncArgIdx = 2;
         // First step is to collect all location references into the 'bucket_to_itr_to_ref' table.
-        // NOTE: collect to IndexSet to preserve insertion order to stabilize test output.
+        // NOTE: Uses IndexSet to preserve insertion order to stabilize lit test output.
         let all_loadstore_bucket_ids: IndexSet<&BucketId> =
             vpi.values().flat_map(|x| x.loadstore_to_index.keys()).collect();
         for id in all_loadstore_bucket_ids {

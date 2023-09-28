@@ -3,6 +3,7 @@ use std::collections::{HashMap, BTreeMap};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
@@ -50,8 +51,8 @@ impl<'a> UnrolledBlockEnvData<'a> {
         UnrolledBlockEnvData { base: Box::new(base), extractor }
     }
 
-    pub fn inside_loopbody_func_body(&self) -> bool {
-        false
+    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
+        None
     }
 
     pub fn get_var(&self, idx: usize) -> Value {

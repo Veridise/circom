@@ -3,6 +3,7 @@ use std::collections::{HashMap, BTreeMap};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::body_extractor::{LoopBodyExtractor, ToOriginalLocation};
@@ -100,11 +101,11 @@ impl LibraryAccess for Env<'_> {
 }
 
 impl<'a> Env<'a> {
-    pub fn inside_loopbody_func_body(&self) -> bool {
+    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
         match self {
-            Env::Standard(e) => e.inside_loopbody_func_body(),
-            Env::UnrolledBlock(e) => e.inside_loopbody_func_body(),
-            Env::ExtractedFunction(e) => e.inside_loopbody_func_body()
+            Env::Standard(e) => e.extracted_func_caller(),
+            Env::UnrolledBlock(e) => e.extracted_func_caller(),
+            Env::ExtractedFunction(e) => e.extracted_func_caller(),
         }
     }
 
@@ -116,8 +117,12 @@ impl<'a> Env<'a> {
         Env::UnrolledBlock(UnrolledBlockEnvData::new(inner, extractor))
     }
 
-    pub fn new_extracted_func_env(inner: Env<'a>, remap: ToOriginalLocation) -> Self {
-        Env::ExtractedFunction(ExtractedFuncEnvData::new(inner, remap))
+    pub fn new_extracted_func_env(
+        inner: Env<'a>,
+        caller: &BucketId,
+        remap: ToOriginalLocation,
+    ) -> Self {
+        Env::ExtractedFunction(ExtractedFuncEnvData::new(inner, caller, remap))
     }
 
     pub fn peel_extracted_func(self) -> Self {
