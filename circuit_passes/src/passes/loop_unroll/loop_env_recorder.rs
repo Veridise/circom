@@ -15,7 +15,7 @@ use super::body_extractor::{UnrolledIterLvars, ToOriginalLocation};
 pub struct VariableValues<'a> {
     pub env_at_header: Env<'a>,
     /// The key is the ID of the load/store bucket where the reference is located.
-    /// NOTE: uses IndexMap to preserve insertion order to stabilize test output.
+    /// NOTE: Uses IndexMap to preserve insertion order to stabilize lit test output.
     pub loadstore_to_index: IndexMap<BucketId, (AddressType, Value)>,
 }
 

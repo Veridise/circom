@@ -418,12 +418,26 @@ pub struct GlobalPassData {
     /// (from Env::get_vars_sort) to location reference in the original function. Used
     /// by ExtractedFuncEnvData to access the original function's Env via the extracted
     /// function's parameter references.
-    pub extract_func_orig_loc: HashMap<String, BTreeMap<UnrolledIterLvars, ToOriginalLocation>>,
+    extract_func_orig_loc: HashMap<String, BTreeMap<UnrolledIterLvars, ToOriginalLocation>>,
 }
 
 impl GlobalPassData {
     pub fn new() -> GlobalPassData {
         GlobalPassData { extract_func_orig_loc: Default::default() }
+    }
+
+    pub fn get_data_for_func(
+        &self,
+        name: &String,
+    ) -> &BTreeMap<UnrolledIterLvars, ToOriginalLocation> {
+        match self.extract_func_orig_loc.get(name) {
+            Some(x) => x,
+            None => {
+                // Allow for the suffix(es) added by ConditionalFlatteningPass
+                let name = name.trim_end_matches(&['.', 'T', 'F', 'N']);
+                self.extract_func_orig_loc.get(name).unwrap()
+            }
+        }
     }
 }
 

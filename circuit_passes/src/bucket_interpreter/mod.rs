@@ -417,7 +417,13 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         (computed_value, env)
     }
 
-    fn run_function_loopbody<'env>(&self, name: &String, env: Env<'env>, observe: bool) -> R<'env> {
+    fn run_function_loopbody<'env>(
+        &self,
+        bucket: &'env CallBucket,
+        env: Env<'env>,
+        observe: bool,
+    ) -> R<'env> {
+        let name = &bucket.symbol;
         if cfg!(debug_assertions) {
             println!("Running function {}", name);
         };
@@ -425,9 +431,9 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             None,
             Env::new_extracted_func_env(
                 env.clone(),
+                &bucket.id,
                 if name.starts_with(LOOP_BODY_FN_PREFIX) {
-                    self.global_data.borrow().extract_func_orig_loc[name][&env.get_vars_sort()]
-                        .clone()
+                    self.global_data.borrow().get_data_for_func(name)[&env.get_vars_sort()].clone()
                 } else {
                     Default::default()
                 },
@@ -436,7 +442,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         //NOTE: Do not change scope for the new interpreter because the mem lookups within
         //  `get_write_operations_in_store_bucket` need to use the original function context.
         let interp = self.mem.build_interpreter(self.global_data, self.observer);
-        let observe = observe && !interp.observer.ignore_function_calls();
+        let observe = observe && !interp.observer.ignore_loopbody_function_calls();
         let instructions = &env.get_function(name).body;
         unsafe {
             let ptr = instructions.as_ptr();
@@ -480,7 +486,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             // The extracted loop body and array parameter functions can change any values in
             //  the environment via the parameters passed to it. So interpret the function and
             //  keep the resulting Env (as if the function had executed inline).
-            self.run_function_loopbody(&bucket.symbol, env, observe)
+            self.run_function_loopbody(&bucket, env, observe)
         } else {
             let mut args = vec![];
             for i in &bucket.arguments {

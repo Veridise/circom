@@ -3,7 +3,7 @@ use std::collections::{HashMap, BTreeMap};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
-use compiler::intermediate_representation::Instruction;
+use compiler::intermediate_representation::{Instruction, BucketId};
 use compiler::intermediate_representation::ir_interface::{AddressType, ValueBucket, ValueType};
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
@@ -18,6 +18,7 @@ use super::{Env, LibraryAccess};
 #[derive(Clone)]
 pub struct ExtractedFuncEnvData<'a> {
     base: Box<Env<'a>>,
+    caller: BucketId,
     remap: ToOriginalLocation,
 }
 
@@ -43,12 +44,12 @@ impl LibraryAccess for ExtractedFuncEnvData<'_> {
 //  AddressType::SubcmpSignal references created by ExtractedFunctionLocationUpdater
 //  back into the proper reference to access the correct Env entry.
 impl<'a> ExtractedFuncEnvData<'a> {
-    pub fn new(inner: Env<'a>, remap: ToOriginalLocation) -> Self {
-        ExtractedFuncEnvData { base: Box::new(inner), remap }
+    pub fn new(inner: Env<'a>, caller: &BucketId, remap: ToOriginalLocation) -> Self {
+        ExtractedFuncEnvData { base: Box::new(inner), caller: caller.clone(), remap }
     }
 
-    pub fn inside_loopbody_func_body(&self) -> bool {
-        true
+    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
+        Some(&self.caller)
     }
 
     pub fn get_base(self) -> Env<'a> {
@@ -205,17 +206,17 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn set_var(self, idx: usize, value: Value) -> Self {
         // Local variables are referenced in the normal way
-        ExtractedFuncEnvData { base: Box::new(self.base.set_var(idx, value)), remap: self.remap }
+        ExtractedFuncEnvData::new(self.base.set_var(idx, value), &self.caller, self.remap)
     }
 
     pub fn set_signal(self, idx: usize, value: Value) -> Self {
         // Signals are referenced in the normal way
-        ExtractedFuncEnvData { base: Box::new(self.base.set_signal(idx, value)), remap: self.remap }
+        ExtractedFuncEnvData::new(self.base.set_signal(idx, value), &self.caller, self.remap)
     }
 
     pub fn set_all_to_unk(self) -> Self {
         // Local variables are referenced in the normal way
-        ExtractedFuncEnvData { base: Box::new(self.base.set_all_to_unk()), remap: self.remap }
+        ExtractedFuncEnvData::new(self.base.set_all_to_unk(), &self.caller, self.remap)
     }
 
     pub fn set_subcmp_to_unk(self, _subcmp_idx: usize) -> Self {
@@ -252,7 +253,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 }
             }
         };
-        ExtractedFuncEnvData { base: Box::new(new_env), remap: self.remap }
+        ExtractedFuncEnvData::new(new_env, &self.caller, self.remap)
     }
 
     pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Self {
@@ -279,7 +280,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 }
             }
         };
-        ExtractedFuncEnvData { base: Box::new(new_env), remap: self.remap }
+        ExtractedFuncEnvData::new(new_env, &self.caller, self.remap)
     }
 
     pub fn run_subcmp(
