@@ -1,5 +1,5 @@
 use std::cell::{RefCell, Ref};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use indexmap::IndexMap;
 use compiler::intermediate_representation::BucketId;
@@ -9,12 +9,13 @@ use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::GlobalPassData;
-use super::body_extractor::{UnrolledIterLvars, ToOriginalLocation};
+use super::DEBUG_LOOP_UNROLL;
+use super::body_extractor::{UnrolledIterLvars, ToOriginalLocation, FuncArgIdx};
 
 /// Holds values of index variables at array loads/stores within a loop
 pub struct VariableValues<'a> {
     pub env_at_header: Env<'a>,
-    /// The key is the ID of the load/store bucket where the reference is located.
+    /// The key is the ID of the load/store/call bucket where the reference is located.
     /// NOTE: Uses IndexMap to preserve insertion order to stabilize lit test output.
     pub loadstore_to_index: IndexMap<BucketId, (AddressType, Value)>,
 }
@@ -106,7 +107,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         &self,
         extract_func: String,
         iter_env: UnrolledIterLvars,
-        value: ToOriginalLocation,
+        value: (ToOriginalLocation, HashSet<FuncArgIdx>),
     ) {
         self.global_data
             .borrow_mut()
@@ -171,6 +172,12 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
     fn visit(&self, bucket_id: &BucketId, addr_ty: &AddressType, loc: &LocationRule, env: &Env) {
         let loc_result = self.compute_index_from_rule(env, loc);
         if loc_result == Value::Unknown {
+            if DEBUG_LOOP_UNROLL {
+                println!(
+                    "loop body is not safe to move because index is unknown from rule {:?}",
+                    loc
+                );
+            }
             self.safe_to_move.replace(false);
         }
         //NOTE: must record even when Unknown to ensure that Unknown value is not confused with
@@ -189,6 +196,9 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
                 AddressType::SubcmpSignal {
                     cmp_address: {
                         if addr_result == Value::Unknown {
+                            if DEBUG_LOOP_UNROLL {
+                                println!("loop body is not safe to move because index is unknown from addr {:?}", cmp_address);
+                            }
                             self.safe_to_move.replace(false);
                             NopBucket { id: 0 }.allocate()
                         } else {
@@ -214,7 +224,7 @@ impl InterpreterObserver for EnvRecorder<'_, '_> {
             todo!(); //not sure if/how to handle that
         }
         self.visit(&bucket.id, &bucket.address_type, &bucket.src, env);
-        true
+        self.is_safe_to_move() //continue observing unless something unsafe has been found
     }
 
     fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> bool {
@@ -222,7 +232,14 @@ impl InterpreterObserver for EnvRecorder<'_, '_> {
             todo!(); //not sure if/how to handle that
         }
         self.visit(&bucket.id, &bucket.dest_address_type, &bucket.dest, env);
-        true
+        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    }
+
+    fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> bool {
+        if let ReturnType::Final(fd) = &bucket.return_info {
+            self.visit(&bucket.id, &fd.dest_address_type, &fd.dest, env);
+        }
+        self.is_safe_to_move() //continue observing unless something unsafe has been found
     }
 
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
@@ -258,10 +275,6 @@ impl InterpreterObserver for EnvRecorder<'_, '_> {
     }
 
     fn on_location_rule(&self, _location_rule: &LocationRule, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
-    }
-
-    fn on_call_bucket(&self, _bucket: &CallBucket, _env: &Env) -> bool {
         self.is_safe_to_move() //continue observing unless something unsafe has been found
     }
 

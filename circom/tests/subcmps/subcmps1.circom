@@ -35,10 +35,10 @@ component main = SubCmps1(3);
 // %lvars =  [ n, i ]
 // %subcmps = [ IsZero[0]{signals=[out,in,inv]}, IsZero[1]{SAME} ]
 //
-//CHECK-LABEL: define void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]],
-//CHECK-SAME: i256* %fix_[[X3:[0-9]+]], i256* %subfix_[[X4:[0-9]+]], [0 x i256]* %sub_[[X4]], i256* %subc_[[X4]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID]]:
+//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
+//CHECK-SAME: i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %fix_[[X3:[0-9]+]],
+//CHECK-SAME: i256* %subfix_[[X4:[0-9]+]], [0 x i256]* %sub_[[X4]], i256* %subc_[[X4]]){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID:[0-9]+\.T]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
@@ -52,29 +52,36 @@ component main = SubCmps1(3);
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %4 = getelementptr [0 x i256], [0 x i256]* %sub_[[X4]], i32 0
-//CHECK-NEXT:   call void @IsZero_0_run([0 x i256]* %sub_[[X4]])
-//CHECK-NEXT:   br label %store3
+//CHECK-NEXT:   %4 = load i256, i256* %subc_[[X4]], align 4
+//CHECK-NEXT:   %call.fr_sub = call i256 @fr_sub(i256 %4, i256 1)
+//CHECK-NEXT:   %5 = getelementptr i256, i256* %subc_[[X4]], i32 0
+//CHECK-NEXT:   store i256 %call.fr_sub, i256* %5, align 4
+//CHECK-NEXT:   br label %fold_true3
 //CHECK-EMPTY: 
-//CHECK-NEXT: store3:
-//CHECK-NEXT:   %5 = getelementptr i256, i256* %subfix_[[X4]], i32 0
-//CHECK-NEXT:   %6 = load i256, i256* %5, align 4
-//CHECK-NEXT:   %7 = getelementptr i256, i256* %fix_[[X3]], i32 0
-//CHECK-NEXT:   store i256 %6, i256* %7, align 4
-//CHECK-NEXT:   %8 = load i256, i256* %7, align 4
-//CHECK-NEXT:   %constraint1 = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %6, i256 %8, i1* %constraint1)
+//CHECK-NEXT: fold_true3:
+//CHECK-NEXT:   call void @llvm.donothing()
+//CHECK-NEXT:   call void @IsZero_0_run([0 x i256]* %sub_[[X4]])
 //CHECK-NEXT:   br label %store4
 //CHECK-EMPTY: 
 //CHECK-NEXT: store4:
-//CHECK-NEXT:   %9 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   %10 = load i256, i256* %9, align 4
-//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %10, i256 1)
-//CHECK-NEXT:   %11 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   store i256 %call.fr_add, i256* %11, align 4
-//CHECK-NEXT:   br label %return5
+//CHECK-NEXT:   %6 = getelementptr i256, i256* %subfix_[[X4]], i32 0
+//CHECK-NEXT:   %7 = load i256, i256* %6, align 4
+//CHECK-NEXT:   %8 = getelementptr i256, i256* %fix_[[X3]], i32 0
+//CHECK-NEXT:   store i256 %7, i256* %8, align 4
+//CHECK-NEXT:   %9 = load i256, i256* %8, align 4
+//CHECK-NEXT:   %constraint1 = alloca i1, align 1
+//CHECK-NEXT:   call void @__constraint_values(i256 %7, i256 %9, i1* %constraint1)
+//CHECK-NEXT:   br label %store5
 //CHECK-EMPTY: 
-//CHECK-NEXT: return5:
+//CHECK-NEXT: store5:
+//CHECK-NEXT:   %10 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
+//CHECK-NEXT:   %11 = load i256, i256* %10, align 4
+//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %11, i256 1)
+//CHECK-NEXT:   %12 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
+//CHECK-NEXT:   store i256 %call.fr_add, i256* %12, align 4
+//CHECK-NEXT:   br label %return6
+//CHECK-EMPTY: 
+//CHECK-NEXT: return6:
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //

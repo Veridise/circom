@@ -21,6 +21,8 @@ use self::body_extractor::LoopBodyExtractor;
 
 const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = false;
 
+const DEBUG_LOOP_UNROLL: bool = false;
+
 pub const LOOP_BODY_FN_PREFIX: &str = const_format::concatcp!(GENERATED_FN_PREFIX, "loop.body.");
 
 pub struct LoopUnrollPass<'d> {
@@ -42,6 +44,21 @@ impl<'d> LoopUnrollPass<'d> {
     }
 
     fn try_unroll_loop(&self, bucket: &LoopBucket, env: &Env) -> (Option<InstructionList>, usize) {
+        if DEBUG_LOOP_UNROLL {
+            println!("\nTry unrolling loop {}:", bucket.id); //TODO: TEMP
+            for (i, s) in bucket.body.iter().enumerate() {
+                println!(
+                    "[{}/{}]{}",
+                    i + 1,
+                    bucket.body.len(),
+                    compiler::intermediate_representation::ToSExp::to_sexp(&**s).to_pretty(100)
+                );
+            }
+            for (i, s) in bucket.body.iter().enumerate() {
+                println!("[{}/{}]{:?}", i + 1, bucket.body.len(), s);
+            }
+            println!("LOOP ENTRY env {}", env); //TODO: TEMP
+        }
         // Compute loop iteration count. If unknown, return immediately.
         let recorder = EnvRecorder::new(self.global_data, &self.memory);
         {
@@ -61,6 +78,9 @@ impl<'d> LoopUnrollPass<'d> {
                 };
                 inner_env = new_env;
             }
+        }
+        if DEBUG_LOOP_UNROLL {
+            println!("recorder = {:?}", recorder);
         }
 
         let mut block_body = vec![];

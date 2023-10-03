@@ -1,5 +1,5 @@
 use std::cell::Ref;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{HashMap, BTreeMap, HashSet};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
@@ -7,7 +7,7 @@ use compiler::intermediate_representation::{Instruction, BucketId};
 use compiler::intermediate_representation::ir_interface::{AddressType, ValueBucket, ValueType};
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use crate::passes::loop_unroll::body_extractor::ToOriginalLocation;
+use crate::passes::loop_unroll::body_extractor::{ToOriginalLocation, FuncArgIdx};
 use super::{Env, LibraryAccess};
 
 /// This Env is used to process functions created by extracting loop bodies
@@ -20,6 +20,13 @@ pub struct ExtractedFuncEnvData<'a> {
     base: Box<Env<'a>>,
     caller: BucketId,
     remap: ToOriginalLocation,
+    arenas: HashSet<FuncArgIdx>,
+}
+
+macro_rules! update_inner {
+    ($self: expr, $inner: expr) => {{
+        ExtractedFuncEnvData::new($inner, &$self.caller, $self.remap, $self.arenas)
+    }};
 }
 
 impl Display for ExtractedFuncEnvData<'_> {
@@ -44,8 +51,13 @@ impl LibraryAccess for ExtractedFuncEnvData<'_> {
 //  AddressType::SubcmpSignal references created by ExtractedFunctionLocationUpdater
 //  back into the proper reference to access the correct Env entry.
 impl<'a> ExtractedFuncEnvData<'a> {
-    pub fn new(inner: Env<'a>, caller: &BucketId, remap: ToOriginalLocation) -> Self {
-        ExtractedFuncEnvData { base: Box::new(inner), caller: caller.clone(), remap }
+    pub fn new(
+        inner: Env<'a>,
+        caller: &BucketId,
+        remap: ToOriginalLocation,
+        arenas: HashSet<FuncArgIdx>,
+    ) -> Self {
+        ExtractedFuncEnvData { base: Box::new(inner), caller: caller.clone(), remap, arenas }
     }
 
     pub fn extracted_func_caller(&self) -> Option<&BucketId> {
@@ -68,7 +80,11 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn get_subcmp_signal(&self, subcmp_idx: usize, signal_idx: usize) -> Value {
         let res = match self.remap.get(&subcmp_idx) {
-            None => todo!(), // from ArgIndex::SubCmp 'arena' and 'counter' parameters
+            None => {
+                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
+                assert!(self.arenas.contains(&subcmp_idx));
+                unreachable!();
+            }
             Some((loc, idx)) => {
                 //ASSERT: ExtractedFunctionLocationUpdater will always assign 0 in
                 //  the LocationRule that 'signal_idx' is computed from.
@@ -76,7 +92,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 match loc {
                     AddressType::Variable => self.base.get_var(*idx),
                     AddressType::Signal => self.base.get_signal(*idx),
-                    AddressType::SubcmpSignal { cmp_address, .. } => {
+                    AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
                         let subcmp = match **cmp_address {
                             Instruction::Value(ValueBucket {
                                 parse_as: ValueType::U32,
@@ -85,7 +101,13 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             }) => value,
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
-                        self.base.get_subcmp_signal(subcmp, *idx)
+                        if *counter_override {
+                            // ASSERT: always 0 from 'get_reverse_passing_refs_for_itr' in 'body_extractor.rs'
+                            assert_eq!(*idx, 0);
+                            self.base.get_subcmp_counter(subcmp)
+                        } else {
+                            self.base.get_subcmp_signal(subcmp, *idx)
+                        }
                     }
                 }
             }
@@ -95,12 +117,16 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn get_subcmp_name(&self, subcmp_idx: usize) -> &String {
         match self.remap.get(&subcmp_idx) {
-            None => todo!(), // from ArgIndex::SubCmp 'arena' and 'counter' parameters
+            None => {
+                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
+                assert!(self.arenas.contains(&subcmp_idx));
+                unreachable!();
+            }
             Some((loc, idx)) => {
                 match loc {
                     AddressType::Variable => self.base.get_subcmp_name(*idx),
                     AddressType::Signal => self.base.get_subcmp_name(*idx),
-                    AddressType::SubcmpSignal { cmp_address, .. } => {
+                    AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
                         let subcmp = match **cmp_address {
                             Instruction::Value(ValueBucket {
                                 parse_as: ValueType::U32,
@@ -109,10 +135,14 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             }) => value,
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
-                        //ASSERT: ExtractedFunctionLocationUpdater will always assign 0 in
-                        //  the LocationRule that 'signal_idx' is computed from.
-                        assert_eq!(*idx, 0);
-                        self.base.get_subcmp_name(subcmp)
+                        if *counter_override {
+                            unreachable!();
+                        } else {
+                            //ASSERT: ExtractedFunctionLocationUpdater will always assign 0 in
+                            //  the LocationRule that 'idx' is computed from.
+                            assert_eq!(*idx, 0);
+                            self.base.get_subcmp_name(subcmp)
+                        }
                     }
                 }
             }
@@ -121,12 +151,16 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn get_subcmp_template_id(&self, subcmp_idx: usize) -> usize {
         match self.remap.get(&subcmp_idx) {
-            None => todo!(), // from ArgIndex::SubCmp 'arena' and 'counter' parameters
+            None => {
+                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
+                assert!(self.arenas.contains(&subcmp_idx));
+                unreachable!();
+            }
             Some((loc, idx)) => {
                 match loc {
                     AddressType::Variable => self.base.get_subcmp_template_id(*idx),
                     AddressType::Signal => self.base.get_subcmp_template_id(*idx),
-                    AddressType::SubcmpSignal { cmp_address, .. } => {
+                    AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
                         let subcmp = match **cmp_address {
                             Instruction::Value(ValueBucket {
                                 parse_as: ValueType::U32,
@@ -135,27 +169,35 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             }) => value,
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
-                        //ASSERT: ExtractedFunctionLocationUpdater will always assign 0 in
-                        //  the LocationRule that 'signal_idx' is computed from.
-                        assert_eq!(*idx, 0);
-                        self.base.get_subcmp_template_id(subcmp)
+                        if *counter_override {
+                            unreachable!();
+                        } else {
+                            //ASSERT: ExtractedFunctionLocationUpdater will always assign 0 in
+                            //  the LocationRule that 'signal_idx' is computed from.
+                            assert_eq!(*idx, 0);
+                            self.base.get_subcmp_template_id(subcmp)
+                        }
                     }
                 }
             }
         }
     }
 
+    pub fn get_subcmp_counter(&self, _subcmp_idx: usize) -> Value {
+        todo!()
+    }
+
     pub fn subcmp_counter_is_zero(&self, subcmp_idx: usize) -> bool {
         let res = match self.remap.get(&subcmp_idx).cloned() {
-            //TODO: Is this None case being hit by a pre-existing subcmp at index 0 reference? I think so. Can I verify?
-            //  All subcmp refs in extracted body should have been replaced with refs to a subfix parameter... right?
-            //OBS: It happens because there will be Unknown counter when certain loop bodies are extracted to a function.
-            //  That means I do need to add the code to decrement counters inside the loop and let StoreBucket generate
-            //  the counter checks that will determine when to execute the "run" function at runtime.
-            None => todo!(), //false, // from ArgIndex::SubCmp 'arena' and 'counter' parameters
+            None => {
+                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
+                assert!(self.arenas.contains(&subcmp_idx));
+                // This will be reached for the StoreBucket that generates a call to the "_run" function.
+                return true; // True to execute the run_subcmp function
+            }
             Some((loc, _)) => {
                 match loc {
-                    AddressType::SubcmpSignal { cmp_address, .. } => {
+                    AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
                         let subcmp = match *cmp_address {
                             Instruction::Value(ValueBucket {
                                 parse_as: ValueType::U32,
@@ -164,7 +206,11 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             }) => value,
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
-                        self.base.subcmp_counter_is_zero(subcmp)
+                        if counter_override {
+                            todo!()
+                        } else {
+                            self.base.subcmp_counter_is_zero(subcmp)
+                        }
                     }
                     _ => false, // no counter for Variable/Signal types
                 }
@@ -175,10 +221,14 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn subcmp_counter_equal_to(&self, subcmp_idx: usize, value: usize) -> bool {
         let res = match self.remap.get(&subcmp_idx).cloned() {
-            None => todo!(), //false, // from ArgIndex::SubCmp 'arena' and 'counter' parameters
+            None => {
+                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
+                assert!(self.arenas.contains(&subcmp_idx));
+                unreachable!();
+            }
             Some((loc, _)) => {
                 match loc {
-                    AddressType::SubcmpSignal { cmp_address, .. } => {
+                    AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
                         let subcmp = match *cmp_address {
                             Instruction::Value(ValueBucket {
                                 parse_as: ValueType::U32,
@@ -187,7 +237,11 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             }) => value,
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
-                        self.base.subcmp_counter_equal_to(subcmp, value)
+                        if counter_override {
+                            todo!()
+                        } else {
+                            self.base.subcmp_counter_equal_to(subcmp, value)
+                        }
                     }
                     _ => false, // no counter for Variable/Signal types
                 }
@@ -206,40 +260,44 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn set_var(self, idx: usize, value: Value) -> Self {
         // Local variables are referenced in the normal way
-        ExtractedFuncEnvData::new(self.base.set_var(idx, value), &self.caller, self.remap)
+        update_inner!(self, self.base.set_var(idx, value))
     }
 
     pub fn set_signal(self, idx: usize, value: Value) -> Self {
         // Signals are referenced in the normal way
-        ExtractedFuncEnvData::new(self.base.set_signal(idx, value), &self.caller, self.remap)
+        update_inner!(self, self.base.set_signal(idx, value))
     }
 
     pub fn set_all_to_unk(self) -> Self {
-        // Local variables are referenced in the normal way
-        ExtractedFuncEnvData::new(self.base.set_all_to_unk(), &self.caller, self.remap)
+        update_inner!(self, self.base.set_all_to_unk())
     }
 
-    pub fn set_subcmp_to_unk(self, _subcmp_idx: usize) -> Self {
-        unreachable!()
+    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Self {
+        // The index here is already converted within BucketInterpreter::get_write_operations_in_store_bucket
+        //  via interpreting the LocationRule and performing the PassMemory lookup on the unchanged scope
+        //  (per comment in BucketInterpreter::run_function_loopbody).
+        update_inner!(self, self.base.set_subcmp_to_unk(subcmp_idx))
     }
 
-    pub fn set_subcmp_signal(self, subcmp_idx: usize, signal_idx: usize, value: Value) -> Self {
+    pub fn set_subcmp_signal(self, subcmp_idx: usize, signal_idx: usize, new_value: Value) -> Self {
         //NOTE: This is only called by BucketInterpreter::store_value_in_address.
         //Use the map from loop unrolling to convert the SubcmpSignal reference back
         //  into the proper reference (reversing ExtractedFunctionLocationUpdater).
         let new_env = match self.remap.get(&subcmp_idx).cloned() {
-            //NOTE: The ArgIndex::SubCmp 'arena' and 'counter' parameters were not added
-            //  to the 'remap' (producing None result here) because those parameters are
-            //  not actually used to access signals, just to call _run and update counter.
-            None => *self.base,
+            None => {
+                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
+                assert!(self.arenas.contains(&subcmp_idx));
+                // This will be reached for the StoreBucket that generates a call to the "_run" function.
+                return self; // Nothing needs to be done.
+            }
             Some((loc, idx)) => {
                 //ASSERT: ExtractedFunctionLocationUpdater will always assign 0 in
                 //  the LocationRule that 'signal_idx' is computed from.
                 assert_eq!(signal_idx, 0);
                 match loc {
-                    AddressType::Variable => self.base.set_var(idx, value),
-                    AddressType::Signal => self.base.set_signal(idx, value),
-                    AddressType::SubcmpSignal { cmp_address, .. } => {
+                    AddressType::Variable => self.base.set_var(idx, new_value),
+                    AddressType::Signal => self.base.set_signal(idx, new_value),
+                    AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
                         let subcmp = match *cmp_address {
                             Instruction::Value(ValueBucket {
                                 parse_as: ValueType::U32,
@@ -248,48 +306,31 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             }) => value,
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
-                        self.base.set_subcmp_signal(subcmp, idx, value)
+                        if counter_override {
+                            // ASSERT: always 0 from 'get_reverse_passing_refs_for_itr' in 'body_extractor.rs'
+                            assert_eq!(idx, 0);
+                            // NOTE: If unwrapping to u32 directly causes a panic, then need to allow Value as the parameter.
+                            self.base.set_subcmp_counter(subcmp, new_value.get_u32())
+                        } else {
+                            self.base.set_subcmp_signal(subcmp, idx, new_value)
+                        }
                     }
                 }
             }
         };
-        ExtractedFuncEnvData::new(new_env, &self.caller, self.remap)
+        update_inner!(self, new_env)
     }
 
-    pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Self {
-        let new_env = match self.remap.get(&subcmp_idx).cloned() {
-            //NOTE: The ArgIndex::SubCmp 'arena' and 'counter' parameters were not added
-            //  to the 'remap' (producing None result here) because those parameters are
-            //  not actually used to access signals, just to call _run and update counter.
-            //  No counter update needed when SubcmpSignal is used for these special cases.
-            None => *self.base,
-            Some((loc, _)) => {
-                match loc {
-                    AddressType::SubcmpSignal { cmp_address, .. } => {
-                        let subcmp = match *cmp_address {
-                            Instruction::Value(ValueBucket {
-                                parse_as: ValueType::U32,
-                                value,
-                                ..
-                            }) => value,
-                            _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
-                        };
-                        self.base.decrease_subcmp_counter(subcmp)
-                    }
-                    _ => *self.base, // no counter for Variable/Signal types
-                }
-            }
-        };
-        ExtractedFuncEnvData::new(new_env, &self.caller, self.remap)
+    pub fn set_subcmp_counter(self, _subcmp_idx: usize, _new_val: usize) -> Self {
+        todo!()
     }
 
-    pub fn run_subcmp(
-        self,
-        _subcmp_idx: usize,
-        _name: &String,
-        _interpreter: &BucketInterpreter,
-        _observe: bool,
-    ) -> Self {
+    pub fn decrease_subcmp_counter(self, _subcmp_idx: usize) -> Self {
+        //Do nothing because subcmp counter is managed explicitly in extracted functions
+        self
+    }
+
+    pub fn run_subcmp(self, _: usize, _: &String, _: &BucketInterpreter, _: bool) -> Self {
         //Return self just like the StandardEnvData
         self
     }

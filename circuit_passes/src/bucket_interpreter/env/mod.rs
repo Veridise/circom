@@ -1,12 +1,12 @@
 use std::cell::Ref;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{HashMap, BTreeMap, HashSet};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use crate::passes::loop_unroll::body_extractor::{LoopBodyExtractor, ToOriginalLocation};
+use crate::passes::loop_unroll::body_extractor::{LoopBodyExtractor, ToOriginalLocation, FuncArgIdx};
 use self::extracted_func_env::ExtractedFuncEnvData;
 use self::standard_env::StandardEnvData;
 use self::unrolled_block_env::UnrolledBlockEnvData;
@@ -46,6 +46,16 @@ impl SubcmpEnv {
     pub fn set_signal(self, idx: usize, value: Value) -> SubcmpEnv {
         let mut copy = self;
         copy.signals.insert(idx, value);
+        copy
+    }
+
+    pub fn get_counter(&self) -> usize {
+        self.counter
+    }
+
+    pub fn set_counter(self, new_val: usize) -> SubcmpEnv {
+        let mut copy = self;
+        copy.counter = new_val;
         copy
     }
 
@@ -121,8 +131,9 @@ impl<'a> Env<'a> {
         inner: Env<'a>,
         caller: &BucketId,
         remap: ToOriginalLocation,
+        arenas: HashSet<FuncArgIdx>,
     ) -> Self {
-        Env::ExtractedFunction(ExtractedFuncEnvData::new(inner, caller, remap))
+        Env::ExtractedFunction(ExtractedFuncEnvData::new(inner, caller, remap, arenas))
     }
 
     pub fn peel_extracted_func(self) -> Self {
@@ -170,6 +181,14 @@ impl<'a> Env<'a> {
             Env::Standard(d) => d.get_subcmp_template_id(subcmp_idx),
             Env::UnrolledBlock(d) => d.get_subcmp_template_id(subcmp_idx),
             Env::ExtractedFunction(d) => d.get_subcmp_template_id(subcmp_idx),
+        }
+    }
+
+    pub fn get_subcmp_counter(&self, subcmp_idx: usize) -> Value {
+        match self {
+            Env::Standard(d) => d.get_subcmp_counter(subcmp_idx),
+            Env::UnrolledBlock(d) => d.get_subcmp_counter(subcmp_idx),
+            Env::ExtractedFunction(d) => d.get_subcmp_counter(subcmp_idx),
         }
     }
 
@@ -247,6 +266,16 @@ impl<'a> Env<'a> {
             }
             Env::ExtractedFunction(d) => {
                 Env::ExtractedFunction(d.set_subcmp_signal(subcmp_idx, signal_idx, value))
+            }
+        }
+    }
+
+    pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Self {
+        match self {
+            Env::Standard(d) => Env::Standard(d.set_subcmp_counter(subcmp_idx, new_val)),
+            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_subcmp_counter(subcmp_idx, new_val)),
+            Env::ExtractedFunction(d) => {
+                Env::ExtractedFunction(d.set_subcmp_counter(subcmp_idx, new_val))
             }
         }
     }

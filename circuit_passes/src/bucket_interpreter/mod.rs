@@ -66,21 +66,19 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         subcmps: &mut Vec<usize>,
         env: &Env,
     ) {
+        let idx = self.get_index_from_location(&bucket.dest, env);
         match bucket.dest_address_type {
             AddressType::Variable => {
-                let idx = self.get_index_from_location(&bucket.dest, env);
                 for index in self.mem.get_variables_index_mapping(&self.scope, &idx) {
                     vars.push(index);
                 }
             }
             AddressType::Signal => {
-                let idx = self.get_index_from_location(&bucket.dest, env);
                 for index in self.mem.get_signal_index_mapping(&self.scope, &idx) {
                     signals.push(index);
                 }
             }
             AddressType::SubcmpSignal { .. } => {
-                let idx = self.get_index_from_location(&bucket.dest, env);
                 for index in self.mem.get_component_addr_index_mapping(&self.scope, &idx) {
                     subcmps.push(index);
                 }
@@ -388,6 +386,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> R<'env> {
+        // println!("Interpreter executing {:?}", bucket);
         let (src, env) = self.execute_instruction(&bucket.src, env, observe);
         let src = src.expect("src instruction in StoreBucket must produce a value!");
         let env =
@@ -427,18 +426,20 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         if cfg!(debug_assertions) {
             println!("Running function {}", name);
         };
-        let mut res: R<'env> = (
-            None,
-            Env::new_extracted_func_env(
-                env.clone(),
-                &bucket.id,
-                if name.starts_with(LOOP_BODY_FN_PREFIX) {
-                    self.global_data.borrow().get_data_for_func(name)[&env.get_vars_sort()].clone()
-                } else {
-                    Default::default()
-                },
-            ),
-        );
+        let mut res: R<'env> = (None, {
+            if name.starts_with(LOOP_BODY_FN_PREFIX) {
+                let gdat = self.global_data.borrow();
+                let fdat = &gdat.get_data_for_func(name)[&env.get_vars_sort()];
+                Env::new_extracted_func_env(env.clone(), &bucket.id, fdat.0.clone(), fdat.1.clone())
+            } else {
+                Env::new_extracted_func_env(
+                    env.clone(),
+                    &bucket.id,
+                    Default::default(),
+                    Default::default(),
+                )
+            }
+        });
         //NOTE: Do not change scope for the new interpreter because the mem lookups within
         //  `get_write_operations_in_store_bucket` need to use the original function context.
         let interp = self.mem.build_interpreter(self.global_data, self.observer);

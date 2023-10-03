@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use code_producers::llvm_elements::fr::FR_IDENTITY_ARR_PTR;
+use code_producers::llvm_elements::stdlib::LLVM_DONOTHING_FN_NAME;
 use compiler::intermediate_representation::{BucketId, InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
 use crate::passes::builders::build_u32_value;
@@ -10,6 +10,13 @@ pub struct ExtractedFunctionLocationUpdater {
     pub insert_after: InstructionList,
 }
 
+/// Used within extracted loopbody functions to replace all storage references
+/// (i.e. AddressType + LocationRule) to instead reference the proper parameter
+/// of the extracted function. These replacements cannot use AddressType::Variable
+/// or AddressType::Signal because ExtractedFunctionLLVMIRProducer references the
+/// first two parameters of the extracted function via those. Therefore, it must
+/// use SubcmpSignal which will work seamlessly with existing subcmps because they
+/// will also just be passed as additional parameters to the function.
 impl ExtractedFunctionLocationUpdater {
     pub fn new() -> ExtractedFunctionLocationUpdater {
         ExtractedFunctionLocationUpdater { insert_after: Default::default() }
@@ -22,10 +29,6 @@ impl ExtractedFunctionLocationUpdater {
     ) {
         if let Some(ai) = bucket_arg_order.remove(&bucket.id) {
             // Update the location information to reference the argument
-            //NOTE: This can't use AddressType::Variable or AddressType::Signal
-            //  because ExtractedFunctionLLVMIRProducer references the first two
-            //  parameters with those. So this has to use SubcmpSignal (it should
-            //  work fine because subcomps will also just be additional params).
             bucket.address_type = AddressType::SubcmpSignal {
                 cmp_address: build_u32_value(bucket, ai.get_signal_idx()),
                 uniform_parallel_value: None,
@@ -44,6 +47,169 @@ impl ExtractedFunctionLocationUpdater {
         }
     }
 
+    fn handle_any_store(
+        &mut self,
+        ai: &ArgIndex,
+        dest: &LocationRule,
+        bucket_meta: &dyn ObtainMeta,
+    ) -> (AddressType, LocationRule) {
+        // If the current argument involves an actual subcomponent, then generate additional code in the
+        // 'insert_after' list that will decrement the subcomponent counter and call the proper "_run"
+        //  function for the template when the counter reaches 0.
+        // NOTE: This must happen before the modification step so it can use existing values from the bucket.
+        if let ArgIndex::SubCmp { counter, arena, .. } = ai {
+            let counter_address = AddressType::SubcmpSignal {
+                cmp_address: new_u32_value(bucket_meta, *counter),
+                uniform_parallel_value: None,
+                counter_override: true,
+                is_output: false,
+                input_information: InputInformation::NoInput,
+            };
+            // Generate counter LoadBucket+ComputeBucket+StoreBucket in the "insert_after" list
+            //  (based on what StoreBucket::produce_llvm_ir would normally generate for this).
+            self.insert_after.push(
+                StoreBucket {
+                    id: new_id(),
+                    source_file_id: bucket_meta.get_source_file_id().clone(),
+                    line: bucket_meta.get_line(),
+                    message_id: bucket_meta.get_message_id(),
+                    context: InstrContext { size: 1 },
+                    dest_is_output: false,
+                    dest_address_type: counter_address.clone(),
+                    dest: LocationRule::Indexed {
+                        location: new_u32_value(bucket_meta, 0),
+                        template_header: None,
+                    },
+                    bounded_fn: None,
+                    src: ComputeBucket {
+                        id: new_id(),
+                        source_file_id: bucket_meta.get_source_file_id().clone(),
+                        line: bucket_meta.get_line(),
+                        message_id: bucket_meta.get_message_id(),
+                        op: OperatorType::Sub,
+                        op_aux_no: 0,
+                        stack: vec![
+                            LoadBucket {
+                                id: new_id(),
+                                source_file_id: bucket_meta.get_source_file_id().clone(),
+                                line: bucket_meta.get_line(),
+                                message_id: bucket_meta.get_message_id(),
+                                address_type: counter_address.clone(),
+                                src: LocationRule::Indexed {
+                                    location: new_u32_value(bucket_meta, 0),
+                                    template_header: None,
+                                },
+                                bounded_fn: None,
+                            }
+                            .allocate(),
+                            ValueBucket {
+                                id: new_id(),
+                                source_file_id: bucket_meta.get_source_file_id().clone(),
+                                line: bucket_meta.get_line(),
+                                message_id: bucket_meta.get_message_id(),
+                                parse_as: ValueType::U32,
+                                op_aux_no: 0,
+                                value: 1,
+                            }
+                            .allocate(),
+                        ],
+                    }
+                    .allocate(),
+                }
+                .allocate(),
+            );
+
+            // Generate code to call the "run" function if the counter reaches 0
+            self.insert_after.push(
+                BranchBucket {
+                    id: new_id(),
+                    source_file_id: bucket_meta.get_source_file_id().clone(),
+                    line: bucket_meta.get_line(),
+                    message_id: bucket_meta.get_message_id(),
+                    cond: ComputeBucket {
+                        id: new_id(),
+                        source_file_id: bucket_meta.get_source_file_id().clone(),
+                        line: bucket_meta.get_line(),
+                        message_id: bucket_meta.get_message_id(),
+                        op: OperatorType::Eq(1),
+                        op_aux_no: 0,
+                        stack: vec![
+                            LoadBucket {
+                                id: new_id(),
+                                source_file_id: bucket_meta.get_source_file_id().clone(),
+                                line: bucket_meta.get_line(),
+                                message_id: bucket_meta.get_message_id(),
+                                address_type: counter_address,
+                                src: LocationRule::Indexed {
+                                    location: new_u32_value(bucket_meta, 0),
+                                    template_header: None,
+                                },
+                                bounded_fn: None,
+                            }
+                            .allocate(),
+                            ValueBucket {
+                                id: new_id(),
+                                source_file_id: bucket_meta.get_source_file_id().clone(),
+                                line: bucket_meta.get_line(),
+                                message_id: bucket_meta.get_message_id(),
+                                parse_as: ValueType::U32,
+                                op_aux_no: 0,
+                                value: 0,
+                            }
+                            .allocate(),
+                        ],
+                    }
+                    .allocate(),
+                    if_branch: vec![StoreBucket {
+                        id: new_id(),
+                        source_file_id: bucket_meta.get_source_file_id().clone(),
+                        line: bucket_meta.get_line(),
+                        message_id: bucket_meta.get_message_id(),
+                        context: InstrContext { size: 1 },
+                        dest_is_output: false,
+                        dest_address_type: AddressType::SubcmpSignal {
+                            cmp_address: build_u32_value(bucket_meta, *arena),
+                            uniform_parallel_value: None,
+                            counter_override: false,
+                            is_output: false,
+                            input_information: InputInformation::Input {
+                                status: StatusInput::Last, // This is the key to generating call to "run" function
+                            },
+                        },
+                        dest: LocationRule::Indexed {
+                            location: build_u32_value(bucket_meta, 0), //the value here is ignored by the 'bounded_fn' below
+                            template_header: match dest {
+                                LocationRule::Indexed { template_header, .. } => {
+                                    template_header.clone()
+                                }
+                                LocationRule::Mapped { .. } => todo!(),
+                            },
+                        },
+                        src: build_u32_value(bucket_meta, 0), //the value here is ignored at runtime
+                        bounded_fn: Some(String::from(LLVM_DONOTHING_FN_NAME)), // actual result ignored, only need effect of 'StatusInput::Last'
+                    }
+                    .allocate()],
+                    else_branch: vec![],
+                }
+                .allocate(),
+            );
+        }
+        //Transform this bucket into the normal fixed-index signal reference
+        (
+            AddressType::SubcmpSignal {
+                cmp_address: build_u32_value(bucket_meta, ai.get_signal_idx()),
+                uniform_parallel_value: None,
+                counter_override: false,
+                is_output: false,
+                input_information: InputInformation::NoInput,
+            },
+            LocationRule::Indexed {
+                location: new_u32_value(bucket_meta, 0), //use index 0 to ref the entire storage array
+                template_header: None,
+            },
+        )
+    }
+
     fn check_store_bucket(
         &mut self,
         bucket: &mut StoreBucket,
@@ -53,68 +219,35 @@ impl ExtractedFunctionLocationUpdater {
         self.check_instruction(&mut bucket.src, bucket_arg_order);
         //
         if let Some(ai) = bucket_arg_order.remove(&bucket.id) {
-            // If needed, add a StoreBucket to 'insert_after' that will call the template_run function.
-            // NOTE: This must happen before the modification step so it can use existing values from the bucket.
-            if let ArgIndex::SubCmp { arena, .. } = ai {
-                self.insert_after.push(
-                    StoreBucket {
-                        id: new_id(),
-                        source_file_id: bucket.source_file_id.clone(),
-                        line: bucket.line,
-                        message_id: bucket.message_id,
-                        context: bucket.context.clone(),
-                        dest_is_output: bucket.dest_is_output,
-                        dest_address_type: AddressType::SubcmpSignal {
-                            cmp_address: build_u32_value(bucket, arena),
-                            uniform_parallel_value: None,
-                            counter_override: false,
-                            is_output: false,
-                            //TODO: Not sure what to put here. If I put Unknown (assuming the later pass
-                            //  would correct) it crashes somewhere. What I really need is Last in the
-                            //  proper place to make it generate the *_run function at the right time
-                            //  but NoLast in locations prior to that (I think). Why isn't Unknown handled
-                            //  by the later pass deterministic subcomp pass or something? Always using
-                            //  Last here could result in the run function being called too soon.
-                            //SEE: circom/tests/subcmps/subcmps0C.circom
-                            input_information: InputInformation::Input {
-                                status: StatusInput::Unknown, // We don't know but we need to make the subsequent passes fix this
-                            },
-                        },
-                        dest: LocationRule::Indexed {
-                            location: build_u32_value(bucket, 0), //the value here is ignored by the 'bounded_fn' below
-                            template_header: match &bucket.dest {
-                                LocationRule::Indexed { template_header, .. } => {
-                                    template_header.clone()
-                                }
-                                LocationRule::Mapped { .. } => todo!(),
-                            },
-                        },
-                        src: build_u32_value(bucket, 0), //the value here is ignored at runtime
-                        bounded_fn: Some(String::from(FR_IDENTITY_ARR_PTR)), //NOTE: doesn't have enough arguments but it works out
-                    }
-                    .allocate(),
-                );
-                // NOTE: Not adding counter for now because it shouldn't be needed anyway and it's more work to add.
-                //  The best approach would probably be to generate Load+Compute+Store (based on what StoreBucket
-                //  would normally generate for it) in an "insert_before" list just like the "insert_after" list.
-            }
-
-            //Transform this bucket into the normal fixed-index signal reference
-            bucket.dest_address_type = AddressType::SubcmpSignal {
-                cmp_address: build_u32_value(bucket, ai.get_signal_idx()),
-                uniform_parallel_value: None,
-                counter_override: false,
-                is_output: false,
-                input_information: InputInformation::NoInput,
-            };
-            bucket.dest = LocationRule::Indexed {
-                location: build_u32_value(bucket, 0), //use index 0 to ref the entire storage array
-                template_header: None,
-            };
+            let (at, lr) = self.handle_any_store(&ai, &bucket.dest, bucket);
+            bucket.dest_address_type = at;
+            bucket.dest = lr;
         } else {
             // If not replacing, check deeper in the AddressType and LocationRule
             self.check_address_type(&mut bucket.dest_address_type, bucket_arg_order);
             self.check_location_rule(&mut bucket.dest, bucket_arg_order);
+        }
+    }
+
+    fn check_call_bucket(
+        &mut self,
+        bucket: &mut CallBucket,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+    ) {
+        // Check the call parameters
+        self.check_instructions(&mut bucket.arguments, bucket_arg_order);
+        // A store can be implicit within a CallBucket 'return_info'
+        let bucket_meta = ObtainMetaImpl::from(bucket); //avoid borrow issues
+        if let ReturnType::Final(fd) = &mut bucket.return_info {
+            if let Some(ai) = bucket_arg_order.remove(&bucket.id) {
+                let (at, lr) = self.handle_any_store(&ai, &fd.dest, &bucket_meta);
+                fd.dest_address_type = at;
+                fd.dest = lr;
+            } else {
+                // If not replacing, check deeper in the AddressType and LocationRule
+                self.check_address_type(&mut fd.dest_address_type, bucket_arg_order);
+                self.check_location_rule(&mut fd.dest, bucket_arg_order);
+            }
         }
     }
 
@@ -194,14 +327,6 @@ impl ExtractedFunctionLocationUpdater {
         bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instructions(&mut bucket.body, bucket_arg_order);
-    }
-
-    fn check_call_bucket(
-        &mut self,
-        bucket: &mut CallBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
-    ) {
-        self.check_instructions(&mut bucket.arguments, bucket_arg_order);
     }
 
     fn check_branch_bucket(
