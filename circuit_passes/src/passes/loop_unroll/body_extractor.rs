@@ -1,5 +1,5 @@
 use std::cell::{RefCell, Ref};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::vec;
 use indexmap::{IndexMap, IndexSet};
 use code_producers::llvm_elements::fr::*;
@@ -10,7 +10,7 @@ use compiler::intermediate_representation::{
 };
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::value::Value;
-use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
+use crate::passes::loop_unroll::{DEBUG_LOOP_UNROLL, LOOP_BODY_FN_PREFIX};
 use crate::passes::loop_unroll::extracted_location_updater::ExtractedFunctionLocationUpdater;
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 use crate::passes::{builders, checks};
@@ -90,16 +90,42 @@ impl ExtraArgsResult {
             .collect()
     }
 
-    fn get_reverse_passing_refs_for_itr(&self, iter_num: usize) -> ToOriginalLocation {
-        self.bucket_to_itr_to_ref.iter().fold(ToOriginalLocation::new(), |mut acc, (k, v)| {
-            if let Some((addr_ty, addr_offset)) = v[iter_num].as_ref() {
-                acc.insert(
-                    self.bucket_to_args[k].get_signal_idx(),
-                    (addr_ty.clone(), *addr_offset),
-                );
-            }
-            acc
-        })
+    fn get_reverse_passing_refs_for_itr(
+        &self,
+        iter_num: usize,
+    ) -> (ToOriginalLocation, HashSet<FuncArgIdx>) {
+        self.bucket_to_itr_to_ref.iter().fold(
+            (ToOriginalLocation::new(), HashSet::new()),
+            |mut acc, (k, v)| {
+                if let Some((addr_ty, addr_offset)) = v[iter_num].as_ref() {
+                    let ai = self.bucket_to_args[k];
+                    acc.0.insert(ai.get_signal_idx(), (addr_ty.clone(), *addr_offset));
+                    // If applicable, insert the subcmp counter reference as well
+                    if let ArgIndex::SubCmp { counter, arena, .. } = ai {
+                        match addr_ty {
+                            AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
+                                assert_eq!(*counter_override, false); //there's no counter for a counter
+                                let counter_addr_ty = AddressType::SubcmpSignal {
+                                    cmp_address: cmp_address.clone(),
+                                    uniform_parallel_value: None,
+                                    is_output: false,
+                                    input_information: InputInformation::NoInput,
+                                    counter_override: true,
+                                };
+                                // NOTE: when there's a true subcomponent (indicated by the ArgIndex::SubCmp check above),
+                                //  the 'addr_offset' indicates which signal inside the subcomponent is accessed. That
+                                //  value is not relevant here because subcomponents have a single counter variable.
+                                acc.0.insert(counter, (counter_addr_ty, 0));
+                                //
+                                acc.1.insert(arena);
+                            }
+                            _ => unreachable!(), // SubcmpSignal was created for all of these refs
+                        }
+                    }
+                }
+                acc
+            },
+        )
     }
 }
 
@@ -275,6 +301,21 @@ impl LoopBodyExtractor {
         func_name
     }
 
+    /// Create an Iterator containing the results of applying the given
+    /// function to only the `Some` entries in the given vector.
+    fn filter_map<'a, A, B, C>(
+        column: &'a Vec<Option<(A, B)>>,
+        f: impl FnMut(&(A, B)) -> C + 'a,
+    ) -> impl Iterator<Item = C> + '_ {
+        column.iter().filter_map(|x| x.as_ref()).map(f)
+    }
+
+    /// Create an Iterator containing the results of applying the given
+    /// function to only the `Some` entries in the given vector.
+    fn filter_map_any<A, B>(column: &Vec<Option<(A, B)>>, f: impl FnMut(&(A, B)) -> bool) -> bool {
+        column.iter().filter_map(|x| x.as_ref()).any(f)
+    }
+
     /// The ideal scenario for extracting the loop body into a new function is to only
     /// need 2 function arguments, lvars and signals. However, we want to avoid variable
     /// indexing within the extracted function so we include extra pointer arguments
@@ -282,7 +323,7 @@ impl LoopBodyExtractor {
     /// unrolled and the indexing will become known constant values. This computes the
     /// extra arguments that will be needed.
     fn compute_extra_args<'a>(recorder: &'a EnvRecorder<'a, '_>) -> ExtraArgsResult {
-        // Table structure indexed first by load/store BucketId, then by iteration number.
+        // Table structure indexed first by load/store/call BucketId, then by iteration number.
         //  View the first (BucketId) as columns and the second (iteration number) as rows.
         //  The data reference is wrapped in Option to allow for some iterations that don't
         //  execute a specific bucket due to conditional branches within the loop body.
@@ -311,17 +352,18 @@ impl LoopBodyExtractor {
                 assert!(temp.is_none() || !temp.unwrap().1.is_unknown());
                 column.push(temp.map(|(a, v)| (a.clone(), v.get_u32())));
             }
+            if DEBUG_LOOP_UNROLL {
+                println!("bucket {} refs by iteration: {:?}", id, column);
+            }
             // ASSERT: same AddressType kind for this bucket in every (available) iteration
-            assert!(checks::all_same(
-                column.iter().filter_map(|x| x.as_ref()).map(|x| std::mem::discriminant(&x.0))
-            ));
+            assert!(Self::all_same(Self::filter_map(column, |(x, _)| std::mem::discriminant(x))));
 
-            // Check if the computed index value for this bucket is the same across all iterations (where it is
-            //  not None, see earlier comment). If it is not, then an extra function argument is needed for it.
-            //  Actually, check not only the computed index Value but the AddressType as well to capture when
-            //  it's a SubcmpSignal referencing a different subcomponent (the AddressType::cmp_address field
-            //  was also interpreted within the EnvRecorder so this comparison will be accurate).
-            if !checks::all_same(column.iter().filter_map(|x| x.as_ref())) {
+            // If the computed index value for this bucket is NOT the same across all available
+            //  iterations (i.e. where it is not None, see earlier comment) or if the AddressType
+            //  is SubcmpSignal, then an extra function argument is needed for it.
+            if Self::filter_map_any(column, |(x, _)| matches!(x, AddressType::SubcmpSignal { .. }))
+                || !Self::all_same(Self::filter_map(column, |(_, y)| *y))
+            {
                 bucket_to_args.insert(*id, ArgIndex::Signal(next_idx));
                 next_idx += 1;
             }
@@ -341,7 +383,7 @@ impl LoopBodyExtractor {
                 .map(|(k, col)| (k, &col[iter_num]))
                 .fold(BTreeMap::new(), |mut r, (b, a)| {
                     if let Some((at, _)) = a {
-                        if let AddressType::SubcmpSignal { .. } = at {
+                        if matches!(at, AddressType::SubcmpSignal { .. }) {
                             r.entry(SubcmpSignalHashFix::convert(&at)).or_default().insert(*b);
                         }
                     }
@@ -368,18 +410,14 @@ impl LoopBodyExtractor {
                         ArgIndex::SubCmp { signal: *sig, arena: arena_idx, counter: counter_idx },
                     );
                 } else {
-                    //TODO: What to do when the signal index w/in the subcomp was not variant?
-                    //  Should I just add a parameter anyway? It doesn't hurt to do that so
-                    //  I guess that's the approach to take for now.
-                    bucket_to_args.insert(
-                        *b,
-                        ArgIndex::SubCmp {
-                            signal: next_idx,
-                            arena: arena_idx,
-                            counter: counter_idx,
-                        },
-                    );
-                    next_idx += 1;
+                    //Since SubcmpSignal is always added above, this should be unreachable.
+                    unreachable!()
+                    // bucket_to_args.insert(
+                    //     *b,
+                    //     ArgIndex::SubCmp { signal: next_idx, arena: arena_idx, counter: counter_idx,
+                    //     },
+                    // );
+                    // next_idx += 1;
                 }
             }
         }

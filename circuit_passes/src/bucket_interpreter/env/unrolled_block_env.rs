@@ -75,6 +75,10 @@ impl<'a> UnrolledBlockEnvData<'a> {
         self.base.get_subcmp_template_id(subcmp_idx)
     }
 
+    pub fn get_subcmp_counter(&self, subcmp_idx: usize) -> Value {
+        self.base.get_subcmp_counter(subcmp_idx)
+    }
+
     pub fn subcmp_counter_is_zero(&self, subcmp_idx: usize) -> bool {
         self.base.subcmp_counter_is_zero(subcmp_idx)
     }
@@ -122,6 +126,13 @@ impl<'a> UnrolledBlockEnvData<'a> {
     pub fn set_subcmp_signal(self, subcmp_idx: usize, signal_idx: usize, value: Value) -> Self {
         UnrolledBlockEnvData {
             base: Box::new(self.base.set_subcmp_signal(subcmp_idx, signal_idx, value)),
+            extractor: self.extractor,
+        }
+    }
+
+    pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Self {
+        UnrolledBlockEnvData {
+            base: Box::new(self.base.set_subcmp_counter(subcmp_idx, new_val)),
             extractor: self.extractor,
         }
     }

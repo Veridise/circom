@@ -14,7 +14,7 @@ use crate::passes::{
     simplification::SimplificationPass, unknown_index_sanitization::UnknownIndexSanitizationPass,
 };
 
-use self::loop_unroll::body_extractor::{UnrolledIterLvars, ToOriginalLocation};
+use self::loop_unroll::body_extractor::{UnrolledIterLvars, ToOriginalLocation, FuncArgIdx};
 
 mod const_arg_deduplication;
 mod conditional_flattening;
@@ -429,7 +429,8 @@ pub struct GlobalPassData {
     /// (from Env::get_vars_sort) to location reference in the original function. Used
     /// by ExtractedFuncEnvData to access the original function's Env via the extracted
     /// function's parameter references.
-    extract_func_orig_loc: HashMap<String, BTreeMap<UnrolledIterLvars, ToOriginalLocation>>,
+    extract_func_orig_loc:
+        HashMap<String, BTreeMap<UnrolledIterLvars, (ToOriginalLocation, HashSet<FuncArgIdx>)>>,
 }
 
 impl GlobalPassData {
@@ -440,7 +441,7 @@ impl GlobalPassData {
     pub fn get_data_for_func(
         &self,
         name: &String,
-    ) -> &BTreeMap<UnrolledIterLvars, ToOriginalLocation> {
+    ) -> &BTreeMap<UnrolledIterLvars, (ToOriginalLocation, HashSet<FuncArgIdx>)> {
         match self.extract_func_orig_loc.get(name) {
             Some(x) => x,
             None => {

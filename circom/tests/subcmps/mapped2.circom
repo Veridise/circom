@@ -57,3 +57,6 @@ template B(n, m, j) {
 }
 
 component main = B(2, 3, 2);
+
+//TODO: This check is a filler just to capture when the test no longer crashes
+//CHECK: declare void @llvm.donothing()

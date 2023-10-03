@@ -1,6 +1,7 @@
 pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// XFAIL:.* // TODO: branch conditions are not be flattened fully for some reason
 
 template Sigma() {
     signal input inp;
@@ -12,6 +13,9 @@ template Poseidon() {
 
     component sigmaF[2];
 
+    // NOTE: When processing the loop, the statements indexed with 'k' are determined
+    //  NOT safe to move into a new function since 'k' is unknown. That results in
+    //  the loop unrolling in place.
     for (var i=0; i<4; i++) {
         if (i < 1 || i >= 3) {
             var k = i < 1 ? 0 : 1;

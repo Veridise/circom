@@ -5,7 +5,7 @@ use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{InstructionPointer, new_id, BucketId};
 use compiler::intermediate_representation::ir_interface::*;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use crate::bucket_interpreter::env::{Env, LibraryAccess};
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
@@ -22,6 +22,8 @@ pub struct ConditionalFlatteningPass<'d> {
     /// interpreter is currently analyzing code that is not in one of the generated loopbody functions)
     /// to a list of (ID, evaluated condition) pairs for the BranchBuckets in the current context.
     evaluated_conditions: RefCell<HashMap<Option<BucketId>, BranchValues>>,
+    /// Track the order that the branches appear in the traversal to stabilize output for lit tests.
+    branch_bucket_order: RefCell<IndexSet<BucketId>>,
     /// Maps CallBucket symbol (i.e. target function name) to BranchBucket value mapping to the
     /// new function that has brances simplified according to that mapping.
     /// NOTE: Uses IndexMap to preserve insertion order to stabilize lit test output.
@@ -37,6 +39,7 @@ impl<'d> ConditionalFlatteningPass<'d> {
             global_data,
             memory: PassMemory::new(prime, "".to_string(), Default::default()),
             evaluated_conditions: Default::default(),
+            branch_bucket_order: Default::default(),
             new_functions: Default::default(),
             //The None key in this map is for the cases that are NOT inside the loopbody functions. When
             // traversal enters a loopbody function, this will change to the BranchValues of that CallBucket.
@@ -95,6 +98,7 @@ impl InterpreterObserver for ConditionalFlatteningPass<'_> {
     }
 
     fn on_branch_bucket(&self, bucket: &BranchBucket, env: &Env) -> bool {
+        println!("conditional_flattening::on_branch_bucket = {:?}", bucket.id);
         let interpreter = self.memory.build_interpreter(self.global_data, self);
         let (_, cond_result, _) = interpreter.execute_conditional_bucket(
             &bucket.cond,
@@ -114,7 +118,17 @@ impl InterpreterObserver for ConditionalFlatteningPass<'_> {
             .borrow_mut()
             .entry(in_func)
             .or_default()
-            .insert(bucket.id, cond_result);
+            .entry(bucket.id)
+            // If an existing entry is not equal to the new computed value, use None for unknown
+            .and_modify(|e| {
+                if *e != cond_result {
+                    *e = None
+                }
+            })
+            // If there was no entry, insert the computed value
+            .or_insert(cond_result);
+        //
+        self.branch_bucket_order.borrow_mut().insert(bucket.id);
         true
     }
 
@@ -168,9 +182,10 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
 
     fn transform_call_bucket(&self, bucket: &CallBucket) -> InstructionPointer {
         let call_bucket_id = Some(bucket.id);
+        // The Some keys in the 'evaluated_conditions' map are for the cases that are inside
+        //  the loopbody functions when executed from the CallBucket.id used as the key.
         // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
         let ec = { self.evaluated_conditions.borrow_mut().remove(&call_bucket_id) };
-        // The Some keys in this map are for the cases that are inside the loopbody functions.
         if let Some(ev) = ec {
             // If there are any conditions that evaluated to a known value, replace the
             //  CallBucket target function with a simplified version of that function.
@@ -178,11 +193,16 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
                 let mut nf = self.new_functions.borrow_mut();
                 // Check if the needed function exists, else create it.
                 let old_name = &bucket.symbol;
-                let new_name = ev.values().into_iter().fold(old_name.clone(), |acc, e| match e {
-                    Some(true) => format!("{}.T", acc),
-                    Some(false) => format!("{}.F", acc),
-                    None => format!("{}.N", acc),
-                });
+                // Build the new function name according to the values in 'ev' but sorted by 'branch_bucket_order'
+                let new_name =
+                    self.branch_bucket_order.borrow().iter().filter_map(|id| ev.get(id)).fold(
+                        old_name.clone(),
+                        |acc, e| match e {
+                            Some(true) => format!("{}.T", acc),
+                            Some(false) => format!("{}.F", acc),
+                            None => format!("{}.N", acc),
+                        },
+                    );
                 let new_target = nf
                     .entry(bucket.symbol.clone())
                     .or_default()

@@ -66,6 +66,7 @@ pub trait TemplateCtx<'a> {
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         id: AnyValueEnum<'a>,
+        implicit: bool,
     ) -> Option<PointerValue<'a>>;
 
     /// Returns a pointer to the signal associated to the index

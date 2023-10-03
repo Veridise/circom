@@ -90,6 +90,7 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         id: AnyValueEnum<'a>,
+        _implicit: bool,
     ) -> Option<PointerValue<'a>> {
         Some(
             create_gep(
