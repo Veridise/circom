@@ -238,7 +238,7 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
                     argument_types: bucket.argument_types.clone(),
                     arguments: self.transform_instructions(&bucket.arguments),
                     arena_size: bucket.arena_size,
-                    return_info: self.transform_return_type(&bucket.return_info),
+                    return_info: self.transform_return_type(&bucket.id, &bucket.return_info),
                 }
                 .allocate();
             }
@@ -253,7 +253,7 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
             argument_types: bucket.argument_types.clone(),
             arguments: self.transform_instructions(&bucket.arguments),
             arena_size: bucket.arena_size,
-            return_info: self.transform_return_type(&bucket.return_info),
+            return_info: self.transform_return_type(&bucket.id, &bucket.return_info),
         }
         .allocate()
     }

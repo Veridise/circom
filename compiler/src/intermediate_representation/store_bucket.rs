@@ -215,24 +215,19 @@ impl StoreBucket {
             if let InputInformation::Input { status } = input_information {
                 let sub_cmp_name = match &dest {
                     LocationRule::Indexed { template_header, .. } => template_header.clone(),
-                    LocationRule::Mapped { .. } => None,
-                };
+                    LocationRule::Mapped { .. } => unreachable!("LocationRule::Mapped should have been replaced"),
+                }.expect("Could not get the name of the subcomponent");
                 match status {
                     StatusInput::Last => {
-                        let run_fn = run_fn_name(
-                            sub_cmp_name.expect("Could not get the name of the subcomponent"),
-                        );
                         // If we reach this point gep is the address of the subcomponent so we can just reuse it
                         let addr = cmp_address
                             .produce_llvm_ir(producer)
                             .expect("The address of a subcomponent must yield a value!");
                         let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        create_call(producer, run_fn.as_str(), &[subcmp.into()]);
+                        create_call(producer, run_fn_name(sub_cmp_name).as_str(), &[subcmp.into()]);
                     }
                     StatusInput::Unknown => {
                         panic!("There should not be Unknown input status");
-                        // let sub_cmp_name = sub_cmp_name.expect("Could not get the name of the subcomponent");
-                        // let run_fn = run_fn_name(sub_cmp_name.clone());
                         // let current_function = producer.current_function();
                         // let run_bb = create_bb(producer, current_function, format!("maybe_run.{}", sub_cmp_name).as_str());
                         // let continue_bb = create_bb(producer, current_function,"continue.store");
@@ -248,7 +243,7 @@ impl StoreBucket {
                         // let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
                         // let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
                         //
-                        // create_call(producer, run_fn.as_str(), &[subcmp.into()]);
+                        // create_call(producer, run_fn_name(sub_cmp_name).as_str(), &[subcmp.into()]);
                         // create_br(producer,continue_bb);
                         // producer.set_current_bb(continue_bb);
                     }

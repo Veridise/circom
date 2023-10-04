@@ -4,7 +4,9 @@ use std::ops::Range;
 use compiler::circuit_design::function::{FunctionCode, FunctionCodeInfo};
 use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer, new_id};
+use compiler::intermediate_representation::{
+    Instruction, InstructionList, InstructionPointer, new_id, BucketId,
+};
 use compiler::intermediate_representation::ir_interface::*;
 use crate::passes::{
     checks::assert_unique_ids_in_circuit, conditional_flattening::ConditionalFlatteningPass,
@@ -183,7 +185,11 @@ pub trait CircuitTransformationPass {
         }
     }
 
-    fn transform_location_rule(&self, location_rule: &LocationRule) -> LocationRule {
+    fn transform_location_rule(
+        &self,
+        _bucket_id: &BucketId,
+        location_rule: &LocationRule,
+    ) -> LocationRule {
         match location_rule {
             LocationRule::Indexed { location, template_header } => LocationRule::Indexed {
                 location: self.transform_instruction(location),
@@ -203,7 +209,7 @@ pub trait CircuitTransformationPass {
             line: bucket.line,
             message_id: bucket.message_id,
             address_type: self.transform_address_type(&bucket.address_type),
-            src: self.transform_location_rule(&bucket.src),
+            src: self.transform_location_rule(&bucket.id, &bucket.src),
             bounded_fn: bucket.bounded_fn.clone(),
         }
         .allocate()
@@ -218,7 +224,7 @@ pub trait CircuitTransformationPass {
             context: bucket.context.clone(),
             dest_is_output: bucket.dest_is_output,
             dest_address_type: self.transform_address_type(&bucket.dest_address_type),
-            dest: self.transform_location_rule(&bucket.dest),
+            dest: self.transform_location_rule(&bucket.id, &bucket.dest),
             src: self.transform_instruction(&bucket.src),
             bounded_fn: bucket.bounded_fn.clone(),
         }
@@ -238,18 +244,18 @@ pub trait CircuitTransformationPass {
         .allocate()
     }
 
-    fn transform_final_data(&self, final_data: &FinalData) -> FinalData {
+    fn transform_final_data(&self, bucket_id: &BucketId, final_data: &FinalData) -> FinalData {
         FinalData {
             context: final_data.context,
             dest_is_output: final_data.dest_is_output,
             dest_address_type: self.transform_address_type(&final_data.dest_address_type),
-            dest: self.transform_location_rule(&final_data.dest),
+            dest: self.transform_location_rule(bucket_id, &final_data.dest),
         }
     }
 
-    fn transform_return_type(&self, return_type: &ReturnType) -> ReturnType {
+    fn transform_return_type(&self, bucket_id: &BucketId, return_type: &ReturnType) -> ReturnType {
         match return_type {
-            ReturnType::Final(f) => ReturnType::Final(self.transform_final_data(f)),
+            ReturnType::Final(f) => ReturnType::Final(self.transform_final_data(bucket_id, f)),
             x => x.clone(),
         }
     }
@@ -264,7 +270,7 @@ pub trait CircuitTransformationPass {
             argument_types: bucket.argument_types.clone(),
             arguments: self.transform_instructions(&bucket.arguments),
             arena_size: bucket.arena_size,
-            return_info: self.transform_return_type(&bucket.return_info),
+            return_info: self.transform_return_type(&bucket.id, &bucket.return_info),
         }
         .allocate()
     }

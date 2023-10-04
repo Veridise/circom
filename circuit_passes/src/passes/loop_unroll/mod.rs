@@ -101,7 +101,7 @@ impl<'d> LoopUnrollPass<'d> {
                 }
             }
         } else {
-            //If the loop body is not safe to move into a new function, just unroll.
+            //If the loop body is not safe to move into a new function, just unroll in-place.
             for _ in 0..recorder.get_iter() {
                 for s in &bucket.body {
                     let mut copy = s.clone();

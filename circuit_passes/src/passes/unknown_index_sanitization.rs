@@ -290,7 +290,7 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
             line: bucket.line,
             message_id: bucket.message_id,
             address_type: self.transform_address_type(&bucket.address_type),
-            src: self.transform_location_rule(&bucket.src),
+            src: self.transform_location_rule(&bucket.id, &bucket.src),
             bounded_fn: bounded_fn_symbol,
         }
         .allocate()
@@ -309,7 +309,7 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
             context: bucket.context.clone(),
             dest_is_output: bucket.dest_is_output,
             dest_address_type: self.transform_address_type(&bucket.dest_address_type),
-            dest: self.transform_location_rule(&bucket.dest),
+            dest: self.transform_location_rule(&bucket.id, &bucket.dest),
             src: self.transform_instruction(&bucket.src),
             bounded_fn: bounded_fn_symbol,
         }
