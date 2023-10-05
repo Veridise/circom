@@ -98,7 +98,6 @@ impl InterpreterObserver for ConditionalFlatteningPass<'_> {
     }
 
     fn on_branch_bucket(&self, bucket: &BranchBucket, env: &Env) -> bool {
-        println!("conditional_flattening::on_branch_bucket = {:?}", bucket.id);
         let interpreter = self.memory.build_interpreter(self.global_data, self);
         let (_, cond_result, _) = interpreter.execute_conditional_bucket(
             &bucket.cond,
