@@ -92,6 +92,16 @@ impl Display for Env<'_> {
     }
 }
 
+impl std::fmt::Debug for Env<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self {
+            Env::Standard(d) => d.fmt(f),
+            Env::UnrolledBlock(d) => d.fmt(f),
+            Env::ExtractedFunction(d) => d.fmt(f),
+        }
+    }
+}
+
 impl LibraryAccess for Env<'_> {
     fn get_function(&self, name: &String) -> Ref<FunctionCode> {
         match self {
