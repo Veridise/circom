@@ -46,6 +46,17 @@ impl<'d> ConditionalFlatteningPass<'d> {
             caller_context: RefCell::new(None),
         }
     }
+
+    fn get_known_condition(&self, bucket_id: &BucketId) -> Option<bool> {
+        // Get from the current 'caller_context' or lookup via None key in 'evaluated_conditions'
+        let ec = self.evaluated_conditions.borrow();
+        if let Some(bv) = self.caller_context.borrow().as_ref().or_else(|| ec.get(&None)) {
+            if let Some(Some(side)) = bv.get(bucket_id) {
+                return Some(*side);
+            }
+        }
+        None
+    }
 }
 
 impl InterpreterObserver for ConditionalFlatteningPass<'_> {
@@ -248,20 +259,18 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
     }
 
     fn transform_branch_bucket(&self, bucket: &BranchBucket) -> InstructionPointer {
-        if let Some(bv) = self.caller_context.borrow().as_ref() {
-            if let Some(Some(side)) = bv.get(&bucket.id) {
-                let code = if *side { &bucket.if_branch } else { &bucket.else_branch };
-                let block = BlockBucket {
-                    id: new_id(),
-                    source_file_id: bucket.source_file_id,
-                    line: bucket.line,
-                    message_id: bucket.message_id,
-                    body: code.clone(),
-                    n_iters: 1,
-                    label: format!("fold_{}", side),
-                };
-                return self.transform_block_bucket(&block);
-            }
+        if let Some(side) = self.get_known_condition(&bucket.id) {
+            let code = if side { &bucket.if_branch } else { &bucket.else_branch };
+            let block = BlockBucket {
+                id: new_id(),
+                source_file_id: bucket.source_file_id,
+                line: bucket.line,
+                message_id: bucket.message_id,
+                body: code.clone(),
+                n_iters: 1,
+                label: format!("fold_{}", side),
+            };
+            return self.transform_block_bucket(&block);
         }
         // Default case: no change
         BranchBucket {

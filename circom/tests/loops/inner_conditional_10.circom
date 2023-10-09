@@ -1,7 +1,6 @@
 pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
-// XFAIL:.* // TODO: in addition to not extracting to a new function, branch conditions are not flattened for some reason which causes a panic in StoreBucket
 
 template Sigma() {
     signal input inp;
