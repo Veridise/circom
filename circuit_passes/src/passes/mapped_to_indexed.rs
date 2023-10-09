@@ -141,7 +141,10 @@ impl InterpreterObserver for MappedToIndexedPass<'_> {
         true
     }
 
-    fn on_call_bucket(&self, _bucket: &CallBucket, _env: &Env) -> bool {
+    fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> bool {
+        if let ReturnType::Final(fd) = &bucket.return_info {
+            self.maybe_transform_location(&bucket.id, &fd.dest_address_type, &fd.dest, env);
+        }
         true
     }
 
