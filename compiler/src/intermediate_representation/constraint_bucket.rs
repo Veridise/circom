@@ -116,10 +116,7 @@ impl WriteLLVMIR for ConstraintBucket {
         match self {
             ConstraintBucket::Substitution(i) => {
                 let size = match i.as_ref() {
-                    Instruction::Value(_) => todo!(),
-                    Instruction::Load(_) => todo!(),
                     Instruction::Store(b) => b.context.size,
-                    Instruction::Compute(_) => todo!(),
                     Instruction::Call(b) => {
                         for arg_ty in &b.argument_types {
                             if arg_ty.size > 1 {
@@ -129,15 +126,7 @@ impl WriteLLVMIR for ConstraintBucket {
                         }
                         1
                     },
-                    Instruction::Branch(_) => todo!(),
-                    Instruction::Return(_) => todo!(),
-                    Instruction::Assert(_) => todo!(),
-                    Instruction::Log(_) => todo!(),
-                    Instruction::Loop(_) => todo!(),
-                    Instruction::CreateCmp(_) => todo!(),
-                    Instruction::Constraint(_) => todo!(),
-                    Instruction::Block(_) => todo!(),
-                    Instruction::Nop(_) => todo!(),
+                    _ => unreachable!("Instruction {:#?} should not be used for constraint substitution", i),
                 };
                 assert_ne!(0, size, "must have non-zero size");
                 if size == 1 {
