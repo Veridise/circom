@@ -64,7 +64,7 @@ impl<'d> LoopUnrollPass<'d> {
         }
 
         let mut block_body = vec![];
-        if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() {
+        if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() && recorder.get_iter() > 0 {
             // If the loop body contains more than one instruction, extract it into a new
             // function and generate 'recorder.get_iter()' number of calls to that function.
             // Otherwise, just duplicate the body 'recorder.get_iter()' number of times.
