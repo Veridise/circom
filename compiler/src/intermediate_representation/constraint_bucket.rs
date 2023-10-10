@@ -1,8 +1,10 @@
 use code_producers::c_elements::CProducer;
+use code_producers::llvm_elements::types::bigint_type;
+use code_producers::llvm_elements::values::create_literal_u32;
 use code_producers::llvm_elements::{
-    LLVMInstruction, new_constraint, to_basic_metadata_enum, LLVMIRProducer,
+    LLVMInstruction, new_constraint, to_basic_metadata_enum, LLVMIRProducer, AnyType, new_constraint_with_name,
 };
-use code_producers::llvm_elements::instructions::{create_call, create_load, get_instruction_arg};
+use code_producers::llvm_elements::instructions::{create_call, create_load, get_instruction_arg, create_gep};
 use code_producers::llvm_elements::stdlib::{CONSTRAINT_VALUE_FN_NAME, CONSTRAINT_VALUES_FN_NAME};
 use code_producers::wasm_elements::WASMProducer;
 use crate::intermediate_representation::{Instruction, InstructionPointer, SExp, ToSExp, UpdateId};
@@ -112,21 +114,72 @@ impl WriteLLVMIR for ConstraintBucket {
         const ASSERT_IDX: u32 = 0;
 
         match self {
-            ConstraintBucket::Substitution(_) => {
-                let lhs = get_instruction_arg(prev.into_instruction_value(), STORE_DST_IDX);
-                let rhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_SRC_IDX);
-                let rhs = create_load(producer, rhs_ptr.into_pointer_value());
-                let constr = new_constraint(producer);
-                let call = create_call(
-                    producer,
-                    CONSTRAINT_VALUES_FN_NAME,
-                    &[
-                        to_basic_metadata_enum(lhs),
-                        to_basic_metadata_enum(rhs),
-                        to_basic_metadata_enum(constr),
-                    ],
-                );
-                Some(call)
+            ConstraintBucket::Substitution(i) => {
+                let size = match i.as_ref() {
+                    Instruction::Value(_) => todo!(),
+                    Instruction::Load(_) => todo!(),
+                    Instruction::Store(b) => b.context.size,
+                    Instruction::Compute(_) => todo!(),
+                    Instruction::Call(b) => {
+                        for arg_ty in &b.argument_types {
+                            if arg_ty.size > 1 {
+                                todo!("not yet handling call arg array logic");
+                            }
+                            assert_ne!(0, arg_ty.size, "size should be non-zero");
+                        }
+                        1
+                    },
+                    Instruction::Branch(_) => todo!(),
+                    Instruction::Return(_) => todo!(),
+                    Instruction::Assert(_) => todo!(),
+                    Instruction::Log(_) => todo!(),
+                    Instruction::Loop(_) => todo!(),
+                    Instruction::CreateCmp(_) => todo!(),
+                    Instruction::Constraint(_) => todo!(),
+                    Instruction::Block(_) => todo!(),
+                    Instruction::Nop(_) => todo!(),
+                };
+                assert_ne!(0, size, "must have non-zero size");
+                if size == 1 {
+                    let lhs = get_instruction_arg(prev.into_instruction_value(), STORE_DST_IDX);
+                    assert_eq!(bigint_type(producer).as_any_type_enum(), lhs.get_type(), "wrong type");
+                    let rhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_SRC_IDX);
+                    let rhs = create_load(producer, rhs_ptr.into_pointer_value());
+                    let constr = new_constraint(producer);
+                    let call = create_call(
+                        producer,
+                        CONSTRAINT_VALUES_FN_NAME,
+                        &[
+                            to_basic_metadata_enum(lhs),
+                            to_basic_metadata_enum(rhs),
+                            to_basic_metadata_enum(constr),
+                        ],
+                    );
+                    Some(call)
+                } else {
+                    let lhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_DST_IDX).into_pointer_value();
+                    assert_eq!(bigint_type(producer).ptr_type(Default::default()), lhs_ptr.get_type(), "wrong type");
+                    let rhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_SRC_IDX).into_pointer_value();
+
+                    let constraint_calls: Vec<_> = (0..size).map(|i| {
+                        let idx = create_literal_u32(producer, i as u64);
+                        let lhs = create_load(producer, create_gep(producer, lhs_ptr, &[idx]).into_pointer_value());
+                        let rhs = create_load(producer, create_gep(producer, rhs_ptr, &[idx]).into_pointer_value());
+                        let constr = new_constraint_with_name(producer, format!("constraint_{}", i).as_str());
+                        create_call(
+                            producer,
+                            CONSTRAINT_VALUES_FN_NAME,
+                            &[
+                                to_basic_metadata_enum(lhs),
+                                to_basic_metadata_enum(rhs),
+                                to_basic_metadata_enum(constr),
+                            ],
+                        )
+                    }).collect();
+
+                    Some(constraint_calls.last().expect("must have >1 value!").clone())
+                }
+
             }
             ConstraintBucket::Equality(_) => {
                 let bool = get_instruction_arg(prev.into_instruction_value(), ASSERT_IDX);
