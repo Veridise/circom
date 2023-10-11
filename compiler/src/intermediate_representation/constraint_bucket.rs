@@ -150,12 +150,13 @@ impl WriteLLVMIR for ConstraintBucket {
                     assert_eq!(bigint_type(producer).ptr_type(Default::default()), lhs_ptr.get_type(), "wrong type");
                     let rhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_SRC_IDX).into_pointer_value();
 
-                    let constraint_calls: Vec<_> = (0..size).map(|i| {
+                    let mut last_call = None;
+                    for i in 0..size {
                         let idx = create_literal_u32(producer, i as u64);
                         let lhs = create_load(producer, create_gep(producer, lhs_ptr, &[idx]).into_pointer_value());
                         let rhs = create_load(producer, create_gep(producer, rhs_ptr, &[idx]).into_pointer_value());
                         let constr = new_constraint_with_name(producer, format!("constraint_{}", i).as_str());
-                        create_call(
+                        last_call = Some(create_call(
                             producer,
                             CONSTRAINT_VALUES_FN_NAME,
                             &[
@@ -163,10 +164,10 @@ impl WriteLLVMIR for ConstraintBucket {
                                 to_basic_metadata_enum(rhs),
                                 to_basic_metadata_enum(constr),
                             ],
-                        )
-                    }).collect();
+                        ));
+                    }
 
-                    Some(constraint_calls.last().expect("must have >1 value!").clone())
+                    last_call
                 }
 
             }
