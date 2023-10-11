@@ -188,8 +188,8 @@ impl<'a> TopLevelLLVMIRProducer<'a> {
 pub type LLVMAdapter<'a> = &'a Rc<RefCell<LLVM<'a>>>;
 pub type BigIntType<'a> = IntType<'a>; // i256
 
-pub fn new_constraint<'a>(producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {
-    let alloca = create_alloca(producer, bool_type(producer).into(), "constraint");
+pub fn new_constraint_with_name<'a>(producer: &dyn LLVMIRProducer<'a>, name: &str) -> AnyValueEnum<'a> {
+    let alloca = create_alloca(producer, bool_type(producer).into(), name);
     let s = producer.context().metadata_string("constraint");
     let kind = producer.context().get_kind_id("constraint");
     let node = producer.context().metadata_node(&[s.into()]);
@@ -200,6 +200,10 @@ pub fn new_constraint<'a>(producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a>
         .set_metadata(node, kind)
         .expect("Could not setup metadata marker for constraint value");
     alloca
+}
+
+pub fn new_constraint<'a>(producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {
+    new_constraint_with_name(producer, "constraint")
 }
 
 #[inline]
