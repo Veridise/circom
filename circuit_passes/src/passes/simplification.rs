@@ -49,7 +49,6 @@ impl InterpreterObserver for SimplificationPass<'_> {
         let (eval, _) = interpreter.execute_compute_bucket(bucket, env, false);
         let eval = eval.expect("Compute bucket must produce a value!");
         if !eval.is_unknown() {
-            // println!("\nCan replace {:?} with {}", bucket, eval);
             self.compute_replacements.borrow_mut().insert(bucket.clone(), eval);
             return false;
         }
@@ -91,7 +90,6 @@ impl InterpreterObserver for SimplificationPass<'_> {
         if let Some(eval) = eval {
             // Call buckets may not return a value directly
             if !eval.is_unknown() {
-                // println!("\nCan replace {:?} with {}", bucket, eval);
                 self.call_replacements.borrow_mut().insert(bucket.clone(), eval);
                 return false;
             }

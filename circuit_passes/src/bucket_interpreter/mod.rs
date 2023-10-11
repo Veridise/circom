@@ -318,10 +318,6 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 }
             }
             AddressType::SubcmpSignal { cmp_address, input_information, .. } => {
-                // println!(
-                //     "cmp_address = {:?}, input_information = {:?}",
-                //     cmp_address, input_information
-                // );
                 let (addr, env) = self.execute_instruction(cmp_address, env, observe);
                 let addr = addr
                     .expect(
@@ -492,9 +488,6 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             };
             (Some(v), env)
         };
-        // println!("[execute_call_bucket] {:?}", bucket);
-        // println!(" -> value = {:?}", res.0);
-        // println!(" -> new env = {}", res.1);
 
         // Write the result in the destination according to the ReturnType
         match &bucket.return_info {
@@ -611,16 +604,10 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         return match cond_bool_result {
             None => (None, None, env),
             Some(true) => {
-                // if cfg!(debug_assertions) {
-                //     println!("Running then branch");
-                // }
                 let (ret, env) = self.execute_instructions(&true_branch, env, observe);
                 (ret, Some(true), env)
             }
             Some(false) => {
-                // if cfg!(debug_assertions) {
-                //     println!("Running else branch");
-                // }
                 let (ret, env) = self.execute_instructions(&false_branch, env, observe);
                 (ret, Some(false), env)
             }

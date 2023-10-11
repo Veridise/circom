@@ -264,7 +264,8 @@ impl LoopBodyExtractor {
             .allocate(),
         );
         // Create new function to hold the copied body
-        // NOTE: Must start with `GENERATED_FN_PREFIX` to use `ExtractedFunctionCtx`
+        // NOTE: This name must start with `GENERATED_FN_PREFIX` (which is the prefix
+        //  of `LOOP_BODY_FN_PREFIX`) so that `ExtractedFunctionCtx` will be used.
         let func_name = format!("{}{}", LOOP_BODY_FN_PREFIX, new_id());
         let new_func = Box::new(FunctionCodeInfo {
             source_file_id: bucket.source_file_id,

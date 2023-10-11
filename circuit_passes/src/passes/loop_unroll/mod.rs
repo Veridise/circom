@@ -52,21 +52,6 @@ impl<'d> LoopUnrollPass<'d> {
     }
 
     fn try_unroll_loop(&self, bucket: &LoopBucket, env: &Env) -> (Option<InstructionList>, usize) {
-        // {
-        //     println!("\nTry unrolling loop {}:", bucket.id); //TODO: TEMP
-        //     for (i, s) in bucket.body.iter().enumerate() {
-        //         println!(
-        //             "[{}/{}]{}",
-        //             i + 1,
-        //             bucket.body.len(),
-        //             compiler::intermediate_representation::ToSExp::to_sexp(&**s).to_pretty(100)
-        //         );
-        //     }
-        //     for (i, s) in bucket.body.iter().enumerate() {
-        //         println!("[{}/{}]{:?}", i + 1, bucket.body.len(), s);
-        //     }
-        //     println!("LOOP ENTRY env {}", env); //TODO: TEMP
-        // }
         // Compute loop iteration count. If unknown, return immediately.
         let recorder = EnvRecorder::new(self.global_data, &self.memory);
         {
@@ -87,7 +72,6 @@ impl<'d> LoopUnrollPass<'d> {
                 inner_env = new_env;
             }
         }
-        // println!("recorder = {:?}", recorder); //TODO: TEMP
 
         let mut block_body = vec![];
         if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() {
@@ -122,7 +106,6 @@ impl<'d> LoopUnrollPass<'d> {
     // Will take the unrolled loop and interpretate it
     // checking if new loop buckets appear
     fn continue_inside(&self, bucket: &BlockBucket, env: &Env) {
-        // println!("\ncontinue_inside {:?} with {} ", bucket, env);
         let interpreter = self.memory.build_interpreter(self.global_data, self);
         let env = Env::new_unroll_block_env(env.clone(), &self.extractor);
         interpreter.execute_block_bucket(bucket, env, true);

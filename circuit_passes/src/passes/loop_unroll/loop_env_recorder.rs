@@ -27,12 +27,16 @@ impl<'a> VariableValues<'a> {
 
 impl Debug for VariableValues<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        // write!(
-        //     f,
-        //     "\n{{\n env_at_header = {}\n loadstore_to_index = {:?}\n}}",
-        //     self.env_at_header, self.loadstore_to_index
-        // )
-        write!(f, "\n  loadstore_to_index = {:?}\n", self.loadstore_to_index)
+        let print_header_env = false;
+        if print_header_env {
+            write!(
+                f,
+                "\n{{\n env_at_header = {}\n loadstore_to_index = {:?}\n}}",
+                self.env_at_header, self.loadstore_to_index
+            )
+        } else {
+            write!(f, "\n  loadstore_to_index = {:?}\n", self.loadstore_to_index)
+        }
     }
 }
 
@@ -130,7 +134,6 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         //  not give the same result when done at the call site, outside of the new function.
         let interp = self.mem.build_interpreter(self.global_data, self);
         let (idx_loc, _) = interp.execute_instruction(location, env.clone(), false);
-        // println!("--   LOC: var/sig[{:?}]", idx_loc); //TODO: TEMP
         if let Some(idx_loc) = idx_loc {
             let (idx_header, _) =
                 interp.execute_instruction(location, self.get_header_env_clone(), false);

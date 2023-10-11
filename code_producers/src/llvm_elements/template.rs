@@ -90,13 +90,15 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         id: AnyValueEnum<'a>,
-    ) -> PointerValue<'a> {
-        create_gep(
-            producer,
-            self.subcmps,
-            &[zero(producer), id.into_int_value(), create_literal_u32(producer, 1)],
+    ) -> Option<PointerValue<'a>> {
+        Some(
+            create_gep(
+                producer,
+                self.subcmps,
+                &[zero(producer), id.into_int_value(), create_literal_u32(producer, 1)],
+            )
+            .into_pointer_value(),
         )
-        .into_pointer_value()
     }
 
     fn get_signal(

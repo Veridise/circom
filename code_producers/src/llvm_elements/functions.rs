@@ -184,11 +184,7 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
         _producer: &dyn LLVMIRProducer<'a>,
         _id: AnyValueEnum<'a>,
     ) -> PointerValue<'a> {
-        //NOTE: only used by CreateCmpBucket::produce_llvm_ir
-        //TODO: I think instead of ID defining an array index in the gep, it will need to define a static index
-        //  in an array of subcomponents in this context (i.e. self.subcmps[id] with offsets [0,0]).
-        todo!("load_subcmp {} from {:?}", _id, self.args);
-        //create_gep(producer, self.subcmps, &[zero(producer), id.into_int_value()]).into_pointer_value()
+        unreachable!()
     }
 
     fn load_subcmp_addr(
@@ -205,11 +201,11 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
 
     fn load_subcmp_counter(
         &self,
-        producer: &dyn LLVMIRProducer<'a>,
+        _producer: &dyn LLVMIRProducer<'a>,
         _id: AnyValueEnum<'a>,
-    ) -> PointerValue<'a> {
-        // Use null pointer to force StoreBucket::produce_llvm_ir to skip counter increment.
-        producer.context().i32_type().ptr_type(Default::default()).const_null()
+    ) -> Option<PointerValue<'a>> {
+        // Use None to force StoreBucket::produce_llvm_ir to skip counter increment.
+        None
     }
 
     fn get_signal(

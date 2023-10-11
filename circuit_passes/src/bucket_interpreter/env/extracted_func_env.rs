@@ -85,7 +85,6 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 }
             }
         };
-        // println!("[FINDME] get_subcmp_signal({subcmp_idx}, {signal_idx}) = {} in {}", res, self);
         res
     }
 
@@ -166,7 +165,6 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 }
             }
         };
-        // println!("[FINDME] subcmp_counter_is_zero({subcmp_idx}) = {} in {}", res, self);
         res
     }
 
@@ -190,7 +188,6 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 }
             }
         };
-        // println!("[FINDME] subcmp_counter_equal_to({subcmp_idx}, {value}) = {} in {}", res, self);
         res
     }
 
@@ -217,17 +214,11 @@ impl<'a> ExtractedFuncEnvData<'a> {
         ExtractedFuncEnvData { base: Box::new(self.base.set_all_to_unk()), remap: self.remap }
     }
 
-    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Self {
-        todo!("set_subcmp_to_unk({})", subcmp_idx);
-        // ExtractedFuncEnvData {
-        //     base: Box::new(self.base.set_subcmp_to_unk(subcmp_idx)),
-        //     remap: self.remap,
-        // }
+    pub fn set_subcmp_to_unk(self, _subcmp_idx: usize) -> Self {
+        unreachable!()
     }
 
     pub fn set_subcmp_signal(self, subcmp_idx: usize, signal_idx: usize, value: Value) -> Self {
-        // let temp_str_self = format!("{}", self);
-        // let temp_str_value = format!("{}", value);
         //NOTE: This is only called by BucketInterpreter::store_value_in_address.
         //Use the map from loop unrolling to convert the SubcmpSignal reference back
         //  into the proper reference (reversing ExtractedFunctionLocationUpdater).
@@ -257,15 +248,10 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 }
             }
         };
-        // println!(
-        //     "[FINDME] set_subcmp_signal({subcmp_idx}, {signal_idx}, {})\n BEFORE: {}\n AFTER: {}",
-        //     temp_str_value, temp_str_self, new_env
-        // );
         ExtractedFuncEnvData { base: Box::new(new_env), remap: self.remap }
     }
 
     pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Self {
-        // let temp_str_self = format!("{}", self);
         let new_env = match self.remap.get(&subcmp_idx).cloned() {
             //NOTE: The ArgIndex::SubCmp 'arena' and 'counter' parameters were not added
             //  to the 'remap' (producing None result here) because those parameters are
@@ -289,10 +275,6 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 }
             }
         };
-        // println!(
-        //     "[FINDME] decrease_subcmp_counter({subcmp_idx})\n BEFORE: {}\n AFTER: {}",
-        //     temp_str_self, new_env
-        // );
         ExtractedFuncEnvData { base: Box::new(new_env), remap: self.remap }
     }
 
@@ -309,15 +291,11 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn create_subcmp(
         self,
-        name: &'a String,
-        base_index: usize,
-        count: usize,
-        template_id: usize,
+        _name: &'a String,
+        _base_index: usize,
+        _count: usize,
+        _template_id: usize,
     ) -> Self {
-        todo!("create_subcmp({name},{base_index},{count},{template_id})");
-        // ExtractedFuncEnvData {
-        //     base: Box::new(self.base.create_subcmp(name, base_index, count, template_id)),
-        //     remap: self.remap,
-        // }
+        unreachable!()
     }
 }

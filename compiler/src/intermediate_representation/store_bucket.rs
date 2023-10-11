@@ -177,7 +177,7 @@ impl StoreBucket{
         if let AddressType::SubcmpSignal { cmp_address, .. } = &dest_address_type {
             let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
             let counter = producer.template_ctx().load_subcmp_counter(producer, addr);
-            if !counter.is_null() {
+            if let Some(counter) = counter {
                 let value = create_load_with_name(producer, counter, "load.subcmp.counter");
                 let new_value = create_sub_with_name(producer, value.into_int_value(), create_literal_u32(producer, 1), "decrement.counter");
                 assert_eq!(1, context.size, "unhandled array store");
