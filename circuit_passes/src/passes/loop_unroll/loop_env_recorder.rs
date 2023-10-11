@@ -148,7 +148,13 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
 
     fn compute_index_from_rule(&self, env: &Env, loc: &LocationRule) -> Value {
         match loc {
-            LocationRule::Mapped { .. } => todo!(), //not sure if/how to handle that
+            LocationRule::Mapped { .. } => {
+                //TODO: It's not an array index in this case, at least not immediately but I think it can
+                //  ultimately be converted to one because the subcmp storage is an array of values. Is
+                //  that value known now? Do I also need the AddressType to compute the correct index?
+                //SEE: https://veridise.atlassian.net/browse/VAN-704
+                Value::Unknown
+            }
             LocationRule::Indexed { location, .. } => self.compute_index_from_inst(env, location),
         }
     }
