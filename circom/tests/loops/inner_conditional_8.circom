@@ -1,6 +1,7 @@
 pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// XFAIL:.*     // TEMPORARY: because EXTRACT_LOOP_BODY_TO_NEW_FUNC == false
 
 // like inner_conditional_7 but with 'i' and 'j' uses swapped
 template InnerConditional8(N) {

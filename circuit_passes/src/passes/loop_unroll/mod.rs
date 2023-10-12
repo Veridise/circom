@@ -18,7 +18,7 @@ use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 use super::{CircuitTransformationPass, GlobalPassData};
 use self::body_extractor::LoopBodyExtractor;
 
-const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = true;
+const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = false;
 
 pub fn new_u32_value(bucket: &dyn ObtainMeta, val: usize) -> InstructionPointer {
     ValueBucket {
@@ -275,13 +275,14 @@ mod test {
         assert_ne!(circuit, new_circuit);
         match new_circuit.templates[0].body.last().unwrap().as_ref() {
             Instruction::Block(b) => {
-                // 5 iterations unrolled into 5 call statements targeting extracted loop body functions
-                assert_eq!(b.body.len(), 5);
-                assert!(b.body.iter().all(|s| if let Instruction::Call(c) = s.as_ref() {
-                    c.symbol.starts_with(LOOP_BODY_FN_PREFIX)
-                } else {
-                    false
-                }));
+                // // 5 iterations unrolled into 5 call statements targeting extracted loop body functions
+                // assert_eq!(b.body.len(), 5);
+                // assert!(b.body.iter().all(|s| if let Instruction::Call(c) = s.as_ref() {
+                //     c.symbol.starts_with(LOOP_BODY_FN_PREFIX)
+                // } else {
+                //     false
+                // }));
+                assert_eq!(b.body.len(), 10);
             }
             _ => assert!(false),
         }
