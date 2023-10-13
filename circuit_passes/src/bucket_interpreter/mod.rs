@@ -8,6 +8,7 @@ use std::cell::RefCell;
 use std::vec;
 use circom_algebra::modular_arithmetic;
 use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR};
+use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
@@ -17,7 +18,8 @@ use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::Value::{self, KnownBigInt, KnownU32, Unknown};
-use crate::passes::{LOOP_BODY_FN_PREFIX, GlobalPassData};
+use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
+use crate::passes::GlobalPassData;
 use self::env::LibraryAccess;
 
 pub struct BucketInterpreter<'a, 'd> {
@@ -423,7 +425,12 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             None,
             Env::new_extracted_func_env(
                 env.clone(),
-                self.global_data.borrow().extract_func_orig_loc[name][&env.get_vars_sort()].clone(),
+                if name.starts_with(LOOP_BODY_FN_PREFIX) {
+                    self.global_data.borrow().extract_func_orig_loc[name][&env.get_vars_sort()]
+                        .clone()
+                } else {
+                    Default::default()
+                },
             ),
         );
         //NOTE: Do not change scope for the new interpreter because the mem lookups within
@@ -469,10 +476,10 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         let mut env = env;
         let res = if bucket.symbol.eq(FR_IDENTITY_ARR_PTR) || bucket.symbol.eq(FR_INDEX_ARR_PTR) {
             (Some(Unknown), env)
-        } else if bucket.symbol.starts_with(LOOP_BODY_FN_PREFIX) {
-            // The extracted loop body functions can change any values in the environment
-            //  via the parameters passed to it. So interpret the function and keep the
-            //  resulting Env (as if the function had executed inline).
+        } else if bucket.symbol.starts_with(GENERATED_FN_PREFIX) {
+            // The extracted loop body and array parameter functions can change any values in
+            //  the environment via the parameters passed to it. So interpret the function and
+            //  keep the resulting Env (as if the function had executed inline).
             self.run_function_loopbody(&bucket.symbol, env, observe)
         } else {
             let mut args = vec![];

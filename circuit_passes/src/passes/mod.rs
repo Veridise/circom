@@ -5,9 +5,9 @@ use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
-use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use crate::passes::{
     checks::assert_unique_ids_in_circuit, conditional_flattening::ConditionalFlatteningPass,
+    const_arg_deduplication::ConstArgDeduplicationPass,
     deterministic_subcomponent_invocation::DeterministicSubCmpInvokePass,
     loop_unroll::LoopUnrollPass, mapped_to_indexed::MappedToIndexedPass,
     simplification::SimplificationPass, unknown_index_sanitization::UnknownIndexSanitizationPass,
@@ -15,6 +15,7 @@ use crate::passes::{
 
 use self::loop_unroll::body_extractor::{UnrolledIterLvars, ToOriginalLocation};
 
+mod const_arg_deduplication;
 mod conditional_flattening;
 mod simplification;
 mod deterministic_subcomponent_invocation;
@@ -22,8 +23,7 @@ mod mapped_to_indexed;
 mod unknown_index_sanitization;
 mod checks;
 pub mod loop_unroll;
-
-pub const LOOP_BODY_FN_PREFIX: &str = const_format::concatcp!(GENERATED_FN_PREFIX, "loop.body.");
+pub mod builders;
 
 macro_rules! pre_hook {
     ($name: ident, $bucket_ty: ty) => {
@@ -66,7 +66,7 @@ pub trait CircuitTransformationPass {
             number_of_inputs: template.number_of_inputs,
             number_of_outputs: template.number_of_outputs,
             number_of_intermediates: template.number_of_intermediates,
-            body: self.transform_instructions(&template.body),
+            body: self.transform_body(&template.header, &template.body),
             var_stack_depth: template.var_stack_depth,
             expression_stack_depth: template.expression_stack_depth,
             signal_stack_depth: template.signal_stack_depth,
@@ -83,10 +83,14 @@ pub trait CircuitTransformationPass {
             name: function.name.clone(),
             params: function.params.clone(),
             returns: function.returns.clone(),
-            body: self.transform_instructions(&function.body),
+            body: self.transform_body(&function.header, &function.body),
             max_number_of_vars: function.max_number_of_vars,
             max_number_of_ops_in_expression: function.max_number_of_ops_in_expression,
         })
+    }
+
+    fn transform_body(&self, _header: &String, body: &InstructionList) -> InstructionList {
+        self.transform_instructions(body)
     }
 
     fn transform_instructions(&self, i: &InstructionList) -> InstructionList {
@@ -400,6 +404,7 @@ pub trait CircuitTransformationPass {
 }
 
 pub enum PassKind {
+    ConstArgDeduplication,
     LoopUnroll,
     Simplification,
     ConditionalFlattening,
@@ -429,6 +434,14 @@ pub struct PassManager {
 impl PassManager {
     pub fn new() -> Self {
         PassManager { passes: Default::default() }
+    }
+
+    /// NOTE: This must be the first pass to occur because it relies
+    /// on the original ids for buckets created by `translate.rs`
+    /// because of its use of the ARRAY_PARAM_STORES.
+    pub fn schedule_const_arg_deduplication_pass(&self) -> &Self {
+        self.passes.borrow_mut().push(PassKind::ConstArgDeduplication);
+        self
     }
 
     pub fn schedule_loop_unroll_pass(&self) -> &Self {
@@ -467,6 +480,9 @@ impl PassManager {
         global_data: &'d RefCell<GlobalPassData>,
     ) -> Box<dyn CircuitTransformationPass + 'd> {
         match kind {
+            PassKind::ConstArgDeduplication => {
+                Box::new(ConstArgDeduplicationPass::new(prime.clone(), global_data))
+            }
             PassKind::LoopUnroll => Box::new(LoopUnrollPass::new(prime.clone(), global_data)),
             PassKind::Simplification => {
                 Box::new(SimplificationPass::new(prime.clone(), global_data))

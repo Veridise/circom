@@ -11,12 +11,19 @@ use code_producers::llvm_elements::IndexMapping;
 use program_structure::ast::AssignOp;
 
 use crate::intermediate_representation::constraint_bucket::ConstraintBucket;
-use crate::intermediate_representation::new_id;
+use crate::intermediate_representation::{new_id, BucketId};
 
 
 type Length = usize;
 pub type E = VarEnvironment<SymbolInfo>;
 pub type FieldTracker = ConstantTracker<String>;
+
+thread_local!(
+    /// Maps template header to groups of StoreBucket created by 'initialize_constants' for
+    /// any constant array parameters to a template, grouped by the parameter.
+    pub static ARRAY_PARAM_STORES: std::cell::RefCell<HashMap<String,Vec<Vec<BucketId>>>> = Default::default()
+);
+
 #[derive(Clone)]
 pub struct SymbolInfo {
     pub access_instruction: InstructionPointer,
@@ -280,10 +287,12 @@ fn initialize_parameters(state: &mut State, file_lib: &FileLibrary, params: Vec<
     }
 }
 
-fn initialize_constants(state: &mut State, file_lib: &FileLibrary, constants: Vec<Argument>, body: &Statement) {
+fn initialize_constants(state: &mut State, file_lib: &FileLibrary, constants: Vec<Argument>, body: &Statement, header: &String) {
+    let mut param_stores = Vec::default();
     let meta = body.get_meta();
     let line_num = file_lib.get_line(meta.get_start(), meta.get_file_id()).unwrap();
     for arg in constants {
+        let mut curr_param_stores = Vec::default();
         let dimensions = arg.lengths;
         let size = dimensions.iter().fold(1, |p, c| p * (*c));
         let address = state.reserve_variable(size);
@@ -338,7 +347,11 @@ fn initialize_constants(state: &mut State, file_lib: &FileLibrary, constants: Ve
             }
             .allocate();
             let store_instruction = StoreBucket {
-                id: new_id(),
+                id: {
+                    let id = new_id();
+                    curr_param_stores.push(id);
+                    id
+                },
                 source_file_id: meta.file_id,
                 line: line_num,
                 message_id: 0,
@@ -353,6 +366,12 @@ fn initialize_constants(state: &mut State, file_lib: &FileLibrary, constants: Ve
             state.code.push(store_instruction);
             index += 1;
         }
+        param_stores.push(curr_param_stores);
+    }
+    if !param_stores.is_empty() {
+        ARRAY_PARAM_STORES.with(|map| {
+            map.borrow_mut().insert(header.clone(), param_stores);
+        });
     }
 }
 
@@ -1533,7 +1552,7 @@ pub fn translate_code(body: Statement, code_info: CodeInfo) -> CodeOutput {
     state.string_table = code_info.string_table;
     initialize_components(&mut state, code_info.files, code_info.components, &body);
     initialize_signals(&mut state, code_info.files, code_info.signals, &body);
-    initialize_constants(&mut state, code_info.files, code_info.constants, &body);
+    initialize_constants(&mut state, code_info.files, code_info.constants, &body, &code_info.header);
     initialize_parameters(&mut state, code_info.files, code_info.params, &body);
 
     let context = Context {
