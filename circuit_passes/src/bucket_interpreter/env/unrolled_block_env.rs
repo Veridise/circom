@@ -5,7 +5,7 @@ use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use crate::passes::LOOP_BODY_FN_PREFIX;
+use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::loop_unroll::body_extractor::LoopBodyExtractor;
 use super::{Env, LibraryAccess};
 

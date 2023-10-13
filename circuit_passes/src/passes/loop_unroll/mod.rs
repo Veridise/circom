@@ -5,6 +5,7 @@ pub mod body_extractor;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::vec;
+use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{
@@ -20,18 +21,7 @@ use self::body_extractor::LoopBodyExtractor;
 
 const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = false;
 
-pub fn new_u32_value(bucket: &dyn ObtainMeta, val: usize) -> InstructionPointer {
-    ValueBucket {
-        id: new_id(),
-        source_file_id: bucket.get_source_file_id().clone(),
-        line: bucket.get_line(),
-        message_id: bucket.get_message_id(),
-        parse_as: ValueType::U32,
-        op_aux_no: 0,
-        value: val,
-    }
-    .allocate()
-}
+pub const LOOP_BODY_FN_PREFIX: &str = const_format::concatcp!(GENERATED_FN_PREFIX, "loop.body.");
 
 pub struct LoopUnrollPass<'d> {
     global_data: &'d RefCell<GlobalPassData>,
@@ -205,15 +195,6 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
     }
 
     fn post_hook_circuit(&self, cir: &mut Circuit) {
-        // Normalize return type on source functions for "WriteLLVMIR for Circuit"
-        //  which treats a 1-D vector of size 1 as a scalar return and an empty
-        //  vector as "void" return type (the initial Circuit builder uses empty
-        //  for scalar returns because it doesn't consider "void" return possible).
-        for f in &mut cir.functions {
-            if f.returns.is_empty() {
-                f.returns = vec![1];
-            }
-        }
         // Transform and add the new body functions
         for f in self.extractor.get_new_functions().iter() {
             cir.functions.push(self.transform_function(&f));
@@ -256,7 +237,7 @@ mod test {
         AddressType, Allocate, ComputeBucket, InstrContext, LoadBucket, LocationRule, LoopBucket,
         OperatorType, StoreBucket, ValueBucket, ValueType,
     };
-    use crate::passes::{CircuitTransformationPass, LOOP_BODY_FN_PREFIX, GlobalPassData};
+    use crate::passes::{CircuitTransformationPass, GlobalPassData};
     use crate::passes::loop_unroll::LoopUnrollPass;
 
     #[test]

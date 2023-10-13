@@ -62,6 +62,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
         // Only run the passes if we are going to generate LLVM code
         let pm = PassManager::new();
         circuit = pm
+            .schedule_const_arg_deduplication_pass()
             .schedule_loop_unroll_pass()
             .schedule_conditional_flattening_pass()
             .schedule_mapped_to_indexed_pass()

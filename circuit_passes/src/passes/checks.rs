@@ -147,3 +147,21 @@ pub fn assert_unique_ids_in_circuit(circuit: &Circuit) {
         assert_unique_ids_in_function(function, &mut visited);
     }
 }
+
+/// Return true iff all elements returned by the given Iterator are equal.
+pub fn all_same<T>(data: T) -> bool
+where
+    T: Iterator,
+    T::Item: PartialEq,
+{
+    data.fold((true, None), {
+        |acc, elem| {
+            if acc.1.is_some() {
+                (acc.0 && (acc.1.unwrap() == elem), Some(elem))
+            } else {
+                (true, Some(elem))
+            }
+        }
+    })
+    .0
+}

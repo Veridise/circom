@@ -10,10 +10,10 @@ use compiler::intermediate_representation::{
 };
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::value::Value;
-use crate::passes::LOOP_BODY_FN_PREFIX;
+use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::loop_unroll::extracted_location_updater::ExtractedFunctionLocationUpdater;
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
-use super::new_u32_value;
+use crate::passes::{builders, checks};
 
 pub type FuncArgIdx = usize;
 pub type AddressOffset = usize;
@@ -109,6 +109,12 @@ pub struct LoopBodyExtractor {
 }
 
 impl LoopBodyExtractor {
+    fn new_filled_vec<T: Clone>(new_len: usize, value: T) -> Vec<T> {
+        let mut result = Vec::with_capacity(new_len);
+        result.resize(new_len, value);
+        result
+    }
+
     pub fn get_new_functions(&self) -> Ref<Vec<FunctionCode>> {
         self.new_body_functions.borrow()
     }
@@ -137,37 +143,37 @@ impl LoopBodyExtractor {
                 NopBucket { id: 0 }.allocate(), // garbage fill
             );
             // Parameter for local vars
-            args[0] = Self::new_storage_ptr_ref(bucket, AddressType::Variable);
+            args[0] = builders::build_storage_ptr_ref(bucket, AddressType::Variable);
             // Parameter for signals/arena
-            args[1] = Self::new_storage_ptr_ref(bucket, AddressType::Signal);
+            args[1] = builders::build_storage_ptr_ref(bucket, AddressType::Signal);
             // Additional parameters for subcmps and variant array indexing within the loop
             for (loc, ai) in extra_arg_info.get_passing_refs_for_itr(iter_num) {
                 match loc {
                     None => match ai {
                         ArgIndex::Signal(signal) => {
-                            args[signal] = Self::new_null_ptr(bucket, FR_NULL_I256_PTR);
+                            args[signal] = builders::build_null_ptr(bucket, FR_NULL_I256_PTR);
                         }
                         ArgIndex::SubCmp { signal, arena, counter } => {
-                            args[signal] = Self::new_null_ptr(bucket, FR_NULL_I256_PTR);
-                            args[arena] = Self::new_null_ptr(bucket, FR_NULL_I256_ARR_PTR);
-                            args[counter] = Self::new_null_ptr(bucket, FR_NULL_I256_PTR);
+                            args[signal] = builders::build_null_ptr(bucket, FR_NULL_I256_PTR);
+                            args[arena] = builders::build_null_ptr(bucket, FR_NULL_I256_ARR_PTR);
+                            args[counter] = builders::build_null_ptr(bucket, FR_NULL_I256_PTR);
                         }
                     },
                     Some((at, val)) => match ai {
                         ArgIndex::Signal(signal) => {
                             args[signal] =
-                                Self::new_indexed_storage_ptr_ref(bucket, at.clone(), *val)
+                                builders::build_indexed_storage_ptr_ref(bucket, at.clone(), *val)
                         }
                         ArgIndex::SubCmp { signal, arena, counter } => {
                             // Pass specific signal referenced
                             args[signal] =
-                                Self::new_indexed_storage_ptr_ref(bucket, at.clone(), *val);
+                                builders::build_indexed_storage_ptr_ref(bucket, at.clone(), *val);
                             // Pass entire subcomponent arena for calling the 'template_run' function
-                            args[arena] = Self::new_storage_ptr_ref(bucket, at.clone());
+                            args[arena] = builders::build_storage_ptr_ref(bucket, at.clone());
                             // Pass subcomponent counter reference
                             if let AddressType::SubcmpSignal { cmp_address, .. } = &at {
                                 //TODO: may only need to add this when is_output=true but have to skip adding the Param too in that case.
-                                args[counter] = Self::new_subcmp_counter_storage_ptr_ref(
+                                args[counter] = builders::build_subcmp_counter_storage_ptr_ref(
                                     bucket,
                                     cmp_address.clone(),
                                 );
@@ -178,20 +184,7 @@ impl LoopBodyExtractor {
                     },
                 }
             }
-            unrolled.push(
-                CallBucket {
-                    id: new_id(),
-                    source_file_id: bucket.source_file_id,
-                    line: bucket.line,
-                    message_id: bucket.message_id,
-                    symbol: name.clone(),
-                    return_info: ReturnType::Intermediate { op_aux_no: 0 },
-                    arena_size: 0, // size 0 indicates arguments should not be placed into an arena
-                    argument_types: vec![], // LLVM IR generation doesn't use this field
-                    arguments: args,
-                }
-                .allocate(),
-            );
+            unrolled.push(builders::build_call(bucket, &name, args));
 
             recorder.record_reverse_arg_mapping(
                 name.clone(),
@@ -282,109 +275,6 @@ impl LoopBodyExtractor {
         func_name
     }
 
-    fn new_custom_fn_load_bucket(
-        bucket: &dyn ObtainMeta,
-        load_fun: &str,
-        addr_type: AddressType,
-        location: InstructionPointer,
-    ) -> InstructionPointer {
-        LoadBucket {
-            id: new_id(),
-            source_file_id: bucket.get_source_file_id().clone(),
-            line: bucket.get_line(),
-            message_id: bucket.get_message_id(),
-            address_type: addr_type,
-            src: LocationRule::Indexed { location, template_header: None },
-            bounded_fn: Some(String::from(load_fun)),
-        }
-        .allocate()
-    }
-
-    fn new_storage_ptr_ref(bucket: &dyn ObtainMeta, addr_type: AddressType) -> InstructionPointer {
-        Self::new_custom_fn_load_bucket(
-            bucket,
-            FR_IDENTITY_ARR_PTR,
-            addr_type,
-            new_u32_value(bucket, 0), //use index 0 to ref the entire storage array
-        )
-    }
-
-    //NOTE: When the 'bounded_fn' for LoadBucket is Some(_), the index parameter
-    //  is ignored so we must instead use `FR_INDEX_ARR_PTR` to apply the index.
-    //  Uses of that function can be inlined later.
-    // NOTE: Must start with `GENERATED_FN_PREFIX` to use `ExtractedFunctionCtx`
-    fn new_indexed_storage_ptr_ref(
-        bucket: &dyn ObtainMeta,
-        addr_type: AddressType,
-        index: AddressOffset,
-    ) -> InstructionPointer {
-        CallBucket {
-            id: new_id(),
-            source_file_id: bucket.get_source_file_id().clone(),
-            line: bucket.get_line(),
-            message_id: bucket.get_message_id(),
-            symbol: String::from(FR_INDEX_ARR_PTR),
-            return_info: ReturnType::Intermediate { op_aux_no: 0 },
-            arena_size: 0, // size 0 indicates arguments should not be placed into an arena
-            argument_types: vec![], // LLVM IR generation doesn't use this field
-            arguments: vec![
-                Self::new_storage_ptr_ref(bucket, addr_type),
-                new_u32_value(bucket, index),
-            ],
-        }
-        .allocate()
-    }
-
-    fn new_subcmp_counter_storage_ptr_ref(
-        bucket: &dyn ObtainMeta,
-        sub_cmp_id: InstructionPointer,
-    ) -> InstructionPointer {
-        Self::new_custom_fn_load_bucket(
-            bucket,
-            FR_PTR_CAST_I32_I256,
-            AddressType::SubcmpSignal {
-                cmp_address: sub_cmp_id,
-                uniform_parallel_value: Option::None,
-                is_output: false,
-                input_information: InputInformation::NoInput,
-                counter_override: true,
-            },
-            new_u32_value(bucket, usize::MAX), //index is ignored for these
-        )
-    }
-
-    fn new_null_ptr(bucket: &dyn ObtainMeta, null_fun: &str) -> InstructionPointer {
-        CallBucket {
-            id: new_id(),
-            source_file_id: bucket.get_source_file_id().clone(),
-            line: bucket.get_line(),
-            message_id: bucket.get_message_id(),
-            symbol: String::from(null_fun),
-            return_info: ReturnType::Intermediate { op_aux_no: 0 },
-            arena_size: 0, // size 0 indicates arguments should not be placed into an arena
-            argument_types: vec![], // LLVM IR generation doesn't use this field
-            arguments: vec![],
-        }
-        .allocate()
-    }
-
-    fn all_same<T>(data: T) -> bool
-    where
-        T: Iterator,
-        T::Item: PartialEq,
-    {
-        data.fold((true, None), {
-            |acc, elem| {
-                if acc.1.is_some() {
-                    (acc.0 && (acc.1.unwrap() == elem), Some(elem))
-                } else {
-                    (true, Some(elem))
-                }
-            }
-        })
-        .0
-    }
-
     /// The ideal scenario for extracting the loop body into a new function is to only
     /// need 2 function arguments, lvars and signals. However, we want to avoid variable
     /// indexing within the extracted function so we include extra pointer arguments
@@ -422,7 +312,7 @@ impl LoopBodyExtractor {
                 column.push(temp.map(|(a, v)| (a.clone(), v.get_u32())));
             }
             // ASSERT: same AddressType kind for this bucket in every (available) iteration
-            assert!(Self::all_same(
+            assert!(checks::all_same(
                 column.iter().filter_map(|x| x.as_ref()).map(|x| std::mem::discriminant(&x.0))
             ));
 
@@ -431,7 +321,7 @@ impl LoopBodyExtractor {
             //  Actually, check not only the computed index Value but the AddressType as well to capture when
             //  it's a SubcmpSignal referencing a different subcomponent (the AddressType::cmp_address field
             //  was also interpreted within the EnvRecorder so this comparison will be accurate).
-            if !Self::all_same(column.iter().filter_map(|x| x.as_ref())) {
+            if !checks::all_same(column.iter().filter_map(|x| x.as_ref())) {
                 bucket_to_args.insert(*id, ArgIndex::Signal(next_idx));
                 next_idx += 1;
             }
@@ -497,11 +387,5 @@ impl LoopBodyExtractor {
         //Keep only the table columns where extra parameters are necessary
         bucket_to_itr_to_ref.retain(|k, _| bucket_to_args.contains_key(k));
         ExtraArgsResult { bucket_to_itr_to_ref, bucket_to_args, num_args: next_idx }
-    }
-
-    fn new_filled_vec<T: Clone>(new_len: usize, value: T) -> Vec<T> {
-        let mut result = Vec::with_capacity(new_len);
-        result.resize(new_len, value);
-        result
     }
 }

@@ -2,8 +2,9 @@ use indexmap::IndexMap;
 use code_producers::llvm_elements::fr::FR_IDENTITY_ARR_PTR;
 use compiler::intermediate_representation::{BucketId, InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
+use crate::passes::builders::build_u32_value;
+
 use super::body_extractor::ArgIndex;
-use super::new_u32_value;
 
 pub struct ExtractedFunctionLocationUpdater {
     pub insert_after: InstructionList,
@@ -26,14 +27,14 @@ impl ExtractedFunctionLocationUpdater {
             //  parameters with those. So this has to use SubcmpSignal (it should
             //  work fine because subcomps will also just be additional params).
             bucket.address_type = AddressType::SubcmpSignal {
-                cmp_address: new_u32_value(bucket, ai.get_signal_idx()),
+                cmp_address: build_u32_value(bucket, ai.get_signal_idx()),
                 uniform_parallel_value: None,
                 counter_override: false,
                 is_output: false,
                 input_information: InputInformation::NoInput,
             };
             bucket.src = LocationRule::Indexed {
-                location: new_u32_value(bucket, 0), //use index 0 to ref the entire storage array
+                location: build_u32_value(bucket, 0), //use index 0 to ref the entire storage array
                 template_header: None,
             };
         } else {
@@ -64,7 +65,7 @@ impl ExtractedFunctionLocationUpdater {
                         context: bucket.context.clone(),
                         dest_is_output: bucket.dest_is_output,
                         dest_address_type: AddressType::SubcmpSignal {
-                            cmp_address: new_u32_value(bucket, arena),
+                            cmp_address: build_u32_value(bucket, arena),
                             uniform_parallel_value: None,
                             counter_override: false,
                             is_output: false,
@@ -80,7 +81,7 @@ impl ExtractedFunctionLocationUpdater {
                             },
                         },
                         dest: LocationRule::Indexed {
-                            location: new_u32_value(bucket, 0), //the value here is ignored by the 'bounded_fn' below
+                            location: build_u32_value(bucket, 0), //the value here is ignored by the 'bounded_fn' below
                             template_header: match &bucket.dest {
                                 LocationRule::Indexed { template_header, .. } => {
                                     template_header.clone()
@@ -88,7 +89,7 @@ impl ExtractedFunctionLocationUpdater {
                                 LocationRule::Mapped { .. } => todo!(),
                             },
                         },
-                        src: new_u32_value(bucket, 0), //the value here is ignored at runtime
+                        src: build_u32_value(bucket, 0), //the value here is ignored at runtime
                         bounded_fn: Some(String::from(FR_IDENTITY_ARR_PTR)), //NOTE: doesn't have enough arguments but it works out
                     }
                     .allocate(),
@@ -100,14 +101,14 @@ impl ExtractedFunctionLocationUpdater {
 
             //Transform this bucket into the normal fixed-index signal reference
             bucket.dest_address_type = AddressType::SubcmpSignal {
-                cmp_address: new_u32_value(bucket, ai.get_signal_idx()),
+                cmp_address: build_u32_value(bucket, ai.get_signal_idx()),
                 uniform_parallel_value: None,
                 counter_override: false,
                 is_output: false,
                 input_information: InputInformation::NoInput,
             };
             bucket.dest = LocationRule::Indexed {
-                location: new_u32_value(bucket, 0), //use index 0 to ref the entire storage array
+                location: build_u32_value(bucket, 0), //use index 0 to ref the entire storage array
                 template_header: None,
             };
         } else {
