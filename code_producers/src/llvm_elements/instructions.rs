@@ -862,10 +862,9 @@ pub fn create_switch<'a>(
 }
 
 pub fn get_index_from_gep(gep: PointerValue) -> usize {
-    let op = gep
-        .as_instruction()
-        .expect("GEP be an instruction!")
-        .get_operand(2);
+    let inst = gep.as_instruction().expect("GEP has to be an instruction!");
+    assert!(inst.get_opcode() == InstructionOpcode::GetElementPtr);
+    let op = inst.get_operand(2);
     let idx = op
         .expect("Second index is missing in GEP that is meant to be a signal")
         .expect_left("Second index must be a basic value!");
