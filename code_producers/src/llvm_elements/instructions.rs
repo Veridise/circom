@@ -860,3 +860,18 @@ pub fn create_switch<'a>(
 ) -> InstructionValue<'a> {
     producer.builder().build_switch(value, else_block, cases)
 }
+
+pub fn get_index_from_gep(gep: PointerValue) -> usize {
+    let op = gep
+        .as_instruction()
+        .expect("GEP be an instruction!")
+        .get_operand(2);
+    let idx = op
+        .expect("Second index is missing in GEP that is meant to be a signal")
+        .expect_left("Second index must be a basic value!");
+    let n = match idx {
+        BasicValueEnum::IntValue(v) => v.get_sign_extended_constant(),
+        _ => panic!("Second index must be an integer value!")
+    };
+    n.expect("Could not load the integer value of the IntValue!") as usize
+}
