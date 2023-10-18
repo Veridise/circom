@@ -412,12 +412,6 @@ impl LoopBodyExtractor {
                 } else {
                     //Since SubcmpSignal is always added above, this should be unreachable.
                     unreachable!()
-                    // bucket_to_args.insert(
-                    //     *b,
-                    //     ArgIndex::SubCmp { signal: next_idx, arena: arena_idx, counter: counter_idx,
-                    //     },
-                    // );
-                    // next_idx += 1;
                 }
             }
         }
