@@ -205,7 +205,7 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
 
     fn load_subcmp_counter(
         &self,
-        producer: &dyn LLVMIRProducer<'a>,
+        _producer: &dyn LLVMIRProducer<'a>,
         id: AnyValueEnum<'a>,
         implicit: bool,
     ) -> Option<PointerValue<'a>> {
