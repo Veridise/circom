@@ -1,10 +1,10 @@
 use code_producers::c_elements::CProducer;
 use code_producers::llvm_elements::types::bigint_type;
-use code_producers::llvm_elements::values::create_literal_u32;
+use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::llvm_elements::{
     LLVMInstruction, new_constraint, to_basic_metadata_enum, LLVMIRProducer, AnyType, new_constraint_with_name,
 };
-use code_producers::llvm_elements::instructions::{create_call, create_load, get_instruction_arg, create_gep};
+use code_producers::llvm_elements::instructions::{create_call, create_load, get_instruction_arg, get_data_from_gep, create_gep};
 use code_producers::llvm_elements::stdlib::{CONSTRAINT_VALUE_FN_NAME, CONSTRAINT_VALUES_FN_NAME};
 use code_producers::wasm_elements::WASMProducer;
 use crate::intermediate_representation::{Instruction, InstructionPointer, SExp, ToSExp, UpdateId};
@@ -149,12 +149,16 @@ impl WriteLLVMIR for ConstraintBucket {
                     let lhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_DST_IDX).into_pointer_value();
                     assert_eq!(bigint_type(producer).ptr_type(Default::default()), lhs_ptr.get_type(), "wrong type");
                     let rhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_SRC_IDX).into_pointer_value();
-
                     let mut last_call = None;
+                    let (lhs_ptr, lhs_base_off) = get_data_from_gep(producer, lhs_ptr);
+                    let (rhs_ptr, rhs_base_off) = get_data_from_gep(producer, rhs_ptr);
                     for i in 0..size {
-                        let idx = create_literal_u32(producer, i as u64);
-                        let lhs = create_load(producer, create_gep(producer, lhs_ptr, &[idx]).into_pointer_value());
-                        let rhs = create_load(producer, create_gep(producer, rhs_ptr, &[idx]).into_pointer_value());
+                        let lhs_idx = create_literal_u32(producer, (lhs_base_off + i) as u64);
+                        let rhs_idx = create_literal_u32(producer, (rhs_base_off + i) as u64);
+                        let lhs_gep = create_gep(producer, lhs_ptr, &[zero(producer), lhs_idx]);
+                        let rhs_gep = create_gep(producer, rhs_ptr, &[zero(producer), rhs_idx]);
+                        let lhs = create_load(producer, lhs_gep.into_pointer_value());
+                        let rhs = create_load(producer, rhs_gep.into_pointer_value());
                         let constr = new_constraint_with_name(producer, format!("constraint_{}", i).as_str());
                         last_call = Some(create_call(
                             producer,
