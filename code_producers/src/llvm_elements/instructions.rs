@@ -9,6 +9,7 @@ use crate::llvm_elements::{LLVMIRProducer};
 use crate::llvm_elements::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
 use crate::llvm_elements::functions::create_bb;
 use crate::llvm_elements::types::{bigint_type, i32_type};
+use crate::llvm_elements::values::zero;
 
 use super::types::bool_type;
 
@@ -861,9 +862,19 @@ pub fn create_switch<'a>(
     producer.builder().build_switch(value, else_block, cases)
 }
 
-pub fn get_index_from_gep(gep: PointerValue) -> usize {
+/// Extracts the pointer and the second index of a gep instruction
+/// getelementptr %ptr, 0, %idx ---> (%ptr, %idx)
+pub fn get_data_from_gep<'a>(producer: &dyn LLVMIRProducer<'a>, gep: PointerValue<'a>) -> (PointerValue<'a>, usize) {
     let inst = gep.as_instruction().expect("GEP has to be an instruction!");
-    assert!(inst.get_opcode() == InstructionOpcode::GetElementPtr);
+    debug_assert!(inst.get_opcode() == InstructionOpcode::GetElementPtr);
+    let ptr = inst.get_operand(0)
+        .expect("Pointer is missing in GEP")
+        .expect_left("Pointer value must be a basic value!")
+        .into_pointer_value();
+    let fst_idx = inst.get_operand(1)
+        .expect("First index is missing in GEP")
+        .expect_left("First index must be a basic value!");
+    debug_assert!(fst_idx == zero(producer));
     let op = inst.get_operand(2);
     let idx = op
         .expect("Second index is missing in GEP that is meant to be a signal")
@@ -872,5 +883,5 @@ pub fn get_index_from_gep(gep: PointerValue) -> usize {
         BasicValueEnum::IntValue(v) => v.get_sign_extended_constant(),
         _ => panic!("Second index must be an integer value!")
     };
-    n.expect("Could not load the integer value of the IntValue!") as usize
+    (ptr, n.expect("Could not load the integer value of the IntValue!") as usize)
 }
