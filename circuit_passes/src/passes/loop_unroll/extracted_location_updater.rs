@@ -59,7 +59,7 @@ impl ExtractedFunctionLocationUpdater {
         // NOTE: This must happen before the modification step so it can use existing values from the bucket.
         if let ArgIndex::SubCmp { counter, arena, .. } = ai {
             let counter_address = AddressType::SubcmpSignal {
-                cmp_address: new_u32_value(bucket_meta, *counter),
+                cmp_address: build_u32_value(bucket_meta, *counter),
                 uniform_parallel_value: None,
                 counter_override: true,
                 is_output: false,
@@ -77,7 +77,7 @@ impl ExtractedFunctionLocationUpdater {
                     dest_is_output: false,
                     dest_address_type: counter_address.clone(),
                     dest: LocationRule::Indexed {
-                        location: new_u32_value(bucket_meta, 0),
+                        location: build_u32_value(bucket_meta, 0),
                         template_header: None,
                     },
                     bounded_fn: None,
@@ -96,7 +96,7 @@ impl ExtractedFunctionLocationUpdater {
                                 message_id: bucket_meta.get_message_id(),
                                 address_type: counter_address.clone(),
                                 src: LocationRule::Indexed {
-                                    location: new_u32_value(bucket_meta, 0),
+                                    location: build_u32_value(bucket_meta, 0),
                                     template_header: None,
                                 },
                                 bounded_fn: None,
@@ -141,7 +141,7 @@ impl ExtractedFunctionLocationUpdater {
                                 message_id: bucket_meta.get_message_id(),
                                 address_type: counter_address,
                                 src: LocationRule::Indexed {
-                                    location: new_u32_value(bucket_meta, 0),
+                                    location: build_u32_value(bucket_meta, 0),
                                     template_header: None,
                                 },
                                 bounded_fn: None,
@@ -204,7 +204,7 @@ impl ExtractedFunctionLocationUpdater {
                 input_information: InputInformation::NoInput,
             },
             LocationRule::Indexed {
-                location: new_u32_value(bucket_meta, 0), //use index 0 to ref the entire storage array
+                location: build_u32_value(bucket_meta, 0), //use index 0 to ref the entire storage array
                 template_header: None,
             },
         )

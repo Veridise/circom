@@ -356,13 +356,13 @@ impl LoopBodyExtractor {
                 println!("bucket {} refs by iteration: {:?}", id, column);
             }
             // ASSERT: same AddressType kind for this bucket in every (available) iteration
-            assert!(Self::all_same(Self::filter_map(column, |(x, _)| std::mem::discriminant(x))));
+            assert!(checks::all_same(Self::filter_map(column, |(x, _)| std::mem::discriminant(x))));
 
             // If the computed index value for this bucket is NOT the same across all available
             //  iterations (i.e. where it is not None, see earlier comment) or if the AddressType
             //  is SubcmpSignal, then an extra function argument is needed for it.
             if Self::filter_map_any(column, |(x, _)| matches!(x, AddressType::SubcmpSignal { .. }))
-                || !Self::all_same(Self::filter_map(column, |(_, y)| *y))
+                || !checks::all_same(Self::filter_map(column, |(_, y)| *y))
             {
                 bucket_to_args.insert(*id, ArgIndex::Signal(next_idx));
                 next_idx += 1;
