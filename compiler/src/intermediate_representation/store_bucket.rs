@@ -126,7 +126,12 @@ impl StoreBucket{
                     AddressType::SubcmpSignal { cmp_address, .. } => {
                         let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
                         let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        create_gep(producer, subcmp, &[zero(producer), dest_index])
+                        if subcmp.get_type().get_element_type().is_array_type() {
+                            create_gep(producer, subcmp, &[zero(producer), dest_index])
+                        } else {
+                            assert_eq!(zero(producer), dest_index);
+                            create_gep(producer, subcmp, &[dest_index])
+                        }
                     }
                 }.into_pointer_value();
                 if context.size > 1 {
@@ -173,19 +178,21 @@ impl StoreBucket{
         if let AddressType::SubcmpSignal { cmp_address, .. } = &dest_address_type {
             let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
             let counter = producer.template_ctx().load_subcmp_counter(producer, addr);
-            let value = create_load_with_name(producer, counter, "load.subcmp.counter");
-            let new_value = create_sub_with_name(producer, value.into_int_value(), create_literal_u32(producer, context.size as u64), "decrement.counter");
-            create_store(producer, counter, new_value);
+            if let Some(counter) = counter {
+                let value = create_load_with_name(producer, counter, "load.subcmp.counter");
+                let new_value = create_sub_with_name(producer, value.into_int_value(), create_literal_u32(producer, context.size as u64), "decrement.counter");
+                create_store(producer, counter, new_value);
+            }
         }
 
-        let sub_cmp_name = match &dest {
-            LocationRule::Indexed { template_header, .. } => template_header.clone(),
-            LocationRule::Mapped { .. } => None
-        };
         // If the input information is unknown add a check that checks the counter and if its zero call the subcomponent
         // If its last just call run directly
         if let AddressType::SubcmpSignal { input_information, cmp_address, .. } = &dest_address_type {
             if let InputInformation::Input { status } = input_information {
+                let sub_cmp_name = match &dest {
+                    LocationRule::Indexed { template_header, .. } => template_header.clone(),
+                    LocationRule::Mapped { .. } => None
+                };
                 match status {
                     StatusInput::Last => {
                         let run_fn = run_fn_name(sub_cmp_name.expect("Could not get the name of the subcomponent"));

@@ -1,76 +1,52 @@
 pub mod value;
 pub mod env;
+pub mod memory;
 pub mod observer;
 pub(crate) mod operations;
 
+use std::cell::RefCell;
+use std::vec;
 use circom_algebra::modular_arithmetic;
-use code_producers::components::TemplateInstanceIOMap;
-use code_producers::llvm_elements::IndexMapping;
+use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR};
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
 use observer::InterpreterObserver;
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::operations::compute_offset;
-use crate::bucket_interpreter::value::{JoinSemiLattice, Value};
-use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
+use crate::bucket_interpreter::value::Value::{self, KnownBigInt, KnownU32, Unknown};
+use crate::passes::{LOOP_BODY_FN_PREFIX, GlobalPassData};
+use self::env::LibraryAccess;
 
-pub struct BucketInterpreter<'a> {
-    _scope: &'a String,
-    _prime: &'a String,
-    pub constant_fields: &'a Vec<String>,
-    pub(crate) observer: &'a dyn InterpreterObserver,
-    io_map: &'a TemplateInstanceIOMap,
+pub struct BucketInterpreter<'a, 'd> {
+    global_data: &'d RefCell<GlobalPassData>,
+    observer: &'a dyn InterpreterObserver,
+    mem: &'a PassMemory,
+    scope: String,
     p: BigInt,
-    signal_index_mapping: &'a IndexMapping,
-    variables_index_mapping: &'a IndexMapping,
-    component_addr_index_mapping: &'a IndexMapping,
 }
 
 pub type R<'a> = (Option<Value>, Env<'a>);
 
-impl JoinSemiLattice for Option<Value> {
-    fn join(&self, other: &Self) -> Self {
-        match (self, other) {
-            (x, None) => x.clone(),
-            (None, x) => x.clone(),
-            (Some(x), Some(y)) => Some(x.join(y)),
-        }
-    }
-}
-
-impl JoinSemiLattice for R<'_> {
-    fn join(&self, other: &Self) -> Self {
-        (self.0.join(&other.0), self.1.join(&other.1))
-    }
-}
-
-impl<'a> BucketInterpreter<'a> {
+impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
     pub fn init(
-        scope: &'a String,
-        prime: &'a String,
-        constant_fields: &'a Vec<String>,
+        global_data: &'d RefCell<GlobalPassData>,
         observer: &'a dyn InterpreterObserver,
-        io_map: &'a TemplateInstanceIOMap,
-        signal_index_mapping: &'a IndexMapping,
-        variables_index_mapping: &'a IndexMapping,
-        component_addr_index_mapping: &'a IndexMapping,
+        mem: &'a PassMemory,
+        scope: String,
     ) -> Self {
         BucketInterpreter {
-            _scope: scope,
-            _prime: prime,
-            constant_fields,
+            global_data,
             observer,
-            io_map,
-            p: UsefulConstants::new(prime).get_p().clone(),
-            signal_index_mapping,
-            variables_index_mapping,
-            component_addr_index_mapping,
+            mem,
+            scope,
+            p: UsefulConstants::new(mem.get_prime()).get_p().clone(),
         }
     }
 
-    fn get_id_from_indexed_location(&self, location: &LocationRule, env: &Env) -> usize {
+    pub fn get_index_from_location(&self, location: &LocationRule, env: &Env) -> usize {
         match location {
             LocationRule::Indexed { location, .. } => {
                 let (idx, _) = self.execute_instruction(location, env.clone(), false);
@@ -90,34 +66,20 @@ impl<'a> BucketInterpreter<'a> {
     ) {
         match bucket.dest_address_type {
             AddressType::Variable => {
-                let idx = self.get_id_from_indexed_location(&bucket.dest, env);
-                let indices = self
-                    .variables_index_mapping
-                    .get(&idx)
-                    .expect(
-                        format!(
-                            "Could not get idx {idx} from mapping. Min key {:?}. Max key {:?}",
-                            self.variables_index_mapping.keys().min(),
-                            self.variables_index_mapping.keys().max()
-                        )
-                        .as_str(),
-                    )
-                    .clone();
-                for index in indices {
+                let idx = self.get_index_from_location(&bucket.dest, env);
+                for index in self.mem.get_variables_index_mapping(&self.scope, &idx) {
                     vars.push(index);
                 }
             }
             AddressType::Signal => {
-                let idx = self.get_id_from_indexed_location(&bucket.dest, env);
-                let indices = self.signal_index_mapping[&idx].clone();
-                for index in indices {
+                let idx = self.get_index_from_location(&bucket.dest, env);
+                for index in self.mem.get_signal_index_mapping(&self.scope, &idx) {
                     signals.push(index);
                 }
             }
             AddressType::SubcmpSignal { .. } => {
-                let idx = self.get_id_from_indexed_location(&bucket.dest, env);
-                let indices = self.component_addr_index_mapping[&idx].clone();
-                for index in indices {
+                let idx = self.get_index_from_location(&bucket.dest, env);
+                for index in self.mem.get_component_addr_index_mapping(&self.scope, &idx) {
                     subcmps.push(index);
                 }
             }
@@ -219,14 +181,14 @@ impl<'a> BucketInterpreter<'a> {
     ) -> R<'env> {
         (
             Some(match bucket.parse_as {
+                ValueType::U32 => KnownU32(bucket.value),
                 ValueType::BigInt => {
-                    let constant = &self.constant_fields[bucket.value];
+                    let constant = self.mem.get_field_constant(bucket.value);
                     KnownBigInt(
                         BigInt::parse_bytes(constant.as_bytes(), 10)
                             .expect(format!("Cannot parse constant {}", constant).as_str()),
                     )
                 }
-                ValueType::U32 => KnownU32(bucket.value),
             }),
             env,
         )
@@ -273,11 +235,8 @@ impl<'a> BucketInterpreter<'a> {
             }
             AddressType::SubcmpSignal { cmp_address, .. } => {
                 let (addr, env) = self.execute_instruction(cmp_address, env, observe);
-                let addr = addr
-                    .expect(
-                        "cmp_address instruction in StoreBucket SubcmpSignal must produce a value!",
-                    )
-                    .get_u32();
+                let addr =
+                    addr.expect("cmp_address in SubcmpSignal must produce a value!").get_u32();
                 let continue_observing =
                     if observe { self.observer.on_location_rule(&bucket.src, &env) } else { false };
                 let (idx, env) = match &bucket.src {
@@ -289,7 +248,7 @@ impl<'a> BucketInterpreter<'a> {
                     LocationRule::Mapped { signal_code, indexes } => {
                         let mut acc_env = env;
                         let io_def =
-                            &self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code];
+                            self.mem.get_iodef(&acc_env.get_subcmp_template_id(addr), signal_code);
                         let map_access = io_def.offset;
                         if indexes.len() > 0 {
                             let mut indexes_values = vec![];
@@ -381,7 +340,7 @@ impl<'a> BucketInterpreter<'a> {
                         let mut acc_env = env;
                         let name = Some(acc_env.get_subcmp_name(addr).clone());
                         let io_def =
-                            &self.io_map[&acc_env.get_subcmp_template_id(addr)][*signal_code];
+                            self.mem.get_iodef(&acc_env.get_subcmp_template_id(addr), signal_code);
                         let map_access = io_def.offset;
                         if indexes.len() > 0 {
                             let mut indexes_values = vec![];
@@ -456,39 +415,90 @@ impl<'a> BucketInterpreter<'a> {
         (computed_value, env)
     }
 
+    fn run_function_loopbody<'env>(&self, name: &String, env: Env<'env>, observe: bool) -> R<'env> {
+        if cfg!(debug_assertions) {
+            println!("Running function {}", name);
+        };
+        let mut res: R<'env> = (
+            None,
+            Env::new_extracted_func_env(
+                env.clone(),
+                self.global_data.borrow().extract_func_orig_loc[name][&env.get_vars_sort()].clone(),
+            ),
+        );
+        //NOTE: Do not change scope for the new interpreter because the mem lookups within
+        //  `get_write_operations_in_store_bucket` need to use the original function context.
+        let interp = self.mem.build_interpreter(self.global_data, self.observer);
+        let observe = observe && !interp.observer.ignore_function_calls();
+        let instructions = &env.get_function(name).body;
+        unsafe {
+            let ptr = instructions.as_ptr();
+            for i in 0..instructions.len() {
+                let inst = ptr.add(i).as_ref().unwrap();
+                res = interp.execute_instruction(inst, res.1, observe);
+            }
+        }
+        //Remove the Env::ExtractedFunction wrapper
+        (res.0, res.1.peel_extracted_func())
+    }
+
+    fn run_function_basic<'env>(&self, name: &String, args: Vec<Value>, observe: bool) -> Value {
+        if cfg!(debug_assertions) {
+            println!("Running function {}", name);
+        }
+        let mut new_env = Env::new_standard_env(self.mem);
+        for (id, arg) in args.iter().enumerate() {
+            new_env = new_env.set_var(id, arg.clone());
+        }
+        let interp =
+            self.mem.build_interpreter_with_scope(self.global_data, self.observer, name.clone());
+        let (v, _) = interp.execute_instructions(
+            &self.mem.get_function(name).body,
+            new_env,
+            observe && !interp.observer.ignore_function_calls(),
+        );
+        v.expect("Function must produce a value!")
+    }
+
     pub fn execute_call_bucket<'env>(
         &self,
         bucket: &'env CallBucket,
         env: Env<'env>,
         observe: bool,
     ) -> R<'env> {
-        let mut args = vec![];
         let mut env = env;
-        for i in &bucket.arguments {
-            let (value, new_env) = self.execute_instruction(i, env, observe);
-            env = new_env;
-            args.push(value.expect("Function argument must produce a value!"));
-        }
-
-        let any_unknown = args.iter().any(|v| v.is_unknown());
-
-        //let result = env.run_function(&bucket.symbol, self, args, observe);
-        let result = if any_unknown {
-            Unknown
+        let res = if bucket.symbol.eq(FR_IDENTITY_ARR_PTR) || bucket.symbol.eq(FR_INDEX_ARR_PTR) {
+            (Some(Unknown), env)
+        } else if bucket.symbol.starts_with(LOOP_BODY_FN_PREFIX) {
+            // The extracted loop body functions can change any values in the environment
+            //  via the parameters passed to it. So interpret the function and keep the
+            //  resulting Env (as if the function had executed inline).
+            self.run_function_loopbody(&bucket.symbol, env, observe)
         } else {
-            env.run_function(&bucket.symbol, self, args, observe)
+            let mut args = vec![];
+            for i in &bucket.arguments {
+                let (value, new_env) = self.execute_instruction(i, env, observe);
+                env = new_env;
+                args.push(value.expect("Function argument must produce a value!"));
+            }
+            let v = if args.iter().any(|v| v.is_unknown()) {
+                Unknown
+            } else {
+                self.run_function_basic(&bucket.symbol, args, observe)
+            };
+            (Some(v), env)
         };
 
-        // Write the result in the destination according to the address type
+        // Write the result in the destination according to the ReturnType
         match &bucket.return_info {
-            ReturnType::Intermediate { .. } => (Some(result), env),
+            ReturnType::Intermediate { .. } => res,
             ReturnType::Final(final_data) => (
                 None,
                 self.store_value_in_address(
                     &final_data.dest_address_type,
                     &final_data.dest,
-                    result,
-                    env,
+                    res.0.expect("Function must return a value!"),
+                    res.1,
                     observe,
                 ),
             ),
@@ -594,16 +604,10 @@ impl<'a> BucketInterpreter<'a> {
         return match cond_bool_result {
             None => (None, None, env),
             Some(true) => {
-                if cfg!(debug_assertions) {
-                    println!("Running then branch");
-                }
                 let (ret, env) = self.execute_instructions(&true_branch, env, observe);
                 (ret, Some(true), env)
             }
             Some(false) => {
-                if cfg!(debug_assertions) {
-                    println!("Running else branch");
-                }
                 let (ret, env) = self.execute_instructions(&false_branch, env, observe);
                 (ret, Some(false), env)
             }

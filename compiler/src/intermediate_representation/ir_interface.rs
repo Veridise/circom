@@ -13,7 +13,7 @@ pub use super::store_bucket::StoreBucket;
 pub use super::log_bucket::LogBucketArg;
 pub use super::types::{InstrContext, ValueType};
 pub use super::value_bucket::ValueBucket;
-pub use super::constraint_bucket::{ConstraintBucket};
+pub use super::constraint_bucket::ConstraintBucket;
 pub use super::block_bucket::BlockBucket;
 pub use super::nop_bucket::NopBucket;
 
@@ -258,24 +258,25 @@ impl Instruction {
     pub fn label_name(&self, idx: u32) -> String {
         use Instruction::*;
         match self {
-            Value(_v) => format!("value{}", idx),
-            Load(_v) => format!("load{}", idx),
-            Store(_v) => format!("store{}", idx),
-            Compute(_v) => format!("compute{}", idx),
-            Call(_v) => format!("call{}", idx),
-            Branch(_v) => format!("branch{}", idx),
-            Return(_v) => format!("return{}", idx),
-            Loop(_v) => format!("loop{}", idx),
-            Assert(_v) => format!("assert{}", idx),
-            CreateCmp(_v) => format!("create_cmp{}", idx),
-            Log(_v) => format!("log{}", idx),
+            Value(_) => format!("value{}", idx),
+            Load(_) => format!("load{}", idx),
+            Store(_) => format!("store{}", idx),
+            Compute(_) => format!("compute{}", idx),
+            Call(_) => format!("call{}", idx),
+            Branch(_) => format!("branch{}", idx),
+            Return(_) => format!("return{}", idx),
+            Loop(_) => format!("loop{}", idx),
+            Assert(_) => format!("assert{}", idx),
+            CreateCmp(_) => format!("create_cmp{}", idx),
+            Log(_) => format!("log{}", idx),
             // We use the label name of the wrapped instruction
             Constraint(v) => match v {
                 ConstraintBucket::Substitution(i) => i,
-                ConstraintBucket::Equality(i) => i
-            }.label_name(idx),
-            Block(_) => format!("unrolled_loop{}", idx),
-            Nop(_) => format!("nop{}", idx)
+                ConstraintBucket::Equality(i) => i,
+            }
+            .label_name(idx),
+            Block(BlockBucket { label, .. }) => format!("{}{}", label, idx),
+            Nop(_) => format!("nop{}", idx),
         }
     }
 }

@@ -9,12 +9,12 @@ use compiler::num_bigint::BigInt;
 use code_producers::llvm_elements::array_switch::{get_array_load_symbol, get_array_store_symbol};
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::R;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
 use crate::bucket_interpreter::operations::compute_operation;
+use crate::bucket_interpreter::R;
 use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
-use crate::passes::CircuitTransformationPass;
-use crate::passes::memory::PassMemory;
+use super::{CircuitTransformationPass, GlobalPassData};
 
 struct ZeroingInterpreter<'a> {
     pub constant_fields: &'a Vec<String>,
@@ -81,9 +81,10 @@ impl<'a> ZeroingInterpreter<'a> {
     }
 }
 
-pub struct UnknownIndexSanitizationPass {
+pub struct UnknownIndexSanitizationPass<'d> {
+    global_data: &'d RefCell<GlobalPassData>,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    memory: RefCell<PassMemory>,
+    memory: PassMemory,
     load_replacements: RefCell<BTreeMap<LoadBucket, Range<usize>>>,
     store_replacements: RefCell<BTreeMap<StoreBucket, Range<usize>>>,
 }
@@ -91,10 +92,11 @@ pub struct UnknownIndexSanitizationPass {
 /**
  * The goal of this pass is to
  */
-impl UnknownIndexSanitizationPass {
-    pub fn new(prime: &String) -> Self {
+impl<'d> UnknownIndexSanitizationPass<'d> {
+    pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         UnknownIndexSanitizationPass {
-            memory: PassMemory::new_cell(prime, "".to_string(), Default::default()),
+            global_data,
+            memory: PassMemory::new(prime, "".to_string(), Default::default()),
             load_replacements: Default::default(),
             store_replacements: Default::default(),
         }
@@ -106,16 +108,6 @@ impl UnknownIndexSanitizationPass {
         location: &LocationRule,
         env: &Env,
     ) -> Range<usize> {
-        let mem = self.memory.borrow();
-        let interpreter = ZeroingInterpreter::init(&mem.prime, &mem.constant_fields);
-        let current_scope = &mem.current_scope;
-
-        let mapping = match address {
-            AddressType::Variable => &mem.variables_index_mapping[current_scope],
-            AddressType::Signal => &mem.signal_index_mapping[current_scope],
-            AddressType::SubcmpSignal { .. } => &mem.component_addr_index_mapping[current_scope],
-        };
-
         /*
          * We assume locations are of the form:
          *      (base_offset + (mul_offset * UNKNOWN))
@@ -126,17 +118,25 @@ impl UnknownIndexSanitizationPass {
          * a similar pattern that is also handled here.
          */
         match location {
+            LocationRule::Mapped { .. } => unreachable!(),
             LocationRule::Indexed { location, .. } => {
+                let mem = &self.memory;
+                let constant_fields = mem.get_field_constants_clone();
+                let interpreter = ZeroingInterpreter::init(mem.get_prime(), &constant_fields);
                 let (res, _) = interpreter.execute_instruction(location, env.clone());
 
                 let offset = match res {
                     Some(KnownU32(base)) => base,
                     _ => unreachable!(),
                 };
-
-                mapping[&offset].clone()
+                match address {
+                    AddressType::Variable => mem.get_current_scope_variables_index_mapping(&offset),
+                    AddressType::Signal => mem.get_current_scope_signal_index_mapping(&offset),
+                    AddressType::SubcmpSignal { .. } => {
+                        mem.get_current_scope_component_addr_index_mapping(&offset)
+                    }
+                }
             }
-            LocationRule::Mapped { .. } => unreachable!(),
         }
     }
 
@@ -146,8 +146,8 @@ impl UnknownIndexSanitizationPass {
         location: &LocationRule,
         env: &Env,
     ) -> bool {
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
+        let mem = &self.memory;
+        let interpreter = mem.build_interpreter(self.global_data, self);
 
         let resolved_addr = match location {
             LocationRule::Indexed { location, .. } => {
@@ -166,7 +166,7 @@ impl UnknownIndexSanitizationPass {
  * - loads with a function call that returns the loaded value
  * - stores with a function call that performs the store
  */
-impl InterpreterObserver for UnknownIndexSanitizationPass {
+impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -248,7 +248,7 @@ impl InterpreterObserver for UnknownIndexSanitizationPass {
     }
 }
 
-impl CircuitTransformationPass for UnknownIndexSanitizationPass {
+impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
     fn name(&self) -> &str {
         "UnknownIndexSanitizationPass"
     }
@@ -291,15 +291,15 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass {
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.borrow().constant_fields.clone()
+        self.memory.get_field_constants_clone()
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.borrow_mut().fill_from_circuit(circuit);
+        self.memory.fill_from_circuit(circuit);
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.borrow_mut().set_scope(template);
-        self.memory.borrow().run_template(self, template);
+        self.memory.set_scope(template);
+        self.memory.run_template(self.global_data, self, template);
     }
 }

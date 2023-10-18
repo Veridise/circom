@@ -1,7 +1,8 @@
 pragma circom 2.0.0;
 
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s
+// RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// XFAIL:.*		// pending https://veridise.atlassian.net/browse/VAN-670
 
 template A(n) {
 	signal input a[n];

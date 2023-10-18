@@ -7,13 +7,15 @@ use crate::hir::very_concrete_program::VCP;
 use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::array_switch::load_array_switch;
-use code_producers::wasm_elements::*;
 use code_producers::llvm_elements::*;
+use code_producers::llvm_elements::array_switch::load_array_switch;
 use code_producers::llvm_elements::fr::load_fr;
-use code_producers::llvm_elements::functions::{create_function, FunctionLLVMIRProducer};
-use code_producers::llvm_elements::stdlib::load_stdlib;
+use code_producers::llvm_elements::functions::{
+    create_function, FunctionLLVMIRProducer, ExtractedFunctionLLVMIRProducer,
+};
+use code_producers::llvm_elements::stdlib::{load_stdlib, GENERATED_FN_PREFIX};
 use code_producers::llvm_elements::types::{bigint_type, void_type};
+use code_producers::wasm_elements::*;
 use program_structure::program_archive::ProgramArchive;
 
 pub struct CompilationFlags {
@@ -43,7 +45,10 @@ impl Default for Circuit {
 }
 
 impl WriteLLVMIR for Circuit {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a, 'b>(
+        &self,
+        producer: &'b dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>> {
         // Code for prelude
 
         // Code for standard library?
@@ -52,8 +57,11 @@ impl WriteLLVMIR for Circuit {
 
         // Generate all the switch functions
         let mut ranges = HashSet::new();
-        let mappings = [&self.llvm_data.signal_index_mapping, &self.llvm_data.variable_index_mapping, &self.llvm_data.component_index_mapping];
-
+        let mappings = [
+            &self.llvm_data.signal_index_mapping,
+            &self.llvm_data.variable_index_mapping,
+            &self.llvm_data.component_index_mapping,
+        ];
         for mapping in mappings {
             for range_mapping in mapping.values() {
                 for range in range_mapping.values() {
@@ -61,7 +69,6 @@ impl WriteLLVMIR for Circuit {
                 }
             }
         }
-
         for range in ranges {
             load_array_switch(producer, range);
         }
@@ -70,35 +77,95 @@ impl WriteLLVMIR for Circuit {
         let mut funcs = HashMap::new();
         for f in &self.functions {
             let name = f.header.as_str();
-            let arena_ty = bigint_type(producer).ptr_type(Default::default());
+            let param_types = if name.starts_with(GENERATED_FN_PREFIX) {
+                // Use the FunctionCodeInfo instance to generate the vector of parameter types.
+                let mut types = vec![];
+                for p in &f.params {
+                    // This section is a little more complicated than desired because IntType and ArrayType do
+                    //  not have a common Trait that defines the `array_type` and `ptr_type` member functions.
+                    let ty = match &p.length[..] {
+                        // [] -> i256*
+                        [] => bigint_type(producer).ptr_type(Default::default()),
+                        // [A] -> [A x i256]*
+                        [a] => {
+                            bigint_type(producer).array_type(*a as u32).ptr_type(Default::default())
+                        }
+                        // [A,B,C,...] -> [C x [B x [A x i256]*]*]*
+                        [a, rest @ ..] => {
+                            let mut temp = bigint_type(producer).array_type(*a as u32);
+                            for size in rest {
+                                temp = temp.array_type(*size as u32);
+                            }
+                            temp.ptr_type(Default::default())
+                        }
+                    };
+                    types.push(ty.into());
+                }
+                types
+            } else {
+                vec![bigint_type(producer).ptr_type(Default::default()).into()]
+            };
             let function = create_function(
                 producer,
                 f.get_source_file_id(),
                 f.get_line(),
                 f.name.as_str(),
                 name,
-                if f.returns.is_empty() || (f.returns.len() == 1 && *f.returns.get(0).unwrap() == 1)
-                {
-                    bigint_type(producer).fn_type(&[arena_ty.into()], false)
+                if f.returns.len() == 1 {
+                    let single_size = *f.returns.get(0).unwrap();
+                    if single_size == 0 {
+                        //single dimension of size 0 indicates [0 x i256]* should be used
+                        bigint_type(producer)
+                            .array_type(0)
+                            .ptr_type(Default::default())
+                            .fn_type(&param_types, false)
+                    } else if single_size == 1 {
+                        // single dimension of size 1 is a scalar
+                        bigint_type(producer).fn_type(&param_types, false)
+                    } else {
+                        // single dimension size>1 must return via pointer argument
+                        void_type(producer).fn_type(&param_types, false)
+                    }
                 } else {
-                    void_type(producer).fn_type(&[arena_ty.into()], false)
+                    // multiple dimensions must return via pointer argument
+                    //  and zero dimensions indicates void return
+                    void_type(producer).fn_type(&param_types, false)
                 },
             );
+
+            // Preserve names (only for generated b/c source functions use only 1 argument)
+            if name.starts_with(GENERATED_FN_PREFIX) {
+                for (i, p) in f.params.iter().enumerate() {
+                    function.get_nth_param(i as u32).unwrap().set_name(&p.name);
+                }
+            }
+
             funcs.insert(name, function);
         }
 
-        // Code for the functions
+        // Code for the functions (except for generated functions)
+        let mut generated_functions = vec![];
         for f in &self.functions {
-            let function_producer = FunctionLLVMIRProducer::new(producer, funcs[f.header.as_str()]);
-            Self::manage_debug_loc_from_curr(&function_producer, f.as_ref());
-            f.produce_llvm_ir(&function_producer);
+            if f.header.starts_with(GENERATED_FN_PREFIX) {
+                // Hold for later because the body could reference templates
+                //  and the LLVM functions for templates were not pre-defined.
+                generated_functions.push(f);
+            } else {
+                let current_function = funcs[f.header.as_str()];
+                f.produce_llvm_ir(&FunctionLLVMIRProducer::new(producer, current_function));
+            }
         }
 
         // Code for the templates
         for t in &self.templates {
-            println!("Generating code for {}", t.header);
-            // code.append(&mut t.produce_llvm_ir(producer));
             t.produce_llvm_ir(producer);
+        }
+
+        // Code for generated functions
+        for f in generated_functions {
+            assert!(f.header.starts_with(GENERATED_FN_PREFIX));
+            let current_function = funcs[f.header.as_str()];
+            f.produce_llvm_ir(&ExtractedFunctionLLVMIRProducer::new(producer, current_function));
         }
 
         // Code for prologue

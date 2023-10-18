@@ -1,16 +1,19 @@
+use inkwell::attributes::{Attribute, AttributeLoc};
+use inkwell::values::FunctionValue;
+
 use crate::llvm_elements::LLVMIRProducer;
-use crate::llvm_elements::functions::create_bb;
-use crate::llvm_elements::functions::create_function;
+use crate::llvm_elements::functions::{create_bb, create_function};
 use crate::llvm_elements::instructions::{
     create_add, create_sub, create_mul, create_div, create_mod, create_pow, create_eq, create_neq,
-    create_lt, create_gt, create_le, create_ge, create_neg, create_shl, create_shr, create_bit_and,
-    create_bit_or, create_bit_xor, create_logic_and, create_logic_or, create_logic_not,
-    create_return, create_cast_to_addr,
+    create_lt, create_gt, create_le, create_ge, create_gep, create_neg, create_shl, create_shr,
+    create_bit_and, create_bit_or, create_bit_xor, create_logic_and, create_logic_or,
+    create_logic_not, create_return, create_cast_to_addr,
 };
 use crate::llvm_elements::types::{bigint_type, bool_type, i32_type, void_type};
 
 use super::instructions::create_array_copy;
-use super::instructions::{create_inv, create_return_void};
+use super::instructions::{create_inv, create_return_void, pointer_cast};
+use super::values::zero;
 
 pub const FR_ADD_FN_NAME: &str = "fr_add";
 pub const FR_SUB_FN_NAME: &str = "fr_sub";
@@ -37,6 +40,21 @@ pub const FR_LOR_FN_NAME: &str = "fr_logic_or";
 pub const FR_LNOT_FN_NAME: &str = "fr_logic_not";
 pub const FR_ADDR_CAST_FN_NAME: &str = "fr_cast_to_addr";
 pub const FR_ARRAY_COPY_FN_NAME: &str = "fr_copy_n";
+pub const FR_INDEX_ARR_PTR: &str = "index_arr_ptr";
+pub const FR_IDENTITY_ARR_PTR: &str = "identity_arr_ptr";
+pub const FR_PTR_CAST_I32_I256: &str = "cast_ptr_i32_i256";
+pub const FR_PTR_CAST_I256_I32: &str = "cast_ptr_i256_i32";
+pub const FR_NULL_I256_ARR_PTR: &str = "null_i256_arr_ptr";
+pub const FR_NULL_I256_PTR: &str = "null_i256_ptr";
+
+macro_rules! fr_nullary_op {
+    ($name: expr, $producer: expr, $retTy: expr) => {{
+        let func = create_function($producer, &None, 0, "", $name, $retTy.fn_type(&[], false));
+        let main = create_bb($producer, func, $name);
+        $producer.set_current_bb(main);
+        func
+    }};
+}
 
 macro_rules! fr_unary_op_base {
     ($name: expr, $producer: expr, $argTy: expr, $retTy: expr) => {{
@@ -46,13 +64,13 @@ macro_rules! fr_unary_op_base {
         $producer.set_current_bb(main);
 
         let lhs = func.get_nth_param(0).unwrap();
-        lhs
+        (lhs, func)
     }};
 }
 
 macro_rules! fr_unary_op {
     ($name: expr, $producer: expr, $valTy: expr) => {{
-        fr_unary_op_base!($name, $producer, $valTy, $valTy)
+        fr_unary_op_base!($name, $producer, $valTy, $valTy).0
     }};
 }
 
@@ -89,26 +107,35 @@ macro_rules! fr_binary_op_bigint_to_bool {
     }};
 }
 
-pub fn add_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn add_inline_attribute<'a>(producer: &dyn LLVMIRProducer<'a>, func: FunctionValue) {
+    func.add_attribute(
+        AttributeLoc::Function,
+        producer
+            .context()
+            .create_enum_attribute(Attribute::get_named_enum_kind_id("alwaysinline"), 1),
+    );
+}
+
+fn add_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_ADD_FN_NAME, producer);
     let add = create_add(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, add.into_int_value());
 }
 
-pub fn sub_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn sub_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_SUB_FN_NAME, producer);
     let add = create_sub(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, add.into_int_value());
 }
 
-pub fn mul_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn mul_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_MUL_FN_NAME, producer);
     let add = create_mul(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, add.into_int_value());
 }
 
 // Multiplication by the inverse
-pub fn div_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn div_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_DIV_FN_NAME, producer);
     let inv = create_inv(producer, rhs.into_int_value());
     let res = create_mul(producer, lhs.into_int_value(), inv.into_int_value());
@@ -116,20 +143,20 @@ pub fn div_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
 }
 
 // Quotient of the integer division
-pub fn intdiv_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn intdiv_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_INTDIV_FN_NAME, producer);
     let res = create_div(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
 // Remainder of the integer division
-pub fn mod_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn mod_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_MOD_FN_NAME, producer);
     let div = create_mod(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, div.into_int_value());
 }
 
-pub fn pow_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn pow_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_POW_FN_NAME, producer);
     let f = producer
         .llvm()
@@ -140,79 +167,79 @@ pub fn pow_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     create_return(producer, res.into_int_value());
 }
 
-pub fn eq_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn eq_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint_to_bool!(FR_EQ_FN_NAME, producer);
     let eq = create_eq(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, eq.into_int_value());
 }
 
-pub fn neq_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn neq_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint_to_bool!(FR_NEQ_FN_NAME, producer);
     let neq = create_neq(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, neq.into_int_value());
 }
 
-pub fn lt_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn lt_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint_to_bool!(FR_LT_FN_NAME, producer);
     let res = create_lt(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn gt_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn gt_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint_to_bool!(FR_GT_FN_NAME, producer);
     let res = create_gt(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn le_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn le_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint_to_bool!(FR_LE_FN_NAME, producer);
     let res = create_le(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn ge_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn ge_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint_to_bool!(FR_GE_FN_NAME, producer);
     let res = create_ge(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn neg_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn neg_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let arg = fr_unary_op!(FR_NEG_FN_NAME, producer, bigint_type(producer));
     let neg = create_neg(producer, arg.into_int_value());
     create_return(producer, neg.into_int_value());
 }
 
-pub fn shl_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn shl_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_SHL_FN_NAME, producer);
     let res = create_shl(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn shr_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn shr_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_SHR_FN_NAME, producer);
     let res = create_shr(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn bit_and_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn bit_and_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_BITAND_FN_NAME, producer);
     let res = create_bit_and(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn bit_or_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn bit_or_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_BITOR_FN_NAME, producer);
     let res = create_bit_or(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn bit_xor_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn bit_xor_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bigint!(FR_BITXOR_FN_NAME, producer);
     let res = create_bit_xor(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn bit_flip_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn bit_flip_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let ty = bigint_type(producer);
     let arg = fr_unary_op!(FR_BITFLIP_FN_NAME, producer, ty);
     // ~x <=> xor(x, 0xFF...)
@@ -220,26 +247,26 @@ pub fn bit_flip_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     create_return(producer, res.into_int_value());
 }
 
-pub fn logic_and_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn logic_and_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bool!(FR_LAND_FN_NAME, producer);
     let res = create_logic_and(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn logic_or_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn logic_or_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let (lhs, rhs) = fr_binary_op_bool!(FR_LOR_FN_NAME, producer);
     let res = create_logic_or(producer, lhs.into_int_value(), rhs.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn logic_not_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn logic_not_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let arg = fr_unary_op!(FR_LNOT_FN_NAME, producer, bool_type(producer));
     let res = create_logic_not(producer, arg.into_int_value());
     create_return(producer, res.into_int_value());
 }
 
-pub fn addr_cast_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
-    let arg = fr_unary_op_base!(
+fn addr_cast_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    let (arg, _) = fr_unary_op_base!(
         FR_ADDR_CAST_FN_NAME,
         producer,
         bigint_type(producer),
@@ -249,7 +276,7 @@ pub fn addr_cast_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     create_return(producer, res.into_int_value());
 }
 
-pub fn array_copy_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+fn array_copy_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let ptr_ty = bigint_type(producer).ptr_type(Default::default());
     let args = &[ptr_ty.into(), ptr_ty.into(), i32_type(producer).into()];
     let func = create_function(
@@ -266,9 +293,83 @@ pub fn array_copy_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
     let src = func.get_nth_param(0).unwrap();
     let dst = func.get_nth_param(1).unwrap();
     let len = func.get_nth_param(2).unwrap();
-    create_array_copy(producer, func, src.into_pointer_value(), dst.into_pointer_value(), len.into_int_value());
+    create_array_copy(
+        producer,
+        func,
+        src.into_pointer_value(),
+        dst.into_pointer_value(),
+        len.into_int_value(),
+    );
 
     create_return_void(producer);
+}
+
+fn index_arr_ptr_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    let bigint_ty = bigint_type(producer);
+    let ret_ty = bigint_ty.ptr_type(Default::default());
+    let val_ty = bigint_ty.array_type(0).ptr_type(Default::default());
+    let func = create_function(
+        producer,
+        &None,
+        0,
+        "",
+        FR_INDEX_ARR_PTR,
+        ret_ty.fn_type(&[val_ty.into(), bigint_ty.into()], false),
+    );
+    add_inline_attribute(producer, func);
+
+    let arr = func.get_nth_param(0).unwrap();
+    let idx = func.get_nth_param(1).unwrap();
+    arr.set_name("arr");
+    idx.set_name("idx");
+
+    let main = create_bb(producer, func, FR_INDEX_ARR_PTR);
+    producer.set_current_bb(main);
+    let gep =
+        create_gep(producer, arr.into_pointer_value(), &[zero(producer), idx.into_int_value()]);
+    create_return(producer, gep.into_pointer_value());
+}
+
+fn identity_arr_ptr_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    let ty = bigint_type(producer).array_type(0).ptr_type(Default::default());
+    let (res, func) = fr_unary_op_base!(FR_IDENTITY_ARR_PTR, producer, ty, ty);
+    add_inline_attribute(producer, func);
+    // Just return the parameter
+    create_return(producer, res);
+}
+
+fn ptr_cast_i32_i256_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    let ty_32 = i32_type(producer).ptr_type(Default::default());
+    let ty_256 = bigint_type(producer).ptr_type(Default::default());
+    let (res, func) = fr_unary_op_base!(FR_PTR_CAST_I32_I256, producer, ty_32, ty_256);
+    add_inline_attribute(producer, func);
+    // Cast the i32* to i256* and return
+    create_return(producer, pointer_cast(producer, res.into_pointer_value(), ty_256));
+}
+
+fn ptr_cast_i256_i32_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    let ty_32 = i32_type(producer).ptr_type(Default::default());
+    let ty_256 = bigint_type(producer).ptr_type(Default::default());
+    let (res, func) = fr_unary_op_base!(FR_PTR_CAST_I256_I32, producer, ty_256, ty_32);
+    add_inline_attribute(producer, func);
+    // Cast the i256* to i32* and return
+    create_return(producer, pointer_cast(producer, res.into_pointer_value(), ty_32));
+}
+
+fn null_i256_arr_ptr_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    let base_ty = bigint_type(producer).array_type(0).ptr_type(Default::default());
+    let func = fr_nullary_op!(FR_NULL_I256_ARR_PTR, producer, base_ty);
+    add_inline_attribute(producer, func);
+    // Just return null value for the proper pointer type
+    create_return(producer, base_ty.const_null());
+}
+
+fn null_i256_ptr_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    let base_ty = bigint_type(producer).ptr_type(Default::default());
+    let func = fr_nullary_op!(FR_NULL_I256_PTR, producer, base_ty);
+    add_inline_attribute(producer, func);
+    // Just return null value for the proper pointer type
+    create_return(producer, base_ty.const_null());
 }
 
 pub fn load_fr<'a>(producer: &dyn LLVMIRProducer<'a>) {
@@ -296,5 +397,11 @@ pub fn load_fr<'a>(producer: &dyn LLVMIRProducer<'a>) {
     logic_not_fn(producer);
     addr_cast_fn(producer);
     array_copy_fn(producer);
+    index_arr_ptr_fn(producer);
+    identity_arr_ptr_fn(producer);
+    ptr_cast_i32_i256_fn(producer);
+    ptr_cast_i256_i32_fn(producer);
+    null_i256_arr_ptr_fn(producer);
+    null_i256_ptr_fn(producer);
     pow_fn(producer); //uses functions generated by mul_fn & lt_fn
 }

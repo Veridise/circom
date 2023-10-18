@@ -1,25 +1,29 @@
 use std::cell::RefCell;
+use std::collections::{HashMap, BTreeMap};
 use compiler::circuit_design::function::{FunctionCode, FunctionCodeInfo};
 use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
+use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use crate::passes::{
-    conditional_flattening::ConditionalFlattening,
+    checks::assert_unique_ids_in_circuit, conditional_flattening::ConditionalFlatteningPass,
     deterministic_subcomponent_invocation::DeterministicSubCmpInvokePass,
     loop_unroll::LoopUnrollPass, mapped_to_indexed::MappedToIndexedPass,
     simplification::SimplificationPass, unknown_index_sanitization::UnknownIndexSanitizationPass,
 };
-use crate::passes::checks::assert_unique_ids_in_circuit;
+
+use self::loop_unroll::body_extractor::{UnrolledIterLvars, ToOriginalLocation};
 
 mod conditional_flattening;
-mod loop_unroll;
-mod memory;
 mod simplification;
 mod deterministic_subcomponent_invocation;
 mod mapped_to_indexed;
 mod unknown_index_sanitization;
 mod checks;
+pub mod loop_unroll;
+
+pub const LOOP_BODY_FN_PREFIX: &str = const_format::concatcp!(GENERATED_FN_PREFIX, "loop.body.");
 
 macro_rules! pre_hook {
     ($name: ident, $bucket_ty: ty) => {
@@ -34,13 +38,15 @@ pub trait CircuitTransformationPass {
         self.pre_hook_circuit(&circuit);
         let templates = circuit.templates.iter().map(|t| self.transform_template(t)).collect();
         let field_tracking = self.get_updated_field_constants();
-        Circuit {
+        let mut new_circuit = Circuit {
             wasm_producer: circuit.wasm_producer.clone(),
             c_producer: circuit.c_producer.clone(),
             llvm_data: circuit.llvm_data.clone_with_new_field_tracking(field_tracking),
             templates,
             functions: circuit.functions.iter().map(|f| self.transform_function(f)).collect(),
-        }
+        };
+        self.post_hook_circuit(&mut new_circuit);
+        new_circuit
     }
 
     fn get_updated_field_constants(&self) -> Vec<String>;
@@ -150,11 +156,13 @@ pub trait CircuitTransformationPass {
                 uniform_parallel_value,
                 is_output,
                 input_information,
+                counter_override,
             } => AddressType::SubcmpSignal {
                 cmp_address: self.transform_instruction(cmp_address),
                 uniform_parallel_value: uniform_parallel_value.clone(),
                 is_output: *is_output,
                 input_information: input_information.clone(),
+                counter_override: *counter_override,
             },
             x => x.clone(),
         }
@@ -360,6 +368,7 @@ pub trait CircuitTransformationPass {
             message_id: bucket.message_id,
             body: self.transform_instructions(&bucket.body),
             n_iters: bucket.n_iters,
+            label: bucket.label.clone(),
         }
         .allocate()
     }
@@ -367,6 +376,8 @@ pub trait CircuitTransformationPass {
     fn transform_nop_bucket(&self, _bucket: &NopBucket) -> InstructionPointer {
         NopBucket { id: new_id() }.allocate()
     }
+
+    fn post_hook_circuit(&self, _cir: &mut Circuit) {}
 
     pre_hook!(pre_hook_circuit, Circuit);
     pre_hook!(pre_hook_template, TemplateCode);
@@ -388,10 +399,31 @@ pub trait CircuitTransformationPass {
     pre_hook!(pre_hook_nop_bucket, NopBucket);
 }
 
-pub type Passes = RefCell<Vec<Box<dyn CircuitTransformationPass>>>;
+pub enum PassKind {
+    LoopUnroll,
+    Simplification,
+    ConditionalFlattening,
+    DeterministicSubCmpInvoke,
+    MappedToIndexed,
+    UnknownIndexSanitization,
+}
+
+pub struct GlobalPassData {
+    /// Created during loop unrolling, maps generated function name + UnrolledIterLvars
+    /// (from Env::get_vars_sort) to location reference in the original function. Used
+    /// by ExtractedFuncEnvData to access the original function's Env via the extracted
+    /// function's parameter references.
+    pub extract_func_orig_loc: HashMap<String, BTreeMap<UnrolledIterLvars, ToOriginalLocation>>,
+}
+
+impl GlobalPassData {
+    pub fn new() -> GlobalPassData {
+        GlobalPassData { extract_func_orig_loc: Default::default() }
+    }
+}
 
 pub struct PassManager {
-    passes: Passes,
+    passes: RefCell<Vec<PassKind>>,
 }
 
 impl PassManager {
@@ -399,39 +431,68 @@ impl PassManager {
         PassManager { passes: Default::default() }
     }
 
-    pub fn schedule_loop_unroll_pass(&self, prime: &String) -> &Self {
-        self.passes.borrow_mut().push(Box::new(LoopUnrollPass::new(prime)));
+    pub fn schedule_loop_unroll_pass(&self) -> &Self {
+        self.passes.borrow_mut().push(PassKind::LoopUnroll);
         self
     }
 
-    pub fn schedule_simplification_pass(&self, prime: &String) -> &Self {
-        self.passes.borrow_mut().push(Box::new(SimplificationPass::new(prime)));
+    pub fn schedule_simplification_pass(&self) -> &Self {
+        self.passes.borrow_mut().push(PassKind::Simplification);
         self
     }
 
-    pub fn schedule_conditional_flattening_pass(&self, prime: &String) -> &Self {
-        self.passes.borrow_mut().push(Box::new(ConditionalFlattening::new(prime)));
+    pub fn schedule_conditional_flattening_pass(&self) -> &Self {
+        self.passes.borrow_mut().push(PassKind::ConditionalFlattening);
         self
     }
 
-    pub fn schedule_deterministic_subcmp_invoke_pass(&self, prime: &String) -> &Self {
-        self.passes.borrow_mut().push(Box::new(DeterministicSubCmpInvokePass::new(prime)));
+    pub fn schedule_deterministic_subcmp_invoke_pass(&self) -> &Self {
+        self.passes.borrow_mut().push(PassKind::DeterministicSubCmpInvoke);
         self
     }
 
-    pub fn schedule_mapped_to_indexed_pass(&self, prime: &String) -> &Self {
-        self.passes.borrow_mut().push(Box::new(MappedToIndexedPass::new(prime)));
+    pub fn schedule_mapped_to_indexed_pass(&self) -> &Self {
+        self.passes.borrow_mut().push(PassKind::MappedToIndexed);
         self
     }
 
-    pub fn schedule_unknown_index_sanitization_pass(&self, prime: &String) -> &Self {
-        self.passes.borrow_mut().push(Box::new(UnknownIndexSanitizationPass::new(prime)));
+    pub fn schedule_unknown_index_sanitization_pass(&self) -> &Self {
+        self.passes.borrow_mut().push(PassKind::UnknownIndexSanitization);
         self
     }
 
-    pub fn transform_circuit(&self, circuit: Circuit) -> Circuit {
+    fn build_pass<'d>(
+        kind: PassKind,
+        prime: &String,
+        global_data: &'d RefCell<GlobalPassData>,
+    ) -> Box<dyn CircuitTransformationPass + 'd> {
+        match kind {
+            PassKind::LoopUnroll => Box::new(LoopUnrollPass::new(prime.clone(), global_data)),
+            PassKind::Simplification => {
+                Box::new(SimplificationPass::new(prime.clone(), global_data))
+            }
+            PassKind::ConditionalFlattening => {
+                Box::new(ConditionalFlatteningPass::new(prime.clone(), global_data))
+            }
+            PassKind::DeterministicSubCmpInvoke => {
+                Box::new(DeterministicSubCmpInvokePass::new(prime.clone(), global_data))
+            }
+            PassKind::MappedToIndexed => {
+                Box::new(MappedToIndexedPass::new(prime.clone(), global_data))
+            }
+            PassKind::UnknownIndexSanitization => {
+                Box::new(UnknownIndexSanitizationPass::new(prime.clone(), global_data))
+            }
+        }
+    }
+
+    pub fn transform_circuit(&self, circuit: Circuit, prime: &String) -> Circuit {
+        // NOTE: Used RefCell rather than a mutable reference because storing
+        //  the mutable reference in EnvRecorder was causing rustc errors.
+        let global_data = RefCell::new(GlobalPassData::new());
         let mut transformed_circuit = circuit;
-        for pass in self.passes.borrow().iter() {
+        for kind in self.passes.borrow_mut().drain(..) {
+            let pass = Self::build_pass(kind, prime, &global_data);
             if cfg!(debug_assertions) {
                 println!("Do {}...", pass.name());
             }

@@ -5,7 +5,7 @@ use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use code_producers::llvm_elements::functions::{create_bb};
+use code_producers::llvm_elements::functions::create_bb;
 use code_producers::llvm_elements::instructions::create_br;
 
 use code_producers::wasm_elements::*;
@@ -49,6 +49,8 @@ impl ToString for FunctionCodeInfo {
 
 impl WriteLLVMIR for FunctionCodeInfo {
     fn produce_llvm_ir<'ctx, 'prod>(&self, producer: &'prod dyn LLVMIRProducer<'ctx>) -> Option<LLVMInstruction<'ctx>> {
+        println!("Generating code for {}", self.header);
+        Self::manage_debug_loc_from_curr(producer, self);
         let function = producer.current_function();
         let main = create_bb(producer, function, self.header.as_str());
         producer.set_current_bb(main);

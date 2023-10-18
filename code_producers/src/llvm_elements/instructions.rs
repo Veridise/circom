@@ -5,7 +5,7 @@ use inkwell::values::{
     AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue,
     InstructionOpcode, InstructionValue, IntMathValue, IntValue, PhiValue, PointerValue,
 };
-use crate::llvm_elements::{LLVMIRProducer};
+use crate::llvm_elements::LLVMIRProducer;
 use crate::llvm_elements::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
 use crate::llvm_elements::functions::create_bb;
 use crate::llvm_elements::types::{bigint_type, i32_type};
@@ -538,21 +538,22 @@ pub fn ensure_int_type_match<'a>(
     val: IntValue<'a>,
     ty: IntType<'a>,
 ) -> IntValue<'a> {
-    if val.get_type() == ty {
+    let val_ty = val.get_type();
+    if val_ty == ty {
         // No conversion needed
         val
-    } else if val.get_type() == bool_type(producer) {
+    } else if val_ty == bool_type(producer) {
         // Zero extend
         producer.llvm().builder.build_int_z_extend(val, ty, "")
     } else if ty == bool_type(producer) {
         // Convert to bool
         ensure_bool(producer, val).into_int_value()
+    } else if val_ty.get_bit_width() < ty.get_bit_width() {
+        producer.llvm().builder.build_int_s_extend(val, ty, "")
     } else {
         panic!(
             "Unhandled int conversion of value '{:?}': {:?} to {:?} not supported!",
-            val,
-            val.get_type(),
-            ty
+            val, val_ty, ty
         )
     }
 }

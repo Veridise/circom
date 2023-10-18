@@ -1,7 +1,6 @@
 use inkwell::types::StringRadix;
 use inkwell::values::{AnyValue, AnyValueEnum, IntValue};
-
-use crate::llvm_elements::{LLVMIRProducer};
+use crate::llvm_elements::LLVMIRProducer;
 use crate::llvm_elements::types::bigint_type;
 
 pub fn create_literal_u32<'a>(producer: &dyn LLVMIRProducer<'a>, val: u64) -> IntValue<'a> {

@@ -5,26 +5,28 @@ use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
-use crate::passes::CircuitTransformationPass;
-use crate::passes::memory::PassMemory;
+use super::{CircuitTransformationPass, GlobalPassData};
 
-pub struct ConditionalFlattening {
+pub struct ConditionalFlatteningPass<'d> {
+    global_data: &'d RefCell<GlobalPassData>,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    memory: RefCell<PassMemory>,
+    memory: PassMemory,
     replacements: RefCell<BTreeMap<BranchBucket, bool>>,
 }
 
-impl ConditionalFlattening {
-    pub fn new(prime: &String) -> Self {
-        ConditionalFlattening {
-            memory: PassMemory::new_cell(prime, "".to_string(), Default::default()),
+impl<'d> ConditionalFlatteningPass<'d> {
+    pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
+        ConditionalFlatteningPass {
+            global_data,
+            memory: PassMemory::new(prime, "".to_string(), Default::default()),
             replacements: Default::default(),
         }
     }
 }
 
-impl InterpreterObserver for ConditionalFlattening {
+impl InterpreterObserver for ConditionalFlatteningPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -74,8 +76,7 @@ impl InterpreterObserver for ConditionalFlattening {
     }
 
     fn on_branch_bucket(&self, bucket: &BranchBucket, env: &Env) -> bool {
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
+        let interpreter = self.memory.build_interpreter(self.global_data, self);
         let (_, cond_result, _) = interpreter.execute_conditional_bucket(
             &bucket.cond,
             &bucket.if_branch,
@@ -106,22 +107,22 @@ impl InterpreterObserver for ConditionalFlattening {
     }
 }
 
-impl CircuitTransformationPass for ConditionalFlattening {
+impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
     fn name(&self) -> &str {
         "ConditionalFlattening"
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.borrow_mut().fill_from_circuit(circuit);
+        self.memory.fill_from_circuit(circuit);
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.borrow_mut().set_scope(template);
-        self.memory.borrow().run_template(self, template);
+        self.memory.set_scope(template);
+        self.memory.run_template(self.global_data, self, template);
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.borrow().constant_fields.clone()
+        self.memory.get_field_constants_clone()
     }
 
     fn transform_branch_bucket(&self, bucket: &BranchBucket) -> InstructionPointer {
@@ -134,18 +135,20 @@ impl CircuitTransformationPass for ConditionalFlattening {
                 message_id: bucket.message_id,
                 body: code.clone(),
                 n_iters: 1,
+                label: format!("fold_{}", side),
             };
-            return self.transform_block_bucket(&block);
+            self.transform_block_bucket(&block)
+        } else {
+            BranchBucket {
+                id: new_id(),
+                source_file_id: bucket.source_file_id,
+                line: bucket.line,
+                message_id: bucket.message_id,
+                cond: self.transform_instruction(&bucket.cond),
+                if_branch: self.transform_instructions(&bucket.if_branch),
+                else_branch: self.transform_instructions(&bucket.else_branch),
+            }
+            .allocate()
         }
-        BranchBucket {
-            id: new_id(),
-            source_file_id: bucket.source_file_id,
-            line: bucket.line,
-            message_id: bucket.message_id,
-            cond: self.transform_instruction(&bucket.cond),
-            if_branch: self.transform_instructions(&bucket.if_branch),
-            else_branch: self.transform_instructions(&bucket.else_branch),
-        }
-        .allocate()
     }
 }

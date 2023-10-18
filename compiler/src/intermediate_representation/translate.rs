@@ -1196,10 +1196,11 @@ impl ProcessedSymbol {
                 cmp_address: compute_full_address(state, self.symbol, self.before_signal, expr.get_meta()),
                 is_output: self.signal_type.unwrap() == SignalType::Output,
                 uniform_parallel_value: state.component_to_parallel.get(&self.name).unwrap().uniform_parallel_value,
-                input_information : match self.signal_type.unwrap() {
+                input_information: match self.signal_type.unwrap() {
                     SignalType::Input => InputInformation::Input { status: StatusInput:: Unknown},
                     _ => InputInformation::NoInput,
                 },
+                counter_override: false,
             };
             FinalData {
                 context: InstrContext { size: self.length },
@@ -1240,10 +1241,11 @@ impl ProcessedSymbol {
                 cmp_address: compute_full_address(state, self.symbol, self.before_signal, stmt.get_meta()),
                 uniform_parallel_value: state.component_to_parallel.get(&self.name).unwrap().uniform_parallel_value,
                 is_output: self.signal_type.unwrap() == SignalType::Output,
-                input_information : match self.signal_type.unwrap() {
+                input_information: match self.signal_type.unwrap() {
                     SignalType::Input => InputInformation::Input { status:StatusInput:: Unknown},
                     _ => InputInformation::NoInput,
                 },
+                counter_override: false,
             };
             StoreBucket {
                 id: new_id(),
@@ -1286,10 +1288,11 @@ impl ProcessedSymbol {
                 cmp_address: compute_full_address(state, self.symbol, self.before_signal, expr.get_meta()),
                 uniform_parallel_value: state.component_to_parallel.get(&self.name).unwrap().uniform_parallel_value,
                 is_output: self.signal_type.unwrap() == SignalType::Output,
-                input_information : match self.signal_type.unwrap() {
+                input_information: match self.signal_type.unwrap() {
                     SignalType::Input => InputInformation::Input { status: StatusInput:: Unknown},
                     _ => InputInformation::NoInput,
                 },
+                counter_override: false,
             };
             LoadBucket {
                 id: new_id(),

@@ -1,5 +1,10 @@
+mod loop_env_recorder;
+mod extracted_location_updater;
+pub mod body_extractor;
+
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::vec;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{
@@ -7,61 +12,107 @@ use compiler::intermediate_representation::{
 };
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::InterpreterObserver;
-use crate::passes::CircuitTransformationPass;
-use crate::passes::memory::PassMemory;
+use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
+use super::{CircuitTransformationPass, GlobalPassData};
+use self::body_extractor::LoopBodyExtractor;
 
-pub struct LoopUnrollPass {
+const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = true;
+
+pub fn new_u32_value(bucket: &dyn ObtainMeta, val: usize) -> InstructionPointer {
+    ValueBucket {
+        id: new_id(),
+        source_file_id: bucket.get_source_file_id().clone(),
+        line: bucket.get_line(),
+        message_id: bucket.get_message_id(),
+        parse_as: ValueType::U32,
+        op_aux_no: 0,
+        value: val,
+    }
+    .allocate()
+}
+
+pub struct LoopUnrollPass<'d> {
+    global_data: &'d RefCell<GlobalPassData>,
+    memory: PassMemory,
+    extractor: LoopBodyExtractor,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    memory: RefCell<PassMemory>,
     replacements: RefCell<BTreeMap<BucketId, InstructionPointer>>,
 }
 
-impl LoopUnrollPass {
-    pub fn new(prime: &String) -> Self {
+impl<'d> LoopUnrollPass<'d> {
+    pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         LoopUnrollPass {
-            memory: PassMemory::new_cell(prime, String::from(""), Default::default()),
+            global_data,
+            memory: PassMemory::new(prime, String::from(""), Default::default()),
             replacements: Default::default(),
+            extractor: Default::default(),
         }
     }
 
     fn try_unroll_loop(&self, bucket: &LoopBucket, env: &Env) -> (Option<InstructionList>, usize) {
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
-        let mut block_body = vec![];
-        let mut cond_result = Some(true);
-        let mut env = env.clone();
-        let mut iters = 0;
-        while cond_result.unwrap() {
-            let (_, new_cond, new_env) = interpreter.execute_loop_bucket_once(bucket, env, false);
-            if new_cond.is_none() {
-                return (None, 0); // If the conditional becomes Unknown just give up.
+        // Compute loop iteration count. If unknown, return immediately.
+        let recorder = EnvRecorder::new(self.global_data, &self.memory);
+        {
+            let interpreter = self.memory.build_interpreter(self.global_data, &recorder);
+            let mut inner_env = env.clone();
+            loop {
+                recorder.record_env_at_header(inner_env.clone());
+                let (_, cond, new_env) =
+                    interpreter.execute_loop_bucket_once(bucket, inner_env, true);
+                match cond {
+                    // If the conditional becomes unknown just give up.
+                    None => return (None, 0),
+                    // When conditional becomes `false`, iteration count is complete.
+                    Some(false) => break,
+                    // Otherwise, continue counting.
+                    Some(true) => recorder.increment_iter(),
+                };
+                inner_env = new_env;
             }
-            cond_result = new_cond;
-            env = new_env;
-            if let Some(true) = new_cond {
-                iters += 1;
-                for inst in &bucket.body {
-                    block_body.push(inst.clone());
+        }
+
+        let mut block_body = vec![];
+        if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() {
+            // If the loop body contains more than one instruction, extract it into a new
+            // function and generate 'recorder.get_iter()' number of calls to that function.
+            // Otherwise, just duplicate the body 'recorder.get_iter()' number of times.
+            match &bucket.body[..] {
+                [a] => {
+                    for _ in 0..recorder.get_iter() {
+                        let mut copy = a.clone();
+                        copy.update_id();
+                        block_body.push(copy);
+                    }
+                }
+                _ => {
+                    self.extractor.extract(bucket, &recorder, &mut block_body);
+                }
+            }
+        } else {
+            //If the loop body is not safe to move into a new function, just unroll.
+            for _ in 0..recorder.get_iter() {
+                for s in &bucket.body {
+                    let mut copy = s.clone();
+                    copy.update_id();
+                    block_body.push(copy);
                 }
             }
         }
-        for inst in &mut block_body {
-            inst.update_id();
-        }
-        (Some(block_body), iters)
+        (Some(block_body), recorder.get_iter())
     }
 
     // Will take the unrolled loop and interpretate it
     // checking if new loop buckets appear
     fn continue_inside(&self, bucket: &BlockBucket, env: &Env) {
-        let mem = self.memory.borrow();
-        let interpreter = mem.build_interpreter(self);
-        interpreter.execute_block_bucket(bucket, env.clone(), true);
+        let interpreter = self.memory.build_interpreter(self.global_data, self);
+        let env = Env::new_unroll_block_env(env.clone(), &self.extractor);
+        interpreter.execute_block_bucket(bucket, env, true);
     }
 }
 
-impl InterpreterObserver for LoopUnrollPass {
+impl InterpreterObserver for LoopUnrollPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -91,6 +142,7 @@ impl InterpreterObserver for LoopUnrollPass {
                 message_id: bucket.message_id,
                 body: block_body,
                 n_iters,
+                label: String::from("unrolled_loop"),
             };
             self.continue_inside(&block, env);
             self.replacements.borrow_mut().insert(bucket.id, block.allocate());
@@ -143,22 +195,38 @@ impl InterpreterObserver for LoopUnrollPass {
     }
 }
 
-impl CircuitTransformationPass for LoopUnrollPass {
+impl CircuitTransformationPass for LoopUnrollPass<'_> {
     fn name(&self) -> &str {
         "LoopUnrollPass"
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.borrow_mut().fill_from_circuit(circuit);
+        self.memory.fill_from_circuit(circuit);
+    }
+
+    fn post_hook_circuit(&self, cir: &mut Circuit) {
+        // Normalize return type on source functions for "WriteLLVMIR for Circuit"
+        //  which treats a 1-D vector of size 1 as a scalar return and an empty
+        //  vector as "void" return type (the initial Circuit builder uses empty
+        //  for scalar returns because it doesn't consider "void" return possible).
+        for f in &mut cir.functions {
+            if f.returns.is_empty() {
+                f.returns = vec![1];
+            }
+        }
+        // Transform and add the new body functions
+        for f in self.extractor.get_new_functions().iter() {
+            cir.functions.push(self.transform_function(&f));
+        }
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.borrow_mut().set_scope(template);
-        self.memory.borrow().run_template(self, template);
+        self.memory.set_scope(template);
+        self.memory.run_template(self.global_data, self, template);
     }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.borrow().constant_fields.clone()
+        self.memory.get_field_constants_clone()
     }
 
     fn transform_loop_bucket(&self, bucket: &LoopBucket) -> InstructionPointer {
@@ -179,6 +247,7 @@ impl CircuitTransformationPass for LoopUnrollPass {
 
 #[cfg(test)]
 mod test {
+    use std::cell::RefCell;
     use std::collections::HashMap;
     use compiler::circuit_design::template::TemplateCodeInfo;
     use compiler::compiler_interface::Circuit;
@@ -187,13 +256,14 @@ mod test {
         AddressType, Allocate, ComputeBucket, InstrContext, LoadBucket, LocationRule, LoopBucket,
         OperatorType, StoreBucket, ValueBucket, ValueType,
     };
-    use crate::passes::CircuitTransformationPass;
+    use crate::passes::{CircuitTransformationPass, LOOP_BODY_FN_PREFIX, GlobalPassData};
     use crate::passes::loop_unroll::LoopUnrollPass;
 
     #[test]
     fn test_loop_unrolling() {
         let prime = "goldilocks".to_string();
-        let pass = LoopUnrollPass::new(&prime);
+        let global_data = RefCell::new(GlobalPassData::new());
+        let pass = LoopUnrollPass::new(prime, &global_data);
         let mut circuit = example_program();
         circuit.llvm_data.variable_index_mapping.insert("test_0".to_string(), HashMap::new());
         circuit.llvm_data.signal_index_mapping.insert("test_0".to_string(), HashMap::new());
@@ -204,7 +274,15 @@ mod test {
         }
         assert_ne!(circuit, new_circuit);
         match new_circuit.templates[0].body.last().unwrap().as_ref() {
-            Instruction::Block(b) => assert_eq!(b.body.len(), 10), // 5 iterations unrolled times 2 statements in the loop body
+            Instruction::Block(b) => {
+                // 5 iterations unrolled into 5 call statements targeting extracted loop body functions
+                assert_eq!(b.body.len(), 5);
+                assert!(b.body.iter().all(|s| if let Instruction::Call(c) = s.as_ref() {
+                    c.symbol.starts_with(LOOP_BODY_FN_PREFIX)
+                } else {
+                    false
+                }));
+            }
             _ => assert!(false),
         }
     }

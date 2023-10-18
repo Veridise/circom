@@ -1,20 +1,16 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use compiler::intermediate_representation::ir_interface::{ValueBucket, ValueType};
 use compiler::num_bigint::BigInt;
 use compiler::num_traits::ToPrimitive;
 use compiler::intermediate_representation::new_id;
 use circom_algebra::modular_arithmetic;
-use circom_algebra::modular_arithmetic::ArithmeticError;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
-
-pub trait JoinSemiLattice {
-    fn join(&self, other: &Self) -> Self;
-}
 
 /// Poor man's lattice that gives up the moment values are not equal
 /// It's a join semi lattice with a top (Unknown)
 /// Not a complete lattice because there is no bottom
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Value {
     Unknown,
     KnownU32(usize),
@@ -26,19 +22,17 @@ impl Display for Value {
         match self {
             Unknown => write!(f, "Unknown"),
             KnownU32(n) => write!(f, "{}", n),
-            KnownBigInt(n) => write!(f, "BigInt({})", n),
+            KnownBigInt(n) => write!(f, "{}", n),
         }
     }
 }
 
-impl JoinSemiLattice for Value {
-    /// a ⊔ b = a    iff a = b
-    /// a ⊔ b = UNK  otherwise
-    fn join(&self, other: &Self) -> Self {
-        if self == other {
-            self.clone()
-        } else {
-            Unknown
+impl Debug for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Unknown => write!(f, "Unknown"),
+            KnownU32(n) => write!(f, "{}", n),
+            KnownBigInt(n) => write!(f, "BigInt({})", n),
         }
     }
 }
@@ -54,7 +48,7 @@ impl Value {
     pub fn get_bigint_as_string(&self) -> String {
         match self {
             KnownBigInt(b) => b.to_string(),
-            _ => panic!("Can't extract a string representation of a non big int"),
+            _ => panic!("Value is not a KnownBigInt! {:?}", self),
         }
     }
 
@@ -84,7 +78,7 @@ impl Value {
         }
     }
 
-    pub fn to_value_bucket(&self, constant_fields: &mut Vec<String>) -> ValueBucket {
+    pub fn to_value_bucket(&self, mem: &PassMemory) -> ValueBucket {
         match self {
             Unknown => panic!("Can't create a value bucket from an unknown value!"),
             KnownU32(n) => ValueBucket {
@@ -96,20 +90,15 @@ impl Value {
                 op_aux_no: 0,
                 value: *n,
             },
-            KnownBigInt(n) => {
-                let str_repr = n.to_string();
-                let idx = constant_fields.len();
-                constant_fields.push(str_repr);
-                ValueBucket {
-                    id: new_id(),
-                    source_file_id: None,
-                    line: 0,
-                    message_id: 0,
-                    parse_as: ValueType::BigInt,
-                    op_aux_no: 0,
-                    value: idx,
-                }
-            }
+            KnownBigInt(n) => ValueBucket {
+                id: new_id(),
+                source_file_id: None,
+                line: 0,
+                message_id: 0,
+                parse_as: ValueType::BigInt,
+                op_aux_no: 0,
+                value: mem.add_field_constant(n.to_string()),
+            },
         }
     }
 }
@@ -142,7 +131,7 @@ fn wrap_op_result(
     rhs: &Value,
     field: &BigInt,
     u32_op: impl Fn(&usize, &usize) -> usize,
-    bigint_op: impl Fn(&BigInt, &BigInt, &BigInt) -> Result<BigInt, ArithmeticError>,
+    bigint_op: impl Fn(&BigInt, &BigInt, &BigInt) -> Result<BigInt, modular_arithmetic::ArithmeticError>,
 ) -> Value {
     match (lhs, rhs) {
         (Unknown, _) => Unknown,
