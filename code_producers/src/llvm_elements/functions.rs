@@ -219,6 +219,16 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
         }
     }
 
+    fn get_subcmp_signal(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+        subcmp_id: AnyValueEnum<'a>,
+        index: IntValue<'a>,
+    ) -> AnyValueEnum<'a> {
+        assert_eq!(zero(producer), index);
+        create_gep(producer, self.load_subcmp_addr(producer, subcmp_id), &[index])
+    }
+
     fn get_signal(
         &self,
         producer: &dyn LLVMIRProducer<'a>,

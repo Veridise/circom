@@ -115,13 +115,7 @@ impl WriteLLVMIR for LoadBucket {
                         if *counter_override {
                             producer.template_ctx().load_subcmp_counter(producer, addr, false).expect("could not find counter!")
                         } else {
-                            let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                            if subcmp.get_type().get_element_type().is_array_type() {
-                                create_gep(producer, subcmp, &[zero(producer), index]).into_pointer_value()
-                            } else {
-                                assert_eq!(zero(producer), index);
-                                create_gep(producer, subcmp, &[index]).into_pointer_value()
-                            }
+                            producer.template_ctx().get_subcmp_signal(producer, addr, index).into_pointer_value()
                         }
                     }
                 };

@@ -143,13 +143,7 @@ impl StoreBucket {
                         let addr = cmp_address
                             .produce_llvm_ir(producer)
                             .expect("The address of a subcomponent must yield a value!");
-                        let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        if subcmp.get_type().get_element_type().is_array_type() {
-                            create_gep(producer, subcmp, &[zero(producer), dest_index])
-                        } else {
-                            assert_eq!(zero(producer), dest_index);
-                            create_gep(producer, subcmp, &[dest_index])
-                        }
+                        producer.template_ctx().get_subcmp_signal(producer, addr, dest_index)
                     }
                 }
                 .into_pointer_value();
