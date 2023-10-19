@@ -224,7 +224,12 @@ impl InterpreterObserver for EnvRecorder<'_, '_> {
             todo!(); //not sure if/how to handle that
         }
         self.visit(&bucket.id, &bucket.address_type, &bucket.src, env);
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+        // For a LoadBucket, there is no need to continue observing inside it and doing
+        //  so can actually cause "assert!(bucket_to_args.is_empty())" to fail. See
+        //  test "loops/fixed_idx_in_fixed_idx.circom" for an example and explanation.
+        //  This is not applicable to other buckets because they have additional content
+        //  inside of them that must be observed.
+        false
     }
 
     fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> bool {
