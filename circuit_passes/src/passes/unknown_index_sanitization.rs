@@ -253,7 +253,7 @@ impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
         false
     }
 
-    fn ignore_loopbody_function_calls(&self) -> bool {
+    fn ignore_extracted_function_calls(&self) -> bool {
         true
     }
 }

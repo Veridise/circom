@@ -116,7 +116,7 @@ impl InterpreterObserver for SimplificationPass<'_> {
         true
     }
 
-    fn ignore_loopbody_function_calls(&self) -> bool {
+    fn ignore_extracted_function_calls(&self) -> bool {
         true
     }
 }

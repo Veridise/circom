@@ -303,7 +303,7 @@ impl InterpreterObserver for EnvRecorder<'_, '_> {
         true
     }
 
-    fn ignore_loopbody_function_calls(&self) -> bool {
+    fn ignore_extracted_function_calls(&self) -> bool {
         true
     }
 }

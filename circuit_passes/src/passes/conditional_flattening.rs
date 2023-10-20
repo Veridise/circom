@@ -158,7 +158,7 @@ impl InterpreterObserver for ConditionalFlatteningPass<'_> {
         true
     }
 
-    fn ignore_loopbody_function_calls(&self) -> bool {
+    fn ignore_extracted_function_calls(&self) -> bool {
         false
     }
 }
