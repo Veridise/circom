@@ -8,7 +8,7 @@ use compiler::intermediate_representation::ir_interface::*;
 use indexmap::{IndexMap, IndexSet};
 use crate::bucket_interpreter::env::{Env, LibraryAccess};
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use super::{CircuitTransformationPass, GlobalPassData};
 
 type BranchValues = BTreeMap<BucketId, Option<bool>>;
@@ -59,7 +59,7 @@ impl<'d> ConditionalFlatteningPass<'d> {
     }
 }
 
-impl InterpreterObserver for ConditionalFlatteningPass<'_> {
+impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }

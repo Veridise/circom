@@ -6,7 +6,7 @@ use compiler::intermediate_representation::{ir_interface::*, BucketId};
 use compiler::intermediate_representation::{InstructionPointer, UpdateId};
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::Value::KnownU32;
 use super::{CircuitTransformationPass, GlobalPassData};
@@ -94,7 +94,7 @@ impl<'d> MappedToIndexedPass<'d> {
     }
 }
 
-impl InterpreterObserver for MappedToIndexedPass<'_> {
+impl Observer<Env<'_>> for MappedToIndexedPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }

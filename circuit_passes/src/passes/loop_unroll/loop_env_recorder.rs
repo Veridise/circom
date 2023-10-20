@@ -6,7 +6,7 @@ use compiler::intermediate_representation::BucketId;
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::GlobalPassData;
 use super::DEBUG_LOOP_UNROLL;
@@ -218,7 +218,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
     }
 }
 
-impl InterpreterObserver for EnvRecorder<'_, '_> {
+impl Observer<Env<'_>> for EnvRecorder<'_, '_> {
     fn on_load_bucket(&self, bucket: &LoadBucket, env: &Env) -> bool {
         if let Some(_) = bucket.bounded_fn {
             todo!(); //not sure if/how to handle that

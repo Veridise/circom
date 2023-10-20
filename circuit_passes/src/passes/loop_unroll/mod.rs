@@ -14,7 +14,7 @@ use compiler::intermediate_representation::{
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 use super::{CircuitTransformationPass, GlobalPassData};
 use self::body_extractor::LoopBodyExtractor;
@@ -122,7 +122,7 @@ impl<'d> LoopUnrollPass<'d> {
     }
 }
 
-impl InterpreterObserver for LoopUnrollPass<'_> {
+impl Observer<Env<'_>> for LoopUnrollPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }

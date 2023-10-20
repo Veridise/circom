@@ -10,7 +10,7 @@ use code_producers::llvm_elements::array_switch::{get_array_load_name, get_array
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::operations::compute_operation;
 use crate::bucket_interpreter::R;
 use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
@@ -170,7 +170,7 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
  * - loads with a function call that returns the loaded value
  * - stores with a function call that performs the store
  */
-impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
+impl Observer<Env<'_>> for UnknownIndexSanitizationPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }

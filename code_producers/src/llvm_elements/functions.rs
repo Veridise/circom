@@ -167,7 +167,7 @@ impl<'a> ExtractedFunctionCtx<'a> {
             .into_int_value()
             .get_zero_extended_constant()
             .expect("must reference a constant argument index");
-        *self.args.get(num as usize).expect("must reference a known argument index")
+        *self.args.get(num as usize).expect("must reference a valid argument index")
     }
 }
 

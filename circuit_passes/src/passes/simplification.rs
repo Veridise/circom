@@ -6,7 +6,7 @@ use compiler::intermediate_representation::{InstructionPointer, new_id, BucketId
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
 use super::{CircuitTransformationPass, GlobalPassData};
 
@@ -29,7 +29,7 @@ impl<'d> SimplificationPass<'d> {
     }
 }
 
-impl InterpreterObserver for SimplificationPass<'_> {
+impl Observer<Env<'_>> for SimplificationPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }

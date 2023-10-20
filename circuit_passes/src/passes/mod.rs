@@ -14,6 +14,7 @@ use crate::passes::{
     deterministic_subcomponent_invocation::DeterministicSubCmpInvokePass,
     loop_unroll::LoopUnrollPass, mapped_to_indexed::MappedToIndexedPass,
     simplification::SimplificationPass, unknown_index_sanitization::UnknownIndexSanitizationPass,
+    unused_func_removal::UnusedFuncRemovalPass,
 };
 
 use self::loop_unroll::body_extractor::{UnrolledIterLvars, ToOriginalLocation, FuncArgIdx};
@@ -22,6 +23,7 @@ mod const_arg_deduplication;
 mod conditional_flattening;
 mod simplification;
 mod deterministic_subcomponent_invocation;
+mod unused_func_removal;
 mod mapped_to_indexed;
 mod unknown_index_sanitization;
 mod checks;
@@ -425,6 +427,7 @@ pub enum PassKind {
     LoopUnroll,
     Simplification,
     ConditionalFlattening,
+    UnusedFunctionRemoval,
     DeterministicSubCmpInvoke,
     MappedToIndexed,
     UnknownIndexSanitization,
@@ -496,6 +499,11 @@ impl PassManager {
         self
     }
 
+    pub fn schedule_unused_function_removal_pass(&self) -> &Self {
+        self.passes.borrow_mut().push(PassKind::UnusedFunctionRemoval);
+        self
+    }
+
     pub fn schedule_mapped_to_indexed_pass(&self) -> &Self {
         self.passes.borrow_mut().push(PassKind::MappedToIndexed);
         self
@@ -524,6 +532,9 @@ impl PassManager {
             }
             PassKind::DeterministicSubCmpInvoke => {
                 Box::new(DeterministicSubCmpInvokePass::new(prime.clone(), global_data))
+            }
+            PassKind::UnusedFunctionRemoval => {
+                Box::new(UnusedFuncRemovalPass::new(prime.clone(), global_data))
             }
             PassKind::MappedToIndexed => {
                 Box::new(MappedToIndexedPass::new(prime.clone(), global_data))
