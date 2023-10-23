@@ -1,6 +1,7 @@
 pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// XFAIL:.*     // TEMPORARY: because EXTRACT_LOOP_BODY_TO_NEW_FUNC == false
 
 // This case initially triggered the "assert!(bucket_to_args.is_empty());" line in body_extractor.rs
 //  because the entire expression 'in[byte_order[i]]'' is replaced but the 'byte_order[i]' expression
