@@ -4,13 +4,20 @@ pragma circom 2.0.0;
 
 template UnknownIndexLoadStore() {
     signal input in;
-    signal output out[10];
+    signal output out[8];
 
-    var arr1[10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    var arr1[9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
     var arr2[10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-    var arr3[10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    var arr3[11] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
     out[in] <-- arr2[in];
 }
 
 component main = UnknownIndexLoadStore();
+
+// CHECK: define void @__array_store__0_to_8([0 x i256]* %0, i32 %1, i256 %2)
+// CHECK: define i256 @__array_load__9_to_19([0 x i256]* %0, i32 %1)
+// CHECK-NOT: @__array_load__0_to_8
+// CHECK-NOT: @__array_store__9_to_19
+// CHECK-NOT: @__array_load__20_to_31
+// CHECK-NOT: @__array_store__20_to_31
