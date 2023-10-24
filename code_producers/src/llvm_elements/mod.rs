@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::ops::Range;
 use std::rc::Rc;
@@ -100,16 +100,20 @@ pub struct LLVMCircuitData {
     pub signal_index_mapping: HashMap<String, IndexMapping>,
     pub variable_index_mapping: HashMap<String, IndexMapping>,
     pub component_index_mapping: HashMap<String, IndexMapping>,
+    pub bounded_array_loads: HashSet<Range<usize>>,
+    pub bounded_array_stores: HashSet<Range<usize>>,
 }
 
 impl LLVMCircuitData {
-    pub fn clone_with_new_field_tracking(&self, field_tracking: Vec<String>) -> Self {
+    pub fn clone_with_updates(&self, field_tracking: Vec<String>, array_loads: HashSet<Range<usize>>, array_stores: HashSet<Range<usize>>) -> Self {
         LLVMCircuitData {
             field_tracking,
             io_map: self.io_map.clone(),
             signal_index_mapping: self.signal_index_mapping.clone(),
             variable_index_mapping: self.variable_index_mapping.clone(),
             component_index_mapping: self.component_index_mapping.clone(),
+            bounded_array_loads: array_loads,
+            bounded_array_stores: array_stores,
         }
     }
 }
