@@ -26,7 +26,7 @@ template Caller(n) {
 
 component main = Caller(5);
 
-//CHECK-LABEL: define void @Caller_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @Caller_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %0)
 //CHECK: store{{[0-9]+}}: ; preds = %create_cmp{{[0-9]+}}
 //CHECK: %[[SUBCMP_PTR:[0-9]+]] = getelementptr [1 x { [0 x i256]*, i32 }], [1 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0

@@ -17,7 +17,7 @@ component main = VariantIndex(2);
 // %lvars =  [ n, i ]
 // %subcmps = []
 //
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
 //CHECK:      store{{[0-9]+}}:
 //CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 2
@@ -41,7 +41,7 @@ component main = VariantIndex(2);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @VariantIndex_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @VariantIndex_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK:      unrolled_loop{{[0-9]+}}:
 //CHECK-NEXT:   %3 = bitcast [2 x i256]* %lvars to [0 x i256]*

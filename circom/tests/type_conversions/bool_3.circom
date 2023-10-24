@@ -15,7 +15,7 @@ template A(x) {
 
 component main = A(99);
 
-//CHECK-LABEL: define void @A_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @A_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %0)
 //CHECK: branch{{[0-9]+}}:
 //CHECK: %[[VAL_PTR:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 1

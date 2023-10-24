@@ -37,7 +37,7 @@ component main = EscalarMulFix();
 
 //CHECK-NOT: ..generated..loop.body.
 //
-//CHECK-LABEL: define void @EscalarMulFix_2_run([0 x i256]* %0)
+//CHECK-LABEL: define{{.*}} void @EscalarMulFix_2_run([0 x i256]* %0)
 //CHECK: store i256 999
 //CHECK: store i256 999
 //CHECK: store i256 999

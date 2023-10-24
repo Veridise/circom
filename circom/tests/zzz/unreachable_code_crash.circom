@@ -34,10 +34,10 @@ component main = InvalidArgIndex(3, 2);
 //// Check that only the proper versions of the generated functions remain
 //// (i.e. the initial one was removed after conditional flattening).
 //
-//CHECK-NOT: define void @..generated..loop.body.{{[0-9]+}}(
-//CHECK:     define void @..generated..loop.body.[[NAME_1:[0-9]+]].F(
-//CHECK-NOT: define void @..generated..loop.body.{{[0-9]+}}(
-//CHECK:     define void @..generated..loop.body.[[NAME_1]].T(
-//CHECK-NOT: define void @..generated..loop.body.{{[0-9]+}}(
-//CHECK:     define void @..generated..loop.body.[[NAME_2:[0-9]+]].F.T(
-//CHECK-NOT: define void @..generated..loop.body.{{[0-9]+}}(
+//CHECK-NOT: define{{.*}} void @..generated..loop.body.{{[0-9]+}}(
+//CHECK:     define{{.*}} void @..generated..loop.body.[[NAME_1:[0-9]+]].F(
+//CHECK-NOT: define{{.*}} void @..generated..loop.body.{{[0-9]+}}(
+//CHECK:     define{{.*}} void @..generated..loop.body.[[NAME_1]].T(
+//CHECK-NOT: define{{.*}} void @..generated..loop.body.{{[0-9]+}}(
+//CHECK:     define{{.*}} void @..generated..loop.body.[[NAME_2:[0-9]+]].F.T(
+//CHECK-NOT: define{{.*}} void @..generated..loop.body.{{[0-9]+}}(

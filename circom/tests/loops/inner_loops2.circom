@@ -34,7 +34,7 @@ template InnerLoops(n) {
 
 component main = InnerLoops(5);
 
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
@@ -55,7 +55,7 @@ component main = InnerLoops(5);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 // 
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
@@ -79,7 +79,7 @@ component main = InnerLoops(5);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 // 
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_3:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_3]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
@@ -103,7 +103,7 @@ component main = InnerLoops(5);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_4:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_4]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
@@ -127,7 +127,7 @@ component main = InnerLoops(5);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_5:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_5]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
@@ -151,7 +151,7 @@ component main = InnerLoops(5);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @InnerLoops_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @InnerLoops_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK:      unrolled_loop{{[0-9]+}}:
 //CHECK-NEXT:   %9 = bitcast [8 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %9, [0 x i256]* %0)

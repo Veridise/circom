@@ -14,7 +14,7 @@ template Conditional() {
 
 component main = Conditional();
 
-//CHECK-LABEL: define void @Conditional_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @Conditional_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %0)
 //CHECK: %[[INP_PTR:.*]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK: %[[INP:.*]] = load i256, i256* %2
