@@ -168,6 +168,10 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
         "ConditionalFlattening"
     }
 
+    fn get_updated_field_constants(&self) -> Vec<String> {
+        self.memory.get_field_constants_clone()
+    }
+
     fn pre_hook_circuit(&self, circuit: &Circuit) {
         self.memory.fill_from_circuit(circuit);
     }
@@ -184,10 +188,6 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
     fn pre_hook_template(&self, template: &TemplateCode) {
         self.memory.set_scope(template);
         self.memory.run_template(self.global_data, self, template);
-    }
-
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.get_field_constants_clone()
     }
 
     fn transform_call_bucket(&self, bucket: &CallBucket) -> InstructionPointer {

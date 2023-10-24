@@ -214,6 +214,10 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
         "LoopUnrollPass"
     }
 
+    fn get_updated_field_constants(&self) -> Vec<String> {
+        self.memory.get_field_constants_clone()
+    }
+
     fn pre_hook_circuit(&self, circuit: &Circuit) {
         self.memory.fill_from_circuit(circuit);
     }
@@ -228,10 +232,6 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
     fn pre_hook_template(&self, template: &TemplateCode) {
         self.memory.set_scope(template);
         self.memory.run_template(self.global_data, self, template);
-    }
-
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.get_field_constants_clone()
     }
 
     fn transform_loop_bucket(&self, bucket: &LoopBucket) -> InstructionPointer {

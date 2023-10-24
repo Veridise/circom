@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{ops::Range, collections::HashSet};
 use inkwell::types::PointerType;
 use crate::llvm_elements::LLVMIRProducer;
 use super::types::bigint_type;
@@ -129,15 +129,22 @@ pub fn array_ptr_ty<'a>(producer: &dyn LLVMIRProducer<'a>) -> PointerType<'a> {
     bigint_ty.array_type(0).ptr_type(Default::default())
 }
 
-pub fn load_array_switch<'a>(producer: &dyn LLVMIRProducer<'a>, index_range: &Range<usize>) {
-    array_switch::create_array_load_fn(producer, index_range);
-    array_switch::create_array_store_fn(producer, index_range);
+pub fn load_array_load_fns<'a>(producer: &dyn LLVMIRProducer<'a>, scheduled_array_loads: &HashSet<Range<usize>>) {
+    for range in scheduled_array_loads {
+        array_switch::create_array_load_fn(producer, range);
+    }
 }
 
-pub fn get_array_load_symbol(index_range: &Range<usize>) -> String {
+pub fn load_array_stores_fns<'a>(producer: &dyn LLVMIRProducer<'a>, scheduled_array_stores: &HashSet<Range<usize>>) {
+    for range in scheduled_array_stores {
+        array_switch::create_array_store_fn(producer, range);
+    }
+}
+
+pub fn get_array_load_name(index_range: &Range<usize>) -> String {
     array_switch::get_load_symbol(index_range)
 }
 
-pub fn get_array_store_symbol(index_range: &Range<usize>) -> String {
+pub fn get_array_store_name(index_range: &Range<usize>) -> String {
     array_switch::get_store_symbol(index_range)
 }
