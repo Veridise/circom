@@ -19,7 +19,7 @@ use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 use super::{CircuitTransformationPass, GlobalPassData};
 use self::body_extractor::LoopBodyExtractor;
 
-const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = false;
+const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = true;
 
 const DEBUG_LOOP_UNROLL: bool = false;
 
@@ -262,7 +262,7 @@ mod test {
         OperatorType, StoreBucket, ValueBucket, ValueType,
     };
     use crate::passes::{CircuitTransformationPass, GlobalPassData};
-    use crate::passes::loop_unroll::LoopUnrollPass;
+    use crate::passes::loop_unroll::{LoopUnrollPass, LOOP_BODY_FN_PREFIX};
 
     #[test]
     fn test_loop_unrolling() {
@@ -280,14 +280,13 @@ mod test {
         assert_ne!(circuit, new_circuit);
         match new_circuit.templates[0].body.last().unwrap().as_ref() {
             Instruction::Block(b) => {
-                // // 5 iterations unrolled into 5 call statements targeting extracted loop body functions
-                // assert_eq!(b.body.len(), 5);
-                // assert!(b.body.iter().all(|s| if let Instruction::Call(c) = s.as_ref() {
-                //     c.symbol.starts_with(LOOP_BODY_FN_PREFIX)
-                // } else {
-                //     false
-                // }));
-                assert_eq!(b.body.len(), 10);
+                // 5 iterations unrolled into 5 call statements targeting extracted loop body functions
+                assert_eq!(b.body.len(), 5);
+                assert!(b.body.iter().all(|s| if let Instruction::Call(c) = s.as_ref() {
+                    c.symbol.starts_with(LOOP_BODY_FN_PREFIX)
+                } else {
+                    false
+                }));
             }
             _ => assert!(false),
         }
