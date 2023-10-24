@@ -8,26 +8,26 @@ template SegmentMulFix(nWindows) {
 }
 
 template EscalarMulFix() {
-	//Needs at least 2 subcomp to trigger the crash
+    //Needs at least 2 subcomp to trigger the crash
     component segments[2];
     for (var s = 0; s < 2; s++) {
 
-		// s = 0, nseg = 9, nWindows = 9
-		// s = 1, nseg = 4, nWindows = 6
+        // s = 0, nseg = 9, nWindows = 9
+        // s = 1, nseg = 4, nWindows = 6
         var nseg = (s == 0) ? 9 : 4;
         var nWindows = (s == 0) ? 9 : 6;
 
         segments[s] = SegmentMulFix(nWindows);
 
-		// Needs this split loop to trigger the crash
+        // Needs this split loop to trigger the crash
         for (var i = 0; i < nseg; i++) {
-			//Runs 9 times for s=0
-			//Runs 4 times for s=1
+            //Runs 9 times for s=0
+            //Runs 4 times for s=1
             segments[s].e[i] <-- 999;
         }
         for (var i = nseg; i < nWindows; i++) {
-			//Runs 0 times for s=0		//this is the case where the extracted body is generated but shouldn't be!
-			//Runs 2 times for s=1
+            //Runs 0 times for s=0      //this is the case where the extracted body is generated but shouldn't be!
+            //Runs 2 times for s=1
             segments[s].e[i] <-- 888;
         }
     }
