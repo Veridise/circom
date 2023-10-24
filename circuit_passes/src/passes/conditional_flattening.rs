@@ -112,6 +112,10 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
         "ConditionalFlattening"
     }
 
+    fn get_updated_field_constants(&self) -> Vec<String> {
+        self.memory.get_field_constants_clone()
+    }
+
     fn pre_hook_circuit(&self, circuit: &Circuit) {
         self.memory.fill_from_circuit(circuit);
     }

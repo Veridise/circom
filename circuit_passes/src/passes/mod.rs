@@ -38,7 +38,7 @@ pub trait CircuitTransformationPass {
     fn transform_circuit(&self, circuit: &Circuit) -> Circuit {
         self.pre_hook_circuit(&circuit);
         let templates = circuit.templates.iter().map(|t| self.transform_template(t)).collect();
-        let field_tracking = self.get_updated_field_constants(&circuit.llvm_data.field_tracking);
+        let field_tracking = self.get_updated_field_constants();
         let bounded_loads = self.get_updated_bounded_array_loads(&circuit.llvm_data.bounded_array_loads);
         let bounded_stores = self.get_updated_bounded_array_stores(&circuit.llvm_data.bounded_array_stores);
         let mut new_circuit = Circuit {
@@ -52,9 +52,7 @@ pub trait CircuitTransformationPass {
         new_circuit
     }
 
-    fn get_updated_field_constants(&self, old_field_constants: &Vec<String>) -> Vec<String> {
-        old_field_constants.clone()
-    }
+    fn get_updated_field_constants(&self) -> Vec<String>;
 
     fn get_updated_bounded_array_loads(&self, old_array_loads: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
         old_array_loads.clone()

@@ -141,10 +141,10 @@ pub fn load_array_stores_fns<'a>(producer: &dyn LLVMIRProducer<'a>, scheduled_ar
     }
 }
 
-pub fn get_array_load_name<'a>(index_range: &Range<usize>) -> String {
+pub fn get_array_load_name(index_range: &Range<usize>) -> String {
     array_switch::get_load_symbol(index_range)
 }
 
-pub fn get_array_store_name<'a>(index_range: &Range<usize>) -> String {
+pub fn get_array_store_name(index_range: &Range<usize>) -> String {
     array_switch::get_store_symbol(index_range)
 }

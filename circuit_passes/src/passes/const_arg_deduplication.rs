@@ -124,7 +124,7 @@ impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
         "ConstArgDeduplicationPass"
     }
 
-    fn get_updated_field_constants(&self, _old_field_elements: &Vec<String>) -> Vec<String> {
+    fn get_updated_field_constants(&self) -> Vec<String> {
         self.memory.get_field_constants_clone()
     }
 
