@@ -145,6 +145,9 @@ impl WriteLLVMIR for Circuit {
 
         // Code for the templates
         for t in &self.templates {
+            if cfg!(debug_assertions) {
+                println!("Generating code for {}", t.header);
+            }
             t.produce_llvm_ir(producer);
         }
 
