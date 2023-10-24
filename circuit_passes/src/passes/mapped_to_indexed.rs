@@ -171,10 +171,6 @@ impl CircuitTransformationPass for MappedToIndexedPass<'_> {
         "MappedToIndexedPass"
     }
 
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.get_field_constants_clone()
-    }
-
     /*
         iangneal: Let the interpreter run to see if we can find any replacements.
         If so, yield the replacement. Else, just give the default transformation

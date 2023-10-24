@@ -139,10 +139,6 @@ impl CircuitTransformationPass for DeterministicSubCmpInvokePass<'_> {
         self.memory.run_template(self.global_data, self, template);
     }
 
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.get_field_constants_clone()
-    }
-
     fn transform_address_type(&self, address: &AddressType) -> AddressType {
         let replacements = self.replacements.borrow();
         match address {

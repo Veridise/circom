@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::Write;
 use super::function::{FunctionCode, FunctionCodeInfo};
 use super::template::{TemplateCode, TemplateCodeInfo};
@@ -7,8 +7,9 @@ use crate::hir::very_concrete_program::VCP;
 use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
+use code_producers::llvm_elements::array_switch::{load_array_stores_fns, load_array_load_fns};
+use code_producers::wasm_elements::*;
 use code_producers::llvm_elements::*;
-use code_producers::llvm_elements::array_switch::load_array_switch;
 use code_producers::llvm_elements::fr::load_fr;
 use code_producers::llvm_elements::functions::{
     create_function, FunctionLLVMIRProducer, ExtractedFunctionLLVMIRProducer,
@@ -55,8 +56,9 @@ impl WriteLLVMIR for Circuit {
         load_fr(producer);
         load_stdlib(producer);
 
-        // Generate all the switch functions
-        load_array_switches(producer);
+        // Code for bounded array switch functions
+        load_array_load_fns(producer, &self.llvm_data.bounded_array_loads);
+        load_array_stores_fns(producer, &self.llvm_data.bounded_array_stores);
 
         // Declare all the functions
         let mut funcs = HashMap::new();

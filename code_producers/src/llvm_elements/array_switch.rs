@@ -1,10 +1,9 @@
-use std::ops::Range;
+use std::{ops::Range, collections::HashSet};
 use inkwell::types::PointerType;
 use crate::llvm_elements::LLVMIRProducer;
 use super::types::bigint_type;
 
 mod array_switch {
-    use std::collections::HashSet;
     use std::convert::TryInto;
     use std::ops::Range;
 
@@ -18,31 +17,12 @@ mod array_switch {
     use crate::llvm_elements::types::{bigint_type, bool_type, i32_type, void_type};
     use crate::llvm_elements::values::zero;
 
-    static mut SCHEDULED_ARRAY_LOADS: HashSet<Range<usize>> = HashSet::new();
-    static mut SCHEDULED_ARRAY_STORES: HashSet<Range<usize>> = HashSet::new();
-
     pub fn get_load_symbol(index_range: &Range<usize>) -> String {
         format!("__array_load__{}_to_{}", index_range.start, index_range.end)
     }
 
     pub fn get_store_symbol(index_range: &Range<usize>) -> String {
         format!("__array_store__{}_to_{}", index_range.start, index_range.end)
-    }
-
-    pub fn schedule_create_load(index_range: &Range<usize>) {
-        SCHEDULED_ARRAY_LOADS.insert(index_range.clone());
-    }
-
-    pub fn schedule_create_store(index_range: &Range<usize>) {
-        SCHEDULED_ARRAY_STORES.insert(index_range.clone());
-    }
-
-    pub fn get_scheduled_loads() -> &'static HashSet<Range<usize>> {
-        &SCHEDULED_ARRAY_LOADS
-    }
-
-    pub fn get_scheduled_stores() -> &'static HashSet<Range<usize>> {
-        &SCHEDULED_ARRAY_STORES
     }
 
     pub fn create_array_load_fn<'a>(producer: &dyn LLVMIRProducer<'a>, index_range: &Range<usize>) {
@@ -149,22 +129,22 @@ pub fn array_ptr_ty<'a>(producer: &dyn LLVMIRProducer<'a>) -> PointerType<'a> {
     bigint_ty.array_type(0).ptr_type(Default::default())
 }
 
-pub fn load_array_switches<'a>(producer: &dyn LLVMIRProducer<'a>) {
-    for index_range in array_switch::get_scheduled_loads() {
-        array_switch::create_array_load_fn(producer, index_range);
-    }
-
-    for index_range in array_switch::get_scheduled_stores() {
-        array_switch::create_array_store_fn(producer, index_range);
+pub fn load_array_load_fns<'a>(producer: &dyn LLVMIRProducer<'a>, scheduled_array_loads: &HashSet<Range<usize>>) {
+    for range in scheduled_array_loads {
+        array_switch::create_array_load_fn(producer, range);
     }
 }
 
-pub fn get_and_schedule_array_load(index_range: &Range<usize>) -> String {
-    array_switch::schedule_create_load(index_range);
+pub fn load_array_stores_fns<'a>(producer: &dyn LLVMIRProducer<'a>, scheduled_array_stores: &HashSet<Range<usize>>) {
+    for range in scheduled_array_stores {
+        array_switch::create_array_store_fn(producer, range);
+    }
+}
+
+pub fn get_array_load_name<'a>(index_range: &Range<usize>) -> String {
     array_switch::get_load_symbol(index_range)
 }
 
-pub fn get_and_schedule_array_store(index_range: &Range<usize>) -> String {
-    array_switch::schedule_create_store(index_range);
+pub fn get_array_store_name<'a>(index_range: &Range<usize>) -> String {
     array_switch::get_store_symbol(index_range)
 }

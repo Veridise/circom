@@ -1,12 +1,12 @@
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::ops::Range;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{Instruction, InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
-use code_producers::llvm_elements::array_switch::{get_and_schedule_array_load, get_and_schedule_array_store};
+use code_producers::llvm_elements::array_switch::{get_array_load_name, get_array_store_name};
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
@@ -87,6 +87,8 @@ pub struct UnknownIndexSanitizationPass<'d> {
     memory: PassMemory,
     load_replacements: RefCell<BTreeMap<LoadBucket, Range<usize>>>,
     store_replacements: RefCell<BTreeMap<StoreBucket, Range<usize>>>,
+    scheduled_bounded_loads: RefCell<HashSet<Range<usize>>>,
+    scheduled_bounded_stores: RefCell<HashSet<Range<usize>>>,
 }
 
 /**
@@ -99,6 +101,8 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
             memory: PassMemory::new(prime, "".to_string(), Default::default()),
             load_replacements: Default::default(),
             store_replacements: Default::default(),
+            scheduled_bounded_loads: Default::default(),
+            scheduled_bounded_stores: Default::default(),
         }
     }
 
@@ -176,7 +180,8 @@ impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
         let location = &bucket.src;
         if self.is_location_unknown(address, location, env) {
             let index_range = self.find_bounds(address, location, env);
-            self.load_replacements.borrow_mut().insert(bucket.clone(), index_range);
+            self.load_replacements.borrow_mut().insert(bucket.clone(), index_range.clone());
+            self.scheduled_bounded_loads.borrow_mut().insert(index_range);
         }
         true
     }
@@ -186,7 +191,8 @@ impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
         let location = &bucket.dest;
         if self.is_location_unknown(address, location, env) {
             let index_range = self.find_bounds(address, location, env);
-            self.store_replacements.borrow_mut().insert(bucket.clone(), index_range);
+            self.store_replacements.borrow_mut().insert(bucket.clone(), index_range.clone());
+            self.scheduled_bounded_stores.borrow_mut().insert(index_range);
         }
         true
     }
@@ -248,14 +254,26 @@ impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
     }
 }
 
+fn do_array_union(a: &HashSet<Range<usize>>, b: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
+    a.union(b).map(|e| e.clone()).collect()
+}
+
 impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
     fn name(&self) -> &str {
         "UnknownIndexSanitizationPass"
     }
 
+    fn get_updated_bounded_array_loads(&self, old_array_loads: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
+        do_array_union(old_array_loads, &self.scheduled_bounded_loads.borrow())
+    }
+
+    fn get_updated_bounded_array_stores(&self, old_array_stores: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
+        do_array_union(old_array_stores, &self.scheduled_bounded_stores.borrow())
+    }
+
     fn transform_load_bucket(&self, bucket: &LoadBucket) -> InstructionPointer {
         let bounded_fn_symbol = match self.load_replacements.borrow().get(bucket) {
-            Some(index_range) => Some(get_and_schedule_array_load(index_range)),
+            Some(index_range) => Some(get_array_load_name(index_range)),
             None => bucket.bounded_fn.clone(),
         };
         LoadBucket {
@@ -272,7 +290,7 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
 
     fn transform_store_bucket(&self, bucket: &StoreBucket) -> InstructionPointer {
         let bounded_fn_symbol = match self.store_replacements.borrow().get(bucket) {
-            Some(index_range) => Some(get_and_schedule_array_store(index_range)),
+            Some(index_range) => Some(get_array_store_name(index_range)),
             None => bucket.bounded_fn.clone(),
         };
         StoreBucket {
@@ -288,10 +306,6 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
             bounded_fn: bounded_fn_symbol,
         }
         .allocate()
-    }
-
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.get_field_constants_clone()
     }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) {

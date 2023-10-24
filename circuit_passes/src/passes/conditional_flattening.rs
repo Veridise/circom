@@ -121,10 +121,6 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
         self.memory.run_template(self.global_data, self, template);
     }
 
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.get_field_constants_clone()
-    }
-
     fn transform_branch_bucket(&self, bucket: &BranchBucket) -> InstructionPointer {
         if let Some(side) = self.replacements.borrow().get(&bucket) {
             let code = if *side { &bucket.if_branch } else { &bucket.else_branch };

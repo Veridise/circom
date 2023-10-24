@@ -206,10 +206,6 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
         self.memory.run_template(self.global_data, self, template);
     }
 
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.get_field_constants_clone()
-    }
-
     fn transform_loop_bucket(&self, bucket: &LoopBucket) -> InstructionPointer {
         if let Some(unrolled_loop) = self.replacements.borrow().get(&bucket.id) {
             return self.transform_instruction(unrolled_loop);
