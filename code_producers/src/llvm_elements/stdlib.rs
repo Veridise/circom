@@ -104,7 +104,15 @@ mod stdlib {
     }
 
     pub fn abort_declared_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
-        create_function(producer, &None, 0, "", "__abort", void_type(producer).fn_type(&[], false));
+        let f = create_function(
+            producer,
+            &None,
+            0,
+            "",
+            "__abort",
+            void_type(producer).fn_type(&[], false),
+        );
+        f.set_linkage(inkwell::module::Linkage::External);
     }
 }
 

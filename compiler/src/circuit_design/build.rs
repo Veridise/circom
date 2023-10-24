@@ -273,7 +273,7 @@ fn initialize_c_producer(vcp: &VCP, database: &TemplateDB, version: &str) -> CPr
 
 fn initialize_llvm_data(vcp: &VCP, database: &TemplateDB) -> LLVMCircuitData {
     let mut producer = LLVMCircuitData::default();
-
+    producer.main_header = vcp.get_main_instance().unwrap().template_header.clone();
     producer.io_map = build_io_map(vcp, database);
     producer
 }
