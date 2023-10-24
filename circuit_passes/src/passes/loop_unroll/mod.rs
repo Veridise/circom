@@ -238,7 +238,7 @@ mod test {
         OperatorType, StoreBucket, ValueBucket, ValueType,
     };
     use crate::passes::{CircuitTransformationPass, GlobalPassData};
-    use crate::passes::loop_unroll::LoopUnrollPass;
+    use crate::passes::loop_unroll::{LoopUnrollPass, LOOP_BODY_FN_PREFIX};
 
     #[test]
     fn test_loop_unrolling() {
