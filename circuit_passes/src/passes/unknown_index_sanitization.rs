@@ -6,7 +6,7 @@ use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{Instruction, InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
-use code_producers::llvm_elements::array_switch::{get_array_load_symbol, get_array_store_symbol};
+use code_producers::llvm_elements::array_switch::{get_and_schedule_array_load, get_and_schedule_array_store};
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
@@ -255,7 +255,7 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
 
     fn transform_load_bucket(&self, bucket: &LoadBucket) -> InstructionPointer {
         let bounded_fn_symbol = match self.load_replacements.borrow().get(bucket) {
-            Some(index_range) => Some(get_array_load_symbol(index_range)),
+            Some(index_range) => Some(get_and_schedule_array_load(index_range)),
             None => bucket.bounded_fn.clone(),
         };
         LoadBucket {
@@ -272,7 +272,7 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
 
     fn transform_store_bucket(&self, bucket: &StoreBucket) -> InstructionPointer {
         let bounded_fn_symbol = match self.store_replacements.borrow().get(bucket) {
-            Some(index_range) => Some(get_array_store_symbol(index_range)),
+            Some(index_range) => Some(get_and_schedule_array_store(index_range)),
             None => bucket.bounded_fn.clone(),
         };
         StoreBucket {

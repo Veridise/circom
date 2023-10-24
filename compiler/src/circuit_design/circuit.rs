@@ -56,22 +56,7 @@ impl WriteLLVMIR for Circuit {
         load_stdlib(producer);
 
         // Generate all the switch functions
-        let mut ranges = HashSet::new();
-        let mappings = [
-            &self.llvm_data.signal_index_mapping,
-            &self.llvm_data.variable_index_mapping,
-            &self.llvm_data.component_index_mapping,
-        ];
-        for mapping in mappings {
-            for range_mapping in mapping.values() {
-                for range in range_mapping.values() {
-                    ranges.insert(range);
-                }
-            }
-        }
-        for range in ranges {
-            load_array_switch(producer, range);
-        }
+        load_array_switches(producer);
 
         // Declare all the functions
         let mut funcs = HashMap::new();
@@ -229,7 +214,7 @@ impl WriteWasm for Circuit {
         code.append(&mut code_aux);
 
         code_aux = get_input_size_generator(&producer);
-        code.append(&mut code_aux);	
+        code.append(&mut code_aux);
 
         code_aux = get_witness_size_generator(&producer);
         code.append(&mut code_aux);
@@ -369,7 +354,7 @@ impl WriteWasm for Circuit {
         code = merge_code(code_aux);
         writer.write_all(code.as_bytes()).map_err(|_| {})?;
         writer.flush().map_err(|_| {})?;
-	
+
         code_aux = get_witness_size_generator(&producer);
         code = merge_code(code_aux);
         writer.write_all(code.as_bytes()).map_err(|_| {})?;
@@ -460,7 +445,7 @@ impl WriteC for Circuit {
         std::mem::drop(function_headers);
 
         let (func_list_no_parallel, func_list_parallel) = generate_function_list(
-            producer, 
+            producer,
             producer.get_template_instance_list()
         );
 
@@ -476,7 +461,7 @@ impl WriteC for Circuit {
             "uint get_main_input_signal_start() {{return {};}}\n",
             producer.get_number_of_main_outputs()
         ));
-	
+
         code.push(format!(
             "uint get_main_input_signal_no() {{return {};}}\n",
             producer.get_number_of_main_inputs()
@@ -503,7 +488,7 @@ impl WriteC for Circuit {
             producer.get_io_map().len()
         ));
         //code.append(&mut generate_message_list_def(producer, producer.get_message_list()));
-        
+
         // Functions to release the memory
         let mut release_component_code = generate_function_release_memory_component();
         code.append(&mut release_component_code);
