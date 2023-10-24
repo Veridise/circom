@@ -8,7 +8,6 @@ use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::array_switch::{load_array_stores_fns, load_array_load_fns};
-use code_producers::wasm_elements::*;
 use code_producers::llvm_elements::*;
 use code_producers::llvm_elements::fr::load_fr;
 use code_producers::llvm_elements::functions::{
