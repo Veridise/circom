@@ -35,25 +35,25 @@ component main = B();
 //CHECK-NEXT:     [[L1:prelude]]:
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L2:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L1]]
+//CHECK-NEXT:     [[L2:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L1]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L3:branch[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L2]]
+//CHECK-NEXT:     [[L3:branch[0-9]*]]:{{[[:space:]]}}; preds = %[[L2]]
 //CHECK-COUNT-04:   {{.*}}, !dbg !11
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L4:if.then[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L3]]
+//CHECK-NEXT:     [[L4:if.then[0-9]*]]:{{[[:space:]]}}; preds = %[[L3]]
 //CHECK-COUNT-05:   {{.*}}, !dbg !12
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L5:if.else[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L3]]
+//CHECK-NEXT:     [[L5:if.else[0-9]*]]:{{[[:space:]]}}; preds = %[[L3]]
 //CHECK-COUNT-05:   {{.*}}, !dbg !13
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L6:if.merge[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L5]], %{{.*}}[[L4]]
+//CHECK-NEXT:     [[L6:if.merge[0-9]*]]:{{[[:space:]]}}; preds = %[[L5]], %[[L4]]
 //CHECK-COUNT-01:   {{.*}}, !dbg !13
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L7:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L6]]
+//CHECK-NEXT:     [[L7:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L6]]
 //CHECK-COUNT-05:   {{.*}}, !dbg !14
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L8:prologue]]:{{[[:space:]]}}; preds = %{{.*}}[[L7]]
+//CHECK-NEXT:     [[L8:prologue]]:{{[[:space:]]}}; preds = %[[L7]]
 //CHECK-NEXT:       ret void, !dbg !14
 //CHECK-NEXT:     }
 

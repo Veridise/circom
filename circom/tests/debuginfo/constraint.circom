@@ -27,12 +27,12 @@ component main = A();
 //CHECK-NEXT:     [[L1:prelude]]:
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L2:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L1]]
+//CHECK-NEXT:     [[L2:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L1]]
 //CHECK-COUNT-05:   {{.*}}, !dbg !10
 //CHECK-NEXT:       {{.*}}, !dbg !10, !constraint !11
 //CHECK-COUNT-02:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L3:prologue]]:{{[[:space:]]}}; preds = %{{.*}}[[L2]]
+//CHECK-NEXT:     [[L3:prologue]]:{{[[:space:]]}}; preds = %[[L2]]
 //CHECK-NEXT:       ret void, !dbg !10
 //CHECK-NEXT:     }
 

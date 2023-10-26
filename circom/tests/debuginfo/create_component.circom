@@ -31,10 +31,10 @@ component main = A(5);
 //CHECK-NEXT:     [[L1:prelude]]:
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L2:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L1]]
+//CHECK-NEXT:     [[L2:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L1]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L3:prologue]]:{{[[:space:]]}}; preds = %{{.*}}[[L2]]
+//CHECK-NEXT:     [[L3:prologue]]:{{[[:space:]]}}; preds = %[[L2]]
 //CHECK-NEXT:       ret void, !dbg !9
 //CHECK-NEXT:     }
 
@@ -48,16 +48,16 @@ component main = A(5);
 //CHECK-NEXT:     [[L1:prelude]]:
 //CHECK-COUNT-03:   {{.*}}, !dbg !13
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L2:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L1]]
+//CHECK-NEXT:     [[L2:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L1]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !13
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L3:create_cmp[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L2]]
+//CHECK-NEXT:     [[L3:create_cmp[0-9]*]]:{{[[:space:]]}}; preds = %[[L2]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !13
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L4:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L3]]
+//CHECK-NEXT:     [[L4:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L3]]
 //CHECK-COUNT-14:   {{.*}}, !dbg !14
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L5:prologue]]:{{[[:space:]]}}; preds = %{{.*}}[[L4]]
+//CHECK-NEXT:     [[L5:prologue]]:{{[[:space:]]}}; preds = %[[L4]]
 //CHECK-NEXT:       ret void, !dbg !14
 //CHECK-NEXT:     }
 

@@ -30,13 +30,13 @@ component main = A(3);
 //CHECK-NEXT:     [[L01:prelude]]:
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L02:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L01]]
+//CHECK-NEXT:     [[L02:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L01]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L03:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L02]]
+//CHECK-NEXT:     [[L03:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L02]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L04:unrolled_loop[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L03]]
+//CHECK-NEXT:     [[L04:unrolled_loop[0-9]*]]:{{[[:space:]]}}; preds = %[[L03]]
 //CHECK-COUNT-04:   {{.*}}, !dbg !11
 //CHECK-COUNT-02:   {{.*}}, !dbg !10
 //CHECK-COUNT-04:   {{.*}}, !dbg !11
@@ -45,7 +45,7 @@ component main = A(3);
 //CHECK-COUNT-02:   {{.*}}, !dbg !10
 //CHECK-NEXT:       br label %prologue, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L05:prologue]]:{{[[:space:]]}}; preds = %{{.*}}[[L04]]
+//CHECK-NEXT:     [[L05:prologue]]:{{[[:space:]]}}; preds = %[[L04]]
 //CHECK-NEXT:       ret void, !dbg !10
 //CHECK-NEXT:     }
 

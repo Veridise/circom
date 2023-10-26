@@ -39,70 +39,70 @@ component main = A(1);
 //CHECK-NEXT:     [[L01:prelude]]:
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L02:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L01]]
+//CHECK-NEXT:     [[L02:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L01]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L03:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L02]]
+//CHECK-NEXT:     [[L03:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L02]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L04:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L03]]
+//CHECK-NEXT:     [[L04:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L03]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L05:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L04]]
+//CHECK-NEXT:     [[L05:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L04]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L06:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L05]]
+//CHECK-NEXT:     [[L06:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L05]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L07:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L06]]
+//CHECK-NEXT:     [[L07:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L06]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L08:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L07]]
+//CHECK-NEXT:     [[L08:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L07]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L09:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L08]]
+//CHECK-NEXT:     [[L09:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L08]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L10:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L09]]
+//CHECK-NEXT:     [[L10:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L09]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L11:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L10]]
+//CHECK-NEXT:     [[L11:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L10]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L12:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L11]]
+//CHECK-NEXT:     [[L12:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L11]]
 //CHECK-COUNT-03:   {{.*}}, !dbg !10
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L13:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L12]]
+//CHECK-NEXT:     [[L13:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L12]]
 //CHECK-COUNT-08:   {{.*}}, !dbg !11
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L14:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L13]]
+//CHECK-NEXT:     [[L14:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L13]]
 //CHECK-COUNT-08:   {{.*}}, !dbg !12
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L15:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L14]]
+//CHECK-NEXT:     [[L15:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L14]]
 //CHECK-COUNT-09:   {{.*}}, !dbg !13
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L16:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L15]]
+//CHECK-NEXT:     [[L16:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L15]]
 //CHECK-COUNT-09:   {{.*}}, !dbg !14
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L17:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L16]]
+//CHECK-NEXT:     [[L17:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L16]]
 //CHECK-COUNT-11:   {{.*}}, !dbg !15
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L18:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L17]]
+//CHECK-NEXT:     [[L18:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L17]]
 //CHECK-COUNT-08:   {{.*}}, !dbg !16
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L19:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L18]]
+//CHECK-NEXT:     [[L19:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L18]]
 //CHECK-COUNT-06:   {{.*}}, !dbg !17
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L20:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L19]]
+//CHECK-NEXT:     [[L20:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L19]]
 //CHECK-COUNT-06:   {{.*}}, !dbg !18
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L21:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L20]]
+//CHECK-NEXT:     [[L21:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L20]]
 //CHECK-COUNT-08:   {{.*}}, !dbg !19
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L22:store[0-9]*]]:{{[[:space:]]}}; preds = %{{.*}}[[L21]]
+//CHECK-NEXT:     [[L22:store[0-9]*]]:{{[[:space:]]}}; preds = %[[L21]]
 //CHECK-COUNT-05:   {{.*}}, !dbg !20
 //CHECK-EMPTY:
-//CHECK-NEXT:     [[L23:prologue]]:{{[[:space:]]}}; preds = %{{.*}}[[L22]]
+//CHECK-NEXT:     [[L23:prologue]]:{{[[:space:]]}}; preds = %[[L22]]
 //CHECK-NEXT:       ret void, !dbg !20
 //CHECK-NEXT:     }
 
