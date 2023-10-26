@@ -6,17 +6,22 @@ mod type_analysis_user;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-
-use ansi_term::Colour;
 use input_user::Input;
 
 fn main() {
+    use std::io::Write;
+    use codespan_reporting::term::termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+
     let result = start();
     if result.is_err() {
-        eprintln!("{}", Colour::Red.paint("previous errors were found"));
+        let mut stderr = StandardStream::stderr(ColorChoice::Auto);
+        let _ = stderr.set_color(ColorSpec::new().set_fg(Some(Color::Red)));
+        let _ = writeln!(&mut stderr, "previous errors were found");
         std::process::exit(1);
     } else {
-        println!("{}", Colour::Green.paint("Everything went okay, circom safe"));
+        let mut stdout = StandardStream::stdout(ColorChoice::Auto);
+        let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)));
+        let _ = writeln!(&mut stdout, "Everything went okay, circom safe");
         //std::process::exit(0);
     }
 }

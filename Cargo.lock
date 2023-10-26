@@ -185,6 +185,7 @@ dependencies = [
  "assert_fs",
  "circuit_passes",
  "clap",
+ "codespan-reporting",
  "compiler",
  "constraint_generation",
  "constraint_writers",
