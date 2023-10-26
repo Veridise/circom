@@ -52,7 +52,7 @@ impl Report {
     }
     pub fn print_reports(reports: &[Report], file_library: &FileLibrary) {
         use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
-        let writer = StandardStream::stderr(ColorChoice::Always);
+        let writer = StandardStream::stderr(ColorChoice::Auto);
         let config = term::Config::default();
         let mut diagnostics = Vec::new();
         let files = file_library.to_storage();
