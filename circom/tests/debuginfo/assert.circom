@@ -16,13 +16,13 @@ component main = A(5);
 //	full lines or to remove the "--match-full-lines" option and surround each check with
 //	{{^}} and {{$}} but it gets messy.
 
-//CHECK-LABEL:    define void @A_0_build({ [0 x i256]*, i32 }* %{{[[:alnum:]_]+}}) !dbg !4 {
+//CHECK-LABEL:    define{{.*}} void @A_0_build({ [0 x i256]*, i32 }* %{{[[:alnum:]_]+}}) !dbg !4 {
 //CHECK-NEXT:     [[L1:main]]:
 //CHECK-COUNT-06:   {{.*}}, !dbg !7
 //CHECK-NEXT:       ret void, !dbg !7
 //CHECK-NEXT:     }
 
-//CHECK-LABEL:    define void @A_0_run([0 x i256]* %{{[[:alnum:]_]+}}) !dbg !8 {
+//CHECK-LABEL:    define{{.*}} void @A_0_run([0 x i256]* %{{[[:alnum:]_]+}}) !dbg !8 {
 //CHECK-NEXT:     [[L1:prelude]]:
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
@@ -38,7 +38,7 @@ component main = A(5);
 
 //CHECK-LABEL:    !llvm.dbg.cu = !{!1}
 //CHECK:          !1 = distinct !DICompileUnit({{.*}}file: !2{{.*}})
-//CHECK:          !2 = !DIFile(filename:{{.*}}assert_bucket.circom{{.*}})
+//CHECK:          !2 = !DIFile(filename:{{.*}}assert.circom{{.*}})
 //CHECK:          !4 = distinct !DISubprogram(name: "A", linkageName: "A_0_build", scope: null, file: !2, line: 5, {{.*}}unit: !1{{.*}})
 //CHECK:          !7 = !DILocation(line: 5, scope: !4)
 //CHECK:          !8 = distinct !DISubprogram(name: "A", linkageName: "A_0_run", scope: null, file: !2, line: 5, {{.*}}unit: !1{{.*}})

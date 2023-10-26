@@ -25,7 +25,7 @@ component main = C();
 //	full lines or to remove the "--match-full-lines" option and surround each check with
 //	{{^}} and {{$}} but it gets messy.
 
-//CHECK-LABEL:    define i256 @negative_0(i256* %{{[[:alnum:]_]+}}) !dbg !4 {
+//CHECK-LABEL:    define{{.*}} i256 @negative_0(i256* %{{[[:alnum:]_]+}}) !dbg !4 {
 //CHECK-NEXT:     [[L1:[[:alnum:]_]+]]:
 //CHECK-COUNT-01:   {{.*}}, !dbg !7
 //CHECK-EMPTY:
@@ -42,13 +42,13 @@ component main = C();
 //CHECK-NEXT:       unreachable, !dbg !10
 //CHECK-NEXT:     }
 
-//CHECK-LABEL:    define void @C_0_build({ [0 x i256]*, i32 }* %{{[[:alnum:]_]+}}) !dbg !11 {
+//CHECK-LABEL:    define{{.*}} void @C_0_build({ [0 x i256]*, i32 }* %{{[[:alnum:]_]+}}) !dbg !11 {
 //CHECK-NEXT:     [[L1:main]]:
 //CHECK-COUNT-06:   {{.*}}, !dbg !12
 //CHECK-NEXT:       ret void, !dbg !12
 //CHECK-NEXT:     }
 
-//CHECK-LABEL:    define void @C_0_run([0 x i256]* %{{[[:alnum:]_]+}}) !dbg !13 {
+//CHECK-LABEL:    define{{.*}} void @C_0_run([0 x i256]* %{{[[:alnum:]_]+}}) !dbg !13 {
 //CHECK-NEXT:     [[L1:prelude]]:
 //CHECK-COUNT-03:   {{.*}}, !dbg !14
 //CHECK-EMPTY:
@@ -61,7 +61,7 @@ component main = C();
 
 //CHECK-LABEL:    !llvm.dbg.cu = !{!1}
 //CHECK:          !1 = distinct !DICompileUnit({{.*}}file: !2{{.*}})
-//CHECK:          !2 = !DIFile(filename:{{.*}}call_bucket.circom{{.*}})
+//CHECK:          !2 = !DIFile(filename:{{.*}}call_and_return.circom{{.*}})
 //CHECK:          !4 = distinct !DISubprogram(name: "negative", linkageName: "negative_0", scope: null, file: !2, line: 11, {{.*}}unit: !1{{.*}})
 //CHECK:          !7 = !DILocation(line: 11, scope: !4)
 //CHECK:          !8 = !DILocation(line: 12, scope: !4)
