@@ -4,7 +4,9 @@ use std::ops::Range;
 use compiler::circuit_design::function::{FunctionCode, FunctionCodeInfo};
 use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer, new_id};
+use compiler::intermediate_representation::{
+    Instruction, InstructionList, InstructionPointer, new_id, BucketId,
+};
 use compiler::intermediate_representation::ir_interface::*;
 use crate::passes::{
     checks::assert_unique_ids_in_circuit, conditional_flattening::ConditionalFlatteningPass,
@@ -12,14 +14,16 @@ use crate::passes::{
     deterministic_subcomponent_invocation::DeterministicSubCmpInvokePass,
     loop_unroll::LoopUnrollPass, mapped_to_indexed::MappedToIndexedPass,
     simplification::SimplificationPass, unknown_index_sanitization::UnknownIndexSanitizationPass,
+    unused_func_removal::UnusedFuncRemovalPass,
 };
 
-use self::loop_unroll::body_extractor::{UnrolledIterLvars, ToOriginalLocation};
+use self::loop_unroll::body_extractor::{UnrolledIterLvars, ToOriginalLocation, FuncArgIdx};
 
 mod const_arg_deduplication;
 mod conditional_flattening;
 mod simplification;
 mod deterministic_subcomponent_invocation;
+mod unused_func_removal;
 mod mapped_to_indexed;
 mod unknown_index_sanitization;
 mod checks;
@@ -183,7 +187,11 @@ pub trait CircuitTransformationPass {
         }
     }
 
-    fn transform_location_rule(&self, location_rule: &LocationRule) -> LocationRule {
+    fn transform_location_rule(
+        &self,
+        _bucket_id: &BucketId,
+        location_rule: &LocationRule,
+    ) -> LocationRule {
         match location_rule {
             LocationRule::Indexed { location, template_header } => LocationRule::Indexed {
                 location: self.transform_instruction(location),
@@ -203,7 +211,7 @@ pub trait CircuitTransformationPass {
             line: bucket.line,
             message_id: bucket.message_id,
             address_type: self.transform_address_type(&bucket.address_type),
-            src: self.transform_location_rule(&bucket.src),
+            src: self.transform_location_rule(&bucket.id, &bucket.src),
             bounded_fn: bucket.bounded_fn.clone(),
         }
         .allocate()
@@ -218,7 +226,7 @@ pub trait CircuitTransformationPass {
             context: bucket.context.clone(),
             dest_is_output: bucket.dest_is_output,
             dest_address_type: self.transform_address_type(&bucket.dest_address_type),
-            dest: self.transform_location_rule(&bucket.dest),
+            dest: self.transform_location_rule(&bucket.id, &bucket.dest),
             src: self.transform_instruction(&bucket.src),
             bounded_fn: bucket.bounded_fn.clone(),
         }
@@ -238,18 +246,18 @@ pub trait CircuitTransformationPass {
         .allocate()
     }
 
-    fn transform_final_data(&self, final_data: &FinalData) -> FinalData {
+    fn transform_final_data(&self, bucket_id: &BucketId, final_data: &FinalData) -> FinalData {
         FinalData {
             context: final_data.context,
             dest_is_output: final_data.dest_is_output,
             dest_address_type: self.transform_address_type(&final_data.dest_address_type),
-            dest: self.transform_location_rule(&final_data.dest),
+            dest: self.transform_location_rule(bucket_id, &final_data.dest),
         }
     }
 
-    fn transform_return_type(&self, return_type: &ReturnType) -> ReturnType {
+    fn transform_return_type(&self, bucket_id: &BucketId, return_type: &ReturnType) -> ReturnType {
         match return_type {
-            ReturnType::Final(f) => ReturnType::Final(self.transform_final_data(f)),
+            ReturnType::Final(f) => ReturnType::Final(self.transform_final_data(bucket_id, f)),
             x => x.clone(),
         }
     }
@@ -264,7 +272,7 @@ pub trait CircuitTransformationPass {
             argument_types: bucket.argument_types.clone(),
             arguments: self.transform_instructions(&bucket.arguments),
             arena_size: bucket.arena_size,
-            return_info: self.transform_return_type(&bucket.return_info),
+            return_info: self.transform_return_type(&bucket.id, &bucket.return_info),
         }
         .allocate()
     }
@@ -419,6 +427,7 @@ pub enum PassKind {
     LoopUnroll,
     Simplification,
     ConditionalFlattening,
+    UnusedFunctionRemoval,
     DeterministicSubCmpInvoke,
     MappedToIndexed,
     UnknownIndexSanitization,
@@ -429,12 +438,27 @@ pub struct GlobalPassData {
     /// (from Env::get_vars_sort) to location reference in the original function. Used
     /// by ExtractedFuncEnvData to access the original function's Env via the extracted
     /// function's parameter references.
-    pub extract_func_orig_loc: HashMap<String, BTreeMap<UnrolledIterLvars, ToOriginalLocation>>,
+    extract_func_orig_loc:
+        HashMap<String, BTreeMap<UnrolledIterLvars, (ToOriginalLocation, HashSet<FuncArgIdx>)>>,
 }
 
 impl GlobalPassData {
     pub fn new() -> GlobalPassData {
         GlobalPassData { extract_func_orig_loc: Default::default() }
+    }
+
+    pub fn get_data_for_func(
+        &self,
+        name: &String,
+    ) -> &BTreeMap<UnrolledIterLvars, (ToOriginalLocation, HashSet<FuncArgIdx>)> {
+        match self.extract_func_orig_loc.get(name) {
+            Some(x) => x,
+            None => {
+                // Allow for the suffix(es) added by ConditionalFlatteningPass
+                let name = name.trim_end_matches(&['.', 'T', 'F', 'N']);
+                self.extract_func_orig_loc.get(name).unwrap()
+            }
+        }
     }
 }
 
@@ -475,6 +499,11 @@ impl PassManager {
         self
     }
 
+    pub fn schedule_unused_function_removal_pass(&self) -> &Self {
+        self.passes.borrow_mut().push(PassKind::UnusedFunctionRemoval);
+        self
+    }
+
     pub fn schedule_mapped_to_indexed_pass(&self) -> &Self {
         self.passes.borrow_mut().push(PassKind::MappedToIndexed);
         self
@@ -503,6 +532,9 @@ impl PassManager {
             }
             PassKind::DeterministicSubCmpInvoke => {
                 Box::new(DeterministicSubCmpInvokePass::new(prime.clone(), global_data))
+            }
+            PassKind::UnusedFunctionRemoval => {
+                Box::new(UnusedFuncRemovalPass::new(prime.clone(), global_data))
             }
             PassKind::MappedToIndexed => {
                 Box::new(MappedToIndexedPass::new(prime.clone(), global_data))

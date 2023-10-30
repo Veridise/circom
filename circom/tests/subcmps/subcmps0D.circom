@@ -24,10 +24,10 @@ template SubCmps0D(n) {
 
 component main = SubCmps0D(3);
 
-//CHECK-LABEL: define void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %subfix_[[X3:[0-9]+]],
-//CHECK-SAME: i256* %fix_[[X4:[0-9]+]], i256* %fix_[[X5:[0-9]+]], i256* %subfix_[[X6:[0-9]+]], [0 x i256]* %sub_[[X6]], i256* %subc_[[X6]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
+//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+\.F\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
+//CHECK-SAME: i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %subfix_[[X3:[0-9]+]], i256* %fix_[[X4:[0-9]+]],
+//CHECK-SAME: i256* %fix_[[X5:[0-9]+]], i256* %subfix_[[X6:[0-9]+]], [0 x i256]* %sub_[[X6]], i256* %subc_[[X6]]){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.F\.T]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
@@ -38,38 +38,50 @@ component main = SubCmps0D(3);
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %3 = getelementptr [0 x i256], [0 x i256]* %sub_[[X6]], i32 0
-//CHECK-NEXT:   call void @Add_0_run([0 x i256]* %sub_[[X6]])
-//CHECK-NEXT:   br label %store3
+//CHECK-NEXT:   %3 = load i256, i256* %subc_[[X6]], align 4
+//CHECK-NEXT:   %call.fr_sub = call i256 @fr_sub(i256 %3, i256 1)
+//CHECK-NEXT:   %4 = getelementptr i256, i256* %subc_[[X6]], i32 0
+//CHECK-NEXT:   store i256 %call.fr_sub, i256* %4, align 4
+//CHECK-NEXT:   br label %fold_false3
 //CHECK-EMPTY: 
-//CHECK-NEXT: store3:
-//CHECK-NEXT:   %4 = getelementptr i256, i256* %fix_[[X4]], i32 0
-//CHECK-NEXT:   %5 = load i256, i256* %4, align 4
-//CHECK-NEXT:   %6 = getelementptr i256, i256* %subfix_[[X3]], i32 0
-//CHECK-NEXT:   store i256 %5, i256* %6, align 4
+//CHECK-NEXT: fold_false3:
 //CHECK-NEXT:   br label %store4
 //CHECK-EMPTY: 
 //CHECK-NEXT: store4:
-//CHECK-NEXT:   %7 = getelementptr [0 x i256], [0 x i256]* %sub_[[X6]], i32 0
-//CHECK-NEXT:   call void @Add_0_run([0 x i256]* %sub_[[X6]])
+//CHECK-NEXT:   %5 = getelementptr i256, i256* %fix_[[X4]], i32 0
+//CHECK-NEXT:   %6 = load i256, i256* %5, align 4
+//CHECK-NEXT:   %7 = getelementptr i256, i256* %subfix_[[X3]], i32 0
+//CHECK-NEXT:   store i256 %6, i256* %7, align 4
 //CHECK-NEXT:   br label %store5
 //CHECK-EMPTY: 
 //CHECK-NEXT: store5:
-//CHECK-NEXT:   %8 = getelementptr i256, i256* %subfix_[[X6]], i32 0
-//CHECK-NEXT:   %9 = load i256, i256* %8, align 4
-//CHECK-NEXT:   %10 = getelementptr i256, i256* %fix_[[X5]], i32 0
-//CHECK-NEXT:   store i256 %9, i256* %10, align 4
-//CHECK-NEXT:   br label %store6
+//CHECK-NEXT:   %8 = load i256, i256* %subc_[[X6]], align 4
+//CHECK-NEXT:   %call.fr_sub1 = call i256 @fr_sub(i256 %8, i256 1)
+//CHECK-NEXT:   %9 = getelementptr i256, i256* %subc_[[X6]], i32 0
+//CHECK-NEXT:   store i256 %call.fr_sub1, i256* %9, align 4
+//CHECK-NEXT:   br label %fold_true6
 //CHECK-EMPTY: 
-//CHECK-NEXT: store6:
-//CHECK-NEXT:   %11 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   %12 = load i256, i256* %11, align 4
-//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %12, i256 1)
+//CHECK-NEXT: fold_true6:
+//CHECK-NEXT:   call void @llvm.donothing()
+//CHECK-NEXT:   call void @Add_0_run([0 x i256]* %sub_[[X6]])
+//CHECK-NEXT:   br label %store7
+//CHECK-EMPTY: 
+//CHECK-NEXT: store7:
+//CHECK-NEXT:   %10 = getelementptr i256, i256* %subfix_[[X6]], i32 0
+//CHECK-NEXT:   %11 = load i256, i256* %10, align 4
+//CHECK-NEXT:   %12 = getelementptr i256, i256* %fix_[[X5]], i32 0
+//CHECK-NEXT:   store i256 %11, i256* %12, align 4
+//CHECK-NEXT:   br label %store8
+//CHECK-EMPTY: 
+//CHECK-NEXT: store8:
 //CHECK-NEXT:   %13 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   store i256 %call.fr_add, i256* %13, align 4
-//CHECK-NEXT:   br label %return7
+//CHECK-NEXT:   %14 = load i256, i256* %13, align 4
+//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %14, i256 1)
+//CHECK-NEXT:   %15 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
+//CHECK-NEXT:   store i256 %call.fr_add, i256* %15, align 4
+//CHECK-NEXT:   br label %return9
 //CHECK-EMPTY: 
-//CHECK-NEXT: return7:
+//CHECK-NEXT: return9:
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //

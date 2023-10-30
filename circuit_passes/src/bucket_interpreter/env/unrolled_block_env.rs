@@ -3,6 +3,7 @@ use std::collections::{HashMap, BTreeMap};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
@@ -50,6 +51,10 @@ impl<'a> UnrolledBlockEnvData<'a> {
         UnrolledBlockEnvData { base: Box::new(base), extractor }
     }
 
+    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
+        None
+    }
+
     pub fn get_var(&self, idx: usize) -> Value {
         self.base.get_var(idx)
     }
@@ -68,6 +73,10 @@ impl<'a> UnrolledBlockEnvData<'a> {
 
     pub fn get_subcmp_template_id(&self, subcmp_idx: usize) -> usize {
         self.base.get_subcmp_template_id(subcmp_idx)
+    }
+
+    pub fn get_subcmp_counter(&self, subcmp_idx: usize) -> Value {
+        self.base.get_subcmp_counter(subcmp_idx)
     }
 
     pub fn subcmp_counter_is_zero(&self, subcmp_idx: usize) -> bool {
@@ -117,6 +126,13 @@ impl<'a> UnrolledBlockEnvData<'a> {
     pub fn set_subcmp_signal(self, subcmp_idx: usize, signal_idx: usize, value: Value) -> Self {
         UnrolledBlockEnvData {
             base: Box::new(self.base.set_subcmp_signal(subcmp_idx, signal_idx, value)),
+            extractor: self.extractor,
+        }
+    }
+
+    pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Self {
+        UnrolledBlockEnvData {
+            base: Box::new(self.base.set_subcmp_counter(subcmp_idx, new_val)),
             extractor: self.extractor,
         }
     }

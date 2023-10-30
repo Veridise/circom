@@ -1,11 +1,12 @@
 use std::cell::Ref;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{HashMap, BTreeMap, HashSet};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use crate::passes::loop_unroll::body_extractor::{LoopBodyExtractor, ToOriginalLocation};
+use crate::passes::loop_unroll::body_extractor::{LoopBodyExtractor, ToOriginalLocation, FuncArgIdx};
 use self::extracted_func_env::ExtractedFuncEnvData;
 use self::standard_env::StandardEnvData;
 use self::unrolled_block_env::UnrolledBlockEnvData;
@@ -48,6 +49,16 @@ impl SubcmpEnv {
         copy
     }
 
+    pub fn get_counter(&self) -> usize {
+        self.counter
+    }
+
+    pub fn set_counter(self, new_val: usize) -> SubcmpEnv {
+        let mut copy = self;
+        copy.counter = new_val;
+        copy
+    }
+
     pub fn counter_is_zero(&self) -> bool {
         self.counter == 0
     }
@@ -81,6 +92,16 @@ impl Display for Env<'_> {
     }
 }
 
+impl std::fmt::Debug for Env<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        match self {
+            Env::Standard(d) => d.fmt(f),
+            Env::UnrolledBlock(d) => d.fmt(f),
+            Env::ExtractedFunction(d) => d.fmt(f),
+        }
+    }
+}
+
 impl LibraryAccess for Env<'_> {
     fn get_function(&self, name: &String) -> Ref<FunctionCode> {
         match self {
@@ -100,6 +121,14 @@ impl LibraryAccess for Env<'_> {
 }
 
 impl<'a> Env<'a> {
+    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
+        match self {
+            Env::Standard(e) => e.extracted_func_caller(),
+            Env::UnrolledBlock(e) => e.extracted_func_caller(),
+            Env::ExtractedFunction(e) => e.extracted_func_caller(),
+        }
+    }
+
     pub fn new_standard_env(libs: &'a dyn LibraryAccess) -> Self {
         Env::Standard(StandardEnvData::new(libs))
     }
@@ -108,8 +137,13 @@ impl<'a> Env<'a> {
         Env::UnrolledBlock(UnrolledBlockEnvData::new(inner, extractor))
     }
 
-    pub fn new_extracted_func_env(inner: Env<'a>, remap: ToOriginalLocation) -> Self {
-        Env::ExtractedFunction(ExtractedFuncEnvData::new(inner, remap))
+    pub fn new_extracted_func_env(
+        inner: Env<'a>,
+        caller: &BucketId,
+        remap: ToOriginalLocation,
+        arenas: HashSet<FuncArgIdx>,
+    ) -> Self {
+        Env::ExtractedFunction(ExtractedFuncEnvData::new(inner, caller, remap, arenas))
     }
 
     pub fn peel_extracted_func(self) -> Self {
@@ -157,6 +191,14 @@ impl<'a> Env<'a> {
             Env::Standard(d) => d.get_subcmp_template_id(subcmp_idx),
             Env::UnrolledBlock(d) => d.get_subcmp_template_id(subcmp_idx),
             Env::ExtractedFunction(d) => d.get_subcmp_template_id(subcmp_idx),
+        }
+    }
+
+    pub fn get_subcmp_counter(&self, subcmp_idx: usize) -> Value {
+        match self {
+            Env::Standard(d) => d.get_subcmp_counter(subcmp_idx),
+            Env::UnrolledBlock(d) => d.get_subcmp_counter(subcmp_idx),
+            Env::ExtractedFunction(d) => d.get_subcmp_counter(subcmp_idx),
         }
     }
 
@@ -234,6 +276,16 @@ impl<'a> Env<'a> {
             }
             Env::ExtractedFunction(d) => {
                 Env::ExtractedFunction(d.set_subcmp_signal(subcmp_idx, signal_idx, value))
+            }
+        }
+    }
+
+    pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Self {
+        match self {
+            Env::Standard(d) => Env::Standard(d.set_subcmp_counter(subcmp_idx, new_val)),
+            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_subcmp_counter(subcmp_idx, new_val)),
+            Env::ExtractedFunction(d) => {
+                Env::ExtractedFunction(d.set_subcmp_counter(subcmp_idx, new_val))
             }
         }
     }
