@@ -387,7 +387,6 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> R<'env> {
-        // println!("Interpreter executing {:?}", bucket);
         let (src, env) = self.execute_instruction(&bucket.src, env, observe);
         let src = src.expect("src instruction in StoreBucket must produce a value!");
         let env =

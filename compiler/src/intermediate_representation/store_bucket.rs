@@ -112,8 +112,7 @@ impl StoreBucket {
             Some(name) => {
                 assert_eq!(1, context.size, "unhandled array store");
                 if name == LLVM_DONOTHING_FN_NAME {
-                    //LLVM equivalent of a "nop" instruction
-                    create_call(producer, LLVM_DONOTHING_FN_NAME, &[])
+                    None
                 } else {
                     let arr_ptr = match &dest_address_type {
                         AddressType::Variable => producer.body_ctx().get_variable_array(producer),
@@ -128,11 +127,11 @@ impl StoreBucket {
                     }
                     .into_pointer_value();
                     let arr_ptr = pointer_cast(producer, arr_ptr, array_ptr_ty(producer));
-                    create_call(
+                    Some(create_call(
                         producer,
                         name.as_str(),
                         &[arr_ptr.into(), dest_index.into(), source.into_int_value().into()],
-                    )
+                    ))
                 }
             }
             None => {
@@ -175,7 +174,7 @@ impl StoreBucket {
                             };
                         }
                     }
-                    create_call(
+                    Some(create_call(
                         producer,
                         FR_ARRAY_COPY_FN_NAME,
                         &[
@@ -183,10 +182,10 @@ impl StoreBucket {
                             dest_gep.into(),
                             create_literal_u32(producer, context.size as u64).into(),
                         ],
-                    )
+                    ))
                 } else {
                     // In the scalar case, just produce a store from the source value that was given
-                    create_store(producer, dest_gep, source)
+                    Some(create_store(producer, dest_gep, source))
                 }
             }
         };
@@ -245,7 +244,7 @@ impl StoreBucket {
                 }
             }
         }
-        Some(store)
+        store
     }
 }
 
