@@ -59,18 +59,6 @@ impl<'d> ConditionalFlatteningPass<'d> {
     }
 }
 
-    fn get_known_condition(&self, bucket_id: &BucketId) -> Option<bool> {
-        // Get from the current 'caller_context' or lookup via None key in 'evaluated_conditions'
-        let ec = self.evaluated_conditions.borrow();
-        if let Some(bv) = self.caller_context.borrow().as_ref().or_else(|| ec.get(&None)) {
-            if let Some(Some(side)) = bv.get(bucket_id) {
-                return Some(*side);
-            }
-        }
-        None
-    }
-}
-
 impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
