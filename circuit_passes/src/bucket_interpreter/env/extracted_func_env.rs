@@ -207,7 +207,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
                         if counter_override {
-                            todo!()
+                            unreachable!() // there is no counter for a counter reference
                         } else {
                             self.base.subcmp_counter_is_zero(subcmp)
                         }
@@ -238,7 +238,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
                         if counter_override {
-                            todo!()
+                            unreachable!() // there is no counter for a counter reference
                         } else {
                             self.base.subcmp_counter_equal_to(subcmp, value)
                         }
