@@ -8,7 +8,7 @@ use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::env::{Env, LibraryAccess};
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::passes::GlobalPassData;
 
 pub struct PassMemory {
@@ -44,7 +44,7 @@ impl PassMemory {
     pub fn build_interpreter<'a, 'd: 'a>(
         &'a self,
         global_data: &'d RefCell<GlobalPassData>,
-        observer: &'a dyn InterpreterObserver,
+        observer: &'a dyn for<'e> Observer<Env<'e>>,
     ) -> BucketInterpreter {
         self.build_interpreter_with_scope(
             global_data,
@@ -56,7 +56,7 @@ impl PassMemory {
     pub fn build_interpreter_with_scope<'a, 'd: 'a>(
         &'a self,
         global_data: &'d RefCell<GlobalPassData>,
-        observer: &'a dyn InterpreterObserver,
+        observer: &'a dyn for<'e> Observer<Env<'e>>,
         scope: String,
     ) -> BucketInterpreter {
         BucketInterpreter::init(global_data, observer, self, scope)
@@ -69,7 +69,7 @@ impl PassMemory {
     pub fn run_template<'d>(
         &self,
         global_data: &'d RefCell<GlobalPassData>,
-        observer: &dyn InterpreterObserver,
+        observer: &dyn for<'e> Observer<Env<'e>>,
         template: &TemplateCode,
     ) {
         assert!(!self.current_scope.borrow().is_empty());

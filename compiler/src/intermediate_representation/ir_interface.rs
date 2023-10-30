@@ -37,6 +37,36 @@ pub trait ObtainMeta {
     fn get_message_id(&self) -> usize;
 }
 
+pub struct ObtainMetaImpl {
+    source_file_id: Option<usize>,
+    line: usize,
+    message_id: usize,
+}
+
+impl ObtainMeta for ObtainMetaImpl {
+    fn get_source_file_id(&self) -> &Option<usize> {
+        &self.source_file_id
+    }
+
+    fn get_line(&self) -> usize {
+        self.line
+    }
+
+    fn get_message_id(&self) -> usize {
+        self.message_id
+    }
+}
+
+impl ObtainMetaImpl {
+    pub fn from(bucket: &dyn ObtainMeta) -> ObtainMetaImpl {
+        ObtainMetaImpl {
+            source_file_id: bucket.get_source_file_id().clone(),
+            line: bucket.get_line(),
+            message_id: bucket.get_message_id(),
+        }
+    }
+}
+
 pub trait CheckCompute {
     fn has_compute_in(&self) -> bool;
 }

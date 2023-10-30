@@ -8,6 +8,7 @@ use code_producers::llvm_elements::instructions::{
     create_call, create_gep, create_load_with_name, create_store, create_sub_with_name,
     pointer_cast,
 };
+use code_producers::llvm_elements::stdlib::LLVM_DONOTHING_FN_NAME;
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::wasm_elements::*;
 use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
@@ -86,7 +87,7 @@ impl UpdateId for StoreBucket {
     }
 }
 
-impl StoreBucket{
+impl StoreBucket {
     /// The caller must manage the debug location information before calling this function.
     pub fn produce_llvm_ir<'a, 'b>(
         producer: &'b dyn LLVMIRProducer<'a>,
@@ -96,7 +97,10 @@ impl StoreBucket{
         context: InstrContext,
         bounded_fn: &Option<String>,
     ) -> Option<LLVMInstruction<'a>> {
-        let dest_index = dest.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
+        let dest_index = dest
+            .produce_llvm_ir(producer)
+            .expect("We need to produce some kind of instruction!")
+            .into_int_value();
 
         let mut source = match src {
             Either::Left(s) => s,
@@ -107,33 +111,42 @@ impl StoreBucket{
         let store = match &bounded_fn {
             Some(name) => {
                 assert_eq!(1, context.size, "unhandled array store");
-                let arr_ptr = match &dest_address_type {
-                    AddressType::Variable => producer.body_ctx().get_variable_array(producer),
-                    AddressType::Signal => producer.template_ctx().get_signal_array(producer),
-                    AddressType::SubcmpSignal { cmp_address, .. } => {
-                        let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                        let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        create_gep(producer, subcmp, &[zero(producer)])
+                if name == LLVM_DONOTHING_FN_NAME {
+                    //LLVM equivalent of a "nop" instruction
+                    create_call(producer, LLVM_DONOTHING_FN_NAME, &[])
+                } else {
+                    let arr_ptr = match &dest_address_type {
+                        AddressType::Variable => producer.body_ctx().get_variable_array(producer),
+                        AddressType::Signal => producer.template_ctx().get_signal_array(producer),
+                        AddressType::SubcmpSignal { cmp_address, .. } => {
+                            let addr = cmp_address
+                                .produce_llvm_ir(producer)
+                                .expect("The address of a subcomponent must yield a value!");
+                            let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
+                            create_gep(producer, subcmp, &[zero(producer)])
+                        }
                     }
-                }.into_pointer_value();
-                let arr_ptr = pointer_cast(producer, arr_ptr, array_ptr_ty(producer));
-                create_call(producer, name.as_str(), &[arr_ptr.into(), dest_index.into(), source.into_int_value().into()])
+                    .into_pointer_value();
+                    let arr_ptr = pointer_cast(producer, arr_ptr, array_ptr_ty(producer));
+                    create_call(
+                        producer,
+                        name.as_str(),
+                        &[arr_ptr.into(), dest_index.into(), source.into_int_value().into()],
+                    )
+                }
             }
             None => {
                 let dest_gep = match &dest_address_type {
                     AddressType::Variable => producer.body_ctx().get_variable(producer, dest_index),
                     AddressType::Signal => producer.template_ctx().get_signal(producer, dest_index),
                     AddressType::SubcmpSignal { cmp_address, .. } => {
-                        let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                        let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        if subcmp.get_type().get_element_type().is_array_type() {
-                            create_gep(producer, subcmp, &[zero(producer), dest_index])
-                        } else {
-                            assert_eq!(zero(producer), dest_index);
-                            create_gep(producer, subcmp, &[dest_index])
-                        }
+                        let addr = cmp_address
+                            .produce_llvm_ir(producer)
+                            .expect("The address of a subcomponent must yield a value!");
+                        producer.template_ctx().get_subcmp_signal(producer, addr, dest_index)
                     }
-                }.into_pointer_value();
+                }
+                .into_pointer_value();
                 if context.size > 1 {
                     // In the non-scalar case, produce an array copy. If the stored source
                     //  is a LoadBucket, first convert it into an address.
@@ -152,9 +165,9 @@ impl StoreBucket{
                                     producer.template_ctx().get_signal(producer, src_index)
                                 }
                                 AddressType::SubcmpSignal { cmp_address, .. } => {
-                                    let addr = cmp_address
-                                        .produce_llvm_ir(producer)
-                                        .expect("The address of a subcomponent must yield a value!");
+                                    let addr = cmp_address.produce_llvm_ir(producer).expect(
+                                        "The address of a subcomponent must yield a value!",
+                                    );
                                     let subcmp =
                                         producer.template_ctx().load_subcmp_addr(producer, addr);
                                     create_gep(producer, subcmp, &[zero(producer), src_index])
@@ -165,7 +178,11 @@ impl StoreBucket{
                     create_call(
                         producer,
                         FR_ARRAY_COPY_FN_NAME,
-                        &[source.into_pointer_value().into(), dest_gep.into(), create_literal_u32(producer, context.size as u64).into()],
+                        &[
+                            source.into_pointer_value().into(),
+                            dest_gep.into(),
+                            create_literal_u32(producer, context.size as u64).into(),
+                        ],
                     )
                 } else {
                     // In the scalar case, just produce a store from the source value that was given
@@ -177,7 +194,7 @@ impl StoreBucket{
         // If we have a subcomponent storage decrement the counter by the size of the store (i.e., context.size)
         if let AddressType::SubcmpSignal { cmp_address, .. } = &dest_address_type {
             let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-            let counter = producer.template_ctx().load_subcmp_counter(producer, addr);
+            let counter = producer.template_ctx().load_subcmp_counter(producer, addr, true);
             if let Some(counter) = counter {
                 let value = create_load_with_name(producer, counter, "load.subcmp.counter");
                 let new_value = create_sub_with_name(producer, value.into_int_value(), create_literal_u32(producer, context.size as u64), "decrement.counter");
@@ -187,31 +204,31 @@ impl StoreBucket{
 
         // If the input information is unknown add a check that checks the counter and if its zero call the subcomponent
         // If its last just call run directly
-        if let AddressType::SubcmpSignal { input_information, cmp_address, .. } = &dest_address_type {
+        if let AddressType::SubcmpSignal { input_information, cmp_address, .. } = &dest_address_type
+        {
             if let InputInformation::Input { status } = input_information {
                 let sub_cmp_name = match &dest {
                     LocationRule::Indexed { template_header, .. } => template_header.clone(),
-                    LocationRule::Mapped { .. } => None
-                };
+                    LocationRule::Mapped { .. } => unreachable!("LocationRule::Mapped should have been replaced"),
+                }.expect("Could not get the name of the subcomponent");
                 match status {
                     StatusInput::Last => {
-                        let run_fn = run_fn_name(sub_cmp_name.expect("Could not get the name of the subcomponent"));
                         // If we reach this point gep is the address of the subcomponent so we can just reuse it
-                        let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
+                        let addr = cmp_address
+                            .produce_llvm_ir(producer)
+                            .expect("The address of a subcomponent must yield a value!");
                         let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        create_call(producer, run_fn.as_str(), &[subcmp.into()]);
+                        create_call(producer, run_fn_name(sub_cmp_name).as_str(), &[subcmp.into()]);
                     }
                     StatusInput::Unknown => {
                         panic!("There should not be Unknown input status");
-                        // let sub_cmp_name = sub_cmp_name.expect("Could not get the name of the subcomponent");
-                        // let run_fn = run_fn_name(sub_cmp_name.clone());
                         // let current_function = producer.current_function();
                         // let run_bb = create_bb(producer, current_function, format!("maybe_run.{}", sub_cmp_name).as_str());
                         // let continue_bb = create_bb(producer, current_function,"continue.store");
                         // // Here we need to get the counter and check if its 0
                         // // If its is then call the run function because it means that all signals have been assigned
                         // let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                        // let counter = producer.template_ctx().load_subcmp_counter(producer, addr);
+                        // let counter = producer.template_ctx().load_subcmp_counter(producer, addr, false);
                         // let value = create_load_with_name(producer, counter, "load.subcmp.counter");
                         // let is_zero = create_eq_with_name(producer, zero(producer), value.into_int_value(), "subcmp.counter.isZero");
                         // create_conditional_branch(producer, is_zero.into_int_value(), run_bb, continue_bb);
@@ -220,7 +237,7 @@ impl StoreBucket{
                         // let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
                         // let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
                         //
-                        // create_call(producer, run_fn.as_str(), &[subcmp.into()]);
+                        // create_call(producer, run_fn_name(sub_cmp_name).as_str(), &[subcmp.into()]);
                         // create_br(producer,continue_bb);
                         // producer.set_current_bb(continue_bb);
                     }

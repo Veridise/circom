@@ -14,12 +14,14 @@ use compiler::intermediate_representation::{
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 use super::{CircuitTransformationPass, GlobalPassData};
 use self::body_extractor::LoopBodyExtractor;
 
 const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = true;
+
+const DEBUG_LOOP_UNROLL: bool = false;
 
 pub const LOOP_BODY_FN_PREFIX: &str = const_format::concatcp!(GENERATED_FN_PREFIX, "loop.body.");
 
@@ -42,6 +44,21 @@ impl<'d> LoopUnrollPass<'d> {
     }
 
     fn try_unroll_loop(&self, bucket: &LoopBucket, env: &Env) -> (Option<InstructionList>, usize) {
+        if DEBUG_LOOP_UNROLL {
+            println!("\nTry unrolling loop {}:", bucket.id); //TODO: TEMP
+            for (i, s) in bucket.body.iter().enumerate() {
+                println!(
+                    "[{}/{}]{}",
+                    i + 1,
+                    bucket.body.len(),
+                    compiler::intermediate_representation::ToSExp::to_sexp(&**s).to_pretty(100)
+                );
+            }
+            for (i, s) in bucket.body.iter().enumerate() {
+                println!("[{}/{}]{:?}", i + 1, bucket.body.len(), s);
+            }
+            println!("LOOP ENTRY env {}", env); //TODO: TEMP
+        }
         // Compute loop iteration count. If unknown, return immediately.
         let recorder = EnvRecorder::new(self.global_data, &self.memory);
         {
@@ -62,6 +79,9 @@ impl<'d> LoopUnrollPass<'d> {
                 inner_env = new_env;
             }
         }
+        if DEBUG_LOOP_UNROLL {
+            println!("recorder = {:?}", recorder);
+        }
 
         let mut block_body = vec![];
         if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() && recorder.get_iter() > 0 {
@@ -81,7 +101,7 @@ impl<'d> LoopUnrollPass<'d> {
                 }
             }
         } else {
-            //If the loop body is not safe to move into a new function, just unroll.
+            //If the loop body is not safe to move into a new function, just unroll in-place.
             for _ in 0..recorder.get_iter() {
                 for s in &bucket.body {
                     let mut copy = s.clone();
@@ -102,7 +122,7 @@ impl<'d> LoopUnrollPass<'d> {
     }
 }
 
-impl InterpreterObserver for LoopUnrollPass<'_> {
+impl Observer<Env<'_>> for LoopUnrollPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -181,6 +201,10 @@ impl InterpreterObserver for LoopUnrollPass<'_> {
     }
 
     fn ignore_subcmp_calls(&self) -> bool {
+        true
+    }
+
+    fn ignore_extracted_function_calls(&self) -> bool {
         true
     }
 }

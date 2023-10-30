@@ -12,6 +12,9 @@ template Poseidon() {
 
     component sigmaF[2];
 
+    // NOTE: When processing the loop, the statements indexed with 'k' are determined
+    //  NOT safe to move into a new function since 'k' is unknown. That results in
+    //  the loop unrolling in place.
     for (var i=0; i<4; i++) {
         if (i < 1 || i >= 3) {
             var k = i < 1 ? 0 : 1;
