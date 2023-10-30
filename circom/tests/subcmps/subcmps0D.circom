@@ -62,7 +62,6 @@ component main = SubCmps0D(3);
 //CHECK-NEXT:   br label %fold_true6
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true6:
-//CHECK-NEXT:   call void @llvm.donothing()
 //CHECK-NEXT:   call void @Add_0_run([0 x i256]* %sub_[[X6]])
 //CHECK-NEXT:   br label %store7
 //CHECK-EMPTY: 

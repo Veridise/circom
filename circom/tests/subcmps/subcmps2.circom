@@ -131,7 +131,6 @@ component main = Caller();
 //CHECK-NEXT:   br label %fold_true3
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true3:
-//CHECK-NEXT:   call void @llvm.donothing()
 //CHECK-NEXT:   call void @Sum_0_run([0 x i256]* %sub_[[X3]])
 //CHECK-NEXT:   br label %store4
 //CHECK-EMPTY: 
