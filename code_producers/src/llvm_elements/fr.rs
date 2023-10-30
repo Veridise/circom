@@ -47,6 +47,21 @@ pub const FR_PTR_CAST_I256_I32: &str = "cast_ptr_i256_i32";
 pub const FR_NULL_I256_ARR_PTR: &str = "null_i256_arr_ptr";
 pub const FR_NULL_I256_PTR: &str = "null_i256_ptr";
 
+thread_local!(
+    /// Contains all "built-in" functions that can be generated in
+    /// the Circom IR prior to the stage where LLVM IR is generated.
+    pub static BUILT_IN_NAMES: std::collections::HashSet<&'static str> = {
+      let mut result =  std::collections::HashSet::default();
+      result.insert(FR_INDEX_ARR_PTR);
+      result.insert(FR_IDENTITY_ARR_PTR);
+      result.insert(FR_PTR_CAST_I32_I256);
+      result.insert(FR_PTR_CAST_I256_I32);
+      result.insert(FR_NULL_I256_ARR_PTR);
+      result.insert(FR_NULL_I256_PTR);
+      result
+    }
+);
+
 macro_rules! fr_nullary_op {
     ($name: expr, $producer: expr, $retTy: expr) => {{
         let func = create_function($producer, &None, 0, "", $name, $retTy.fn_type(&[], false));

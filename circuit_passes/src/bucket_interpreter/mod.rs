@@ -2,6 +2,7 @@ pub mod value;
 pub mod env;
 pub mod memory;
 pub mod observer;
+pub mod observed_visitor;
 pub(crate) mod operations;
 
 use std::cell::RefCell;
@@ -12,7 +13,7 @@ use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
-use observer::InterpreterObserver;
+use observer::Observer;
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
@@ -24,7 +25,7 @@ use self::env::LibraryAccess;
 
 pub struct BucketInterpreter<'a, 'd> {
     global_data: &'d RefCell<GlobalPassData>,
-    observer: &'a dyn InterpreterObserver,
+    observer: &'a dyn for<'e> Observer<Env<'e>>,
     mem: &'a PassMemory,
     scope: String,
     p: BigInt,
@@ -35,7 +36,7 @@ pub type R<'a> = (Option<Value>, Env<'a>);
 impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
     pub fn init(
         global_data: &'d RefCell<GlobalPassData>,
-        observer: &'a dyn InterpreterObserver,
+        observer: &'a dyn for<'e> Observer<Env<'e>>,
         mem: &'a PassMemory,
         scope: String,
     ) -> Self {
@@ -386,7 +387,6 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> R<'env> {
-        // println!("Interpreter executing {:?}", bucket);
         let (src, env) = self.execute_instruction(&bucket.src, env, observe);
         let src = src.expect("src instruction in StoreBucket must produce a value!");
         let env =
@@ -416,7 +416,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         (computed_value, env)
     }
 
-    fn run_function_loopbody<'env>(
+    fn run_function_extracted<'env>(
         &self,
         bucket: &'env CallBucket,
         env: Env<'env>,
@@ -443,7 +443,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         //NOTE: Do not change scope for the new interpreter because the mem lookups within
         //  `get_write_operations_in_store_bucket` need to use the original function context.
         let interp = self.mem.build_interpreter(self.global_data, self.observer);
-        let observe = observe && !interp.observer.ignore_loopbody_function_calls();
+        let observe = observe && !interp.observer.ignore_extracted_function_calls();
         let instructions = &env.get_function(name).body;
         unsafe {
             let ptr = instructions.as_ptr();
@@ -487,7 +487,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             // The extracted loop body and array parameter functions can change any values in
             //  the environment via the parameters passed to it. So interpret the function and
             //  keep the resulting Env (as if the function had executed inline).
-            self.run_function_loopbody(&bucket, env, observe)
+            self.run_function_extracted(&bucket, env, observe)
         } else {
             let mut args = vec![];
             for i in &bucket.arguments {

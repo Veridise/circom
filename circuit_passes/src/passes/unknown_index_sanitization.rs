@@ -10,7 +10,7 @@ use code_producers::llvm_elements::array_switch::{get_array_load_name, get_array
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::operations::compute_operation;
 use crate::bucket_interpreter::R;
 use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
@@ -170,7 +170,7 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
  * - loads with a function call that returns the loaded value
  * - stores with a function call that performs the store
  */
-impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
+impl Observer<Env<'_>> for UnknownIndexSanitizationPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -253,7 +253,7 @@ impl InterpreterObserver for UnknownIndexSanitizationPass<'_> {
         false
     }
 
-    fn ignore_loopbody_function_calls(&self) -> bool {
+    fn ignore_extracted_function_calls(&self) -> bool {
         true
     }
 }
@@ -290,7 +290,7 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
             line: bucket.line,
             message_id: bucket.message_id,
             address_type: self.transform_address_type(&bucket.address_type),
-            src: self.transform_location_rule(&bucket.src),
+            src: self.transform_location_rule(&bucket.id, &bucket.src),
             bounded_fn: bounded_fn_symbol,
         }
         .allocate()
@@ -309,7 +309,7 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
             context: bucket.context.clone(),
             dest_is_output: bucket.dest_is_output,
             dest_address_type: self.transform_address_type(&bucket.dest_address_type),
-            dest: self.transform_location_rule(&bucket.dest),
+            dest: self.transform_location_rule(&bucket.id, &bucket.dest),
             src: self.transform_instruction(&bucket.src),
             bounded_fn: bounded_fn_symbol,
         }

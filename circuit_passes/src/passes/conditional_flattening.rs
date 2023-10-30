@@ -8,7 +8,7 @@ use compiler::intermediate_representation::ir_interface::*;
 use indexmap::{IndexMap, IndexSet};
 use crate::bucket_interpreter::env::{Env, LibraryAccess};
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use super::{CircuitTransformationPass, GlobalPassData};
 
 type BranchValues = BTreeMap<BucketId, Option<bool>>;
@@ -59,7 +59,19 @@ impl<'d> ConditionalFlatteningPass<'d> {
     }
 }
 
-impl InterpreterObserver for ConditionalFlatteningPass<'_> {
+    fn get_known_condition(&self, bucket_id: &BucketId) -> Option<bool> {
+        // Get from the current 'caller_context' or lookup via None key in 'evaluated_conditions'
+        let ec = self.evaluated_conditions.borrow();
+        if let Some(bv) = self.caller_context.borrow().as_ref().or_else(|| ec.get(&None)) {
+            if let Some(Some(side)) = bv.get(bucket_id) {
+                return Some(*side);
+            }
+        }
+        None
+    }
+}
+
+impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -158,7 +170,7 @@ impl InterpreterObserver for ConditionalFlatteningPass<'_> {
         true
     }
 
-    fn ignore_loopbody_function_calls(&self) -> bool {
+    fn ignore_extracted_function_calls(&self) -> bool {
         false
     }
 }
@@ -238,7 +250,7 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
                     argument_types: bucket.argument_types.clone(),
                     arguments: self.transform_instructions(&bucket.arguments),
                     arena_size: bucket.arena_size,
-                    return_info: self.transform_return_type(&bucket.return_info),
+                    return_info: self.transform_return_type(&bucket.id, &bucket.return_info),
                 }
                 .allocate();
             }
@@ -253,7 +265,7 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
             argument_types: bucket.argument_types.clone(),
             arguments: self.transform_instructions(&bucket.arguments),
             arena_size: bucket.arena_size,
-            return_info: self.transform_return_type(&bucket.return_info),
+            return_info: self.transform_return_type(&bucket.id, &bucket.return_info),
         }
         .allocate()
     }

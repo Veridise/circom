@@ -167,7 +167,7 @@ impl<'a> ExtractedFunctionCtx<'a> {
             .into_int_value()
             .get_zero_extended_constant()
             .expect("must reference a constant argument index");
-        *self.args.get(num as usize).expect("must reference a known argument index")
+        *self.args.get(num as usize).expect("must reference a valid argument index")
     }
 }
 
@@ -217,6 +217,16 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
         } else {
             Some(self.get_arg_ptr(id))
         }
+    }
+
+    fn get_subcmp_signal(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+        subcmp_id: AnyValueEnum<'a>,
+        index: IntValue<'a>,
+    ) -> AnyValueEnum<'a> {
+        assert_eq!(zero(producer), index);
+        create_gep(producer, self.load_subcmp_addr(producer, subcmp_id), &[index])
     }
 
     fn get_signal(

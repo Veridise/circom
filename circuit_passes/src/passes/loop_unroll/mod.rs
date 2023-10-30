@@ -14,7 +14,7 @@ use compiler::intermediate_representation::{
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 use super::{CircuitTransformationPass, GlobalPassData};
 use self::body_extractor::LoopBodyExtractor;
@@ -84,7 +84,7 @@ impl<'d> LoopUnrollPass<'d> {
         }
 
         let mut block_body = vec![];
-        if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() {
+        if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() && recorder.get_iter() > 0 {
             // If the loop body contains more than one instruction, extract it into a new
             // function and generate 'recorder.get_iter()' number of calls to that function.
             // Otherwise, just duplicate the body 'recorder.get_iter()' number of times.
@@ -101,7 +101,7 @@ impl<'d> LoopUnrollPass<'d> {
                 }
             }
         } else {
-            //If the loop body is not safe to move into a new function, just unroll.
+            //If the loop body is not safe to move into a new function, just unroll in-place.
             for _ in 0..recorder.get_iter() {
                 for s in &bucket.body {
                     let mut copy = s.clone();
@@ -122,7 +122,7 @@ impl<'d> LoopUnrollPass<'d> {
     }
 }
 
-impl InterpreterObserver for LoopUnrollPass<'_> {
+impl Observer<Env<'_>> for LoopUnrollPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -204,7 +204,7 @@ impl InterpreterObserver for LoopUnrollPass<'_> {
         true
     }
 
-    fn ignore_loopbody_function_calls(&self) -> bool {
+    fn ignore_extracted_function_calls(&self) -> bool {
         true
     }
 }

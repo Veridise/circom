@@ -108,7 +108,7 @@ component main = ComputeValue();
 //CHECK-NEXT:   store i32 %decrement.counter, i32* %6, align 4
 //CHECK-NEXT:   %7 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
 //CHECK-NEXT:   %8 = load [0 x i256]*, [0 x i256]** %7, align 8
-//CHECK-NEXT:   call void @GetWeight_1_run([0 x i256]* %8)
+//CHECK-NEXT:   call void @GetWeight_0_run([0 x i256]* %8)
 //CHECK-NEXT:   br label %store4
 //CHECK-EMPTY: 
 //CHECK-NEXT: store4:

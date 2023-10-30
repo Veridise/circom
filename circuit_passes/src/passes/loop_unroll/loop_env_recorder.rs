@@ -6,7 +6,7 @@ use compiler::intermediate_representation::BucketId;
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::GlobalPassData;
 use super::DEBUG_LOOP_UNROLL;
@@ -218,13 +218,18 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
     }
 }
 
-impl InterpreterObserver for EnvRecorder<'_, '_> {
+impl Observer<Env<'_>> for EnvRecorder<'_, '_> {
     fn on_load_bucket(&self, bucket: &LoadBucket, env: &Env) -> bool {
         if let Some(_) = bucket.bounded_fn {
             todo!(); //not sure if/how to handle that
         }
         self.visit(&bucket.id, &bucket.address_type, &bucket.src, env);
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+        // For a LoadBucket, there is no need to continue observing inside it and doing
+        //  so can actually cause "assert!(bucket_to_args.is_empty())" to fail. See
+        //  test "loops/fixed_idx_in_fixed_idx.circom" for an example and explanation.
+        //  This is not applicable to other buckets because they have additional content
+        //  inside of them that must be observed.
+        false
     }
 
     fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> bool {
@@ -298,7 +303,7 @@ impl InterpreterObserver for EnvRecorder<'_, '_> {
         true
     }
 
-    fn ignore_loopbody_function_calls(&self) -> bool {
+    fn ignore_extracted_function_calls(&self) -> bool {
         true
     }
 }
