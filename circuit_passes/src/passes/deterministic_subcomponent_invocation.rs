@@ -6,7 +6,7 @@ use compiler::intermediate_representation::ir_interface::*;
 use compiler::intermediate_representation::ir_interface::StatusInput::{Last, NoLast};
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use super::{CircuitTransformationPass, GlobalPassData};
 
 pub struct DeterministicSubCmpInvokePass<'d> {
@@ -48,7 +48,7 @@ impl<'d> DeterministicSubCmpInvokePass<'d> {
     }
 }
 
-impl InterpreterObserver for DeterministicSubCmpInvokePass<'_> {
+impl Observer<Env<'_>> for DeterministicSubCmpInvokePass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -122,6 +122,10 @@ impl InterpreterObserver for DeterministicSubCmpInvokePass<'_> {
 
     fn ignore_subcmp_calls(&self) -> bool {
         true
+    }
+
+    fn ignore_extracted_function_calls(&self) -> bool {
+        false
     }
 }
 

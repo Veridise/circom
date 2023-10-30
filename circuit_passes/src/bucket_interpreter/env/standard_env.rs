@@ -3,6 +3,7 @@ use std::collections::{HashMap, BTreeMap};
 use std::fmt::{Display, Formatter, Result};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
 use super::{SubcmpEnv, LibraryAccess};
@@ -46,6 +47,10 @@ impl<'a> StandardEnvData<'a> {
     }
 
     // READ OPERATIONS
+    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
+        None
+    }
+
     pub fn get_var(&self, idx: usize) -> Value {
         self.vars.get(&idx).unwrap_or_default().clone()
     }
@@ -64,6 +69,10 @@ impl<'a> StandardEnvData<'a> {
 
     pub fn get_subcmp_template_id(&self, subcmp_idx: usize) -> usize {
         self.subcmps[&subcmp_idx].template_id
+    }
+
+    pub fn get_subcmp_counter(&self, subcmp_idx: usize) -> Value {
+        Value::KnownU32(self.subcmps.get(&subcmp_idx).unwrap().get_counter())
     }
 
     pub fn subcmp_counter_is_zero(&self, subcmp_idx: usize) -> bool {
@@ -114,32 +123,28 @@ impl<'a> StandardEnvData<'a> {
 
     /// Sets all the signals of the subcmp to UNK
     pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Self {
-        let mut copy = self;
-        let subcmp_env = copy
-            .subcmps
-            .remove(&subcmp_idx)
-            .expect(format!("Can't set a signal of subcomponent {}", subcmp_idx).as_str());
-        copy.subcmps.insert(subcmp_idx, subcmp_env.reset());
-        copy
+        self.update_subcmp(subcmp_idx, |subcmp_env| subcmp_env.reset())
     }
 
     pub fn set_subcmp_signal(self, subcmp_idx: usize, signal_idx: usize, value: Value) -> Self {
-        let mut copy = self;
-        let subcmp_env = copy
-            .subcmps
-            .remove(&subcmp_idx)
-            .expect(format!("Can't set a signal of subcomponent {}", subcmp_idx).as_str());
-        copy.subcmps.insert(subcmp_idx, subcmp_env.set_signal(signal_idx, value));
-        copy
+        self.update_subcmp(subcmp_idx, |subcmp_env| subcmp_env.set_signal(signal_idx, value))
+    }
+
+    pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Self {
+        self.update_subcmp(subcmp_idx, |subcmp_env| subcmp_env.set_counter(new_val))
     }
 
     pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Self {
+        self.update_subcmp(subcmp_idx, |subcmp_env| subcmp_env.decrease_counter())
+    }
+
+    fn update_subcmp(self, subcmp_idx: usize, f: impl FnOnce(SubcmpEnv) -> SubcmpEnv) -> Self {
         let mut copy = self;
         let subcmp_env = copy
             .subcmps
             .remove(&subcmp_idx)
-            .expect(format!("Can't decrease counter of subcomponent {}", subcmp_idx).as_str());
-        copy.subcmps.insert(subcmp_idx, subcmp_env.decrease_counter());
+            .expect(format!("Can't find subcomponent {}", subcmp_idx).as_str());
+        copy.subcmps.insert(subcmp_idx, f(subcmp_env));
         copy
     }
 

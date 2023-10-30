@@ -7,8 +7,10 @@ pub const GENERATED_FN_PREFIX: &str = "..generated..";
 pub const CONSTRAINT_VALUES_FN_NAME: &str = "__constraint_values";
 pub const CONSTRAINT_VALUE_FN_NAME: &str = "__constraint_value";
 pub const ASSERT_FN_NAME: &str = "__assert";
+pub const LLVM_DONOTHING_FN_NAME: &str = "llvm.donothing";
 
 mod stdlib {
+    use inkwell::intrinsics::Intrinsic;
     use inkwell::values::AnyValue;
 
     use crate::llvm_elements::functions::{create_bb, create_function};
@@ -16,11 +18,18 @@ mod stdlib {
         create_br, create_call, create_conditional_branch, create_eq, create_return_void,
         create_store,
     };
-    use crate::llvm_elements::stdlib::{
-        ASSERT_FN_NAME, CONSTRAINT_VALUE_FN_NAME, CONSTRAINT_VALUES_FN_NAME,
-    };
     use crate::llvm_elements::LLVMIRProducer;
     use crate::llvm_elements::types::{bigint_type, bool_type, void_type};
+    use super::{
+        ASSERT_FN_NAME, CONSTRAINT_VALUE_FN_NAME, CONSTRAINT_VALUES_FN_NAME, LLVM_DONOTHING_FN_NAME,
+    };
+
+    pub fn llvm_donothing_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+        Intrinsic::find(LLVM_DONOTHING_FN_NAME)
+            .unwrap()
+            .get_declaration(&producer.llvm().module, &[])
+            .unwrap();
+    }
 
     pub fn constraint_values_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
         let bigint_ty = bigint_type(producer);
@@ -100,6 +109,7 @@ mod stdlib {
 }
 
 pub fn load_stdlib<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    stdlib::llvm_donothing_fn(producer);
     stdlib::constraint_values_fn(producer);
     stdlib::constraint_value_fn(producer);
     stdlib::abort_declared_fn(producer);

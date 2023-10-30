@@ -66,7 +66,16 @@ pub trait TemplateCtx<'a> {
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         id: AnyValueEnum<'a>,
+        implicit: bool,
     ) -> Option<PointerValue<'a>>;
+
+    /// Returns a pointer to the signal associated to given subcomponent id and index
+    fn get_subcmp_signal(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+        subcmp_id: AnyValueEnum<'a>,
+        index: IntValue<'a>,
+    ) -> AnyValueEnum<'a>;
 
     /// Returns a pointer to the signal associated to the index
     fn get_signal(
@@ -192,7 +201,10 @@ impl<'a> TopLevelLLVMIRProducer<'a> {
 pub type LLVMAdapter<'a> = &'a Rc<RefCell<LLVM<'a>>>;
 pub type BigIntType<'a> = IntType<'a>; // i256
 
-pub fn new_constraint_with_name<'a>(producer: &dyn LLVMIRProducer<'a>, name: &str) -> AnyValueEnum<'a> {
+pub fn new_constraint_with_name<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    name: &str,
+) -> AnyValueEnum<'a> {
     let alloca = create_alloca(producer, bool_type(producer).into(), name);
     let s = producer.context().metadata_string("constraint");
     let kind = producer.context().get_kind_id("constraint");

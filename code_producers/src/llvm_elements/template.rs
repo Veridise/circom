@@ -90,6 +90,7 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         id: AnyValueEnum<'a>,
+        _implicit: bool,
     ) -> Option<PointerValue<'a>> {
         Some(
             create_gep(
@@ -99,6 +100,15 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
             )
             .into_pointer_value(),
         )
+    }
+
+    fn get_subcmp_signal(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+        subcmp_id: AnyValueEnum<'a>,
+        index: IntValue<'a>,
+    ) -> AnyValueEnum<'a> {
+        create_gep(producer, self.load_subcmp_addr(producer, subcmp_id), &[zero(producer), index])
     }
 
     fn get_signal(

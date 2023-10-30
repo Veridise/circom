@@ -1,12 +1,12 @@
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{InstructionPointer, new_id};
+use compiler::intermediate_representation::{InstructionPointer, new_id, BucketId};
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::InterpreterObserver;
+use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
 use super::{CircuitTransformationPass, GlobalPassData};
 
@@ -14,9 +14,8 @@ pub struct SimplificationPass<'d> {
     global_data: &'d RefCell<GlobalPassData>,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     memory: PassMemory,
-    compute_replacements: RefCell<BTreeMap<ComputeBucket, Value>>,
-    call_replacements: RefCell<BTreeMap<CallBucket, Value>>,
-    //TODO: could use BucketId instead of cloning buckets for keys
+    compute_replacements: RefCell<HashMap<BucketId, Value>>,
+    call_replacements: RefCell<HashMap<BucketId, Value>>,
 }
 
 impl<'d> SimplificationPass<'d> {
@@ -30,7 +29,7 @@ impl<'d> SimplificationPass<'d> {
     }
 }
 
-impl InterpreterObserver for SimplificationPass<'_> {
+impl Observer<Env<'_>> for SimplificationPass<'_> {
     fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
         true
     }
@@ -49,7 +48,7 @@ impl InterpreterObserver for SimplificationPass<'_> {
         let (eval, _) = interpreter.execute_compute_bucket(bucket, env, false);
         let eval = eval.expect("Compute bucket must produce a value!");
         if !eval.is_unknown() {
-            self.compute_replacements.borrow_mut().insert(bucket.clone(), eval);
+            self.compute_replacements.borrow_mut().insert(bucket.id, eval);
             return false;
         }
         true
@@ -90,7 +89,7 @@ impl InterpreterObserver for SimplificationPass<'_> {
         if let Some(eval) = eval {
             // Call buckets may not return a value directly
             if !eval.is_unknown() {
-                self.call_replacements.borrow_mut().insert(bucket.clone(), eval);
+                self.call_replacements.borrow_mut().insert(bucket.id, eval);
                 return false;
             }
         }
@@ -116,6 +115,10 @@ impl InterpreterObserver for SimplificationPass<'_> {
     fn ignore_subcmp_calls(&self) -> bool {
         true
     }
+
+    fn ignore_extracted_function_calls(&self) -> bool {
+        true
+    }
 }
 
 impl CircuitTransformationPass for SimplificationPass<'_> {
@@ -128,7 +131,7 @@ impl CircuitTransformationPass for SimplificationPass<'_> {
     }
 
     fn transform_compute_bucket(&self, bucket: &ComputeBucket) -> InstructionPointer {
-        if let Some(value) = self.compute_replacements.borrow().get(&bucket) {
+        if let Some(value) = self.compute_replacements.borrow().get(&bucket.id) {
             return value.to_value_bucket(&self.memory).allocate();
         }
         ComputeBucket {
@@ -144,7 +147,7 @@ impl CircuitTransformationPass for SimplificationPass<'_> {
     }
 
     fn transform_call_bucket(&self, bucket: &CallBucket) -> InstructionPointer {
-        if let Some(value) = self.call_replacements.borrow().get(&bucket) {
+        if let Some(value) = self.call_replacements.borrow().get(&bucket.id) {
             return value.to_value_bucket(&self.memory).allocate();
         }
         CallBucket {
@@ -156,7 +159,7 @@ impl CircuitTransformationPass for SimplificationPass<'_> {
             argument_types: bucket.argument_types.clone(),
             arguments: self.transform_instructions(&bucket.arguments),
             arena_size: bucket.arena_size,
-            return_info: self.transform_return_type(&bucket.return_info),
+            return_info: self.transform_return_type(&bucket.id, &bucket.return_info),
         }
         .allocate()
     }

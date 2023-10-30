@@ -161,6 +161,14 @@ impl<'a> ExtractedFunctionCtx<'a> {
             format!("No signals argument for {:?}", self.current_function.get_name()).as_str(),
         )
     }
+
+    fn get_arg_ptr(&self, id: AnyValueEnum<'a>) -> PointerValue<'a> {
+        let num = id
+            .into_int_value()
+            .get_zero_extended_constant()
+            .expect("must reference a constant argument index");
+        *self.args.get(num as usize).expect("must reference a valid argument index")
+    }
 }
 
 impl<'a> BodyCtx<'a> for ExtractedFunctionCtx<'a> {
@@ -192,20 +200,33 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
         _producer: &dyn LLVMIRProducer<'a>,
         id: AnyValueEnum<'a>,
     ) -> PointerValue<'a> {
-        let num = id
-            .into_int_value()
-            .get_zero_extended_constant()
-            .expect("must reference a constant argument index");
-        *self.args.get(num as usize).expect("must reference a known argument index")
+        self.get_arg_ptr(id)
     }
 
     fn load_subcmp_counter(
         &self,
         _producer: &dyn LLVMIRProducer<'a>,
-        _id: AnyValueEnum<'a>,
+        id: AnyValueEnum<'a>,
+        implicit: bool,
     ) -> Option<PointerValue<'a>> {
-        // Use None to force StoreBucket::produce_llvm_ir to skip counter increment.
-        None
+        if implicit {
+            // Use None for the implicit case from StoreBucket::produce_llvm_ir so it will
+            //  skip the counter decrement when using this ExtractedFunctionCtx because the
+            //  counter decrement is generated explicitly inside the extracted functions.
+            None
+        } else {
+            Some(self.get_arg_ptr(id))
+        }
+    }
+
+    fn get_subcmp_signal(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+        subcmp_id: AnyValueEnum<'a>,
+        index: IntValue<'a>,
+    ) -> AnyValueEnum<'a> {
+        assert_eq!(zero(producer), index);
+        create_gep(producer, self.load_subcmp_addr(producer, subcmp_id), &[index])
     }
 
     fn get_signal(
