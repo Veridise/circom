@@ -46,7 +46,6 @@ component main = SubCmps0B(2);
 //CHECK-NEXT:   br label %fold_true3
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true3:
-//CHECK-NEXT:   call void @llvm.donothing()
 //CHECK-NEXT:   call void @IsZero_0_run([0 x i256]* %sub_[[X5]])
 //CHECK-NEXT:   br label %store4
 //CHECK-EMPTY: 
