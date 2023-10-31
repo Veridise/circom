@@ -16,13 +16,13 @@ component main = A(5);
 //	full lines or to remove the "--match-full-lines" option and surround each check with
 //	{{^}} and {{$}} but it gets messy.
 
-//CHECK-LABEL:    define{{.*}} void @A_0_build({ [0 x i256]*, i32 }* %{{[[:alnum:]_]+}}) !dbg !4 {
+//CHECK-LABEL:    define{{.*}} void @A_0_build({ [0 x i256]*, i32 }* %{{[[:alnum:]_]+}}){{.*}} !dbg !4 {
 //CHECK-NEXT:     [[L1:main]]:
 //CHECK-COUNT-06:   {{.*}}, !dbg !7
 //CHECK-NEXT:       ret void, !dbg !7
 //CHECK-NEXT:     }
 
-//CHECK-LABEL:    define{{.*}} void @A_0_run([0 x i256]* %{{[[:alnum:]_]+}}) !dbg !8 {
+//CHECK-LABEL:    define{{.*}} void @A_0_run([0 x i256]* %{{[[:alnum:]_]+}}){{.*}} !dbg !8 {
 //CHECK-NEXT:     [[L1:prelude]]:
 //CHECK-COUNT-03:   {{.*}}, !dbg !9
 //CHECK-EMPTY:
