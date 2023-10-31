@@ -117,7 +117,12 @@ pub struct LLVMCircuitData {
 }
 
 impl LLVMCircuitData {
-    pub fn clone_with_updates(&self, field_tracking: Vec<String>, array_loads: HashSet<Range<usize>>, array_stores: HashSet<Range<usize>>) -> Self {
+    pub fn clone_with_updates(
+        &self,
+        field_tracking: Vec<String>,
+        array_loads: HashSet<Range<usize>>,
+        array_stores: HashSet<Range<usize>>,
+    ) -> Self {
         LLVMCircuitData {
             main_header: self.main_header.clone(),
             field_tracking,
@@ -351,6 +356,7 @@ impl<'a> LLVM<'a> {
         // Run LLVM IR inliner for the FR_IDENTITY_* and FR_INDEX_ARR_PTR functions
         let pm = PassManager::create(());
         pm.add_always_inliner_pass();
+        pm.add_merge_functions_pass();
         pm.add_global_dce_pass();
         pm.run_on(&self.module);
 

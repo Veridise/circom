@@ -57,35 +57,12 @@ template B(n, m, j) {
 
 component main = B(2, 3, 2);
 
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0, i256* %fix_1){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+]]:
-//CHECK-NEXT:   br label %store1
-//CHECK-EMPTY: 
-//CHECK-NEXT: store1:
-//CHECK-NEXT:   %0 = getelementptr i256, i256* %fix_1, i32 0
-//CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %call.fr_mul = call i256 @fr_mul(i256 %1, i256 2)
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %fix_0, i32 0
-//CHECK-NEXT:   store i256 %call.fr_mul, i256* %2, align 4
-//CHECK-NEXT:   %3 = load i256, i256* %2, align 4
-//CHECK-NEXT:   %constraint = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %call.fr_mul, i256 %3, i1* %constraint)
-//CHECK-NEXT:   br label %store2
-//CHECK-EMPTY: 
-//CHECK-NEXT: store2:
-//CHECK-NEXT:   %4 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   %5 = load i256, i256* %4, align 4
-//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %5, i256 1)
-//CHECK-NEXT:   %6 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   store i256 %call.fr_add, i256* %6, align 4
-//CHECK-NEXT:   br label %return3
-//CHECK-EMPTY: 
-//CHECK-NEXT: return3:
-//CHECK-NEXT:   ret void
-//CHECK-NEXT: }
+// NOTE: The loop in template A is the only that that is extracted for
+//  now becauseMapped locations currently block body extraction.
+//
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0, i256* %fix_1){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
@@ -172,15 +149,15 @@ component main = B(2, 3, 2);
 //CHECK-NEXT:   %4 = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %5 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 0
 //CHECK-NEXT:   %6 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 3
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %4, [0 x i256]* %0, i256* %5, i256* %6)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %4, [0 x i256]* %0, i256* %5, i256* %6)
 //CHECK-NEXT:   %7 = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %8 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 1
 //CHECK-NEXT:   %9 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 4
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %7, [0 x i256]* %0, i256* %8, i256* %9)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %7, [0 x i256]* %0, i256* %8, i256* %9)
 //CHECK-NEXT:   %10 = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %11 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 2
 //CHECK-NEXT:   %12 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 5
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %10, [0 x i256]* %0, i256* %11, i256* %12)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %10, [0 x i256]* %0, i256* %11, i256* %12)
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:

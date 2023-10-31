@@ -45,17 +45,6 @@ component main = ComputeValue();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} void @GetWeight_1_build({ [0 x i256]*, i32 }* %0){{.*}} {
-//CHECK-NEXT: main:
-//CHECK-NEXT:   %1 = alloca [1 x i256], align 8
-//CHECK-NEXT:   %2 = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
-//CHECK-NEXT:   store i32 1, i32* %2, align 4
-//CHECK-NEXT:   %3 = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 0
-//CHECK-NEXT:   %4 = bitcast [1 x i256]* %1 to [0 x i256]*
-//CHECK-NEXT:   store [0 x i256]* %4, [0 x i256]** %3, align 8
-//CHECK-NEXT:   ret void
-//CHECK-NEXT: }
-//
 //CHECK-LABEL: define{{.*}} void @GetWeight_1_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [1 x i256], align 8
@@ -94,7 +83,7 @@ component main = ComputeValue();
 //CHECK-EMPTY: 
 //CHECK-NEXT: create_cmp2:
 //CHECK-NEXT:   %2 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1
-//CHECK-NEXT:   call void @GetWeight_1_build({ [0 x i256]*, i32 }* %2)
+//CHECK-NEXT:   call void @GetWeight_0_build({ [0 x i256]*, i32 }* %2)
 //CHECK-NEXT:   br label %store3
 //CHECK-EMPTY: 
 //CHECK-NEXT: store3:

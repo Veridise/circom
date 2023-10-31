@@ -71,12 +71,6 @@ component main = Wrapper();
 //CHECK: call void @..generated..loop.body.[[$F_ID_1]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_1]](
 //
-//CHECK-LABEL: define{{.*}} void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
-//CHECK-NEXT: main:
-//CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
-//CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
-//CHECK-NEXT:   store i32 15, i32* %[[COUNTER]]
-
 //CHECK-LABEL: define{{.*}} void @ArrayOp_
 //CHECK-SAME: [[$RUN_2:[0-9]+]]_run([0 x i256]* %0){{.*}} {
 //CHECK: call void @..generated..loop.body.[[$F_ID_2]](
@@ -95,12 +89,6 @@ component main = Wrapper();
 //CHECK: call void @..generated..loop.body.[[$F_ID_2]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_2]](
 //
-//CHECK-LABEL: define{{.*}} void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
-//CHECK-NEXT: main:
-//CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
-//CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
-//CHECK-NEXT:   store i32 15, i32* %[[COUNTER]]
-//
 //CHECK-LABEL: define{{.*}} void @ArrayOp_
 //CHECK-SAME: [[$RUN_3:[0-9]+]]_run([0 x i256]* %0){{.*}} {
 //CHECK: call void @..generated..loop.body.[[$F_ID_3]](
@@ -118,12 +106,6 @@ component main = Wrapper();
 //CHECK: call void @..generated..loop.body.[[$F_ID_3]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_3]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_3]](
-//
-//CHECK-LABEL: define{{.*}} void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
-//CHECK-NEXT: main:
-//CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
-//CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
-//CHECK-NEXT:   store i32 15, i32* %[[COUNTER]]
 //
 //CHECK-LABEL: define{{.*}} void @ArrayOp_
 //CHECK-SAME: [[$RUN_4:[0-9]+]]_run([0 x i256]* %0){{.*}} {

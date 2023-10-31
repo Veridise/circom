@@ -51,70 +51,6 @@ component main = Wrapper();
 //CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_04:[0-9]+]]:
 //
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_05:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_06:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_07:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_08:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_09:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_10:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_11:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_12:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_13:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_14:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_15:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_16:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_17:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_18:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_19:[0-9]+]]:
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_20:[0-9]+]]:
-//
 //CHECK-LABEL: define{{.*}} void @MatrixOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
 //CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
@@ -129,99 +65,81 @@ component main = Wrapper();
 //CHECK: call void @..generated..loop.body.[[$F_ID_01]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_01]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_01]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_05]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_05]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_05]](
-//
-//CHECK-LABEL: define{{.*}} void @MatrixOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
-//CHECK-NEXT: main:
-//CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
-//CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
-//CHECK-NEXT:   store i32 15, i32* %[[COUNTER]]
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_01]](
 //
 //CHECK-LABEL: define{{.*}} void @MatrixOp_
 //CHECK-SAME: [[$RUN_2:[0-9]+]]_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [3 x i256]
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }]
-//CHECK: call void @..generated..loop.body.[[$F_ID_06]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_06]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_06]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_07]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_07]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_07]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_08]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_08]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_08]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_09]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_09]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_09]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_10]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_10]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_10]](
-//
-//CHECK-LABEL: define{{.*}} void @MatrixOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
-//CHECK-NEXT: main:
-//CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
-//CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
-//CHECK-NEXT:   store i32 15, i32* %[[COUNTER]]
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_02]](
 //
 //CHECK-LABEL: define{{.*}} void @MatrixOp_
 //CHECK-SAME: [[$RUN_3:[0-9]+]]_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [3 x i256]
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }]
-//CHECK: call void @..generated..loop.body.[[$F_ID_11]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_11]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_11]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_12]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_12]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_12]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_13]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_13]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_13]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_14]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_14]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_14]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_15]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_15]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_15]](
-//
-//CHECK-LABEL: define{{.*}} void @MatrixOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
-//CHECK-NEXT: main:
-//CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
-//CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
-//CHECK-NEXT:   store i32 15, i32* %[[COUNTER]]
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_03]](
 //
 //CHECK-LABEL: define{{.*}} void @MatrixOp_
 //CHECK-SAME: [[$RUN_4:[0-9]+]]_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [3 x i256]
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }]
-//CHECK: call void @..generated..loop.body.[[$F_ID_16]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_16]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_16]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_17]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_17]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_17]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_18]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_18]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_18]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_19]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_19]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_19]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_20]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_20]](
-//CHECK: call void @..generated..loop.body.[[$F_ID_20]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
+//CHECK: call void @..generated..loop.body.[[$F_ID_04]](
 //
 //CHECK-LABEL: define{{.*}} void @Wrapper_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
