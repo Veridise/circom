@@ -29,7 +29,7 @@ template runner() {
 
 component main = runner();
 
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
@@ -56,7 +56,7 @@ component main = runner();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store1
@@ -83,7 +83,7 @@ component main = runner();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @InnerConditional2_0_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @InnerConditional2_0_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [4 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8
@@ -129,7 +129,7 @@ component main = runner();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @InnerConditional2_1_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @InnerConditional2_1_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [4 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8
@@ -177,7 +177,7 @@ component main = runner();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @runner_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @runner_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [0 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [2 x { [0 x i256]*, i32 }], align 8

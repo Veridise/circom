@@ -26,7 +26,7 @@ template BigModOld(n) {
 
 component main = BigModOld(2);
 
-//CHECK-LABEL: define i256 @long_div_{{[0-9]+}}
+//CHECK-LABEL: define{{.*}} i256 @long_div_{{[0-9]+}}
 //CHECK-SAME: (i256* %[[ARENA:.*]])
 //CHECK: %[[TEMP1:.*]] = call i256 @short_div_{{.*}}
 //CHECK: %[[TEMP2:.*]] = getelementptr i256, i256* %{{.*}}[[ARENA]], i32 1
@@ -36,7 +36,7 @@ component main = BigModOld(2);
 //CHECK: ret i256 %{{.*}}[[TEMP4]]
 //CHECK: }
 
-//CHECK-LABEL: define i256 @short_div_{{[0-9]+}}
+//CHECK-LABEL: define{{.*}} i256 @short_div_{{[0-9]+}}
 //CHECK-SAME: (i256* %[[ARENA:.*]])
 //CHECK: %[[TEMP1:.*]] = call i256 @identity_{{.*}}
 //CHECK: %[[TEMP2:.*]] = getelementptr i256, i256* %{{.*}}[[ARENA]], i32 1

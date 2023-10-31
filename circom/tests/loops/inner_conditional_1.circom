@@ -32,7 +32,7 @@ template InnerConditional1(N) {
 
 component main = InnerConditional1(10);
 
-//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+}}.F([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.F([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.F]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
@@ -58,7 +58,7 @@ component main = InnerConditional1(10);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 // 
-//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+}}.T([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.T([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.T]]:
 //CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
@@ -84,7 +84,7 @@ component main = InnerConditional1(10);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @InnerConditional1_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @InnerConditional1_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [3 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8

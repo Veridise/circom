@@ -182,6 +182,10 @@ impl<'a, 'b> LLVMIRProducer<'a> for TemplateLLVMIRProducer<'a, 'b> {
     fn get_template_mem_arg(&self, run_fn: FunctionValue<'a>) -> ArrayValue<'a> {
         run_fn.get_nth_param(self.ctx.signals_arg_offset as u32).unwrap().into_array_value()
     }
+
+    fn get_main_template_header(&self) -> &String {
+        self.parent.get_main_template_header()
+    }
 }
 
 impl<'a, 'b> TemplateLLVMIRProducer<'a, 'b> {

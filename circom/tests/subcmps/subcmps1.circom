@@ -34,7 +34,7 @@ component main = SubCmps1(3);
 // %lvars =  [ n, i ]
 // %subcmps = [ IsZero[0]{signals=[out,in,inv]}, IsZero[1]{SAME} ]
 //
-//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
 //CHECK-SAME: i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %fix_[[X3:[0-9]+]],
 //CHECK-SAME: i256* %subfix_[[X4:[0-9]+]], [0 x i256]* %sub_[[X4]], i256* %subc_[[X4]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID:[0-9]+\.T]]:
@@ -83,7 +83,7 @@ component main = SubCmps1(3);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @SubCmps1_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @SubCmps1_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK:      unrolled_loop5:
 //CHECK-NEXT:   %[[T07:[0-9]+]] = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %[[T08:[0-9]+]] = getelementptr [3 x { [0 x i256]*, i32 }], [3 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0

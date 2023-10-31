@@ -28,7 +28,7 @@ template ArrayReturnTemplate(n) {
 
 component main = ArrayReturnTemplate(4);
 
-//CHECK-LABEL: define void @return_array_B_{{[0-9]+}}
+//CHECK-LABEL: define{{.*}} void @return_array_B_{{[0-9]+}}
 //CHECK-SAME: (i256* %[[ARENA:.*]])
 //CHECK: call void @return_array_A_{{[0-9]+}}(i256* %{{.*}})
 //CHECK: %[[TEMP:.*]] = getelementptr i256, i256* %{{.*}}[[ARENA]], i32 2
@@ -36,12 +36,12 @@ component main = ArrayReturnTemplate(4);
 //CHECK: ret void
 //CHECK: }
 
-//CHECK-LABEL: define void @return_array_A_{{[0-9]+}}
+//CHECK-LABEL: define{{.*}} void @return_array_A_{{[0-9]+}}
 //CHECK-SAME: (i256* %[[ARENA:.*]])
 //CHECK: ret void
 //CHECK: }
 
-//CHECK-LABEL: define void @ArrayReturnTemplate_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @ArrayReturnTemplate_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %{{.*}})
 //CHECK: %lvars = alloca [6 x i256]
 //CHECK: %[[TEMP:.*]] = getelementptr [6 x i256], [6 x i256]* %lvars, i32 0, i32 1

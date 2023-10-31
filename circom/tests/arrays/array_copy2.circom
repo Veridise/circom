@@ -10,7 +10,7 @@ template A(n, S) {
 
 component main = A(5, [11,22,33,44,55]);
 
-//CHECK-LABEL: define void @A_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @A_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %0)
 //CHECK: %[[INP_PTR:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK: %[[INP_PTR_DST:[0-9]+]] = getelementptr [6 x i256], [6 x i256]* %lvars, i32 0, i32 0

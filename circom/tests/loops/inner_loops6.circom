@@ -35,7 +35,7 @@ component main = Num2Bits(2);
 //	out[2] = in;
 //	out[3] = in;
 //
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
@@ -59,7 +59,7 @@ component main = Num2Bits(2);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 // 
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
@@ -83,7 +83,7 @@ component main = Num2Bits(2);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @Num2Bits_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @Num2Bits_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK:      unrolled_loop{{[0-9]+}}:
 //CHECK-NEXT:   %3 = getelementptr [3 x i256], [3 x i256]* %lvars, i32 0, i32 2
 //CHECK-NEXT:   store i256 0, i256* %3, align 4

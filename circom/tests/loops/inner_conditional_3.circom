@@ -21,7 +21,7 @@ template InnerConditional3(N) {
 
 component main = InnerConditional3(3);
 
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %branch1
@@ -67,7 +67,7 @@ component main = InnerConditional3(3);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @InnerConditional3_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @InnerConditional3_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [3 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8

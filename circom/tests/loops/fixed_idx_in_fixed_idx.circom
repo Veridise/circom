@@ -18,7 +18,7 @@ template EmulatedAesencRowShifting() {
 
 component main = EmulatedAesencRowShifting();
 
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0, i256* %fix_1){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
@@ -45,7 +45,7 @@ component main = EmulatedAesencRowShifting();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @EmulatedAesencRowShifting_0_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @EmulatedAesencRowShifting_0_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [17 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8

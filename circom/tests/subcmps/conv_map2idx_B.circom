@@ -22,7 +22,7 @@ template ComputeValue() {
 
 component main = ComputeValue();
 
-//CHECK-LABEL: define void @GetWeight_0_build({ [0 x i256]*, i32 }* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @GetWeight_0_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
 //CHECK-NEXT:   %1 = alloca [3 x i256], align 8
 //CHECK-NEXT:   %2 = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
@@ -33,7 +33,7 @@ component main = ComputeValue();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @GetWeight_0_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @GetWeight_0_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [2 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8
@@ -58,7 +58,7 @@ component main = ComputeValue();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @GetWeight_1_build({ [0 x i256]*, i32 }* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @GetWeight_1_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
 //CHECK-NEXT:   %1 = alloca [3 x i256], align 8
 //CHECK-NEXT:   %2 = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
@@ -69,7 +69,7 @@ component main = ComputeValue();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @GetWeight_1_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @GetWeight_1_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [2 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8
@@ -94,7 +94,7 @@ component main = ComputeValue();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @ComputeValue_2_build({ [0 x i256]*, i32 }* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @ComputeValue_2_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
 //CHECK-NEXT:   %1 = alloca [2 x i256], align 8
 //CHECK-NEXT:   %2 = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
@@ -105,7 +105,7 @@ component main = ComputeValue();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @ComputeValue_2_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @ComputeValue_2_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [0 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [2 x { [0 x i256]*, i32 }], align 8
