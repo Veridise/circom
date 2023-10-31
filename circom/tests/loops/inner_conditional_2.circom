@@ -193,7 +193,7 @@ component main = runner();
 //CHECK-EMPTY: 
 //CHECK-NEXT: create_cmp2:
 //CHECK-NEXT:   %4 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1
-//CHECK-NEXT:   call void @InnerConditional2_1_build({ [0 x i256]*, i32 }* %4)
+//CHECK-NEXT:   call void @InnerConditional2_0_build({ [0 x i256]*, i32 }* %4)
 //CHECK-NEXT:   %5 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
 //CHECK-NEXT:   %6 = load [0 x i256]*, [0 x i256]** %5, align 8
 //CHECK-NEXT:   call void @InnerConditional2_1_run([0 x i256]* %6)
