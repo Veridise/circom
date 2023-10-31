@@ -29,12 +29,8 @@ component main = Num2Bits(3);
 //CHECK-LABEL: define{{.*}} void @Inner_
 //CHECK-SAME: [[$RUN_1:[0-9]+]]_run([0 x i256]* %0){{.*}} {
 //
-//CHECK-LABEL: define{{.*}} void @Inner_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
-//
 //CHECK-LABEL: define{{.*}} void @Inner_
 //CHECK-SAME: [[$RUN_2:[0-9]+]]_run([0 x i256]* %0){{.*}} {
-//
-//CHECK-LABEL: define{{.*}} void @Inner_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //
 //CHECK-LABEL: define{{.*}} void @Inner_
 //CHECK-SAME: [[$RUN_3:[0-9]+]]_run([0 x i256]* %0){{.*}} {
