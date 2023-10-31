@@ -31,29 +31,29 @@ template Wrapper() {
 
 component main = Wrapper();
 
-//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+]]:
 //
-//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+]]:
 //
-//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_3:[0-9]+]]:
 //
-//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME: i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_4:[0-9]+]]:
 //
-//CHECK-LABEL: define void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
 //CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
 //CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
 //CHECK-NEXT:   store i32 15, i32* %[[COUNTER]]
 //
-//CHECK-LABEL: define void @ArrayOp_
+//CHECK-LABEL: define{{.*}} void @ArrayOp_
 //CHECK-SAME: [[$RUN_1:[0-9]+]]_run([0 x i256]* %0){{.*}} {
 //CHECK: call void @..generated..loop.body.[[$F_ID_1]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_1]](
@@ -71,13 +71,13 @@ component main = Wrapper();
 //CHECK: call void @..generated..loop.body.[[$F_ID_1]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_1]](
 //
-//CHECK-LABEL: define void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
 //CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
 //CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
 //CHECK-NEXT:   store i32 15, i32* %[[COUNTER]]
 
-//CHECK-LABEL: define void @ArrayOp_
+//CHECK-LABEL: define{{.*}} void @ArrayOp_
 //CHECK-SAME: [[$RUN_2:[0-9]+]]_run([0 x i256]* %0){{.*}} {
 //CHECK: call void @..generated..loop.body.[[$F_ID_2]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_2]](
@@ -95,13 +95,13 @@ component main = Wrapper();
 //CHECK: call void @..generated..loop.body.[[$F_ID_2]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_2]](
 //
-//CHECK-LABEL: define void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
 //CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
 //CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
 //CHECK-NEXT:   store i32 15, i32* %[[COUNTER]]
 //
-//CHECK-LABEL: define void @ArrayOp_
+//CHECK-LABEL: define{{.*}} void @ArrayOp_
 //CHECK-SAME: [[$RUN_3:[0-9]+]]_run([0 x i256]* %0){{.*}} {
 //CHECK: call void @..generated..loop.body.[[$F_ID_3]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_3]](
@@ -119,13 +119,13 @@ component main = Wrapper();
 //CHECK: call void @..generated..loop.body.[[$F_ID_3]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_3]](
 //
-//CHECK-LABEL: define void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @ArrayOp_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
 //CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [30 x i256]
 //CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
 //CHECK-NEXT:   store i32 15, i32* %[[COUNTER]]
 //
-//CHECK-LABEL: define void @ArrayOp_
+//CHECK-LABEL: define{{.*}} void @ArrayOp_
 //CHECK-SAME: [[$RUN_4:[0-9]+]]_run([0 x i256]* %0){{.*}} {
 //CHECK: call void @..generated..loop.body.[[$F_ID_4]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_4]](
@@ -143,13 +143,13 @@ component main = Wrapper();
 //CHECK: call void @..generated..loop.body.[[$F_ID_4]](
 //CHECK: call void @..generated..loop.body.[[$F_ID_4]](
 //
-//CHECK-LABEL: define void @Wrapper_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @Wrapper_{{[0-9]+}}_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
 //CHECK-NEXT:   %[[SIGNALS:.*]] = alloca [16 x i256]
 //CHECK-NEXT:   %[[COUNTER:.*]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
 //CHECK-NEXT:   store i32 15, i32* %{{.*}}[[COUNTER]]
 //
-//CHECK-LABEL: define void @Wrapper_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @Wrapper_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK: %lvars = alloca [2 x i256]
 //CHECK: unrolled_loop{{[0-9]+}}:
 //CHECK: call void @ArrayOp_[[$RUN_1]]_run([0 x i256]* %

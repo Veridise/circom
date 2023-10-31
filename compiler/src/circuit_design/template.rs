@@ -3,9 +3,14 @@ use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use std::default::Default;
-use code_producers::llvm_elements::{AnyType, AnyValue, build_fn_name, LLVMInstruction, LLVMIRProducer, run_fn_name, to_basic_type_enum};
+use code_producers::llvm_elements::{
+    AnyType, AnyValue, build_fn_name, LLVMInstruction, LLVMIRProducer, run_fn_name,
+    to_basic_type_enum, Linkage,
+};
 use code_producers::llvm_elements::functions::{create_bb, create_function};
-use code_producers::llvm_elements::instructions::{create_alloca, create_br, create_gep, create_return_void, create_store, pointer_cast};
+use code_producers::llvm_elements::instructions::{
+    create_alloca, create_br, create_gep, create_return_void, create_store, pointer_cast,
+};
 use code_producers::llvm_elements::template::{create_template_struct, TemplateLLVMIRProducer};
 use code_producers::llvm_elements::types::{bigint_type, i32_type, void_type};
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
@@ -138,8 +143,12 @@ impl WriteLLVMIR for TemplateCodeInfo {
         let prologue = create_bb(producer, run_function, "prologue");
         create_br(producer, prologue);
         producer.set_current_bb(prologue);
-
         let ret = create_return_void(producer);
+
+        if self.header.eq(producer.get_main_template_header()) {
+            run_function.set_linkage(Linkage::External);
+            build_function.set_linkage(Linkage::External);
+        }
         Some(ret)
     }
 }

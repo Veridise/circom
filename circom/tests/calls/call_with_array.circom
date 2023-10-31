@@ -15,7 +15,7 @@ template CallWithArray() {
 
 component main = CallWithArray();
 
-//CHECK-LABEL: define void @fr_copy_n
+//CHECK-LABEL: define{{.*}} void @fr_copy_n
 //CHECK-SAME: (i256* %[[SRC:[0-9]+]], i256* %[[DST:[0-9]+]], i32 %[[LEN:[0-9]+]])
 //CHECK: [[ENTRY_BB:.*]]:
 //CHECK: %[[I:.*]] = alloca i32
@@ -40,7 +40,7 @@ component main = CallWithArray();
 //CHECK-SAME: preds = %[[COND_BB]]
 //CHECK: ret void
 
-//CHECK-LABEL: define void @CallWithArray_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @CallWithArray_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK: call1:
 //CHECK: %[[ARENA:sum_.*_arena]] = alloca [4 x i256]

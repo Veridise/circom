@@ -24,7 +24,7 @@ component main = Num2Bits(2);
 // %lvars =  [ n, lc1, e2, i ]
 // %subcmps = []
 //
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %fix_[[X3:[0-9]+]], i256* %fix_[[X4:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID]]:
 //CHECK-NEXT:   br label %store1
@@ -88,7 +88,7 @@ component main = Num2Bits(2);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @Num2Bits_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @Num2Bits_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK:      unrolled_loop{{[0-9]+}}:
 //CHECK-NEXT:   %5 = bitcast [4 x i256]* %lvars to [0 x i256]*

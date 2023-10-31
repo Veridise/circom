@@ -58,7 +58,7 @@ template Main(t) {
 
 component main = Main(2);
 
-//CHECK-LABEL: define void @..generated..array.param.
+//CHECK-LABEL: define{{.*}} void @..generated..array.param.
 //CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars){{.*}} {
 //CHECK-NEXT: ..generated..array.param.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
@@ -88,9 +88,9 @@ component main = Main(2);
 //CHECK-NEXT: }
 //
 //There is only 1 produced, no duplicates
-//CHECK-NOT:  define void @..generated..array.param.
+//CHECK-NOT:  define{{.*}} void @..generated..array.param.
 //
-//CHECK-LABEL: define void @Mixer_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @Mixer_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [8 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8
@@ -123,7 +123,7 @@ component main = Main(2);
 //CHECK-EMPTY: 
 //CHECK-NEXT: unrolled_loop6:
 //
-//CHECK-LABEL: define void @Mixer_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @Mixer_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [8 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8

@@ -23,7 +23,7 @@ component main = SimpleVariantIdx(3);
 // %lvars =  [ n, lc, i ]
 // %subcmps = []
 //
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
 //CHECK:      store{{[0-9]+}}:
 //CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 3
@@ -51,7 +51,7 @@ component main = SimpleVariantIdx(3);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @SimpleVariantIdx_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @SimpleVariantIdx_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK:      unrolled_loop{{[0-9]+}}:
 //CHECK-NEXT:   %4 = bitcast [3 x i256]* %lvars to [0 x i256]*

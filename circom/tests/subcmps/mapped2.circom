@@ -57,7 +57,7 @@ template B(n, m, j) {
 
 component main = B(2, 3, 2);
 
-//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0, i256* %fix_1){{.*}} {
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0, i256* %fix_1){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
@@ -84,7 +84,7 @@ component main = B(2, 3, 2);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0, i256* %fix_1){{.*}} {
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0, i256* %fix_1){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
@@ -111,7 +111,7 @@ component main = B(2, 3, 2);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @A_0_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @A_0_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [2 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8
@@ -147,7 +147,7 @@ component main = B(2, 3, 2);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @A_1_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @A_1_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [2 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8
@@ -187,7 +187,7 @@ component main = B(2, 3, 2);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @B_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @B_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [5 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [4 x { [0 x i256]*, i32 }], align 8

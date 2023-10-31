@@ -19,6 +19,7 @@ pub fn create_function<'a>(
 ) -> FunctionValue<'a> {
     let llvm = producer.llvm();
     let f = llvm.module.add_function(name, ty, None);
+    f.set_linkage(inkwell::module::Linkage::Internal); //default to Internal, allows removal if unused
     if let Some(file_id) = source_file_id {
         match llvm.get_debug_info(&file_id) {
             Err(msg) => panic!("{}", msg),
@@ -130,6 +131,10 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for FunctionLLVMIRProducer<'ctx, 'prod> {
 
     fn get_template_mem_arg(&self, _run_fn: FunctionValue<'ctx>) -> ArrayValue<'ctx> {
         panic!("The function llvm producer can't extract the template argument of a run function!");
+    }
+
+    fn get_main_template_header(&self) -> &String {
+        self.parent.get_main_template_header()
     }
 }
 
@@ -295,5 +300,9 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for ExtractedFunctionLLVMIRProducer<'ctx,
 
     fn get_template_mem_arg(&self, _run_fn: FunctionValue<'ctx>) -> ArrayValue<'ctx> {
         panic!("The function llvm producer can't extract the template argument of a run function!");
+    }
+
+    fn get_main_template_header(&self) -> &String {
+        self.parent.get_main_template_header()
     }
 }
