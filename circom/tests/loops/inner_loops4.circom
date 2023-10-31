@@ -31,7 +31,7 @@ component main = InnerLoops(2);
 //  b[1] = a[1];
 //  b[1] = a[0];
 //
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
@@ -68,7 +68,7 @@ component main = InnerLoops(2);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @..generated..loop.body.
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
@@ -97,7 +97,7 @@ component main = InnerLoops(2);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define void @InnerLoops_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @InnerLoops_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK:      unrolled_loop{{[0-9]+}}:
 //CHECK-NEXT:   %6 = getelementptr [5 x i256], [5 x i256]* %lvars, i32 0, i32 3
 //CHECK-NEXT:   store i256 0, i256* %6, align 4

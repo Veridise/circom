@@ -23,7 +23,7 @@ component main = VariantIndex(2);
 // %lvars =  [ n, lc1, e2, i ]
 // %subcmps = []
 //
-//CHECK-LABEL: define void @VariantIndex_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @VariantIndex_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK: unrolled_loop{{[0-9]+}}:
 //CHECK-NOT: call void @..generated..loop.body.{{.*}}

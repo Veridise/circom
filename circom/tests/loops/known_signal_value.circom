@@ -23,7 +23,7 @@ template KnownLoopViaSignal() {
 component main = KnownLoopViaSignal();
 
 //// Use the block labels to check that the loop is NOT unrolled
-//CHECK-LABEL: define void @accumulate_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @accumulate_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK-NOT: unrolled_loop{{.*}}:
 //CHECK: loop.cond{{.*}}:
@@ -33,7 +33,7 @@ component main = KnownLoopViaSignal();
 //CHECK:   }
 
 //// Use the block labels to check that no loop related blocks are present
-//CHECK-LABEL: define void @KnownLoopViaSignal_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @KnownLoopViaSignal_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK-NOT: {{.*}}loop{{.*}}:
 //CHECK:   }

@@ -17,7 +17,7 @@ component main = Example(3);
 // %0 (i.e. signal arena)  = { c[0], c[1], c[2] , a[0], a[1], a[2], b[0], b[1], b[2] }
 // %lvars = { n, i }
 //
-//CHECK-LABEL: define void @Example_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @Example_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK: unrolled_loop{{[0-9]+}}:
 //CHECK-NOT: call void @..generated..loop.body.{{.*}}

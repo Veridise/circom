@@ -17,6 +17,7 @@ use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntVal
 pub use inkwell::types::AnyType;
 pub use inkwell::values::{AnyValue, AnyValueEnum, FunctionValue, InstructionOpcode};
 pub use inkwell::debug_info::AsDIScope;
+pub use inkwell::module::Linkage;
 
 use program_structure::program_archive::ProgramArchive;
 
@@ -98,12 +99,14 @@ pub trait LLVMIRProducer<'a> {
     fn builder(&self) -> &Builder<'a>;
     fn constant_fields(&self) -> &Vec<String>;
     fn get_template_mem_arg(&self, run_fn: FunctionValue<'a>) -> ArrayValue<'a>;
+    fn get_main_template_header(&self) -> &String;
 }
 
 pub type IndexMapping = HashMap<usize, Range<usize>>;
 
 #[derive(Default, Eq, PartialEq, Debug)]
 pub struct LLVMCircuitData {
+    pub main_header: String,
     pub field_tracking: Vec<String>,
     pub io_map: TemplateInstanceIOMap,
     pub signal_index_mapping: HashMap<String, IndexMapping>,
@@ -116,6 +119,7 @@ pub struct LLVMCircuitData {
 impl LLVMCircuitData {
     pub fn clone_with_updates(&self, field_tracking: Vec<String>, array_loads: HashSet<Range<usize>>, array_stores: HashSet<Range<usize>>) -> Self {
         LLVMCircuitData {
+            main_header: self.main_header.clone(),
             field_tracking,
             io_map: self.io_map.clone(),
             signal_index_mapping: self.signal_index_mapping.clone(),
@@ -131,6 +135,7 @@ pub struct TopLevelLLVMIRProducer<'a> {
     pub context: &'a Context,
     current_module: LLVM<'a>,
     pub field_tracking: Vec<String>,
+    main_template_header: String,
 }
 
 impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
@@ -171,6 +176,10 @@ impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
             "The top level llvm producer can't extract the template argument of a run function!"
         );
     }
+
+    fn get_main_template_header(&self) -> &String {
+        &self.main_template_header
+    }
 }
 
 impl<'a> TopLevelLLVMIRProducer<'a> {
@@ -189,11 +198,13 @@ impl<'a> TopLevelLLVMIRProducer<'a> {
         program_archive: &ProgramArchive,
         llvm_path: &str,
         field_tracking: Vec<String>,
+        main_template_header: String,
     ) -> Self {
         TopLevelLLVMIRProducer {
             context,
             current_module: LLVM::from_context(context, program_archive, llvm_path),
             field_tracking,
+            main_template_header,
         }
     }
 }
@@ -340,6 +351,7 @@ impl<'a> LLVM<'a> {
         // Run LLVM IR inliner for the FR_IDENTITY_* and FR_INDEX_ARR_PTR functions
         let pm = PassManager::create(());
         pm.add_always_inliner_pass();
+        pm.add_global_dce_pass();
         pm.run_on(&self.module);
 
         // Must finalize all debug info before running the verifier

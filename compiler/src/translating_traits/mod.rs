@@ -50,6 +50,7 @@ pub trait WriteLLVMIR {
             program_archive,
             out_path,
             data.field_tracking.clone(),
+            data.main_header.clone(),
         );
         self.produce_llvm_ir(&top_level);
         top_level.write_to_file(out_path)

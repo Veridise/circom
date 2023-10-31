@@ -26,7 +26,7 @@ template Poseidon() {
 
 component main = Poseidon();
 
-//CHECK-LABEL: define void @Poseidon_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @Poseidon_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [2 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [2 x { [0 x i256]*, i32 }], align 8

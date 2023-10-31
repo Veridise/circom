@@ -20,7 +20,7 @@ template NonZeroInit() {
 
 component main = NonZeroInit();
 
-//CHECK-LABEL: define void @NonZeroInit_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @NonZeroInit_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //
 //CHECK:      store{{[0-9]+}}:
 //CHECK-NEXT:   %[[VAR1:[0-9]+]] = getelementptr [1 x i256], [1 x i256]* %lvars, i32 0, i32 0

@@ -15,7 +15,7 @@ template CallWithArray() {
 
 component main = CallWithArray();
 
-//CHECK-LABEL: define void @CallWithArray_{{[0-9]+}}_run
+//CHECK-LABEL: define{{.*}} void @CallWithArray_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK: call1:
 //CHECK: %[[ARENA:sum_.*_arena]] = alloca [6 x i256]
