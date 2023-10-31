@@ -145,6 +145,12 @@ impl WriteLLVMIR for TemplateCodeInfo {
         producer.set_current_bb(prologue);
         let ret = create_return_void(producer);
 
+        // Use the template name as the Section identifier to prevent function merging
+        //  pass from combining the build/run functions from different templates.
+        run_function.set_section(Some(&self.name));
+        build_function.set_section(Some(&self.name));
+
+        // Set External linkage so main template functions are not removed by global DCE
         if self.header.eq(producer.get_main_template_header()) {
             run_function.set_linkage(Linkage::External);
             build_function.set_linkage(Linkage::External);
