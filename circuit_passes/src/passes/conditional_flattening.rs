@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::BTreeMap;
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
@@ -17,17 +17,17 @@ pub struct ConditionalFlatteningPass<'d> {
     global_data: &'d RefCell<GlobalPassData>,
     memory: PassMemory,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
+    /// NOTE: IndexMap/IndexSet are used to preserve insertion order to stabilize lit test output.
     //
     /// Maps the ID of the CallBucket that is currently on the interpreter's stack (or None if the
     /// interpreter is currently analyzing code that is not in one of the generated loopbody functions)
     /// to a list of (ID, evaluated condition) pairs for the BranchBuckets in the current context.
-    evaluated_conditions: RefCell<HashMap<Option<BucketId>, BranchValues>>,
+    evaluated_conditions: RefCell<IndexMap<Option<BucketId>, BranchValues>>,
     /// Track the order that the branches appear in the traversal to stabilize output for lit tests.
     branch_bucket_order: RefCell<IndexSet<BucketId>>,
     /// Maps CallBucket symbol (i.e. target function name) to BranchBucket value mapping to the
     /// new function that has brances simplified according to that mapping.
-    /// NOTE: Uses IndexMap to preserve insertion order to stabilize lit test output.
-    new_functions: RefCell<IndexMap<String, BTreeMap<BranchValues, FunctionCode>>>,
+    new_functions: RefCell<IndexMap<String, IndexMap<BranchValues, FunctionCode>>>,
     /// Within the CircuitTransformationPass impl below, this holds the BranchBucket
     /// condition for when the function is called by the current CallBucket.
     caller_context: RefCell<Option<BranchValues>>,

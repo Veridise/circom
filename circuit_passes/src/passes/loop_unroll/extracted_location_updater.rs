@@ -7,7 +7,7 @@ use crate::passes::builders::build_u32_value;
 use super::body_extractor::ArgIndex;
 
 pub struct ExtractedFunctionLocationUpdater {
-    pub insert_after: InstructionList,
+    insert_after: InstructionList,
 }
 
 /// Used within extracted loopbody functions to replace all storage references
@@ -235,7 +235,7 @@ impl ExtractedFunctionLocationUpdater {
         bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         // Check the call parameters
-        self.check_instructions(&mut bucket.arguments, bucket_arg_order);
+        self.check_instructions(&mut bucket.arguments, bucket_arg_order, false);
         // A store can be implicit within a CallBucket 'return_info'
         let bucket_meta = ObtainMetaImpl::from(bucket); //avoid borrow issues
         if let ReturnType::Final(fd) = &mut bucket.return_info {
@@ -279,7 +279,7 @@ impl ExtractedFunctionLocationUpdater {
         bucket: &mut ComputeBucket,
         bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
-        self.check_instructions(&mut bucket.stack, bucket_arg_order);
+        self.check_instructions(&mut bucket.stack, bucket_arg_order, false);
     }
 
     fn check_assert_bucket(
@@ -296,7 +296,7 @@ impl ExtractedFunctionLocationUpdater {
         bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instruction(&mut bucket.continue_condition, bucket_arg_order);
-        self.check_instructions(&mut bucket.body, bucket_arg_order);
+        self.check_instructions(&mut bucket.body, bucket_arg_order, true);
     }
 
     fn check_create_cmp_bucket(
@@ -326,7 +326,7 @@ impl ExtractedFunctionLocationUpdater {
         bucket: &mut BlockBucket,
         bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
-        self.check_instructions(&mut bucket.body, bucket_arg_order);
+        self.check_instructions(&mut bucket.body, bucket_arg_order, true);
     }
 
     fn check_branch_bucket(
@@ -335,8 +335,8 @@ impl ExtractedFunctionLocationUpdater {
         bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
     ) {
         self.check_instruction(&mut bucket.cond, bucket_arg_order);
-        self.check_instructions(&mut bucket.if_branch, bucket_arg_order);
-        self.check_instructions(&mut bucket.else_branch, bucket_arg_order);
+        self.check_instructions(&mut bucket.if_branch, bucket_arg_order, true);
+        self.check_instructions(&mut bucket.else_branch, bucket_arg_order, true);
     }
 
     fn check_return_bucket(
@@ -363,17 +363,7 @@ impl ExtractedFunctionLocationUpdater {
     fn check_value_bucket(&mut self, _: &mut ValueBucket, _: &mut IndexMap<BucketId, ArgIndex>) {}
     fn check_nop_bucket(&mut self, _: &mut NopBucket, _: &mut IndexMap<BucketId, ArgIndex>) {}
 
-    fn check_instructions(
-        &mut self,
-        insts: &mut Vec<InstructionPointer>,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
-    ) {
-        for i in insts {
-            self.check_instruction(i, bucket_arg_order);
-        }
-    }
-
-    pub fn check_instruction(
+    fn check_instruction(
         &mut self,
         inst: &mut InstructionPointer,
         bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
@@ -393,6 +383,25 @@ impl ExtractedFunctionLocationUpdater {
             Instruction::Constraint(ref mut b) => self.check_constraint_bucket(b, bucket_arg_order),
             Instruction::Block(ref mut b) => self.check_block_bucket(b, bucket_arg_order),
             Instruction::Nop(ref mut b) => self.check_nop_bucket(b, bucket_arg_order),
+        }
+    }
+
+    pub fn check_instructions(
+        &mut self,
+        insts: &mut Vec<InstructionPointer>,
+        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        can_insert: bool,
+    ) {
+        assert!(self.insert_after.is_empty());
+        for i in &mut *insts {
+            self.check_instruction(i, bucket_arg_order);
+        }
+        if can_insert {
+            for s in self.insert_after.drain(..) {
+                insts.push(s);
+            }
+        } else {
+            assert!(self.insert_after.is_empty());
         }
     }
 }

@@ -18,16 +18,17 @@ template InnerConditional4(N) {
 
 component main = InnerConditional4(6);
 
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.F([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.T([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME:  i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.F]]:
-//CHECK-NEXT:   br label %fold_false1
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.T]]:
+//CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
-//CHECK-NEXT: fold_false1:
+//CHECK-NEXT: fold_true1:
 //CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 6
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %fix_[[X2]], i32 0
-//CHECK-NEXT:   store i256 %1, i256* %2, align 4
+//CHECK-NEXT:   %call.fr_neg = call i256 @fr_neg(i256 %1)
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %fix_[[X1]], i32 0
+//CHECK-NEXT:   store i256 %call.fr_neg, i256* %2, align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
@@ -42,17 +43,16 @@ component main = InnerConditional4(6);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.T([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.F([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME:  i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.T]]:
-//CHECK-NEXT:   br label %fold_true1
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.F]]:
+//CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
-//CHECK-NEXT: fold_true1:
+//CHECK-NEXT: fold_false1:
 //CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 6
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %call.fr_neg = call i256 @fr_neg(i256 %1)
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %fix_[[X1]], i32 0
-//CHECK-NEXT:   store i256 %call.fr_neg, i256* %2, align 4
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %fix_[[X2]], i32 0
+//CHECK-NEXT:   store i256 %1, i256* %2, align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
@@ -86,22 +86,22 @@ component main = InnerConditional4(6);
 //CHECK-NEXT: unrolled_loop3:
 //CHECK-NEXT:   %3 = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %4 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 0
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %3, [0 x i256]* %0, i256* %4, i256* null)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %3, [0 x i256]* %0, i256* %4, i256* null)
 //CHECK-NEXT:   %5 = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %6 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 1
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %5, [0 x i256]* %0, i256* %6, i256* null)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %5, [0 x i256]* %0, i256* %6, i256* null)
 //CHECK-NEXT:   %7 = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %8 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 2
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %7, [0 x i256]* %0, i256* %8, i256* null)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %7, [0 x i256]* %0, i256* %8, i256* null)
 //CHECK-NEXT:   %9 = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %10 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 3
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %9, [0 x i256]* %0, i256* null, i256* %10)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %9, [0 x i256]* %0, i256* null, i256* %10)
 //CHECK-NEXT:   %11 = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %12 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 4
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %11, [0 x i256]* %0, i256* null, i256* %12)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %11, [0 x i256]* %0, i256* null, i256* %12)
 //CHECK-NEXT:   %13 = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %14 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 5
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %13, [0 x i256]* %0, i256* null, i256* %14)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %13, [0 x i256]* %0, i256* null, i256* %14)
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:

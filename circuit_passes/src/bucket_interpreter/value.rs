@@ -59,6 +59,13 @@ impl Value {
         }
     }
 
+    pub fn is_u32(&self) -> bool {
+        match self {
+            KnownU32(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_bigint(&self) -> bool {
         match self {
             KnownBigInt(_) => true,
