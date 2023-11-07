@@ -180,9 +180,6 @@ where
 /// Return true iff the two arguments contain exactly the same elements.
 pub fn contains_same<T, U>(lhs: T, rhs: U) -> bool
 where
-    // T: IntoIterator,
-    // T::Item: Eq + std::hash::Hash,
-    // U: IntoIterator<Item = T::Item>,
     T: IntoIterator,
     T::Item: Eq + std::hash::Hash,
     U: IntoIterator<Item = T::Item>,
