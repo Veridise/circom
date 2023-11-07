@@ -159,7 +159,12 @@ component main = Poseidon();
 //CHECK-NEXT:   %18 = load [0 x i256]*, [0 x i256]** %17, align 8
 //CHECK-NEXT:   %19 = getelementptr [0 x i256], [0 x i256]* %18, i32 0
 //CHECK-NEXT:   %20 = getelementptr [0 x i256], [0 x i256]* %19, i32 0, i256 1
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_3]]([0 x i256]* %16, [0 x i256]* %0, i256* null, i256* %20, [0 x i256]* null, i256* null)
+//CHECK-NEXT:   %21 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
+//CHECK-NEXT:   %22 = load [0 x i256]*, [0 x i256]** %21, align 8
+//CHECK-NEXT:   %23 = getelementptr [0 x i256], [0 x i256]* %22, i32 0
+//CHECK-NEXT:   %24 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 1
+//CHECK-NEXT:   %25 = bitcast i32* %24 to i256*
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_3]]([0 x i256]* %16, [0 x i256]* %0, i256* null, i256* %20, [0 x i256]* %23, i256* %25)
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:

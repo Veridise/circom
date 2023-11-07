@@ -173,7 +173,11 @@ impl LoopBodyExtractor {
             // Parameter for signals/arena
             args[1] = builders::build_storage_ptr_ref(bucket, AddressType::Signal);
             // Additional parameters for subcmps and variant array indexing within the loop
-            for (loc, ai) in extra_arg_info.get_passing_refs_for_itr(iter_num) {
+            let mut passing_refs = extra_arg_info.get_passing_refs_for_itr(iter_num);
+            // Sort by the Option to ensure None comes first so that the value for a Some entry that uses the same
+            //  'arena' and 'counter' as a None entry will be preserved, replacing the 'null' for the None entry.
+            passing_refs.sort_by(|(a, _), (b, _)| a.cmp(b));
+            for (loc, ai) in passing_refs {
                 match loc {
                     None => match ai {
                         ArgIndex::Signal(signal) => {
