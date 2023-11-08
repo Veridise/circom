@@ -47,6 +47,7 @@ struct SubcmpSignalCompare {
 }
 
 impl SubcmpSignalCompare {
+    /// Create a `SubcmpSignalCompare` instance for the given `AddressType::SubcmpSignal`
     fn convert(addr: &AddressType) -> SubcmpSignalCompare {
         if let AddressType::SubcmpSignal {
             cmp_address,
@@ -319,6 +320,9 @@ impl LoopBodyExtractor {
         column.iter().filter_map(|x| x.as_ref()).any(f)
     }
 
+    /// Compute the average of the `usize` values from the map where `member` is
+    /// the primary key and `set` is used to filter the secondary keys in the map
+    /// (excluding `member` itself from that keyset).
     fn average(
         member: &BucketId,
         set: &BTreeSet<BucketId>,
@@ -347,6 +351,9 @@ impl LoopBodyExtractor {
         }
     }
 
+    /// Return a collection of BucketId groups such that each BucketId that is paired
+    /// with an equivalent Vec<Option<T> (via `fuzzy_equals` on corresponding elements)
+    /// in the input is placed into the same group.
     fn group_equal_lists<T: PartialEq + core::fmt::Debug>(
         lists: &[(BucketId, Vec<Option<T>>)],
     ) -> Vec<Vec<BucketId>> {
