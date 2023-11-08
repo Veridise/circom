@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
@@ -164,4 +164,27 @@ where
         }
     })
     .0
+}
+
+/// Return true iff the first argument contains all elements in the second argument.
+pub fn contains_all<T, U>(collection: T, to_find: U) -> bool
+where
+    T: IntoIterator,
+    T::Item: Eq + std::hash::Hash,
+    U: IntoIterator<Item = T::Item>,
+{
+    let to_find_set: HashSet<_> = to_find.into_iter().collect();
+    to_find_set.is_subset(&collection.into_iter().collect())
+}
+
+/// Return true iff the two arguments contain exactly the same elements.
+pub fn contains_same<T, U>(lhs: T, rhs: U) -> bool
+where
+    T: IntoIterator,
+    T::Item: Eq + std::hash::Hash,
+    U: IntoIterator<Item = T::Item>,
+{
+    let lhs_set: HashSet<_> = lhs.into_iter().collect();
+    let rhs_set: HashSet<_> = rhs.into_iter().collect();
+    lhs_set == rhs_set
 }
