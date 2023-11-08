@@ -325,7 +325,9 @@ impl LoopBodyExtractor {
         exact_match_counts: &HashMap<BucketId, HashMap<BucketId, usize>>,
     ) -> usize {
         let counts_for_member = &exact_match_counts[member];
-        println!("average({:?}, {:?}, {:?}) ", member, set, counts_for_member);
+        if DEBUG_LOOP_UNROLL {
+            println!("average({:?}, {:?}, {:?}) ", member, set, counts_for_member);
+        }
         if set.contains(member) {
             set.iter()
                 .filter_map(|e| if e == member { None } else { Some(counts_for_member[e]) })
@@ -617,7 +619,6 @@ mod tests {
             (555, vec![None, None, Some(4), Some(6)]),
         ];
         let res = LoopBodyExtractor::group_equal_lists(&input);
-        println!("[test_1] res = {:?}", res);
         assert_eq!(2, res.len());
         assert!(res.contains(&vec![222, 333]));
         assert!(res.contains(&vec![666, 555]));
@@ -633,7 +634,6 @@ mod tests {
             (555, vec![None, None, Some(4)]),
         ];
         let res = LoopBodyExtractor::group_equal_lists(&input);
-        println!("[test_2] res = {:?}", res);
         assert_eq!(2, res.len());
         assert!(res.contains(&vec![222, 333, 555]));
         assert!(res.contains(&vec![666]));
