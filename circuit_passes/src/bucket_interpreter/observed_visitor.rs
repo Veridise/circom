@@ -59,7 +59,6 @@ impl<'a, S> ObservedVisitor<'a, S> {
             if self.visited_funcs.borrow_mut().insert(name.clone()) {
                 // Skip those that cannot be visited (i.e. not yet in Circuit.functions)
                 if !BUILT_IN_NAMES.with(|f| f.contains(name.as_str())) {
-                    println!("[FINDME] visiting function {}", name);
                     self.visit_instructions(
                         &libs.get_function(name).body,
                         state,
