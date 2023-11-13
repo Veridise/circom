@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::collections::HashSet;
 use code_producers::llvm_elements::fr::BUILT_IN_NAMES;
 use compiler::intermediate_representation::InstructionPointer;
 use compiler::intermediate_representation::ir_interface::*;
@@ -7,11 +9,14 @@ use super::observer::Observer;
 pub struct ObservedVisitor<'a, S> {
     observer: &'a dyn Observer<S>,
     libs: Option<&'a dyn LibraryAccess>,
+    // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
+    /// Keep track of those already visited to prevent stack overflow.
+    visited_funcs: RefCell<HashSet<String>>,
 }
 
 impl<'a, S> ObservedVisitor<'a, S> {
     pub fn new(observer: &'a dyn Observer<S>, libs: Option<&'a dyn LibraryAccess>) -> Self {
-        ObservedVisitor { observer, libs }
+        ObservedVisitor { observer, libs, visited_funcs: Default::default() }
     }
 
     pub fn visit_address_type(&self, addr_type: &AddressType, state: &S, observe: bool) {
@@ -48,16 +53,18 @@ impl<'a, S> ObservedVisitor<'a, S> {
             self.visit_address_type(&fd.dest_address_type, state, observe);
             self.visit_location_rule(&fd.dest, state, observe);
         }
-        // Visit the callee function body if LibraryAccess was provided
+        // Visit the callee function body if it was not visited before and if given LibraryAccess
         if let Some(libs) = self.libs {
             let name = &bucket.symbol;
-            // Skip those that cannot be visited (i.e. not yet in Circuit.functions)
-            if !BUILT_IN_NAMES.with(|f| f.contains(name.as_str())) {
-                self.visit_instructions(
-                    &libs.get_function(name).body,
-                    state,
-                    observe && !self.observer.ignore_call(name),
-                );
+            if self.visited_funcs.borrow_mut().insert(name.clone()) {
+                // Skip those that cannot be visited (i.e. not yet in Circuit.functions)
+                if !BUILT_IN_NAMES.with(|f| f.contains(name.as_str())) {
+                    self.visit_instructions(
+                        &libs.get_function(name).body,
+                        state,
+                        observe && !self.observer.ignore_call(name),
+                    );
+                }
             }
         }
     }
