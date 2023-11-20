@@ -6,8 +6,8 @@ use crate::passes::builders::build_u32_value;
 
 use super::body_extractor::ArgIndex;
 
-pub struct ExtractedFunctionLocationUpdater {
-    insert_after: InstructionList,
+pub struct ExtractedFunctionLocationUpdater<'a> {
+    bucket_arg_order: &'a mut IndexMap<BucketId, ArgIndex>,
 }
 
 /// Used within extracted loopbody functions to replace all storage references
@@ -17,34 +17,11 @@ pub struct ExtractedFunctionLocationUpdater {
 /// first two parameters of the extracted function via those. Therefore, it must
 /// use SubcmpSignal which will work seamlessly with existing subcmps because they
 /// will also just be passed as additional parameters to the function.
-impl ExtractedFunctionLocationUpdater {
-    pub fn new() -> ExtractedFunctionLocationUpdater {
-        ExtractedFunctionLocationUpdater { insert_after: Default::default() }
-    }
-
-    fn check_load_bucket(
-        &mut self,
-        bucket: &mut LoadBucket,
+impl ExtractedFunctionLocationUpdater<'_> {
+    pub fn new(
         bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
-    ) {
-        if let Some(ai) = bucket_arg_order.remove(&bucket.id) {
-            // Update the location information to reference the argument
-            bucket.address_type = AddressType::SubcmpSignal {
-                cmp_address: build_u32_value(bucket, ai.get_signal_idx()),
-                uniform_parallel_value: None,
-                counter_override: false,
-                is_output: false,
-                input_information: InputInformation::NoInput,
-            };
-            bucket.src = LocationRule::Indexed {
-                location: build_u32_value(bucket, 0), //use index 0 to ref the entire storage array
-                template_header: None,
-            };
-        } else {
-            // If not replacing, check deeper in the AddressType and LocationRule
-            self.check_address_type(&mut bucket.address_type, bucket_arg_order);
-            self.check_location_rule(&mut bucket.src, bucket_arg_order);
-        }
+    ) -> ExtractedFunctionLocationUpdater {
+        ExtractedFunctionLocationUpdater { bucket_arg_order }
     }
 
     fn handle_any_store(
@@ -52,6 +29,7 @@ impl ExtractedFunctionLocationUpdater {
         ai: &ArgIndex,
         dest: &LocationRule,
         bucket_meta: &dyn ObtainMeta,
+        to_insert_after: &mut InstructionList,
     ) -> (AddressType, LocationRule) {
         // If the current argument involves an actual subcomponent, then generate additional code in the
         // 'insert_after' list that will decrement the subcomponent counter and call the proper "_run"
@@ -67,7 +45,7 @@ impl ExtractedFunctionLocationUpdater {
             };
             // Generate counter LoadBucket+ComputeBucket+StoreBucket in the "insert_after" list
             //  (based on what StoreBucket::produce_llvm_ir would normally generate for this).
-            self.insert_after.push(
+            to_insert_after.push(
                 StoreBucket {
                     id: new_id(),
                     source_file_id: bucket_meta.get_source_file_id().clone(),
@@ -120,7 +98,7 @@ impl ExtractedFunctionLocationUpdater {
             );
 
             // Generate code to call the "run" function if the counter reaches 0
-            self.insert_after.push(
+            to_insert_after.push(
                 BranchBucket {
                     id: new_id(),
                     source_file_id: bucket_meta.get_source_file_id().clone(),
@@ -210,198 +188,242 @@ impl ExtractedFunctionLocationUpdater {
         )
     }
 
-    fn check_store_bucket(
+    fn _check_store_bucket(
         &mut self,
         bucket: &mut StoreBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
         // Check the source/RHS of the store in either case
-        self.check_instruction(&mut bucket.src, bucket_arg_order);
+        self._check_instruction(&mut bucket.src, to_insert_after);
         //
-        if let Some(ai) = bucket_arg_order.remove(&bucket.id) {
-            let (at, lr) = self.handle_any_store(&ai, &bucket.dest, bucket);
+        if let Some(ai) = self.bucket_arg_order.remove(&bucket.id) {
+            let (at, lr) = self.handle_any_store(&ai, &bucket.dest, bucket, to_insert_after);
             bucket.dest_address_type = at;
             bucket.dest = lr;
         } else {
             // If not replacing, check deeper in the AddressType and LocationRule
-            self.check_address_type(&mut bucket.dest_address_type, bucket_arg_order);
-            self.check_location_rule(&mut bucket.dest, bucket_arg_order);
+            self._check_address_type(&mut bucket.dest_address_type, to_insert_after);
+            self._check_location_rule(&mut bucket.dest, to_insert_after);
         }
     }
 
-    fn check_call_bucket(
+    fn _check_load_bucket(
+        &mut self,
+        bucket: &mut LoadBucket,
+        to_insert_after: &mut InstructionList,
+    ) {
+        if let Some(ai) = self.bucket_arg_order.remove(&bucket.id) {
+            // Update the location information to reference the argument
+            bucket.address_type = AddressType::SubcmpSignal {
+                cmp_address: build_u32_value(bucket, ai.get_signal_idx()),
+                uniform_parallel_value: None,
+                counter_override: false,
+                is_output: false,
+                input_information: InputInformation::NoInput,
+            };
+            bucket.src = LocationRule::Indexed {
+                location: build_u32_value(bucket, 0), //use index 0 to ref the entire storage array
+                template_header: None,
+            };
+        } else {
+            // If not replacing, check deeper in the AddressType and LocationRule
+            self._check_address_type(&mut bucket.address_type, to_insert_after);
+            self._check_location_rule(&mut bucket.src, to_insert_after);
+        }
+    }
+
+    fn _check_call_bucket(
         &mut self,
         bucket: &mut CallBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
         // Check the call parameters
-        self.check_instructions(&mut bucket.arguments, bucket_arg_order, false);
+        self._check_instructions(&mut bucket.arguments, Some(to_insert_after));
         // A store can be implicit within a CallBucket 'return_info'
         let bucket_meta = ObtainMetaImpl::from(bucket); //avoid borrow issues
         if let ReturnType::Final(fd) = &mut bucket.return_info {
-            if let Some(ai) = bucket_arg_order.remove(&bucket.id) {
-                let (at, lr) = self.handle_any_store(&ai, &fd.dest, &bucket_meta);
+            if let Some(ai) = self.bucket_arg_order.remove(&bucket.id) {
+                let (at, lr) = self.handle_any_store(&ai, &fd.dest, &bucket_meta, to_insert_after);
                 fd.dest_address_type = at;
                 fd.dest = lr;
             } else {
                 // If not replacing, check deeper in the AddressType and LocationRule
-                self.check_address_type(&mut fd.dest_address_type, bucket_arg_order);
-                self.check_location_rule(&mut fd.dest, bucket_arg_order);
+                self._check_address_type(&mut fd.dest_address_type, to_insert_after);
+                self._check_location_rule(&mut fd.dest, to_insert_after);
             }
         }
     }
 
-    fn check_location_rule(
+    fn _check_location_rule(
         &mut self,
         location_rule: &mut LocationRule,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
         match location_rule {
             LocationRule::Indexed { location, .. } => {
-                self.check_instruction(location, bucket_arg_order);
+                self._check_instruction(location, to_insert_after);
             }
             LocationRule::Mapped { .. } => unreachable!(),
         }
     }
 
-    fn check_address_type(
+    fn _check_address_type(
         &mut self,
         addr_type: &mut AddressType,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
         if let AddressType::SubcmpSignal { cmp_address, .. } = addr_type {
-            self.check_instruction(cmp_address, bucket_arg_order);
+            self._check_instruction(cmp_address, to_insert_after);
         }
     }
 
-    fn check_compute_bucket(
+    fn _check_compute_bucket(
         &mut self,
         bucket: &mut ComputeBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
-        self.check_instructions(&mut bucket.stack, bucket_arg_order, false);
+        self._check_instructions(&mut bucket.stack, Some(to_insert_after));
     }
 
-    fn check_assert_bucket(
+    fn _check_assert_bucket(
         &mut self,
         bucket: &mut AssertBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
-        self.check_instruction(&mut bucket.evaluate, bucket_arg_order);
+        self._check_instruction(&mut bucket.evaluate, to_insert_after);
     }
 
-    fn check_loop_bucket(
+    fn _check_loop_bucket(
         &mut self,
         bucket: &mut LoopBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
-        self.check_instruction(&mut bucket.continue_condition, bucket_arg_order);
-        self.check_instructions(&mut bucket.body, bucket_arg_order, true);
+        self._check_instruction(&mut bucket.continue_condition, to_insert_after);
+        self._check_instructions(&mut bucket.body, None);
     }
 
-    fn check_create_cmp_bucket(
+    fn _check_create_cmp_bucket(
         &mut self,
         bucket: &mut CreateCmpBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
-        self.check_instruction(&mut bucket.sub_cmp_id, bucket_arg_order);
+        self._check_instruction(&mut bucket.sub_cmp_id, to_insert_after);
     }
 
-    fn check_constraint_bucket(
+    fn _check_constraint_bucket(
         &mut self,
         bucket: &mut ConstraintBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
-        self.check_instruction(
+        self._check_instruction(
             match bucket {
                 ConstraintBucket::Substitution(i) => i,
                 ConstraintBucket::Equality(i) => i,
             },
-            bucket_arg_order,
+            to_insert_after,
         );
     }
 
-    fn check_block_bucket(
+    fn _check_block_bucket(
         &mut self,
         bucket: &mut BlockBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        _to_insert_after: &mut InstructionList,
     ) {
-        self.check_instructions(&mut bucket.body, bucket_arg_order, true);
+        self._check_instructions(&mut bucket.body, None);
     }
 
-    fn check_branch_bucket(
+    fn _check_branch_bucket(
         &mut self,
         bucket: &mut BranchBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
-        self.check_instruction(&mut bucket.cond, bucket_arg_order);
-        self.check_instructions(&mut bucket.if_branch, bucket_arg_order, true);
-        self.check_instructions(&mut bucket.else_branch, bucket_arg_order, true);
+        self._check_instruction(&mut bucket.cond, to_insert_after);
+        self._check_instructions(&mut bucket.if_branch, None);
+        self._check_instructions(&mut bucket.else_branch, None);
     }
 
-    fn check_return_bucket(
+    fn _check_return_bucket(
         &mut self,
         bucket: &mut ReturnBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
-        self.check_instruction(&mut bucket.value, bucket_arg_order);
+        self._check_instruction(&mut bucket.value, to_insert_after);
     }
 
-    fn check_log_bucket(
-        &mut self,
-        bucket: &mut LogBucket,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
-    ) {
+    fn _check_log_bucket(&mut self, bucket: &mut LogBucket, to_insert_after: &mut InstructionList) {
         for arg in &mut bucket.argsprint {
             if let LogBucketArg::LogExp(i) = arg {
-                self.check_instruction(i, bucket_arg_order);
+                self._check_instruction(i, to_insert_after);
             }
         }
     }
 
     //Nothing to do
-    fn check_value_bucket(&mut self, _: &mut ValueBucket, _: &mut IndexMap<BucketId, ArgIndex>) {}
-    fn check_nop_bucket(&mut self, _: &mut NopBucket, _: &mut IndexMap<BucketId, ArgIndex>) {}
+    fn _check_value_bucket(&mut self, _: &mut ValueBucket, _: &mut InstructionList) {}
+    fn _check_nop_bucket(&mut self, _: &mut NopBucket, _: &mut InstructionList) {}
 
-    fn check_instruction(
+    fn _check_instruction(
         &mut self,
         inst: &mut InstructionPointer,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        to_insert_after: &mut InstructionList,
     ) {
         match inst.as_mut() {
-            Instruction::Value(ref mut b) => self.check_value_bucket(b, bucket_arg_order),
-            Instruction::Load(ref mut b) => self.check_load_bucket(b, bucket_arg_order),
-            Instruction::Store(ref mut b) => self.check_store_bucket(b, bucket_arg_order),
-            Instruction::Compute(ref mut b) => self.check_compute_bucket(b, bucket_arg_order),
-            Instruction::Call(ref mut b) => self.check_call_bucket(b, bucket_arg_order),
-            Instruction::Branch(ref mut b) => self.check_branch_bucket(b, bucket_arg_order),
-            Instruction::Return(ref mut b) => self.check_return_bucket(b, bucket_arg_order),
-            Instruction::Assert(ref mut b) => self.check_assert_bucket(b, bucket_arg_order),
-            Instruction::Log(ref mut b) => self.check_log_bucket(b, bucket_arg_order),
-            Instruction::Loop(ref mut b) => self.check_loop_bucket(b, bucket_arg_order),
-            Instruction::CreateCmp(ref mut b) => self.check_create_cmp_bucket(b, bucket_arg_order),
-            Instruction::Constraint(ref mut b) => self.check_constraint_bucket(b, bucket_arg_order),
-            Instruction::Block(ref mut b) => self.check_block_bucket(b, bucket_arg_order),
-            Instruction::Nop(ref mut b) => self.check_nop_bucket(b, bucket_arg_order),
+            Instruction::Value(ref mut b) => self._check_value_bucket(b, to_insert_after),
+            Instruction::Load(ref mut b) => self._check_load_bucket(b, to_insert_after),
+            Instruction::Store(ref mut b) => self._check_store_bucket(b, to_insert_after),
+            Instruction::Compute(ref mut b) => self._check_compute_bucket(b, to_insert_after),
+            Instruction::Call(ref mut b) => self._check_call_bucket(b, to_insert_after),
+            Instruction::Branch(ref mut b) => self._check_branch_bucket(b, to_insert_after),
+            Instruction::Return(ref mut b) => self._check_return_bucket(b, to_insert_after),
+            Instruction::Assert(ref mut b) => self._check_assert_bucket(b, to_insert_after),
+            Instruction::Log(ref mut b) => self._check_log_bucket(b, to_insert_after),
+            Instruction::Loop(ref mut b) => self._check_loop_bucket(b, to_insert_after),
+            Instruction::CreateCmp(ref mut b) => self._check_create_cmp_bucket(b, to_insert_after),
+            Instruction::Constraint(ref mut b) => self._check_constraint_bucket(b, to_insert_after),
+            Instruction::Block(ref mut b) => self._check_block_bucket(b, to_insert_after),
+            Instruction::Nop(ref mut b) => self._check_nop_bucket(b, to_insert_after),
         }
     }
 
-    pub fn check_instructions(
+    //If 'can_insert' is true, then insert contents immediately after processing each instruction.
+    //Otherwise, it needs be be passed back up to the highest level where things can be inserted.
+    //That means I probably need a separate Vec here for the call vs the parameter and then only
+    //  move stuff over if necessary.
+    fn _check_instructions(
         &mut self,
-        insts: &mut Vec<InstructionPointer>,
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
-        can_insert: bool,
+        insts: &mut InstructionList,
+        to_insert_after: Option<&mut InstructionList>,
     ) {
-        assert!(self.insert_after.is_empty());
-        for i in &mut *insts {
-            self.check_instruction(i, bucket_arg_order);
-        }
-        if can_insert {
-            for s in self.insert_after.drain(..) {
-                insts.push(s);
+        // NOTE: Needs a fresh mutable copy to make borrow checker happy
+        let mut to_insert_after_borrow = to_insert_after;
+        // Manually track index of the input instruction list and check the updated
+        //  length for each iteration of the loop since things may be added.
+        let mut i: usize = 0;
+        while i < insts.len() {
+            let mut to_insert_between = Default::default();
+            self._check_instruction(&mut insts[i], &mut to_insert_between);
+            match to_insert_after_borrow.as_mut() {
+                None => {
+                    // None indicates that it is safe to insert directly to 'insts'.
+                    for s in to_insert_between.drain(..) {
+                        i += 1; //increment to the next insertion point
+                        insts.insert(i, s);
+                    }
+                }
+                Some(x) => {
+                    // When it's not safe to insert to 'insts' another vector is
+                    //  given where any new instructions should be inserted.
+                    for s in to_insert_between.drain(..) {
+                        x.push(s);
+                    }
+                }
             }
-        } else {
-            assert!(self.insert_after.is_empty());
+            // Manually increment input pointer to the next input statement
+            i += 1;
         }
+    }
+
+    pub fn check_instructions(&mut self, insts: &mut InstructionList) {
+        self._check_instructions(insts, None);
     }
 }
