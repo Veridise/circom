@@ -266,8 +266,8 @@ impl LoopBodyExtractor {
             //  after the current statement and insert them after the updated statement.
             //NOTE: nothing will be updated or added if 'bucket_to_args' is empty so skip.
             if !bucket_to_args.is_empty() {
-                let mut upd = ExtractedFunctionLocationUpdater::new();
-                upd.check_instructions(&mut copy, &mut bucket_to_args, true);
+                let mut upd = ExtractedFunctionLocationUpdater::new(&mut bucket_to_args);
+                upd.check_instructions(&mut copy);
             }
             for mut s in copy.drain(..) {
                 s.update_id();
