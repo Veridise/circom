@@ -356,7 +356,11 @@ impl<'a> LLVM<'a> {
         // Run LLVM IR inliner for the FR_IDENTITY_* and FR_INDEX_ARR_PTR functions
         let pm = PassManager::create(());
         pm.add_always_inliner_pass();
-        pm.add_merge_functions_pass();
+        //pm.add_merge_functions_pass();
+        //pm.add_instruction_combining_pass();
+        //pm.add_dead_arg_elimination_pass();
+        pm.add_cfg_simplification_pass();
+
         pm.add_global_dce_pass();
         pm.run_on(&self.module);
 
