@@ -259,7 +259,7 @@ impl Observer<Env<'_>> for UnknownIndexSanitizationPass<'_> {
 }
 
 fn do_array_union(a: &HashSet<Range<usize>>, b: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
-    a.union(b).map(|e| e.clone()).collect()
+    a.union(b).cloned().collect()
 }
 
 impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
