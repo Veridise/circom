@@ -16,7 +16,7 @@ template CallWithArrayAndArray() {
 
 component main = CallWithArrayAndArray();
 
-//CHECK-LABEL: define void @CallWithArrayAndArray_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @CallWithArrayAndArray_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [0 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8
