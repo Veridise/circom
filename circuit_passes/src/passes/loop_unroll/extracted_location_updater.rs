@@ -385,10 +385,12 @@ impl ExtractedFunctionLocationUpdater<'_> {
         }
     }
 
-    //If 'can_insert' is true, then insert contents immediately after processing each instruction.
-    //Otherwise, it needs be be passed back up to the highest level where things can be inserted.
-    //That means I probably need a separate Vec here for the call vs the parameter and then only
-    //  move stuff over if necessary.
+    // Recursively check the given InstructionList for locations that need to be updated according
+    //  to the 'self.bucket_arg_order' map. In some cases (i.e. storing to a subcomponent signal),
+    //  additional code may be generated and the 'to_insert_after' parameter will either be None
+    //  to indicate that the code can be directly inserted into the InstructionList or will be
+    //  Some with a new InstructionList where the generated code will be placed and then it is
+    //  the responsibility of the caller to insert the code in the correct location.
     fn _check_instructions(
         &mut self,
         insts: &mut InstructionList,
