@@ -58,29 +58,6 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
         );
     }
 
-    if config.llvm_flag {
-        // Only run the passes if we are going to generate LLVM code
-        let pm = PassManager::new();
-        circuit = pm
-            .schedule_const_arg_deduplication_pass()
-            .schedule_loop_unroll_pass()
-            .schedule_conditional_flattening_pass()
-            .schedule_unused_function_removal_pass() //previous 2 passes create the dead functions
-            .schedule_mapped_to_indexed_pass()
-            .schedule_unknown_index_sanitization_pass()
-            .schedule_simplification_pass()
-            .schedule_deterministic_subcmp_invoke_pass()
-            .transform_circuit(circuit, prime);
-        compiler_interface::write_llvm_ir(
-            &mut circuit,
-            &program_archive,
-            &config.llvm_folder,
-            &config.llvm_file,
-            config.clean_llvm,
-        )?;
-        println!("{} {}", Colour::Green.paint("Written successfully:"), config.llvm_file);
-    }
-
     match (config.wat_flag, config.wasm_flag) {
         (true, true) => {
             compiler_interface::write_wasm(&circuit, &config.js_folder, &config.wasm_name, &config.wat_file)?;
@@ -115,6 +92,29 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
             println!("{} {}", Colour::Green.paint("Written successfully:"), config.wat_file);
         }
         (false, false) => {}
+    }
+
+    if config.llvm_flag {
+        // Only run the passes if we are going to generate LLVM code
+        let pm = PassManager::new();
+        circuit = pm
+            .schedule_const_arg_deduplication_pass()
+            .schedule_loop_unroll_pass()
+            .schedule_conditional_flattening_pass()
+            .schedule_unused_function_removal_pass() //previous 2 passes create the dead functions
+            .schedule_mapped_to_indexed_pass()
+            .schedule_unknown_index_sanitization_pass()
+            .schedule_simplification_pass()
+            .schedule_deterministic_subcmp_invoke_pass()
+            .transform_circuit(circuit, prime);
+        compiler_interface::write_llvm_ir(
+            &mut circuit,
+            &program_archive,
+            &config.llvm_folder,
+            &config.llvm_file,
+            config.clean_llvm,
+        )?;
+        println!("{} {}", Colour::Green.paint("Written successfully:"), config.llvm_file);
     }
 
     Ok(())
