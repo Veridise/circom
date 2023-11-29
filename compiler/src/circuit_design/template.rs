@@ -151,10 +151,8 @@ impl WriteLLVMIR for TemplateCodeInfo {
         build_function.set_section(Some(&self.name));
 
         // Set External linkage so main template functions are not removed by global DCE
-        if self.header.eq(producer.get_main_template_header()) {
-            run_function.set_linkage(Linkage::External);
-            build_function.set_linkage(Linkage::External);
-        }
+        run_function.set_linkage(Linkage::External);
+        build_function.set_linkage(Linkage::External);
         Some(ret)
     }
 }
