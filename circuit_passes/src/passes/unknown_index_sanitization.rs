@@ -259,7 +259,7 @@ impl Observer<Env<'_>> for UnknownIndexSanitizationPass<'_> {
 }
 
 fn do_array_union(a: &HashSet<Range<usize>>, b: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
-    a.union(b).map(|e| e.clone()).collect()
+    a.union(b).cloned().collect()
 }
 
 impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
@@ -271,11 +271,17 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
         self.memory.get_field_constants_clone()
     }
 
-    fn get_updated_bounded_array_loads(&self, old_array_loads: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
+    fn get_updated_bounded_array_loads(
+        &self,
+        old_array_loads: &HashSet<Range<usize>>,
+    ) -> HashSet<Range<usize>> {
         do_array_union(old_array_loads, &self.scheduled_bounded_loads.borrow())
     }
 
-    fn get_updated_bounded_array_stores(&self, old_array_stores: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
+    fn get_updated_bounded_array_stores(
+        &self,
+        old_array_stores: &HashSet<Range<usize>>,
+    ) -> HashSet<Range<usize>> {
         do_array_union(old_array_stores, &self.scheduled_bounded_stores.borrow())
     }
 
