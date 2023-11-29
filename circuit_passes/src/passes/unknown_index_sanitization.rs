@@ -271,11 +271,17 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
         self.memory.get_field_constants_clone()
     }
 
-    fn get_updated_bounded_array_loads(&self, old_array_loads: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
+    fn get_updated_bounded_array_loads(
+        &self,
+        old_array_loads: &HashSet<Range<usize>>,
+    ) -> HashSet<Range<usize>> {
         do_array_union(old_array_loads, &self.scheduled_bounded_loads.borrow())
     }
 
-    fn get_updated_bounded_array_stores(&self, old_array_stores: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
+    fn get_updated_bounded_array_stores(
+        &self,
+        old_array_stores: &HashSet<Range<usize>>,
+    ) -> HashSet<Range<usize>> {
         do_array_union(old_array_stores, &self.scheduled_bounded_stores.borrow())
     }
 

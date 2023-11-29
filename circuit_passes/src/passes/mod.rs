@@ -43,12 +43,18 @@ pub trait CircuitTransformationPass {
         self.pre_hook_circuit(&circuit);
         let templates = circuit.templates.iter().map(|t| self.transform_template(t)).collect();
         let field_tracking = self.get_updated_field_constants();
-        let bounded_loads = self.get_updated_bounded_array_loads(&circuit.llvm_data.bounded_array_loads);
-        let bounded_stores = self.get_updated_bounded_array_stores(&circuit.llvm_data.bounded_array_stores);
+        let bounded_loads =
+            self.get_updated_bounded_array_loads(&circuit.llvm_data.bounded_array_loads);
+        let bounded_stores =
+            self.get_updated_bounded_array_stores(&circuit.llvm_data.bounded_array_stores);
         let mut new_circuit = Circuit {
             wasm_producer: circuit.wasm_producer.clone(),
             c_producer: circuit.c_producer.clone(),
-            llvm_data: circuit.llvm_data.clone_with_updates(field_tracking, bounded_loads, bounded_stores),
+            llvm_data: circuit.llvm_data.clone_with_updates(
+                field_tracking,
+                bounded_loads,
+                bounded_stores,
+            ),
             templates,
             functions: circuit.functions.iter().map(|f| self.transform_function(f)).collect(),
         };
@@ -58,11 +64,17 @@ pub trait CircuitTransformationPass {
 
     fn get_updated_field_constants(&self) -> Vec<String>;
 
-    fn get_updated_bounded_array_loads(&self, old_array_loads: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
+    fn get_updated_bounded_array_loads(
+        &self,
+        old_array_loads: &HashSet<Range<usize>>,
+    ) -> HashSet<Range<usize>> {
         old_array_loads.clone()
     }
 
-    fn get_updated_bounded_array_stores(&self, old_array_stores: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
+    fn get_updated_bounded_array_stores(
+        &self,
+        old_array_stores: &HashSet<Range<usize>>,
+    ) -> HashSet<Range<usize>> {
         old_array_stores.clone()
     }
 
