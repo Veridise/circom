@@ -3,7 +3,7 @@ use inkwell::IntPredicate::{EQ, NE, SLT, SGT, SLE, SGE};
 use inkwell::types::{AnyTypeEnum, PointerType, IntType};
 use inkwell::values::{
     AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue,
-    InstructionOpcode, InstructionValue, IntMathValue, IntValue, PhiValue, PointerValue,
+    InstructionOpcode, InstructionValue, IntMathValue, IntValue, PointerValue,
 };
 use crate::llvm_elements::LLVMIRProducer;
 use crate::llvm_elements::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
@@ -168,7 +168,7 @@ pub fn create_array_copy_with_name<'a, T: IntMathValue<'a>>(
         producer,
         create_load_with_name(producer, ptr_lp_var, "idx_val_for_loop_cond").into_int_value(),
         len.as_any_value_enum().into_int_value(),
-        "idx_is_less_than_array_len"
+        "idx_is_less_than_array_len",
     );
     // then go to loop, else exit
     create_conditional_branch(producer, res_cond.into_int_value(), bb_lp_body, bb_lp_end);
@@ -178,20 +178,17 @@ pub fn create_array_copy_with_name<'a, T: IntMathValue<'a>>(
     // i
     let cur_idx = create_load_with_name(producer, ptr_lp_var, "current_idx").into_int_value();
     // src[i]
-    let src_ptr = create_gep_with_name(producer, src, &[cur_idx], "src_ptr_at_idx").into_pointer_value();
+    let src_ptr =
+        create_gep_with_name(producer, src, &[cur_idx], "src_ptr_at_idx").into_pointer_value();
     let src_val = create_load_with_name(producer, src_ptr, "src_val_at_idx");
     // dst[i]
-    let dst_ptr = create_gep_with_name(producer, dst, &[cur_idx], "dst_ptr_at_idx").into_pointer_value();
+    let dst_ptr =
+        create_gep_with_name(producer, dst, &[cur_idx], "dst_ptr_at_idx").into_pointer_value();
     // dst[i] = src[i]
     create_store(producer, dst_ptr, src_val);
 
     // i = i + 1
-    let res_add = create_add_with_name(
-        producer,
-        cur_idx,
-        int_ty.const_int(1, false),
-        "next_idx"
-    );
+    let res_add = create_add_with_name(producer, cur_idx, int_ty.const_int(1, false), "next_idx");
     bldr.build_store(ptr_lp_var, res_add.into_int_value());
     create_br(producer, bb_lp_cond);
 
@@ -746,34 +743,6 @@ pub fn create_alloca<'a>(
     .as_any_value_enum()
 }
 
-pub fn create_phi<'a>(
-    producer: &dyn LLVMIRProducer<'a>,
-    ty: AnyTypeEnum<'a>,
-    name: &str,
-) -> PhiValue<'a> {
-    match ty {
-        AnyTypeEnum::ArrayType(ty) => producer.builder().build_phi(ty, name),
-        AnyTypeEnum::FloatType(ty) => producer.builder().build_phi(ty, name),
-        AnyTypeEnum::IntType(ty) => producer.builder().build_phi(ty, name),
-        AnyTypeEnum::PointerType(ty) => producer.builder().build_phi(ty, name),
-        AnyTypeEnum::StructType(ty) => producer.builder().build_phi(ty, name),
-        AnyTypeEnum::VectorType(ty) => producer.builder().build_phi(ty, name),
-        _ => panic!("Cannot create a phi node with anything other than a basic type! {}", ty),
-    }
-}
-
-pub fn create_phi_with_incoming<'a>(
-    producer: &dyn LLVMIRProducer<'a>,
-    ty: AnyTypeEnum<'a>,
-    incoming: &[(BasicValueEnum<'a>, BasicBlock<'a>)],
-    name: &str,
-) -> PhiValue<'a> {
-    let phi = create_phi(producer, ty, name);
-    // Hack to add the incoming to the phi value
-    phi.add_incoming_as_enum(incoming);
-    phi
-}
-
 pub fn create_load_with_name<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     ptr: PointerValue<'a>,
@@ -865,14 +834,19 @@ pub fn create_switch<'a>(
 
 /// Extracts the pointer and the second index of a gep instruction
 /// getelementptr %ptr, 0, %idx ---> (%ptr, %idx)
-pub fn get_data_from_gep<'a>(producer: &dyn LLVMIRProducer<'a>, gep: PointerValue<'a>) -> (PointerValue<'a>, usize) {
+pub fn get_data_from_gep<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    gep: PointerValue<'a>,
+) -> (PointerValue<'a>, usize) {
     let inst = gep.as_instruction().expect("GEP has to be an instruction!");
     debug_assert!(inst.get_opcode() == InstructionOpcode::GetElementPtr);
-    let ptr = inst.get_operand(0)
+    let ptr = inst
+        .get_operand(0)
         .expect("Pointer is missing in GEP")
         .expect_left("Pointer value must be a basic value!")
         .into_pointer_value();
-    let fst_idx = inst.get_operand(1)
+    let fst_idx = inst
+        .get_operand(1)
         .expect("First index is missing in GEP")
         .expect_left("First index must be a basic value!");
     debug_assert!(fst_idx == zero(producer));
@@ -882,7 +856,7 @@ pub fn get_data_from_gep<'a>(producer: &dyn LLVMIRProducer<'a>, gep: PointerValu
         .expect_left("Second index must be a basic value!");
     let n = match idx {
         BasicValueEnum::IntValue(v) => v.get_sign_extended_constant(),
-        _ => panic!("Second index must be an integer value!")
+        _ => panic!("Second index must be an integer value!"),
     };
     (ptr, n.expect("Could not load the integer value of the IntValue!") as usize)
 }
