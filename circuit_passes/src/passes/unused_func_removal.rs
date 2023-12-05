@@ -4,8 +4,10 @@ use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::ir_interface::*;
+use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::{observer::Observer, env::LibraryAccess};
 use crate::bucket_interpreter::observed_visitor::ObservedVisitor;
+use crate::default__name;
 use super::{CircuitTransformationPass, GlobalPassData};
 
 /// The goal of this pass is to remove unreachable functions from the Circuit
@@ -22,65 +24,9 @@ impl<'d> UnusedFuncRemovalPass<'d> {
 }
 
 impl Observer<()> for UnusedFuncRemovalPass<'_> {
-    fn on_value_bucket(&self, _bucket: &ValueBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_load_bucket(&self, _bucket: &LoadBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_store_bucket(&self, _bucket: &StoreBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_compute_bucket(&self, _bucket: &ComputeBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_assert_bucket(&self, _bucket: &AssertBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_loop_bucket(&self, _bucket: &LoopBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_create_cmp_bucket(&self, _bucket: &CreateCmpBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_constraint_bucket(&self, _bucket: &ConstraintBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_block_bucket(&self, _bucket: &BlockBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_nop_bucket(&self, _bucket: &NopBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_location_rule(&self, _location_rule: &LocationRule, _: &()) -> bool {
-        true
-    }
-
-    fn on_call_bucket(&self, bucket: &CallBucket, _: &()) -> bool {
+    fn on_call_bucket(&self, bucket: &CallBucket, _: &()) -> Result<bool, BadInterp> {
         self.used_functions.borrow_mut().insert(bucket.symbol.clone());
-        true
-    }
-
-    fn on_branch_bucket(&self, _bucket: &BranchBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_return_bucket(&self, _bucket: &ReturnBucket, _: &()) -> bool {
-        true
-    }
-
-    fn on_log_bucket(&self, _bucket: &LogBucket, _: &()) -> bool {
-        true
+        Ok(true)
     }
 
     fn ignore_function_calls(&self) -> bool {
@@ -97,15 +43,13 @@ impl Observer<()> for UnusedFuncRemovalPass<'_> {
 }
 
 impl CircuitTransformationPass for UnusedFuncRemovalPass<'_> {
-    fn name(&self) -> &str {
-        "UnusedFuncRemovalPass"
-    }
+    default__name!("UnusedFuncRemovalPass");
 
     fn get_updated_field_constants(&self) -> Vec<String> {
         unreachable!()
     }
 
-    fn transform_circuit(&self, circuit: &Circuit) -> Circuit {
+    fn transform_circuit(&self, circuit: &Circuit) -> Result<Circuit, BadInterp> {
         //Build a structure to implement LibraryAccess
         struct LibsImpl {
             functions: HashMap<String, RefCell<FunctionCode>>,
@@ -129,16 +73,13 @@ impl CircuitTransformationPass for UnusedFuncRemovalPass<'_> {
             },
         };
 
-        // Search each template for CallBucket and cache the names
+        // Search each template for CallBucket and cache the names, returning a list of cloned templates
         let visitor = ObservedVisitor::new(self, Some(&libs));
         let templates = circuit
             .templates
             .iter()
-            .map(|t| {
-                visitor.visit_instructions(&t.body, &(), true);
-                t.clone()
-            })
-            .collect();
+            .map(|t| visitor.visit_instructions(&t.body, &(), true).map(|_| t.clone()))
+            .collect::<Result<_, _>>()?;
 
         // Filter out functions that are never used
         let functions = circuit
@@ -154,7 +95,7 @@ impl CircuitTransformationPass for UnusedFuncRemovalPass<'_> {
             .collect();
 
         // Return new circuit with reduced function list (and cloned templates)
-        Circuit {
+        Ok(Circuit {
             wasm_producer: circuit.wasm_producer.clone(),
             c_producer: circuit.c_producer.clone(),
             llvm_data: circuit.llvm_data.clone_with_updates(
@@ -164,6 +105,6 @@ impl CircuitTransformationPass for UnusedFuncRemovalPass<'_> {
             ),
             templates,
             functions,
-        }
+        })
     }
 }

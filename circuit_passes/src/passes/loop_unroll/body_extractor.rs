@@ -7,6 +7,7 @@ use compiler::circuit_design::function::{FunctionCodeInfo, FunctionCode};
 use compiler::hir::very_concrete_program::Param;
 use compiler::intermediate_representation::{BucketId, InstructionList, new_id, UpdateId};
 use compiler::intermediate_representation::ir_interface::*;
+use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::{DEBUG_LOOP_UNROLL, LOOP_BODY_FN_PREFIX};
 use crate::passes::loop_unroll::extracted_location_updater::ExtractedFunctionLocationUpdater;
@@ -151,9 +152,9 @@ impl LoopBodyExtractor {
         bucket: &LoopBucket,
         recorder: &'a EnvRecorder<'a, '_>,
         unrolled: &mut InstructionList,
-    ) {
+    ) -> Result<(), BadInterp> {
         assert!(bucket.body.len() > 1);
-        let extra_arg_info = Self::compute_extra_args(&recorder);
+        let extra_arg_info = Self::compute_extra_args(&recorder)?;
         let name = self.build_new_body(
             bucket,
             extra_arg_info.bucket_to_args.clone(),
@@ -223,6 +224,7 @@ impl LoopBodyExtractor {
                 extra_arg_info.get_reverse_passing_refs_for_itr(iter_num),
             );
         }
+        Ok(())
     }
 
     fn build_new_body(
@@ -471,7 +473,9 @@ impl LoopBodyExtractor {
     /// that allow the indexing to happen in the original body where the loop will be
     /// unrolled and the indexing will become known constant values. This computes the
     /// extra arguments that will be needed.
-    fn compute_extra_args<'a>(recorder: &'a EnvRecorder<'a, '_>) -> ExtraArgsResult {
+    fn compute_extra_args<'a>(
+        recorder: &'a EnvRecorder<'a, '_>,
+    ) -> Result<ExtraArgsResult, BadInterp> {
         // Table structure indexed first by load/store/call BucketId, then by iteration number.
         //  View the first (BucketId) as columns and the second (iteration number) as rows.
         //  The data reference is wrapped in Option to allow for some iterations that don't
@@ -500,7 +504,10 @@ impl LoopBodyExtractor {
                 let temp = vpi[&iter_num].loadstore_to_index.get(id);
                 // ASSERT: index values are known in every (available) iteration
                 assert!(temp.is_none() || !temp.unwrap().1.is_unknown());
-                column.push(temp.map(|(a, v)| (a.clone(), v.get_u32())));
+                match temp {
+                    None => column.push(None),
+                    Some((a, v)) => column.push(Some((a.clone(), v.get_u32()?))),
+                }
             }
             if DEBUG_LOOP_UNROLL {
                 println!("bucket {} refs by iteration: {:?}", id, column);
@@ -602,11 +609,11 @@ impl LoopBodyExtractor {
         }
         //Keep only the table columns where extra parameters are necessary
         bucket_to_itr_to_ref.retain(|k, _| bucket_to_args.contains_key(k));
-        ExtraArgsResult {
+        Ok(ExtraArgsResult {
             bucket_to_itr_to_ref: bucket_to_itr_to_ref.into_iter().collect(),
             bucket_to_args,
             num_args: next_idx,
-        }
+        })
     }
 }
 

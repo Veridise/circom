@@ -7,8 +7,13 @@ use compiler::intermediate_representation::{InstructionPointer, new_id, BucketId
 use compiler::intermediate_representation::ir_interface::*;
 use indexmap::{IndexMap, IndexSet};
 use crate::bucket_interpreter::env::{Env, LibraryAccess};
+use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
+use crate::{
+    default__get_updated_field_constants, default__name, default__pre_hook_circuit,
+    default__pre_hook_template,
+};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 type BranchValues = BTreeMap<BucketId, Option<bool>>;
@@ -60,55 +65,7 @@ impl<'d> ConditionalFlatteningPass<'d> {
 }
 
 impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
-    fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_load_bucket(&self, _bucket: &LoadBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_store_bucket(&self, _bucket: &StoreBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_compute_bucket(&self, _bucket: &ComputeBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_assert_bucket(&self, _bucket: &AssertBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_loop_bucket(&self, _bucket: &LoopBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_create_cmp_bucket(&self, _bucket: &CreateCmpBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_constraint_bucket(&self, _bucket: &ConstraintBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_block_bucket(&self, _bucket: &BlockBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_nop_bucket(&self, _bucket: &NopBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_location_rule(&self, _location_rule: &LocationRule, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_call_bucket(&self, _bucket: &CallBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_branch_bucket(&self, bucket: &BranchBucket, env: &Env) -> bool {
+    fn on_branch_bucket(&self, bucket: &BranchBucket, env: &Env) -> Result<bool, BadInterp> {
         let interpreter = self.memory.build_interpreter(self.global_data, self);
         let (_, cond_result, _) = interpreter.execute_conditional_bucket(
             &bucket.cond,
@@ -116,7 +73,7 @@ impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
             &bucket.else_branch,
             env.clone(),
             false,
-        );
+        )?;
         // Store the result for the current bucket in the list for the current caller.
         // NOTE: Store 'cond_result' even when it is None (meaning the BranchBucket
         //  condition could not be determined) so that it will fully differentiate the
@@ -139,15 +96,7 @@ impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
             .or_insert(cond_result);
         //
         self.branch_bucket_order.borrow_mut().insert(bucket.id);
-        true
-    }
-
-    fn on_return_bucket(&self, _bucket: &ReturnBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_log_bucket(&self, _bucket: &LogBucket, _env: &Env) -> bool {
-        true
+        Ok(true)
     }
 
     fn ignore_function_calls(&self) -> bool {
@@ -164,101 +113,96 @@ impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
 }
 
 impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
-    fn name(&self) -> &str {
-        "ConditionalFlattening"
-    }
+    default__name!("ConditionalFlattening");
+    default__get_updated_field_constants!();
+    default__pre_hook_circuit!();
+    default__pre_hook_template!();
 
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.get_field_constants_clone()
-    }
-
-    fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.fill_from_circuit(circuit);
-    }
-
-    fn post_hook_circuit(&self, cir: &mut Circuit) {
+    fn post_hook_circuit(&self, cir: &mut Circuit) -> Result<(), BadInterp> {
         // Add the new functions
         for (_, ev) in self.new_functions.borrow_mut().drain(..) {
             for f in ev.into_values() {
                 cir.functions.push(f);
             }
         }
+        Ok(())
     }
 
-    fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.set_scope(template);
-        self.memory.run_template(self.global_data, self, template);
-    }
-
-    fn transform_call_bucket(&self, bucket: &CallBucket) -> InstructionPointer {
+    fn transform_call_bucket(&self, bucket: &CallBucket) -> Result<InstructionPointer, BadInterp> {
         let call_bucket_id = Some(bucket.id);
         // The Some keys in the 'evaluated_conditions' map are for the cases that are inside
         //  the loopbody functions when executed from the CallBucket.id used as the key.
         // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
         let ec = { self.evaluated_conditions.borrow_mut().remove(&call_bucket_id) };
-        if let Some(ev) = ec {
+        if let Some(cond_vals) = ec {
             // If there are any conditions that evaluated to a known value, replace the
             //  CallBucket target function with a simplified version of that function.
-            if ev.values().any(|e| e.is_some()) {
-                let mut nf = self.new_functions.borrow_mut();
+            if cond_vals.values().any(|e| e.is_some()) {
                 // Check if the needed function exists, else create it.
-                let old_name = &bucket.symbol;
-                // Build the new function name according to the values in 'ev' but sorted by 'branch_bucket_order'
-                let new_name =
-                    self.branch_bucket_order.borrow().iter().filter_map(|id| ev.get(id)).fold(
-                        old_name.clone(),
-                        |acc, e| match e {
-                            Some(true) => format!("{}.T", acc),
-                            Some(false) => format!("{}.F", acc),
-                            None => format!("{}.N", acc),
-                        },
-                    );
-                let new_target = nf
-                    .entry(bucket.symbol.clone())
-                    .or_default()
-                    .entry(ev)
-                    .or_insert_with_key(|k| {
-                        //Set the 'within_call' context and then use self.transform_function(..)
+                let new_target = {
+                    let mut nf = self.new_functions.borrow_mut();
+                    let function_versions = nf.entry(bucket.symbol.clone()).or_default();
+                    if function_versions.contains_key(&cond_vals) {
+                        function_versions[&cond_vals].header.clone()
+                    } else {
+                        let old_name = &bucket.symbol;
+                        // Set the 'within_call' context and then use self.transform_function(..)
                         //  on the existing extracted loopbody function to create a new
                         //  FunctionCode by running this transformer on the existing one.
-                        let old = self.caller_context.replace(Some(k.clone()));
-                        let mut res = self.transform_function(&self.memory.get_function(old_name));
-                        self.caller_context.replace(old);
-                        res.header = new_name;
-                        res
-                    })
-                    .header
-                    .clone();
-                return CallBucket {
+                        let old_ctx = self.caller_context.replace(Some(cond_vals.clone()));
+                        let mut res =
+                            self.transform_function(&self.memory.get_function(old_name))?;
+                        self.caller_context.replace(old_ctx);
+                        // Build the new function name according to the condition values but sorted by 'branch_bucket_order'
+                        let new_name = self
+                            .branch_bucket_order
+                            .borrow()
+                            .iter()
+                            .filter_map(|id| cond_vals.get(id))
+                            .fold(old_name.clone(), |acc, e| match e {
+                                Some(true) => format!("{}.T", acc),
+                                Some(false) => format!("{}.F", acc),
+                                None => format!("{}.N", acc),
+                            });
+                        res.header = new_name.clone();
+                        // Store the new function
+                        function_versions.insert(cond_vals, res);
+                        new_name
+                    }
+                };
+                return Ok(CallBucket {
                     id: new_id(),
                     source_file_id: bucket.source_file_id,
                     line: bucket.line,
                     message_id: bucket.message_id,
                     symbol: new_target,
                     argument_types: bucket.argument_types.clone(),
-                    arguments: self.transform_instructions(&bucket.arguments),
+                    arguments: self.transform_instructions(&bucket.arguments)?,
                     arena_size: bucket.arena_size,
-                    return_info: self.transform_return_type(&bucket.id, &bucket.return_info),
+                    return_info: self.transform_return_type(&bucket.id, &bucket.return_info)?,
                 }
-                .allocate();
+                .allocate());
             }
         }
         // Default case: no change
-        CallBucket {
+        Ok(CallBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             symbol: bucket.symbol.to_string(),
             argument_types: bucket.argument_types.clone(),
-            arguments: self.transform_instructions(&bucket.arguments),
+            arguments: self.transform_instructions(&bucket.arguments)?,
             arena_size: bucket.arena_size,
-            return_info: self.transform_return_type(&bucket.id, &bucket.return_info),
+            return_info: self.transform_return_type(&bucket.id, &bucket.return_info)?,
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_branch_bucket(&self, bucket: &BranchBucket) -> InstructionPointer {
+    fn transform_branch_bucket(
+        &self,
+        bucket: &BranchBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         if let Some(side) = self.get_known_condition(&bucket.id) {
             let code = if side { &bucket.if_branch } else { &bucket.else_branch };
             let block = BlockBucket {
@@ -273,15 +217,15 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
             return self.transform_block_bucket(&block);
         }
         // Default case: no change
-        BranchBucket {
+        Ok(BranchBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
-            cond: self.transform_instruction(&bucket.cond),
-            if_branch: self.transform_instructions(&bucket.if_branch),
-            else_branch: self.transform_instructions(&bucket.else_branch),
+            cond: self.transform_instruction(&bucket.cond)?,
+            if_branch: self.transform_instructions(&bucket.if_branch)?,
+            else_branch: self.transform_instructions(&bucket.else_branch)?,
         }
-        .allocate()
+        .allocate())
     }
 }

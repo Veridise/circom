@@ -6,26 +6,84 @@ use compiler::intermediate_representation::ir_interface::{
     BlockBucket, ValueBucket,
 };
 
+use super::error::BadInterp;
+
 /// Will get called everytime some visitor is about to visit a bucket,
 /// with access to the state data prior to the execution of the bucket.
 pub trait Observer<S> {
-    fn on_value_bucket(&self, bucket: &ValueBucket, state: &S) -> bool;
-    fn on_load_bucket(&self, bucket: &LoadBucket, state: &S) -> bool;
-    fn on_store_bucket(&self, bucket: &StoreBucket, state: &S) -> bool;
-    fn on_compute_bucket(&self, bucket: &ComputeBucket, state: &S) -> bool;
-    fn on_assert_bucket(&self, bucket: &AssertBucket, state: &S) -> bool;
-    fn on_loop_bucket(&self, bucket: &LoopBucket, state: &S) -> bool;
-    fn on_create_cmp_bucket(&self, bucket: &CreateCmpBucket, state: &S) -> bool;
-    fn on_constraint_bucket(&self, bucket: &ConstraintBucket, state: &S) -> bool;
-    fn on_block_bucket(&self, bucket: &BlockBucket, state: &S) -> bool;
-    fn on_nop_bucket(&self, bucket: &NopBucket, state: &S) -> bool;
-    fn on_location_rule(&self, location_rule: &LocationRule, state: &S) -> bool;
-    fn on_call_bucket(&self, bucket: &CallBucket, state: &S) -> bool;
-    fn on_branch_bucket(&self, bucket: &BranchBucket, state: &S) -> bool;
-    fn on_return_bucket(&self, bucket: &ReturnBucket, state: &S) -> bool;
-    fn on_log_bucket(&self, bucket: &LogBucket, state: &S) -> bool;
+    fn on_value_bucket(&self, _bucket: &ValueBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
 
-    fn on_instruction(&self, inst: &InstructionPointer, state: &S) -> bool {
+    fn on_load_bucket(&self, _bucket: &LoadBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_store_bucket(&self, _bucket: &StoreBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_compute_bucket(&self, _bucket: &ComputeBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_assert_bucket(&self, _bucket: &AssertBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_loop_bucket(&self, _bucket: &LoopBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_create_cmp_bucket(
+        &self,
+        _bucket: &CreateCmpBucket,
+        _state: &S,
+    ) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_constraint_bucket(
+        &self,
+        _bucket: &ConstraintBucket,
+        _state: &S,
+    ) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_block_bucket(&self, _bucket: &BlockBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_nop_bucket(&self, _bucket: &NopBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_location_rule(
+        &self,
+        _location_rule: &LocationRule,
+        _state: &S,
+    ) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_call_bucket(&self, _bucket: &CallBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_branch_bucket(&self, _bucket: &BranchBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_return_bucket(&self, _bucket: &ReturnBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_log_bucket(&self, _bucket: &LogBucket, _state: &S) -> Result<bool, BadInterp> {
+        Ok(true)
+    }
+
+    fn on_instruction(&self, inst: &InstructionPointer, state: &S) -> Result<bool, BadInterp> {
         match inst.as_ref() {
             Instruction::Value(bucket) => self.on_value_bucket(bucket, state),
             Instruction::Load(bucket) => self.on_load_bucket(bucket, state),
@@ -44,10 +102,6 @@ pub trait Observer<S> {
         }
     }
 
-    fn ignore_subcmp_calls(&self) -> bool;
-    fn ignore_function_calls(&self) -> bool;
-    fn ignore_extracted_function_calls(&self) -> bool;
-
     fn ignore_call(&self, callee: &String) -> bool {
         if callee.starts_with(GENERATED_FN_PREFIX) {
             self.ignore_extracted_function_calls()
@@ -55,4 +109,8 @@ pub trait Observer<S> {
             self.ignore_function_calls()
         }
     }
+
+    fn ignore_subcmp_calls(&self) -> bool;
+    fn ignore_function_calls(&self) -> bool;
+    fn ignore_extracted_function_calls(&self) -> bool;
 }
