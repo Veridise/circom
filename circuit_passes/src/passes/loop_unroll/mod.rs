@@ -13,8 +13,13 @@ use compiler::intermediate_representation::{
 };
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
+use crate::{
+    default__name, default__get_updated_field_constants, default__pre_hook_circuit,
+    default__pre_hook_template,
+};
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 use super::{CircuitTransformationPass, GlobalPassData};
 use self::body_extractor::LoopBodyExtractor;
@@ -43,7 +48,11 @@ impl<'d> LoopUnrollPass<'d> {
         }
     }
 
-    fn try_unroll_loop(&self, bucket: &LoopBucket, env: &Env) -> (Option<InstructionList>, usize) {
+    fn try_unroll_loop(
+        &self,
+        bucket: &LoopBucket,
+        env: &Env,
+    ) -> Result<(Option<InstructionList>, usize), BadInterp> {
         if DEBUG_LOOP_UNROLL {
             println!("\nTry unrolling loop {}:", bucket.id); //TODO: TEMP
             for (i, s) in bucket.body.iter().enumerate() {
@@ -67,10 +76,10 @@ impl<'d> LoopUnrollPass<'d> {
             loop {
                 recorder.record_env_at_header(inner_env.clone());
                 let (_, cond, new_env) =
-                    interpreter.execute_loop_bucket_once(bucket, inner_env, true);
+                    interpreter.execute_loop_bucket_once(bucket, inner_env, true)?;
                 match cond {
                     // If the conditional becomes unknown just give up.
-                    None => return (None, 0),
+                    None => return Ok((None, 0)),
                     // When conditional becomes `false`, iteration count is complete.
                     Some(false) => break,
                     // Otherwise, continue counting.
@@ -97,54 +106,35 @@ impl<'d> LoopUnrollPass<'d> {
                     }
                 }
                 _ => {
-                    self.extractor.extract(bucket, &recorder, &mut block_body);
+                    self.extractor.extract(bucket, &recorder, &mut block_body)?;
                 }
             }
         } else {
             //If the loop body is not safe to move into a new function, just unroll in-place.
             for _ in 0..recorder.get_iter() {
                 for s in &bucket.body {
-                    let mut copy = s.clone();
+                    let mut copy: Box<Instruction> = s.clone();
                     copy.update_id();
                     block_body.push(copy);
                 }
             }
         }
-        (Some(block_body), recorder.get_iter())
+        Ok((Some(block_body), recorder.get_iter()))
     }
 
     // Will take the unrolled loop and interpretate it
     // checking if new loop buckets appear
-    fn continue_inside(&self, bucket: &BlockBucket, env: &Env) {
+    fn continue_inside(&self, bucket: &BlockBucket, env: &Env) -> Result<(), BadInterp> {
         let interpreter = self.memory.build_interpreter(self.global_data, self);
         let env = Env::new_unroll_block_env(env.clone(), &self.extractor);
-        interpreter.execute_block_bucket(bucket, env, true);
+        interpreter.execute_block_bucket(bucket, env, true)?;
+        Ok(())
     }
 }
 
 impl Observer<Env<'_>> for LoopUnrollPass<'_> {
-    fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_load_bucket(&self, _bucket: &LoadBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_store_bucket(&self, _bucket: &StoreBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_compute_bucket(&self, _bucket: &ComputeBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_assert_bucket(&self, _bucket: &AssertBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_loop_bucket(&self, bucket: &LoopBucket, env: &Env) -> bool {
-        if let (Some(block_body), n_iters) = self.try_unroll_loop(bucket, env) {
+    fn on_loop_bucket(&self, bucket: &LoopBucket, env: &Env) -> Result<bool, BadInterp> {
+        if let (Some(block_body), n_iters) = self.try_unroll_loop(bucket, env)? {
             let block = BlockBucket {
                 id: new_id(),
                 source_file_id: bucket.source_file_id,
@@ -154,46 +144,10 @@ impl Observer<Env<'_>> for LoopUnrollPass<'_> {
                 n_iters,
                 label: String::from("unrolled_loop"),
             };
-            self.continue_inside(&block, env);
+            self.continue_inside(&block, env)?;
             self.replacements.borrow_mut().insert(bucket.id, block.allocate());
         }
-        false
-    }
-
-    fn on_create_cmp_bucket(&self, _bucket: &CreateCmpBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_constraint_bucket(&self, _bucket: &ConstraintBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_block_bucket(&self, _bucket: &BlockBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_nop_bucket(&self, _bucket: &NopBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_location_rule(&self, _location_rule: &LocationRule, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_call_bucket(&self, _bucket: &CallBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_branch_bucket(&self, _bucket: &BranchBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_return_bucket(&self, _bucket: &ReturnBucket, _env: &Env) -> bool {
-        true
-    }
-
-    fn on_log_bucket(&self, _bucket: &LogBucket, _env: &Env) -> bool {
-        true
+        Ok(false)
     }
 
     fn ignore_function_calls(&self) -> bool {
@@ -210,43 +164,32 @@ impl Observer<Env<'_>> for LoopUnrollPass<'_> {
 }
 
 impl CircuitTransformationPass for LoopUnrollPass<'_> {
-    fn name(&self) -> &str {
-        "LoopUnrollPass"
-    }
+    default__name!("LoopUnrollPass");
+    default__get_updated_field_constants!();
+    default__pre_hook_circuit!();
+    default__pre_hook_template!();
 
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.get_field_constants_clone()
-    }
-
-    fn pre_hook_circuit(&self, circuit: &Circuit) {
-        self.memory.fill_from_circuit(circuit);
-    }
-
-    fn post_hook_circuit(&self, cir: &mut Circuit) {
+    fn post_hook_circuit(&self, cir: &mut Circuit) -> Result<(), BadInterp> {
         // Transform and add the new body functions
         for f in self.extractor.get_new_functions().iter() {
-            cir.functions.push(self.transform_function(&f));
+            cir.functions.push(self.transform_function(&f)?);
         }
+        Ok(())
     }
 
-    fn pre_hook_template(&self, template: &TemplateCode) {
-        self.memory.set_scope(template);
-        self.memory.run_template(self.global_data, self, template);
-    }
-
-    fn transform_loop_bucket(&self, bucket: &LoopBucket) -> InstructionPointer {
+    fn transform_loop_bucket(&self, bucket: &LoopBucket) -> Result<InstructionPointer, BadInterp> {
         if let Some(unrolled_loop) = self.replacements.borrow().get(&bucket.id) {
             return self.transform_instruction(unrolled_loop);
         }
-        LoopBucket {
+        Ok(LoopBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
-            continue_condition: self.transform_instruction(&bucket.continue_condition),
-            body: self.transform_instructions(&bucket.body),
+            continue_condition: self.transform_instruction(&bucket.continue_condition)?,
+            body: self.transform_instructions(&bucket.body)?,
         }
-        .allocate()
+        .allocate())
     }
 }
 
@@ -273,7 +216,8 @@ mod test {
         circuit.llvm_data.variable_index_mapping.insert("test_0".to_string(), HashMap::new());
         circuit.llvm_data.signal_index_mapping.insert("test_0".to_string(), HashMap::new());
         circuit.llvm_data.component_index_mapping.insert("test_0".to_string(), HashMap::new());
-        let new_circuit = pass.transform_circuit(&circuit);
+        let new_circuit =
+            pass.transform_circuit(&circuit).map_err(|e| e.get_message().clone()).unwrap();
         if cfg!(debug_assertions) {
             println!("{}", new_circuit.templates[0].body.last().unwrap().to_string());
         }

@@ -1,10 +1,11 @@
 use std::cell::Ref;
 use std::collections::{HashMap, BTreeMap};
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::BucketInterpreter;
+use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::loop_unroll::body_extractor::LoopBodyExtractor;
@@ -21,7 +22,7 @@ pub struct UnrolledBlockEnvData<'a> {
 }
 
 impl Display for UnrolledBlockEnvData<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "UnrolledBlockEnv{{")?;
         self.base.fmt(f)?;
         write!(f, "}}")
@@ -46,9 +47,15 @@ impl LibraryAccess for UnrolledBlockEnvData<'_> {
     }
 }
 
+macro_rules! new_env {
+    ($base:expr, $extractor:expr) => {
+        UnrolledBlockEnvData { base: Box::new($base), extractor: $extractor }
+    };
+}
+
 impl<'a> UnrolledBlockEnvData<'a> {
     pub fn new(base: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {
-        UnrolledBlockEnvData { base: Box::new(base), extractor }
+        new_env!(base, extractor)
     }
 
     pub fn extracted_func_caller(&self) -> Option<&BucketId> {
@@ -96,52 +103,36 @@ impl<'a> UnrolledBlockEnvData<'a> {
     }
 
     pub fn set_var(self, idx: usize, value: Value) -> Self {
-        UnrolledBlockEnvData {
-            base: Box::new(self.base.set_var(idx, value)),
-            extractor: self.extractor,
-        }
+        new_env!(self.base.set_var(idx, value), self.extractor)
     }
 
     pub fn set_signal(self, idx: usize, value: Value) -> Self {
-        UnrolledBlockEnvData {
-            base: Box::new(self.base.set_signal(idx, value)),
-            extractor: self.extractor,
-        }
+        new_env!(self.base.set_signal(idx, value), self.extractor)
     }
 
     pub fn set_all_to_unk(self) -> Self {
-        UnrolledBlockEnvData {
-            base: Box::new(self.base.set_all_to_unk()),
-            extractor: self.extractor,
-        }
+        new_env!(self.base.set_all_to_unk(), self.extractor)
     }
 
-    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Self {
-        UnrolledBlockEnvData {
-            base: Box::new(self.base.set_subcmp_to_unk(subcmp_idx)),
-            extractor: self.extractor,
-        }
+    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
+        Ok(new_env!(self.base.set_subcmp_to_unk(subcmp_idx)?, self.extractor))
     }
 
-    pub fn set_subcmp_signal(self, subcmp_idx: usize, signal_idx: usize, value: Value) -> Self {
-        UnrolledBlockEnvData {
-            base: Box::new(self.base.set_subcmp_signal(subcmp_idx, signal_idx, value)),
-            extractor: self.extractor,
-        }
+    pub fn set_subcmp_signal(
+        self,
+        subcmp_idx: usize,
+        signal_idx: usize,
+        value: Value,
+    ) -> Result<Self, BadInterp> {
+        Ok(new_env!(self.base.set_subcmp_signal(subcmp_idx, signal_idx, value)?, self.extractor))
     }
 
-    pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Self {
-        UnrolledBlockEnvData {
-            base: Box::new(self.base.set_subcmp_counter(subcmp_idx, new_val)),
-            extractor: self.extractor,
-        }
+    pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Result<Self, BadInterp> {
+        Ok(new_env!(self.base.set_subcmp_counter(subcmp_idx, new_val)?, self.extractor))
     }
 
-    pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Self {
-        UnrolledBlockEnvData {
-            base: Box::new(self.base.decrease_subcmp_counter(subcmp_idx)),
-            extractor: self.extractor,
-        }
+    pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
+        Ok(new_env!(self.base.decrease_subcmp_counter(subcmp_idx)?, self.extractor))
     }
 
     pub fn run_subcmp(
@@ -151,10 +142,7 @@ impl<'a> UnrolledBlockEnvData<'a> {
         interpreter: &BucketInterpreter,
         observe: bool,
     ) -> Self {
-        UnrolledBlockEnvData {
-            base: Box::new(self.base.run_subcmp(subcmp_idx, name, interpreter, observe)),
-            extractor: self.extractor,
-        }
+        new_env!(self.base.run_subcmp(subcmp_idx, name, interpreter, observe), self.extractor)
     }
 
     pub fn create_subcmp(
@@ -164,9 +152,6 @@ impl<'a> UnrolledBlockEnvData<'a> {
         count: usize,
         template_id: usize,
     ) -> Self {
-        UnrolledBlockEnvData {
-            base: Box::new(self.base.create_subcmp(name, base_index, count, template_id)),
-            extractor: self.extractor,
-        }
+        new_env!(self.base.create_subcmp(name, base_index, count, template_id), self.extractor)
     }
 }

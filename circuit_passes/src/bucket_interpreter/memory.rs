@@ -10,6 +10,7 @@ use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::env::{Env, LibraryAccess};
 use crate::bucket_interpreter::observer::Observer;
 use crate::passes::GlobalPassData;
+use super::error::BadInterp;
 
 pub struct PassMemory {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need
@@ -71,14 +72,15 @@ impl PassMemory {
         global_data: &'d RefCell<GlobalPassData>,
         observer: &dyn for<'e> Observer<Env<'e>>,
         template: &TemplateCode,
-    ) {
+    ) -> Result<(), BadInterp> {
         assert!(!self.current_scope.borrow().is_empty());
         if cfg!(debug_assertions) {
             println!("Running template {}", self.current_scope.borrow());
         }
         let interpreter = self.build_interpreter(global_data, observer);
         let env = Env::new_standard_env(self);
-        interpreter.execute_instructions(&template.body, env, true);
+        interpreter.execute_instructions(&template.body, env, true)?;
+        Ok(())
     }
 
     pub fn add_template(&self, template: &TemplateCode) {

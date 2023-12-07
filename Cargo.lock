@@ -217,6 +217,7 @@ version = "0.1.0"
 dependencies = [
  "circom_algebra",
  "code_producers",
+ "codespan-reporting",
  "compiler",
  "const_format",
  "constraint_generation",

@@ -14,7 +14,9 @@ pub struct FileLibrary {
 
 impl Default for FileLibrary {
     fn default() -> Self {
-        FileLibrary { files: FileStorage::new() }
+        let mut files = FileStorage::new();
+        files.add(String::from("<generated>"), String::from(""));
+        FileLibrary { files }
     }
 }
 

@@ -1,11 +1,12 @@
 use std::cell::Ref;
 use std::collections::{HashMap, BTreeMap, HashSet};
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::{Instruction, BucketId};
 use compiler::intermediate_representation::ir_interface::{AddressType, ValueBucket, ValueType};
 use crate::bucket_interpreter::BucketInterpreter;
+use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::body_extractor::{ToOriginalLocation, FuncArgIdx};
 use super::{Env, LibraryAccess};
@@ -30,7 +31,7 @@ macro_rules! update_inner {
 }
 
 impl Display for ExtractedFuncEnvData<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "ExtractedFuncEnv{{")?;
         self.base.fmt(f)?;
         write!(f, "}}")
@@ -272,14 +273,19 @@ impl<'a> ExtractedFuncEnvData<'a> {
         update_inner!(self, self.base.set_all_to_unk())
     }
 
-    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Self {
+    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
         // The index here is already converted within BucketInterpreter::get_write_operations_in_store_bucket
         //  via interpreting the LocationRule and performing the PassMemory lookup on the unchanged scope
         //  (per comment in BucketInterpreter::run_function_loopbody).
-        update_inner!(self, self.base.set_subcmp_to_unk(subcmp_idx))
+        Ok(update_inner!(self, self.base.set_subcmp_to_unk(subcmp_idx)?))
     }
 
-    pub fn set_subcmp_signal(self, subcmp_idx: usize, signal_idx: usize, new_value: Value) -> Self {
+    pub fn set_subcmp_signal(
+        self,
+        subcmp_idx: usize,
+        signal_idx: usize,
+        new_value: Value,
+    ) -> Result<Self, BadInterp> {
         //NOTE: This is only called by BucketInterpreter::store_value_in_address.
         //Use the map from loop unrolling to convert the SubcmpSignal reference back
         //  into the proper reference (reversing ExtractedFunctionLocationUpdater).
@@ -288,7 +294,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
                 assert!(self.arenas.contains(&subcmp_idx));
                 // This will be reached for the StoreBucket that generates a call to the "_run" function.
-                return self; // Nothing needs to be done.
+                return Ok(self); // Nothing needs to be done.
             }
             Some((loc, idx)) => {
                 //ASSERT: ExtractedFunctionLocationUpdater will always assign 0 in
@@ -310,24 +316,28 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             // ASSERT: always 0 from 'get_reverse_passing_refs_for_itr' in 'body_extractor.rs'
                             assert_eq!(idx, 0);
                             // NOTE: If unwrapping to u32 directly causes a panic, then need to allow Value as the parameter.
-                            self.base.set_subcmp_counter(subcmp, new_value.get_u32())
+                            self.base.set_subcmp_counter(subcmp, new_value.get_u32()?)?
                         } else {
-                            self.base.set_subcmp_signal(subcmp, idx, new_value)
+                            self.base.set_subcmp_signal(subcmp, idx, new_value)?
                         }
                     }
                 }
             }
         };
-        update_inner!(self, new_env)
+        Ok(update_inner!(self, new_env))
     }
 
-    pub fn set_subcmp_counter(self, _subcmp_idx: usize, _new_val: usize) -> Self {
+    pub fn set_subcmp_counter(
+        self,
+        _subcmp_idx: usize,
+        _new_val: usize,
+    ) -> Result<Self, BadInterp> {
         todo!()
     }
 
-    pub fn decrease_subcmp_counter(self, _subcmp_idx: usize) -> Self {
+    pub fn decrease_subcmp_counter(self, _subcmp_idx: usize) -> Result<Self, BadInterp> {
         //Do nothing because subcmp counter is managed explicitly in extracted functions
-        self
+        Ok(self)
     }
 
     pub fn run_subcmp(self, _: usize, _: &String, _: &BucketInterpreter, _: bool) -> Self {

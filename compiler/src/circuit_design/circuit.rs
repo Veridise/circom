@@ -591,7 +591,7 @@ impl Circuit {
         wasm_code_generator::generate_witness_calculator_js_file(&js_folder_path).map_err(|_err| {})?;
         self.write_wasm(writer, &self.wasm_producer)
     }
-    pub fn produce_llvm_ir(&mut self, program_archive: &ProgramArchive, out_path: &str) -> Result<(), ()> {
+    pub fn produce_llvm_ir(&self, program_archive: &ProgramArchive, out_path: &str) -> Result<(), ()> {
         self.write_llvm_ir(program_archive, out_path, &self.llvm_data)
     }
 }

@@ -5,6 +5,7 @@ use indexmap::IndexMap;
 use compiler::intermediate_representation::BucketId;
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
@@ -117,7 +118,12 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
             .insert(iter_env, value);
     }
 
-    fn record_memloc_at_bucket(&self, bucket_id: &BucketId, addr_ty: AddressType, val: Value) {
+    fn record_memloc_at_bucket(
+        &self,
+        bucket_id: &BucketId,
+        addr_ty: AddressType,
+        val: Value,
+    ) -> Result<(), BadInterp> {
         let iter = self.get_iter();
         assert!(self.vals_per_iteration.borrow().contains_key(&iter));
         self.vals_per_iteration
@@ -126,51 +132,53 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
             .unwrap()
             .loadstore_to_index
             .insert(*bucket_id, (addr_ty, val));
+        Ok(())
     }
 
-    fn compute_index_from_inst(&self, env: &Env, location: &InstructionPointer) -> Value {
+    fn compute_index_from_inst(
+        &self,
+        env: &Env,
+        location: &InstructionPointer,
+    ) -> Result<Value, BadInterp> {
         // Evaluate the index using the current environment and using the environment from the
         //  loop header. If either is Unknown or they do not give the same value, then it is
         //  not safe to move the loop body to another function because the index computation may
         //  not give the same result when done at the call site, outside of the new function.
         let interp = self.mem.build_interpreter(self.global_data, self);
-        let (idx_loc, _) = interp.execute_instruction(location, env.clone(), false);
+        let (idx_loc, _) = interp.execute_instruction(location, env.clone(), false)?;
         if let Some(idx_loc) = idx_loc {
-            // NOTE: It's possible for the interpreter to run into problems evaluating the location
-            //  using the header Env. For example, a value may not have been defined yet so address
-            //  computations on that value could give out of range results for 'usize' which causes
-            //  a panic rather than providing a Result return type. The fix for now is to catch the
-            //  panic and return Unknown here. It's obviously not the best solution and it also
-            //  still prints the panic message to output so it's noticable to end user.
-            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                interp.execute_instruction(location, self.get_header_env_clone(), false)
-            }));
-            if let Result::Ok((idx_header, _)) = res {
-                if let Some(idx_header) = idx_header {
-                    if Value::eq(&idx_header, &idx_loc) {
-                        return idx_loc;
-                    }
+            let (idx_header, _) =
+                interp.execute_instruction(location, self.get_header_env_clone(), false)?;
+            if let Some(idx_header) = idx_header {
+                if Value::eq(&idx_header, &idx_loc) {
+                    return Ok(idx_loc);
                 }
             }
         }
-        Value::Unknown
+        Ok(Value::Unknown)
     }
 
-    fn compute_index_from_rule(&self, env: &Env, loc: &LocationRule) -> Value {
+    fn compute_index_from_rule(&self, env: &Env, loc: &LocationRule) -> Result<Value, BadInterp> {
         match loc {
             LocationRule::Mapped { .. } => {
                 //TODO: It's not an array index in this case, at least not immediately but I think it can
                 //  ultimately be converted to one because the subcmp storage is an array of values. Is
                 //  that value known now? Do I also need the AddressType to compute the correct index?
                 //SEE: https://veridise.atlassian.net/browse/VAN-704
-                Value::Unknown
+                Ok(Value::Unknown)
             }
             LocationRule::Indexed { location, .. } => self.compute_index_from_inst(env, location),
         }
     }
 
-    fn visit(&self, bucket_id: &BucketId, addr_ty: &AddressType, loc: &LocationRule, env: &Env) {
-        let loc_result = self.compute_index_from_rule(env, loc);
+    fn visit(
+        &self,
+        bucket_id: &BucketId,
+        addr_ty: &AddressType,
+        loc: &LocationRule,
+        env: &Env,
+    ) -> Result<(), BadInterp> {
+        let loc_result = self.compute_index_from_rule(env, loc)?;
         if loc_result == Value::Unknown {
             if DEBUG_LOOP_UNROLL {
                 println!(
@@ -190,7 +198,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
             counter_override,
         } = addr_ty
         {
-            let addr_result = self.compute_index_from_inst(env, cmp_address);
+            let addr_result = self.compute_index_from_inst(env, cmp_address)?;
             self.record_memloc_at_bucket(
                 bucket_id,
                 AddressType::SubcmpSignal {
@@ -202,7 +210,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
                             self.safe_to_move.replace(false);
                             NopBucket { id: 0 }.allocate()
                         } else {
-                            addr_result.to_value_bucket(self.mem).allocate()
+                            addr_result.to_value_bucket(self.mem)?.allocate()
                         }
                     },
                     uniform_parallel_value: uniform_parallel_value.clone(),
@@ -211,88 +219,100 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
                     counter_override: *counter_override,
                 },
                 loc_result,
-            );
+            )
         } else {
-            self.record_memloc_at_bucket(bucket_id, addr_ty.clone(), loc_result);
+            self.record_memloc_at_bucket(bucket_id, addr_ty.clone(), loc_result)
         }
     }
 }
 
 impl Observer<Env<'_>> for EnvRecorder<'_, '_> {
-    fn on_load_bucket(&self, bucket: &LoadBucket, env: &Env) -> bool {
+    fn on_load_bucket(&self, bucket: &LoadBucket, env: &Env) -> Result<bool, BadInterp> {
         if let Some(_) = bucket.bounded_fn {
             todo!(); //not sure if/how to handle that
         }
-        self.visit(&bucket.id, &bucket.address_type, &bucket.src, env);
+        self.visit(&bucket.id, &bucket.address_type, &bucket.src, env)?;
         // For a LoadBucket, there is no need to continue observing inside it and doing
         //  so can actually cause "assert!(bucket_to_args.is_empty())" to fail. See
         //  test "loops/fixed_idx_in_fixed_idx.circom" for an example and explanation.
         //  This is not applicable to other buckets because they have additional content
         //  inside of them that must be observed.
-        false
+        Ok(false)
     }
 
-    fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> bool {
+    fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> Result<bool, BadInterp> {
         if let Some(_) = bucket.bounded_fn {
             todo!(); //not sure if/how to handle that
         }
-        self.visit(&bucket.id, &bucket.dest_address_type, &bucket.dest, env);
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+        self.visit(&bucket.id, &bucket.dest_address_type, &bucket.dest, env)?;
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> bool {
+    fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> Result<bool, BadInterp> {
         if let ReturnType::Final(fd) = &bucket.return_info {
-            self.visit(&bucket.id, &fd.dest_address_type, &fd.dest, env);
+            self.visit(&bucket.id, &fd.dest_address_type, &fd.dest, env)?;
         }
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_value_bucket(&self, _bucket: &ValueBucket, _env: &Env) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_compute_bucket(&self, _bucket: &ComputeBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_compute_bucket(&self, _bucket: &ComputeBucket, _env: &Env) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_assert_bucket(&self, _bucket: &AssertBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_assert_bucket(&self, _bucket: &AssertBucket, _env: &Env) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_loop_bucket(&self, _bucket: &LoopBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_loop_bucket(&self, _bucket: &LoopBucket, _env: &Env) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_create_cmp_bucket(&self, _bucket: &CreateCmpBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_create_cmp_bucket(
+        &self,
+        _bucket: &CreateCmpBucket,
+        _env: &Env,
+    ) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_constraint_bucket(&self, _bucket: &ConstraintBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_constraint_bucket(
+        &self,
+        _bucket: &ConstraintBucket,
+        _env: &Env,
+    ) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_block_bucket(&self, _bucket: &BlockBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_block_bucket(&self, _bucket: &BlockBucket, _env: &Env) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_nop_bucket(&self, _bucket: &NopBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_nop_bucket(&self, _bucket: &NopBucket, _env: &Env) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_location_rule(&self, _location_rule: &LocationRule, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_location_rule(
+        &self,
+        _location_rule: &LocationRule,
+        _env: &Env,
+    ) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_branch_bucket(&self, _bucket: &BranchBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_branch_bucket(&self, _bucket: &BranchBucket, _env: &Env) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_return_bucket(&self, _bucket: &ReturnBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_return_bucket(&self, _bucket: &ReturnBucket, _env: &Env) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_log_bucket(&self, _bucket: &LogBucket, _env: &Env) -> bool {
-        self.is_safe_to_move() //continue observing unless something unsafe has been found
+    fn on_log_bucket(&self, _bucket: &LogBucket, _env: &Env) -> Result<bool, BadInterp> {
+        Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
     fn ignore_function_calls(&self) -> bool {

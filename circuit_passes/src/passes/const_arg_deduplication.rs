@@ -7,7 +7,9 @@ use compiler::hir::very_concrete_program::Param;
 use compiler::intermediate_representation::{InstructionPointer, BucketId, UpdateId, new_id};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::intermediate_representation::translate::ARRAY_PARAM_STORES;
+use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
+use crate::{default__get_updated_field_constants, default__name};
 use super::{CircuitTransformationPass, GlobalPassData, builders};
 
 pub struct ConstArgDeduplicationPass<'d> {
@@ -120,15 +122,10 @@ impl<'d> ConstArgDeduplicationPass<'d> {
 }
 
 impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
-    fn name(&self) -> &str {
-        "ConstArgDeduplicationPass"
-    }
+    default__name!("ConstArgDeduplicationPass");
+    default__get_updated_field_constants!();
 
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.memory.get_field_constants_clone()
-    }
-
-    fn pre_hook_circuit(&self, circuit: &Circuit) {
+    fn pre_hook_circuit(&self, circuit: &Circuit) -> Result<(), BadInterp> {
         self.memory.fill_from_circuit(circuit);
         // Group templates by name (i.e. those produced from the same Circom template)
         let mut template_groups: HashMap<String, HashSet<String>> = Default::default();
@@ -136,9 +133,10 @@ impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
             template_groups.entry(t.name.clone()).or_default().insert(t.header.clone());
         }
         self.template_headers_grpby_name.replace(template_groups);
+        Ok(())
     }
 
-    fn post_hook_circuit(&self, cir: &mut Circuit) {
+    fn post_hook_circuit(&self, cir: &mut Circuit) -> Result<(), BadInterp> {
         // Normalize return type on source functions for "WriteLLVMIR for Circuit"
         //  which treats a 1-D vector of size 1 as a scalar return and an empty
         //  vector as "void" return type (the initial Circuit builder uses empty
@@ -152,11 +150,16 @@ impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
         }
         // Transform and add the new body functions
         for f in self.new_body_functions.borrow().values() {
-            cir.functions.push(self.transform_function(&f));
+            cir.functions.push(self.transform_function(&f)?);
         }
+        Ok(())
     }
 
-    fn transform_body(&self, header: &String, body: &InstructionList) -> InstructionList {
+    fn transform_body(
+        &self,
+        header: &String,
+        body: &InstructionList,
+    ) -> Result<InstructionList, BadInterp> {
         if let Some(ps) = ARRAY_PARAM_STORES.with(|map| map.borrow_mut().remove(header)) {
             let mut new_body = InstructionList::default();
             let mut body_iter = body.iter();
@@ -168,7 +171,7 @@ impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
                     1 => {
                         // scalar parameters don't need to be extracted
                         let i = body_iter.next().expect("Expected more statements");
-                        new_body.push(self.transform_instruction(i));
+                        new_body.push(self.transform_instruction(i)?);
                     }
                     _ => {
                         let mut idx_val_pairs = vec![];
@@ -190,8 +193,10 @@ impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
                 }
             }
             // Transform the remainder of the body and push to the new body
-            body_iter.for_each(|i| new_body.push(self.transform_instruction(i)));
-            new_body
+            for i in body_iter {
+                new_body.push(self.transform_instruction(i)?)
+            }
+            Ok(new_body)
         } else {
             self.transform_instructions(body)
         }

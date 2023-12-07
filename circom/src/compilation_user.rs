@@ -29,7 +29,7 @@ pub struct CompilerConfig {
 }
 
 pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &String) -> Result<(), ()> {
-    let mut circuit = compiler_interface::run_compiler(
+    let circuit = compiler_interface::run_compiler(
         config.vcp,
         Config { debug_output: config.debug_output, produce_input_log: config.produce_input_log, wat_flag: config.wat_flag },
         VERSION
@@ -46,7 +46,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
         println!(
             "{} {}/{}, {}, {}, {}, {}, {}, {} and {}",
             Colour::Green.paint("Written successfully:"),
-	    &config.c_folder,
+            &config.c_folder,
             "main.cpp".to_string(),
             "circom.hpp".to_string(),
             "calcwit.hpp".to_string(),
@@ -97,7 +97,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
     if config.llvm_flag {
         // Only run the passes if we are going to generate LLVM code
         let pm = PassManager::new();
-        circuit = pm
+        let result = pm
             .schedule_const_arg_deduplication_pass()
             .schedule_loop_unroll_pass()
             .schedule_conditional_flattening_pass()
@@ -107,14 +107,23 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
             .schedule_simplification_pass()
             .schedule_deterministic_subcmp_invoke_pass()
             .transform_circuit(circuit, prime);
-        compiler_interface::write_llvm_ir(
-            &mut circuit,
-            &program_archive,
-            &config.llvm_folder,
-            &config.llvm_file,
-            config.clean_llvm,
-        )?;
-        println!("{} {}", Colour::Green.paint("Written successfully:"), config.llvm_file);
+        match result {
+            Result::Err(e) => {
+                let report = e.to_report(&program_archive.file_library);
+                Report::print_reports(&[report], &program_archive.file_library);
+                return Err(());
+            }
+            Result::Ok(circuit) => {
+                compiler_interface::write_llvm_ir(
+                    &circuit,
+                    &program_archive,
+                    &config.llvm_folder,
+                    &config.llvm_file,
+                    config.clean_llvm,
+                )?;
+                println!("{} {}", Colour::Green.paint("Written successfully:"), config.llvm_file);
+            }
+        }
     }
 
     Ok(())

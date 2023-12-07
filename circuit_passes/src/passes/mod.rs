@@ -8,6 +8,7 @@ use compiler::intermediate_representation::{
     Instruction, InstructionList, InstructionPointer, new_id, BucketId,
 };
 use compiler::intermediate_representation::ir_interface::*;
+use crate::bucket_interpreter::error::BadInterp;
 use crate::passes::{
     checks::assert_unique_ids_in_circuit, conditional_flattening::ConditionalFlatteningPass,
     const_arg_deduplication::ConstArgDeduplicationPass,
@@ -36,12 +37,69 @@ macro_rules! pre_hook {
     };
 }
 
+macro_rules! pre_hook_with_result {
+    ($name: ident, $bucket_ty: ty) => {
+        fn $name(&self, _bucket: &$bucket_ty) -> Result<(), BadInterp> {
+            Ok(())
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! default__name {
+    ($name: literal) => {
+        fn name(&self) -> &str {
+            $name
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! default__get_updated_field_constants {
+    () => {
+        fn get_updated_field_constants(&self) -> Vec<String> {
+            self.memory.get_field_constants_clone()
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! default__pre_hook_circuit {
+    () => {
+        fn pre_hook_circuit(&self, circuit: &Circuit) -> Result<(), BadInterp> {
+            self.memory.fill_from_circuit(circuit);
+            Ok(())
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! default__pre_hook_template {
+    () => {
+        fn pre_hook_template(&self, template: &TemplateCode) -> Result<(), BadInterp> {
+            self.memory.set_scope(template);
+            self.memory.run_template(self.global_data, self, template)?;
+            Ok(())
+        }
+    };
+}
+
 pub trait CircuitTransformationPass {
     fn name(&self) -> &str;
+    fn get_updated_field_constants(&self) -> Vec<String>;
 
-    fn transform_circuit(&self, circuit: &Circuit) -> Circuit {
-        self.pre_hook_circuit(&circuit);
-        let templates = circuit.templates.iter().map(|t| self.transform_template(t)).collect();
+    fn transform_circuit(&self, circuit: &Circuit) -> Result<Circuit, BadInterp> {
+        self.pre_hook_circuit(&circuit)?;
+        let templates = circuit
+            .templates
+            .iter()
+            .map(|t| self.transform_template(t))
+            .collect::<Result<_, _>>()?;
+        let functions = circuit
+            .functions
+            .iter()
+            .map(|f| self.transform_function(f))
+            .collect::<Result<_, _>>()?;
         let field_tracking = self.get_updated_field_constants();
         let bounded_loads =
             self.get_updated_bounded_array_loads(&circuit.llvm_data.bounded_array_loads);
@@ -56,13 +114,11 @@ pub trait CircuitTransformationPass {
                 bounded_stores,
             ),
             templates,
-            functions: circuit.functions.iter().map(|f| self.transform_function(f)).collect(),
+            functions,
         };
-        self.post_hook_circuit(&mut new_circuit);
-        new_circuit
+        self.post_hook_circuit(&mut new_circuit)?;
+        Ok(new_circuit)
     }
-
-    fn get_updated_field_constants(&self) -> Vec<String>;
 
     fn get_updated_bounded_array_loads(
         &self,
@@ -78,9 +134,9 @@ pub trait CircuitTransformationPass {
         old_array_stores.clone()
     }
 
-    fn transform_template(&self, template: &TemplateCode) -> TemplateCode {
-        self.pre_hook_template(template);
-        Box::new(TemplateCodeInfo {
+    fn transform_template(&self, template: &TemplateCode) -> Result<TemplateCode, BadInterp> {
+        self.pre_hook_template(template)?;
+        Ok(Box::new(TemplateCodeInfo {
             id: template.id,
             source_file_id: template.source_file_id,
             line: template.line.clone(),
@@ -93,34 +149,38 @@ pub trait CircuitTransformationPass {
             number_of_inputs: template.number_of_inputs,
             number_of_outputs: template.number_of_outputs,
             number_of_intermediates: template.number_of_intermediates,
-            body: self.transform_body(&template.header, &template.body),
+            body: self.transform_body(&template.header, &template.body)?,
             var_stack_depth: template.var_stack_depth,
             expression_stack_depth: template.expression_stack_depth,
             signal_stack_depth: template.signal_stack_depth,
             number_of_components: template.number_of_components,
-        })
+        }))
     }
 
-    fn transform_function(&self, function: &FunctionCode) -> FunctionCode {
-        self.pre_hook_function(function);
-        Box::new(FunctionCodeInfo {
+    fn transform_function(&self, function: &FunctionCode) -> Result<FunctionCode, BadInterp> {
+        self.pre_hook_function(function)?;
+        Ok(Box::new(FunctionCodeInfo {
             source_file_id: function.source_file_id,
             line: function.line.clone(),
             header: function.header.clone(),
             name: function.name.clone(),
             params: function.params.clone(),
             returns: function.returns.clone(),
-            body: self.transform_body(&function.header, &function.body),
+            body: self.transform_body(&function.header, &function.body)?,
             max_number_of_vars: function.max_number_of_vars,
             max_number_of_ops_in_expression: function.max_number_of_ops_in_expression,
-        })
+        }))
     }
 
-    fn transform_body(&self, _header: &String, body: &InstructionList) -> InstructionList {
+    fn transform_body(
+        &self,
+        _header: &String,
+        body: &InstructionList,
+    ) -> Result<InstructionList, BadInterp> {
         self.transform_instructions(body)
     }
 
-    fn transform_instructions(&self, i: &InstructionList) -> InstructionList {
+    fn transform_instructions(&self, i: &InstructionList) -> Result<InstructionList, BadInterp> {
         i.iter().map(|i| self.transform_instruction(i)).collect()
     }
 
@@ -144,7 +204,7 @@ pub trait CircuitTransformationPass {
         }
     }
 
-    fn transform_instruction(&self, i: &Instruction) -> InstructionPointer {
+    fn transform_instruction(&self, i: &Instruction) -> Result<InstructionPointer, BadInterp> {
         self.pre_hook_instruction(i);
         use compiler::intermediate_representation::Instruction::*;
         match i {
@@ -167,8 +227,8 @@ pub trait CircuitTransformationPass {
 
     // This macros both define the interface of each bucket method and
     // the default behaviour which is to just copy the bucket without modifying it
-    fn transform_value_bucket(&self, bucket: &ValueBucket) -> InstructionPointer {
-        ValueBucket {
+    fn transform_value_bucket(&self, bucket: &ValueBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(ValueBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
@@ -177,11 +237,11 @@ pub trait CircuitTransformationPass {
             op_aux_no: bucket.op_aux_no,
             value: bucket.value,
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_address_type(&self, address: &AddressType) -> AddressType {
-        match address {
+    fn transform_address_type(&self, address: &AddressType) -> Result<AddressType, BadInterp> {
+        Ok(match address {
             AddressType::SubcmpSignal {
                 cmp_address,
                 uniform_parallel_value,
@@ -189,176 +249,195 @@ pub trait CircuitTransformationPass {
                 input_information,
                 counter_override,
             } => AddressType::SubcmpSignal {
-                cmp_address: self.transform_instruction(cmp_address),
+                cmp_address: self.transform_instruction(cmp_address)?,
                 uniform_parallel_value: uniform_parallel_value.clone(),
                 is_output: *is_output,
                 input_information: input_information.clone(),
                 counter_override: *counter_override,
             },
             x => x.clone(),
-        }
+        })
     }
 
     fn transform_location_rule(
         &self,
         _bucket_id: &BucketId,
         location_rule: &LocationRule,
-    ) -> LocationRule {
-        match location_rule {
+    ) -> Result<LocationRule, BadInterp> {
+        Ok(match location_rule {
             LocationRule::Indexed { location, template_header } => LocationRule::Indexed {
-                location: self.transform_instruction(location),
+                location: self.transform_instruction(location)?,
                 template_header: template_header.clone(),
             },
             LocationRule::Mapped { signal_code, indexes } => LocationRule::Mapped {
                 signal_code: *signal_code,
-                indexes: self.transform_instructions(indexes),
+                indexes: self.transform_instructions(indexes)?,
             },
-        }
+        })
     }
 
-    fn transform_load_bucket(&self, bucket: &LoadBucket) -> InstructionPointer {
-        LoadBucket {
+    fn transform_load_bucket(&self, bucket: &LoadBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(LoadBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
-            address_type: self.transform_address_type(&bucket.address_type),
-            src: self.transform_location_rule(&bucket.id, &bucket.src),
+            address_type: self.transform_address_type(&bucket.address_type)?,
+            src: self.transform_location_rule(&bucket.id, &bucket.src)?,
             bounded_fn: bucket.bounded_fn.clone(),
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_store_bucket(&self, bucket: &StoreBucket) -> InstructionPointer {
-        StoreBucket {
+    fn transform_store_bucket(&self, bucket: &StoreBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(StoreBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             context: bucket.context.clone(),
             dest_is_output: bucket.dest_is_output,
-            dest_address_type: self.transform_address_type(&bucket.dest_address_type),
-            dest: self.transform_location_rule(&bucket.id, &bucket.dest),
-            src: self.transform_instruction(&bucket.src),
+            dest_address_type: self.transform_address_type(&bucket.dest_address_type)?,
+            dest: self.transform_location_rule(&bucket.id, &bucket.dest)?,
+            src: self.transform_instruction(&bucket.src)?,
             bounded_fn: bucket.bounded_fn.clone(),
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_compute_bucket(&self, bucket: &ComputeBucket) -> InstructionPointer {
-        ComputeBucket {
+    fn transform_compute_bucket(
+        &self,
+        bucket: &ComputeBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
+        Ok(ComputeBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             op: bucket.op,
             op_aux_no: bucket.op_aux_no,
-            stack: self.transform_instructions(&bucket.stack),
+            stack: self.transform_instructions(&bucket.stack)?,
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_final_data(&self, bucket_id: &BucketId, final_data: &FinalData) -> FinalData {
-        FinalData {
+    fn transform_final_data(
+        &self,
+        bucket_id: &BucketId,
+        final_data: &FinalData,
+    ) -> Result<FinalData, BadInterp> {
+        Ok(FinalData {
             context: final_data.context,
             dest_is_output: final_data.dest_is_output,
-            dest_address_type: self.transform_address_type(&final_data.dest_address_type),
-            dest: self.transform_location_rule(bucket_id, &final_data.dest),
-        }
+            dest_address_type: self.transform_address_type(&final_data.dest_address_type)?,
+            dest: self.transform_location_rule(bucket_id, &final_data.dest)?,
+        })
     }
 
-    fn transform_return_type(&self, bucket_id: &BucketId, return_type: &ReturnType) -> ReturnType {
-        match return_type {
-            ReturnType::Final(f) => ReturnType::Final(self.transform_final_data(bucket_id, f)),
+    fn transform_return_type(
+        &self,
+        bucket_id: &BucketId,
+        return_type: &ReturnType,
+    ) -> Result<ReturnType, BadInterp> {
+        Ok(match return_type {
+            ReturnType::Final(f) => ReturnType::Final(self.transform_final_data(bucket_id, f)?),
             x => x.clone(),
-        }
+        })
     }
 
-    fn transform_call_bucket(&self, bucket: &CallBucket) -> InstructionPointer {
-        CallBucket {
+    fn transform_call_bucket(&self, bucket: &CallBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(CallBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             symbol: bucket.symbol.to_string(),
             argument_types: bucket.argument_types.clone(),
-            arguments: self.transform_instructions(&bucket.arguments),
+            arguments: self.transform_instructions(&bucket.arguments)?,
             arena_size: bucket.arena_size,
-            return_info: self.transform_return_type(&bucket.id, &bucket.return_info),
+            return_info: self.transform_return_type(&bucket.id, &bucket.return_info)?,
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_branch_bucket(&self, bucket: &BranchBucket) -> InstructionPointer {
-        BranchBucket {
+    fn transform_branch_bucket(&self, bucket: &BranchBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(BranchBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
-            cond: self.transform_instruction(&bucket.cond),
-            if_branch: self.transform_instructions(&bucket.if_branch),
-            else_branch: self.transform_instructions(&bucket.else_branch),
+            cond: self.transform_instruction(&bucket.cond)?,
+            if_branch: self.transform_instructions(&bucket.if_branch)?,
+            else_branch: self.transform_instructions(&bucket.else_branch)?,
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_return_bucket(&self, bucket: &ReturnBucket) -> InstructionPointer {
-        ReturnBucket {
+    fn transform_return_bucket(&self, bucket: &ReturnBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(ReturnBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
             with_size: bucket.with_size,
-            value: self.transform_instruction(&bucket.value),
+            value: self.transform_instruction(&bucket.value)?,
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_assert_bucket(&self, bucket: &AssertBucket) -> InstructionPointer {
-        AssertBucket {
+    fn transform_assert_bucket(&self, bucket: &AssertBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(AssertBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
-            evaluate: self.transform_instruction(&bucket.evaluate),
+            evaluate: self.transform_instruction(&bucket.evaluate)?,
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_log_bucket_arg(&self, args: &Vec<LogBucketArg>) -> Vec<LogBucketArg> {
+    fn transform_log_bucket_arg(
+        &self,
+        args: &Vec<LogBucketArg>,
+    ) -> Result<Vec<LogBucketArg>, BadInterp> {
         args.iter()
-            .map(|arg| match arg {
-                LogBucketArg::LogExp(e) => LogBucketArg::LogExp(self.transform_instruction(e)),
-                x => x.clone(),
+            .map(|arg| {
+                Ok(match arg {
+                    LogBucketArg::LogExp(e) => LogBucketArg::LogExp(self.transform_instruction(e)?),
+                    x => x.clone(),
+                })
             })
             .collect()
     }
 
-    fn transform_log_bucket(&self, bucket: &LogBucket) -> InstructionPointer {
-        LogBucket {
+    fn transform_log_bucket(&self, bucket: &LogBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(LogBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
-            argsprint: self.transform_log_bucket_arg(&bucket.argsprint),
+            argsprint: self.transform_log_bucket_arg(&bucket.argsprint)?,
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_loop_bucket(&self, bucket: &LoopBucket) -> InstructionPointer {
-        LoopBucket {
+    fn transform_loop_bucket(&self, bucket: &LoopBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(LoopBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
-            continue_condition: self.transform_instruction(&bucket.continue_condition),
-            body: self.transform_instructions(&bucket.body),
+            continue_condition: self.transform_instruction(&bucket.continue_condition)?,
+            body: self.transform_instructions(&bucket.body)?,
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_create_cmp_bucket(&self, bucket: &CreateCmpBucket) -> InstructionPointer {
-        CreateCmpBucket {
+    fn transform_create_cmp_bucket(
+        &self,
+        bucket: &CreateCmpBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
+        Ok(CreateCmpBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
@@ -366,7 +445,7 @@ pub trait CircuitTransformationPass {
             template_id: bucket.template_id,
             cmp_unique_id: bucket.cmp_unique_id,
             symbol: bucket.symbol.clone(),
-            sub_cmp_id: self.transform_instruction(&bucket.sub_cmp_id),
+            sub_cmp_id: self.transform_instruction(&bucket.sub_cmp_id)?,
             name_subcomponent: bucket.name_subcomponent.to_string(),
             defined_positions: bucket.defined_positions.clone(),
             is_part_mixed_array_not_uniform_parallel: bucket
@@ -380,43 +459,48 @@ pub trait CircuitTransformationPass {
             number_of_cmp: bucket.number_of_cmp,
             has_inputs: bucket.has_inputs,
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_constraint_bucket(&self, bucket: &ConstraintBucket) -> InstructionPointer {
-        match bucket {
+    fn transform_constraint_bucket(
+        &self,
+        bucket: &ConstraintBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
+        Ok(match bucket {
             ConstraintBucket::Substitution(i) => {
-                ConstraintBucket::Substitution(self.transform_instruction(i))
+                ConstraintBucket::Substitution(self.transform_instruction(i)?)
             }
             ConstraintBucket::Equality(i) => {
-                ConstraintBucket::Equality(self.transform_instruction(i))
+                ConstraintBucket::Equality(self.transform_instruction(i)?)
             }
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_block_bucket(&self, bucket: &BlockBucket) -> InstructionPointer {
-        BlockBucket {
+    fn transform_block_bucket(&self, bucket: &BlockBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(BlockBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
-            body: self.transform_instructions(&bucket.body),
+            body: self.transform_instructions(&bucket.body)?,
             n_iters: bucket.n_iters,
             label: bucket.label.clone(),
         }
-        .allocate()
+        .allocate())
     }
 
-    fn transform_nop_bucket(&self, _bucket: &NopBucket) -> InstructionPointer {
-        NopBucket { id: new_id() }.allocate()
+    fn transform_nop_bucket(&self, _bucket: &NopBucket) -> Result<InstructionPointer, BadInterp> {
+        Ok(NopBucket { id: new_id() }.allocate())
     }
 
-    fn post_hook_circuit(&self, _cir: &mut Circuit) {}
+    fn post_hook_circuit(&self, _cir: &mut Circuit) -> Result<(), BadInterp> {
+        Ok(())
+    }
 
-    pre_hook!(pre_hook_circuit, Circuit);
-    pre_hook!(pre_hook_template, TemplateCode);
-    pre_hook!(pre_hook_function, FunctionCode);
+    pre_hook_with_result!(pre_hook_circuit, Circuit);
+    pre_hook_with_result!(pre_hook_template, TemplateCode);
+    pre_hook_with_result!(pre_hook_function, FunctionCode);
 
     pre_hook!(pre_hook_value_bucket, ValueBucket);
     pre_hook!(pre_hook_load_bucket, LoadBucket);
@@ -557,7 +641,7 @@ impl PassManager {
         }
     }
 
-    pub fn transform_circuit(&self, circuit: Circuit, prime: &String) -> Circuit {
+    pub fn transform_circuit(&self, circuit: Circuit, prime: &String) -> Result<Circuit, BadInterp> {
         // NOTE: Used RefCell rather than a mutable reference because storing
         //  the mutable reference in EnvRecorder was causing rustc errors.
         let global_data = RefCell::new(GlobalPassData::new());
@@ -567,9 +651,9 @@ impl PassManager {
             if cfg!(debug_assertions) {
                 println!("Do {}...", pass.name());
             }
-            transformed_circuit = pass.transform_circuit(&transformed_circuit);
+            transformed_circuit = pass.transform_circuit(&transformed_circuit)?;
             assert_unique_ids_in_circuit(&transformed_circuit);
         }
-        transformed_circuit
+        Ok(transformed_circuit)
     }
 }

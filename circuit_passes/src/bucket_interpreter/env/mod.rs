@@ -1,6 +1,6 @@
 use std::cell::Ref;
 use std::collections::{HashMap, BTreeMap, HashSet};
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
@@ -10,6 +10,7 @@ use crate::passes::loop_unroll::body_extractor::{LoopBodyExtractor, ToOriginalLo
 use self::extracted_func_env::ExtractedFuncEnvData;
 use self::standard_env::StandardEnvData;
 use self::unrolled_block_env::UnrolledBlockEnvData;
+use super::error::BadInterp;
 
 mod standard_env;
 mod unrolled_block_env;
@@ -83,7 +84,7 @@ pub enum Env<'a> {
 }
 
 impl Display for Env<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Env::Standard(d) => d.fmt(f),
             Env::UnrolledBlock(d) => d.fmt(f),
@@ -93,7 +94,7 @@ impl Display for Env<'_> {
 }
 
 impl std::fmt::Debug for Env<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Env::Standard(d) => d.fmt(f),
             Env::UnrolledBlock(d) => d.fmt(f),
@@ -260,44 +261,49 @@ impl<'a> Env<'a> {
     }
 
     /// Sets all the signals of the subcmp to UNK
-    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Self {
-        match self {
-            Env::Standard(d) => Env::Standard(d.set_subcmp_to_unk(subcmp_idx)),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_subcmp_to_unk(subcmp_idx)),
-            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_subcmp_to_unk(subcmp_idx)),
-        }
+    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
+        Ok(match self {
+            Env::Standard(d) => Env::Standard(d.set_subcmp_to_unk(subcmp_idx)?),
+            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_subcmp_to_unk(subcmp_idx)?),
+            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_subcmp_to_unk(subcmp_idx)?),
+        })
     }
 
-    pub fn set_subcmp_signal(self, subcmp_idx: usize, signal_idx: usize, value: Value) -> Self {
-        match self {
-            Env::Standard(d) => Env::Standard(d.set_subcmp_signal(subcmp_idx, signal_idx, value)),
+    pub fn set_subcmp_signal(
+        self,
+        subcmp_idx: usize,
+        signal_idx: usize,
+        value: Value,
+    ) -> Result<Self, BadInterp> {
+        Ok(match self {
+            Env::Standard(d) => Env::Standard(d.set_subcmp_signal(subcmp_idx, signal_idx, value)?),
             Env::UnrolledBlock(d) => {
-                Env::UnrolledBlock(d.set_subcmp_signal(subcmp_idx, signal_idx, value))
+                Env::UnrolledBlock(d.set_subcmp_signal(subcmp_idx, signal_idx, value)?)
             }
             Env::ExtractedFunction(d) => {
-                Env::ExtractedFunction(d.set_subcmp_signal(subcmp_idx, signal_idx, value))
+                Env::ExtractedFunction(d.set_subcmp_signal(subcmp_idx, signal_idx, value)?)
             }
-        }
+        })
     }
 
-    pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Self {
-        match self {
-            Env::Standard(d) => Env::Standard(d.set_subcmp_counter(subcmp_idx, new_val)),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_subcmp_counter(subcmp_idx, new_val)),
+    pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Result<Self, BadInterp> {
+        Ok(match self {
+            Env::Standard(d) => Env::Standard(d.set_subcmp_counter(subcmp_idx, new_val)?),
+            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_subcmp_counter(subcmp_idx, new_val)?),
             Env::ExtractedFunction(d) => {
-                Env::ExtractedFunction(d.set_subcmp_counter(subcmp_idx, new_val))
+                Env::ExtractedFunction(d.set_subcmp_counter(subcmp_idx, new_val)?)
             }
-        }
+        })
     }
 
-    pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Self {
-        match self {
-            Env::Standard(d) => Env::Standard(d.decrease_subcmp_counter(subcmp_idx)),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.decrease_subcmp_counter(subcmp_idx)),
+    pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
+        Ok(match self {
+            Env::Standard(d) => Env::Standard(d.decrease_subcmp_counter(subcmp_idx)?),
+            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.decrease_subcmp_counter(subcmp_idx)?),
             Env::ExtractedFunction(d) => {
-                Env::ExtractedFunction(d.decrease_subcmp_counter(subcmp_idx))
+                Env::ExtractedFunction(d.decrease_subcmp_counter(subcmp_idx)?)
             }
-        }
+        })
     }
 
     pub fn run_subcmp(
