@@ -9,11 +9,11 @@ use compiler::num_bigint::BigInt;
 use code_producers::llvm_elements::array_switch::{get_array_load_name, get_array_store_name};
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::error::BadInterp;
+use crate::bucket_interpreter::error::{BadInterp, add_loc_if_err};
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::operations::compute_operation;
-use crate::bucket_interpreter::{R, to_bigint, add_loc_if_err, into_result};
+use crate::bucket_interpreter::{R, to_bigint, into_result};
 use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
 use crate::{
     default__get_updated_field_constants, default__name, default__pre_hook_template,

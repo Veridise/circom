@@ -1,9 +1,7 @@
 use circom_algebra::num_bigint::BigInt;
 use compiler::intermediate_representation::ir_interface::{ComputeBucket, OperatorType};
-use crate::bucket_interpreter::{value, new_inconsistency_err};
-use crate::bucket_interpreter::value::{resolve_operation, Value};
-use crate::bucket_interpreter::value::Value::KnownU32;
-use super::error::BadInterp;
+use super::error::{BadInterp, new_inconsistency_err};
+use super::value::{self, resolve_operation, Value, Value::KnownU32};
 
 pub fn compute_operation(
     bucket: &ComputeBucket,
