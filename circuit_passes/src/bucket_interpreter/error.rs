@@ -79,3 +79,30 @@ impl BadInterp {
         res
     }
 }
+
+#[inline]
+pub fn new_compute_err<S: ToString>(msg: S) -> BadInterp {
+    BadInterp::error(msg.to_string(), ReportCode::NonComputableExpression)
+}
+
+#[inline]
+pub fn new_compute_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
+    Err(new_compute_err(msg))
+}
+
+#[inline]
+pub fn new_inconsistency_err<S: ToString>(msg: S) -> BadInterp {
+    BadInterp::error(msg.to_string(), ReportCode::InconsistentStaticInformation)
+}
+
+#[inline]
+pub fn add_loc_if_err<R, B: ObtainMeta>(
+    report: Result<R, BadInterp>,
+    loc: &B,
+) -> Result<R, BadInterp> {
+    report.map_err(|r| {
+        let mut new_r = r;
+        new_r.add_location(loc);
+        new_r
+    })
+}

@@ -4,8 +4,8 @@ use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
-use crate::bucket_interpreter::error::BadInterp;
-use crate::bucket_interpreter::{BucketInterpreter, new_inconsistency_err};
+use crate::bucket_interpreter::error::{BadInterp, new_inconsistency_err};
+use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
 use super::{SubcmpEnv, LibraryAccess};
 

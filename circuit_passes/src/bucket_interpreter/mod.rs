@@ -16,14 +16,13 @@ use compiler::num_bigint::BigInt;
 use observer::Observer;
 use program_structure::constants::UsefulConstants;
 use program_structure::error_code::ReportCode;
-use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::operations::compute_offset;
-use crate::bucket_interpreter::value::Value::{self, KnownBigInt, KnownU32, Unknown};
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::GlobalPassData;
-use self::env::LibraryAccess;
-use self::error::BadInterp;
+use self::env::{Env, LibraryAccess};
+use self::error::{BadInterp, new_compute_err, add_loc_if_err, new_compute_err_result};
+use self::memory::PassMemory;
+use self::operations::compute_offset;
+use self::value::Value::{self, KnownBigInt, KnownU32, Unknown};
 
 pub struct BucketInterpreter<'a, 'd> {
     global_data: &'d RefCell<GlobalPassData>,
@@ -34,33 +33,6 @@ pub struct BucketInterpreter<'a, 'd> {
 }
 
 pub type R<'a> = Result<(Option<Value>, Env<'a>), BadInterp>;
-
-#[inline]
-pub fn new_compute_err<S: ToString>(msg: S) -> BadInterp {
-    BadInterp::error(msg.to_string(), ReportCode::NonComputableExpression)
-}
-
-#[inline]
-pub fn new_compute_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
-    Err(new_compute_err(msg))
-}
-
-#[inline]
-pub fn new_inconsistency_err<S: ToString>(msg: S) -> BadInterp {
-    BadInterp::error(msg.to_string(), ReportCode::InconsistentStaticInformation)
-}
-
-#[inline]
-pub fn add_loc_if_err<R, B: ObtainMeta>(
-    report: Result<R, BadInterp>,
-    loc: &B,
-) -> Result<R, BadInterp> {
-    report.map_err(|r| {
-        let mut new_r = r;
-        new_r.add_location(loc);
-        new_r
-    })
-}
 
 #[inline]
 pub fn into_result<D, S: std::fmt::Display>(v: Option<D>, label: S) -> Result<D, BadInterp> {
