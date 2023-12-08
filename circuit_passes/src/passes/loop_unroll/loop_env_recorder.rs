@@ -147,9 +147,13 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         let interp = self.mem.build_interpreter(self.global_data, self);
         let (idx_loc, _) = interp.execute_instruction(location, env.clone(), false)?;
         if let Some(idx_loc) = idx_loc {
-            let (idx_header, _) =
-                interp.execute_instruction(location, self.get_header_env_clone(), false)?;
-            if let Some(idx_header) = idx_header {
+            // NOTE: It's possible for the interpreter to run into problems evaluating the location
+            //  using the header Env. For example, a value may not have been defined yet so address
+            //  computations on that value could give out of range results for the 'usize' type.
+            //  Thus, these errors should be ignored and fall through into the Ok(Unknown) case.
+            let header_res =
+                interp.execute_instruction(location, self.get_header_env_clone(), false);
+            if let Ok((Some(idx_header), _)) = header_res {
                 if Value::eq(&idx_header, &idx_loc) {
                     return Ok(idx_loc);
                 }
