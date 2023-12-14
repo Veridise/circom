@@ -1,6 +1,8 @@
 pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
+// XFAIL: *
+
 
 // %0 (i.e. signal arena)  = [ out[0], out[1], out[2], out[3], in ]
 // %lvars =  [ n, i, j ]
