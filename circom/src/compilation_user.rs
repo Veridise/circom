@@ -104,7 +104,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
             .schedule_unused_function_removal_pass() //previous 2 passes create the dead functions
             .schedule_mapped_to_indexed_pass()
             .schedule_unknown_index_sanitization_pass()
-            .schedule_simplification_pass()
+            // .schedule_simplification_pass()
             .schedule_deterministic_subcmp_invoke_pass()
             .transform_circuit(circuit, prime);
         match result {
