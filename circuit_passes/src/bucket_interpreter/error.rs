@@ -96,6 +96,11 @@ pub fn new_inconsistency_err<S: ToString>(msg: S) -> BadInterp {
 }
 
 #[inline]
+pub fn new_inconsistency_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
+    Err(new_inconsistency_err(msg))
+}
+
+#[inline]
 pub fn add_loc_if_err<R, B: ObtainMeta>(
     report: Result<R, BadInterp>,
     loc: &B,

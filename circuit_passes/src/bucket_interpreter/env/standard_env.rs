@@ -1,10 +1,10 @@
 use std::cell::Ref;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap, HashMap, hash_map::Entry};
 use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
-use crate::bucket_interpreter::error::{BadInterp, new_inconsistency_err};
+use crate::bucket_interpreter::error::{BadInterp, new_inconsistency_err_result};
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
 use super::{SubcmpEnv, LibraryAccess};
@@ -124,7 +124,7 @@ impl<'a> StandardEnvData<'a> {
 
     /// Sets all the signals of the subcmp to UNK
     pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
-        self.update_subcmp(subcmp_idx, |subcmp_env| subcmp_env.reset())
+        self.update_subcmp(subcmp_idx, SubcmpEnv::reset)
     }
 
     pub fn set_subcmp_signal(
@@ -133,28 +133,32 @@ impl<'a> StandardEnvData<'a> {
         signal_idx: usize,
         value: Value,
     ) -> Result<Self, BadInterp> {
-        self.update_subcmp(subcmp_idx, |subcmp_env| subcmp_env.set_signal(signal_idx, value))
+        self.update_subcmp(subcmp_idx, |e| e.set_signal(signal_idx, value))
     }
 
     pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Result<Self, BadInterp> {
-        self.update_subcmp(subcmp_idx, |subcmp_env| subcmp_env.set_counter(new_val))
+        self.update_subcmp(subcmp_idx, |e| e.set_counter(new_val))
     }
 
     pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
-        self.update_subcmp(subcmp_idx, |subcmp_env| subcmp_env.decrease_counter())
+        self.update_subcmp(subcmp_idx, SubcmpEnv::decrease_counter)
     }
 
     fn update_subcmp(
         self,
         subcmp_idx: usize,
-        f: impl FnOnce(SubcmpEnv) -> SubcmpEnv,
+        f: impl FnOnce(&mut SubcmpEnv),
     ) -> Result<Self, BadInterp> {
         let mut copy = self;
-        let subcmp_env = copy.subcmps.remove(&subcmp_idx).ok_or_else(|| {
-            new_inconsistency_err(format!("Can't find subcomponent {}", subcmp_idx))
-        })?;
-        copy.subcmps.insert(subcmp_idx, f(subcmp_env));
-        Ok(copy)
+        match copy.subcmps.entry(subcmp_idx) {
+            Entry::Occupied(mut entry) => {
+                f(entry.get_mut());
+                Ok(copy)
+            }
+            Entry::Vacant(_) => {
+                new_inconsistency_err_result(format!("Can't find subcomponent {}", subcmp_idx))
+            }
+        }
     }
 
     pub fn run_subcmp(
