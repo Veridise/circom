@@ -275,6 +275,7 @@ pub fn complement(v: &Value, field: &BigInt) -> Result<Value, BadInterp> {
 pub fn to_address(v: &Value) -> Result<Value, BadInterp> {
     match v {
         Unknown => new_compute_err_result("Can't convert an unknown value into an address!"),
+        KnownU32(size) => Ok(KnownU32(*size)),
         KnownBigInt(b) => {
             match b.to_u64() {
                 Some(x) => Ok(KnownU32(usize::try_from(x).map_err(|_| {
@@ -283,7 +284,6 @@ pub fn to_address(v: &Value) -> Result<Value, BadInterp> {
                 None => new_compute_err_result(format!("Can't convert {} to a usize type!", b)),
             }
         }
-        x => Ok(x.clone()),
     }
 }
 
@@ -325,8 +325,7 @@ pub fn resolve_operation(
     assert!(stack.len() > 0);
     let mut acc = stack[0].clone();
     for i in &stack[1..] {
-        let result = op(&acc, i, p)?;
-        acc = result.clone();
+        acc = op(&acc, i, p)?;
     }
     Ok(acc)
 }

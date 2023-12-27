@@ -113,7 +113,7 @@ impl<'d> LoopUnrollPass<'d> {
             //If the loop body is not safe to move into a new function, just unroll in-place.
             for _ in 0..recorder.get_iter() {
                 for s in &bucket.body {
-                    let mut copy: Box<Instruction> = s.clone();
+                    let mut copy = s.clone();
                     copy.update_id();
                     block_body.push(copy);
                 }
