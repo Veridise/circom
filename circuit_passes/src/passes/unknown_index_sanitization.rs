@@ -13,7 +13,7 @@ use crate::bucket_interpreter::error::{BadInterp, add_loc_if_err};
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::operations::compute_operation;
-use crate::bucket_interpreter::{R, to_bigint, into_result};
+use crate::bucket_interpreter::{RE, to_bigint, into_result};
 use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
 use crate::{
     default__get_updated_field_constants, default__name, default__pre_hook_template,
@@ -31,7 +31,7 @@ impl<'a> ZeroingInterpreter<'a> {
         ZeroingInterpreter { constant_fields, p: UsefulConstants::new(prime).get_p().clone() }
     }
 
-    pub fn execute_value_bucket<'env>(&self, bucket: &ValueBucket, env: Env<'env>) -> R<'env> {
+    pub fn execute_value_bucket<'env>(&self, bucket: &ValueBucket, env: Env<'env>) -> RE<'env> {
         Ok((
             Some(match bucket.parse_as {
                 ValueType::U32 => KnownU32(bucket.value),
@@ -44,7 +44,7 @@ impl<'a> ZeroingInterpreter<'a> {
         ))
     }
 
-    pub fn execute_load_bucket<'env>(&self, _bucket: &'env LoadBucket, env: Env<'env>) -> R<'env> {
+    pub fn execute_load_bucket<'env>(&self, _bucket: &'env LoadBucket, env: Env<'env>) -> RE<'env> {
         Ok((Some(KnownU32(0)), env))
     }
 
@@ -52,7 +52,7 @@ impl<'a> ZeroingInterpreter<'a> {
         &self,
         bucket: &'env ComputeBucket,
         env: Env<'env>,
-    ) -> R<'env> {
+    ) -> RE<'env> {
         let mut stack = vec![];
         let mut env = env;
         for i in &bucket.stack {
@@ -71,7 +71,7 @@ impl<'a> ZeroingInterpreter<'a> {
         &self,
         inst: &'env InstructionPointer,
         env: Env<'env>,
-    ) -> R<'env> {
+    ) -> RE<'env> {
         match inst.as_ref() {
             Instruction::Value(b) => self.execute_value_bucket(b, env),
             Instruction::Load(b) => self.execute_load_bucket(b, env),
