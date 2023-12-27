@@ -13,7 +13,7 @@ use crate::bucket_interpreter::error::{BadInterp, add_loc_if_err};
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::operations::compute_operation;
-use crate::bucket_interpreter::{RE, to_bigint, into_result};
+use crate::bucket_interpreter::{RC, to_bigint, into_result};
 use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
 use crate::{
     default__get_updated_field_constants, default__name, default__pre_hook_template,
@@ -31,51 +31,38 @@ impl<'a> ZeroingInterpreter<'a> {
         ZeroingInterpreter { constant_fields, p: UsefulConstants::new(prime).get_p().clone() }
     }
 
-    pub fn execute_value_bucket<'env>(&self, bucket: &ValueBucket, env: Env<'env>) -> RE<'env> {
-        Ok((
-            Some(match bucket.parse_as {
-                ValueType::U32 => KnownU32(bucket.value),
-                ValueType::BigInt => {
-                    let constant = &self.constant_fields[bucket.value];
-                    KnownBigInt(add_loc_if_err(to_bigint(constant), bucket)?)
-                }
-            }),
-            env,
-        ))
+    pub fn compute_value_bucket(&self, bucket: &ValueBucket, _env: &Env) -> RC {
+        Ok(Some(match bucket.parse_as {
+            ValueType::U32 => KnownU32(bucket.value),
+            ValueType::BigInt => {
+                let constant = &self.constant_fields[bucket.value];
+                KnownBigInt(add_loc_if_err(to_bigint(constant), bucket)?)
+            }
+        }))
     }
 
-    pub fn execute_load_bucket<'env>(&self, _bucket: &'env LoadBucket, env: Env<'env>) -> RE<'env> {
-        Ok((Some(KnownU32(0)), env))
+    pub fn compute_load_bucket(&self, _bucket: &LoadBucket, _env: &Env) -> RC {
+        Ok(Some(KnownU32(0)))
     }
 
-    pub fn execute_compute_bucket<'env>(
-        &self,
-        bucket: &'env ComputeBucket,
-        env: Env<'env>,
-    ) -> RE<'env> {
+    pub fn compute_compute_bucket(&self, bucket: &ComputeBucket, env: &Env) -> RC {
         let mut stack = vec![];
-        let mut env = env;
         for i in &bucket.stack {
-            let (value, new_env) = self.execute_instruction(i, env)?;
-            env = new_env;
+            let value = self.compute_instruction(i, env)?;
             stack.push(into_result(value, "operand")?);
         }
         // If any value of the stack is unknown we just return 0
         if stack.iter().any(|v| v.is_unknown()) {
-            return Ok((Some(KnownU32(0)), env));
+            return Ok(Some(KnownU32(0)));
         }
-        compute_operation(bucket, &stack, &self.p).map(|v| (v, env))
+        compute_operation(bucket, &stack, &self.p)
     }
 
-    pub fn execute_instruction<'env>(
-        &self,
-        inst: &'env InstructionPointer,
-        env: Env<'env>,
-    ) -> RE<'env> {
+    pub fn compute_instruction(&self, inst: &InstructionPointer, env: &Env) -> RC {
         match inst.as_ref() {
-            Instruction::Value(b) => self.execute_value_bucket(b, env),
-            Instruction::Load(b) => self.execute_load_bucket(b, env),
-            Instruction::Compute(b) => self.execute_compute_bucket(b, env),
+            Instruction::Value(b) => self.compute_value_bucket(b, env),
+            Instruction::Load(b) => self.compute_load_bucket(b, env),
+            Instruction::Compute(b) => self.compute_compute_bucket(b, env),
             _ => unreachable!(),
         }
     }
@@ -127,7 +114,7 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
                 let mem = &self.memory;
                 let constant_fields = mem.get_field_constants_clone();
                 let interpreter = ZeroingInterpreter::init(mem.get_prime(), &constant_fields);
-                let (res, _) = interpreter.execute_instruction(location, env.clone())?;
+                let res = interpreter.compute_instruction(location, env)?;
 
                 let offset = match res {
                     Some(KnownU32(base)) => base,
@@ -154,7 +141,7 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
             LocationRule::Indexed { location, .. } => {
                 let mem = &self.memory;
                 let interpreter = mem.build_interpreter(self.global_data, self);
-                let (r, _) = interpreter.execute_instruction(location, env.clone(), false)?;
+                let r = interpreter.compute_instruction(location, env, false)?;
                 into_result(r, "indexed location")?
             }
             LocationRule::Mapped { .. } => unreachable!(),

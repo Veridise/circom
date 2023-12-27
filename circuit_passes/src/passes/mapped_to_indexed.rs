@@ -45,20 +45,16 @@ impl<'d> MappedToIndexedPass<'d> {
     ) -> Result<LocationRule, BadInterp> {
         let interpreter = self.memory.build_interpreter(self.global_data, self);
 
-        let (resolved_addr, acc_env) =
-            interpreter.execute_instruction(cmp_address, env.clone(), false)?;
-
+        let resolved_addr = interpreter.compute_instruction(cmp_address, env, false)?;
         let resolved_addr = Value::into_u32_result(resolved_addr, "subcomponent address")?;
-        let name = acc_env.get_subcmp_name(resolved_addr).clone();
+        let name = env.get_subcmp_name(resolved_addr).clone();
         let io_def =
-            self.memory.get_iodef(&acc_env.get_subcmp_template_id(resolved_addr), &signal_code);
+            self.memory.get_iodef(&env.get_subcmp_template_id(resolved_addr), &signal_code);
         let offset = if indexes.len() > 0 {
-            let mut acc_env = acc_env;
             let mut indexes_values = vec![];
             for i in indexes {
-                let (val, new_env) = interpreter.execute_instruction(i, acc_env, false)?;
+                let val = interpreter.compute_instruction(i, env, false)?;
                 indexes_values.push(Value::into_u32_result(val, "subcomponent mapped signal")?);
-                acc_env = new_env;
             }
             io_def.offset + compute_offset(&indexes_values, &io_def.lengths)?
         } else {
