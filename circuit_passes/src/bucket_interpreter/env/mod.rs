@@ -34,40 +34,32 @@ impl SubcmpEnv {
         SubcmpEnv { signals: Default::default(), counter: inputs, name: name.clone(), template_id }
     }
 
-    pub fn reset(self) -> Self {
-        let mut copy = self;
-        copy.signals.clear();
-        copy
+    pub fn reset(&mut self) {
+        self.signals.clear();
     }
 
     pub fn get_signal(&self, index: usize) -> Value {
         self.signals.get(&index).unwrap_or_default().clone()
     }
 
-    pub fn set_signal(self, idx: usize, value: Value) -> SubcmpEnv {
-        let mut copy = self;
-        copy.signals.insert(idx, value);
-        copy
+    pub fn set_signal(&mut self, idx: usize, value: Value) {
+        self.signals.insert(idx, value);
     }
 
     pub fn get_counter(&self) -> usize {
         self.counter
     }
 
-    pub fn set_counter(self, new_val: usize) -> SubcmpEnv {
-        let mut copy = self;
-        copy.counter = new_val;
-        copy
+    pub fn set_counter(&mut self, new_val: usize) {
+        self.counter = new_val;
     }
 
     pub fn counter_is_zero(&self) -> bool {
         self.counter == 0
     }
 
-    pub fn decrease_counter(self) -> SubcmpEnv {
-        let mut copy = self;
-        copy.counter -= 1;
-        copy
+    pub fn decrease_counter(&mut self) {
+        self.counter -= 1;
     }
 
     pub fn counter_equal_to(&self, value: usize) -> bool {

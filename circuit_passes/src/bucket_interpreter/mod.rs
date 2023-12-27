@@ -650,25 +650,23 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         if cfg!(debug_assertions) {
             println!("Running function {}", name);
         };
+        //NOTE: Clone the vector of instructions prior to the Env::new_extracted_func_env(..)
+        //  calls below (that give ownership of the 'env' object into the new Env instance)
+        //  to avoid copying the entire 'env' instance (which is likely more expensive).
+        let instructions = env.get_function(name).body.clone();
         let mut res = (None, {
             if name.starts_with(LOOP_BODY_FN_PREFIX) {
                 let gdat = self.global_data.borrow();
                 let fdat = &gdat.get_data_for_func(name)[&env.get_vars_sort()];
-                Env::new_extracted_func_env(env.clone(), &bucket.id, fdat.0.clone(), fdat.1.clone())
+                Env::new_extracted_func_env(env, &bucket.id, fdat.0.clone(), fdat.1.clone())
             } else {
-                Env::new_extracted_func_env(
-                    env.clone(),
-                    &bucket.id,
-                    Default::default(),
-                    Default::default(),
-                )
+                Env::new_extracted_func_env(env, &bucket.id, Default::default(), Default::default())
             }
         });
         //NOTE: Do not change scope for the new interpreter because the mem lookups within
         //  `get_write_operations_in_store_bucket` need to use the original function context.
         let interp = self.mem.build_interpreter(self.global_data, self.observer);
         let observe = observe && !interp.observer.ignore_extracted_function_calls();
-        let instructions = &env.get_function(name).body;
         unsafe {
             let ptr = instructions.as_ptr();
             for i in 0..instructions.len() {
