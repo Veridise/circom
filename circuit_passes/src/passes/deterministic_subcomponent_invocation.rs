@@ -45,9 +45,8 @@ impl<'d> DeterministicSubCmpInvokePass<'d> {
             ..
         } = address_type
         {
-            let env = env.clone();
             let interpreter = self.memory.build_interpreter(self.global_data, self);
-            let (addr, env) = interpreter.execute_instruction(cmp_address, env, false)?;
+            let addr = interpreter.compute_instruction(cmp_address, env, false)?;
             let addr = addr
                 .expect("cmp_address instruction in SubcmpSignal must produce a value!")
                 .get_u32()?;

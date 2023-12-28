@@ -84,10 +84,6 @@ impl<'a> StandardEnvData<'a> {
         self.subcmps.get(&subcmp_idx).unwrap().counter_equal_to(value)
     }
 
-    pub fn get_vars_clone(&self) -> HashMap<usize, Value> {
-        self.vars.clone()
-    }
-
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
         self.vars.iter().fold(BTreeMap::new(), |mut acc, e| {
             acc.insert(*e.0, e.1.clone());

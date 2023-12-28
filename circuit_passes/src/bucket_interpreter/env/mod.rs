@@ -211,14 +211,6 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn get_vars_clone(&self) -> HashMap<usize, Value> {
-        match self {
-            Env::Standard(d) => d.get_vars_clone(),
-            Env::UnrolledBlock(d) => d.get_vars_clone(),
-            Env::ExtractedFunction(d) => d.get_vars_clone(),
-        }
-    }
-
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
         match self {
             Env::Standard(d) => d.get_vars_sort(),

@@ -1,5 +1,5 @@
 use std::cell::Ref;
-use std::collections::{HashMap, BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
@@ -249,10 +249,6 @@ impl<'a> ExtractedFuncEnvData<'a> {
             }
         };
         res
-    }
-
-    pub fn get_vars_clone(&self) -> HashMap<usize, Value> {
-        self.base.get_vars_clone()
     }
 
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {

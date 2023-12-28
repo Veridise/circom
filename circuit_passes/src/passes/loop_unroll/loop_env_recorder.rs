@@ -98,12 +98,6 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         self.vals_per_iteration.borrow_mut().insert(iter, VariableValues::new(env));
     }
 
-    pub fn get_header_env_clone(&self) -> Env {
-        let iter = self.get_iter();
-        assert!(self.vals_per_iteration.borrow().contains_key(&iter));
-        self.vals_per_iteration.borrow().get(&iter).unwrap().env_at_header.clone()
-    }
-
     pub fn record_reverse_arg_mapping(
         &self,
         extract_func: String,
@@ -137,7 +131,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
 
     fn compute_index_from_inst(
         &self,
-        env: Env,
+        env: &Env,
         location: &InstructionPointer,
     ) -> Result<Value, BadInterp> {
         // Evaluate the index using the current environment and using the environment from the
@@ -145,15 +139,17 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         //  not safe to move the loop body to another function because the index computation may
         //  not give the same result when done at the call site, outside of the new function.
         let interp = self.mem.build_interpreter(self.global_data, self);
-        let (idx_loc, _) = interp.execute_instruction(location, env, false)?;
-        if let Some(idx_loc) = idx_loc {
+        if let Some(idx_loc) = interp.compute_instruction(location, env, false)? {
             // NOTE: It's possible for the interpreter to run into problems evaluating the location
             //  using the header Env. For example, a value may not have been defined yet so address
             //  computations on that value could give out of range results for the 'usize' type.
             //  Thus, these errors should be ignored and fall through into the Ok(Unknown) case.
+            let borrow = self.vals_per_iteration.borrow();
+            let vals = borrow.get(&self.get_iter());
+            assert!(vals.is_some());
             let header_res =
-                interp.execute_instruction(location, self.get_header_env_clone(), false);
-            if let Ok((Some(idx_header), _)) = header_res {
+                interp.compute_instruction(location, &vals.unwrap().env_at_header, false);
+            if let Ok(Some(idx_header)) = header_res {
                 if Value::eq(&idx_header, &idx_loc) {
                     return Ok(idx_loc);
                 }
@@ -162,7 +158,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         Ok(Value::Unknown)
     }
 
-    fn compute_index_from_rule(&self, env: Env, loc: &LocationRule) -> Result<Value, BadInterp> {
+    fn compute_index_from_rule(&self, env: &Env, loc: &LocationRule) -> Result<Value, BadInterp> {
         match loc {
             LocationRule::Mapped { .. } => {
                 //TODO: It's not an array index in this case, at least not immediately but I think it can
@@ -175,7 +171,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         }
     }
 
-    fn visit_location_rule(&self, env: Env, loc: &LocationRule) -> Result<Value, BadInterp> {
+    fn visit_location_rule(&self, env: &Env, loc: &LocationRule) -> Result<Value, BadInterp> {
         let res = self.compute_index_from_rule(env, loc);
         if let Ok(Value::Unknown) = res {
             if DEBUG_LOOP_UNROLL {
@@ -194,7 +190,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         bucket_id: &BucketId,
         addr_ty: &AddressType,
         loc: &LocationRule,
-        env: Env,
+        env: &Env,
     ) -> Result<(), BadInterp> {
         //NOTE: must record even when Unknown to ensure that Unknown value is not confused with
         //  missing values for an iteration that can be caused by conditionals within the loop.
@@ -206,7 +202,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
             counter_override,
         } = addr_ty
         {
-            let loc_result = self.visit_location_rule(env.clone(), loc)?;
+            let loc_result = self.visit_location_rule(env, loc)?;
             let addr_result = self.compute_index_from_inst(env, cmp_address)?;
             self.record_memloc_at_bucket(
                 bucket_id,
@@ -241,7 +237,7 @@ impl Observer<Env<'_>> for EnvRecorder<'_, '_> {
         if let Some(_) = bucket.bounded_fn {
             todo!(); //not sure if/how to handle that
         }
-        self.visit(&bucket.id, &bucket.address_type, &bucket.src, env.clone())?;
+        self.visit(&bucket.id, &bucket.address_type, &bucket.src, env)?;
         // For a LoadBucket, there is no need to continue observing inside it and doing
         //  so can actually cause "assert!(bucket_to_args.is_empty())" to fail. See
         //  test "loops/fixed_idx_in_fixed_idx.circom" for an example and explanation.
@@ -254,13 +250,13 @@ impl Observer<Env<'_>> for EnvRecorder<'_, '_> {
         if let Some(_) = bucket.bounded_fn {
             todo!(); //not sure if/how to handle that
         }
-        self.visit(&bucket.id, &bucket.dest_address_type, &bucket.dest, env.clone())?;
+        self.visit(&bucket.id, &bucket.dest_address_type, &bucket.dest, env)?;
         Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
     fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> Result<bool, BadInterp> {
         if let ReturnType::Final(fd) = &bucket.return_info {
-            self.visit(&bucket.id, &fd.dest_address_type, &fd.dest, env.clone())?;
+            self.visit(&bucket.id, &fd.dest_address_type, &fd.dest, env)?;
         }
         Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }

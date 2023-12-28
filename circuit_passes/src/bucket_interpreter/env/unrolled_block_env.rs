@@ -1,5 +1,5 @@
 use std::cell::Ref;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
@@ -92,10 +92,6 @@ impl<'a> UnrolledBlockEnvData<'a> {
 
     pub fn subcmp_counter_equal_to(&self, subcmp_idx: usize, value: usize) -> bool {
         self.base.subcmp_counter_equal_to(subcmp_idx, value)
-    }
-
-    pub fn get_vars_clone(&self) -> HashMap<usize, Value> {
-        self.base.get_vars_clone()
     }
 
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
