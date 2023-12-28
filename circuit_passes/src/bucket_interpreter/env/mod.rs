@@ -16,6 +16,19 @@ mod standard_env;
 mod unrolled_block_env;
 mod extracted_func_env;
 
+const PRINT_ENV_SORTED: bool = true;
+
+#[inline]
+pub fn sort<'a, V1, V2, T: IntoIterator<Item = (&'a usize, V1)>>(
+    map: T,
+    func: fn(V1) -> V2,
+) -> BTreeMap<usize, V2> {
+    map.into_iter().fold(BTreeMap::new(), |mut acc, e| {
+        acc.insert(*e.0, func(e.1));
+        acc
+    })
+}
+
 pub trait LibraryAccess {
     fn get_function(&self, name: &String) -> Ref<FunctionCode>;
     fn get_template(&self, name: &String) -> Ref<TemplateCode>;
@@ -25,13 +38,32 @@ pub trait LibraryAccess {
 pub struct SubcmpEnv {
     signals: HashMap<usize, Value>,
     counter: usize,
-    name: String,
     template_id: usize,
 }
 
+impl Display for SubcmpEnv {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if PRINT_ENV_SORTED {
+            write!(
+                f,
+                "SubcmpEnv{{ template_id = {:?} counter = {:?} signals = {:?} }}",
+                self.template_id,
+                self.counter,
+                sort(&self.signals, std::convert::identity)
+            )
+        } else {
+            write!(
+                f,
+                "SubcmpEnv{{ template_id = {:?} counter = {:?} signals = {:?} }}",
+                self.template_id, self.counter, self.signals
+            )
+        }
+    }
+}
+
 impl SubcmpEnv {
-    pub fn new(inputs: usize, name: &String, template_id: usize) -> Self {
-        SubcmpEnv { signals: Default::default(), counter: inputs, name: name.clone(), template_id }
+    pub fn new(inputs: usize, template_id: usize) -> Self {
+        SubcmpEnv { signals: Default::default(), counter: inputs, template_id }
     }
 
     pub fn reset(&mut self) {

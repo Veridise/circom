@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
+use crate::bucket_interpreter::env::{PRINT_ENV_SORTED, sort};
 use crate::bucket_interpreter::error::{BadInterp, new_inconsistency_err_result};
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
@@ -14,16 +15,28 @@ pub struct StandardEnvData<'a> {
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
     subcmps: HashMap<usize, SubcmpEnv>,
+    subcmp_names: HashMap<usize, String>,
     libs: &'a dyn LibraryAccess,
 }
 
 impl Display for StandardEnvData<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "StandardEnv{{\n  vars = {:?}\n  signals = {:?}\n  subcmps = {:?}}}",
-            self.vars, self.signals, self.subcmps
-        )
+        if PRINT_ENV_SORTED {
+            write!(
+                f,
+                "StandardEnv{{\n  names = {:?}\n  vars = {:?}\n  signals = {:?}\n  subcmps = {:?}\n}}",
+                sort(&self.subcmp_names, std::convert::identity),
+                sort(&self.vars, std::convert::identity),
+                sort(&self.signals, std::convert::identity),
+                sort(&self.subcmps, std::convert::identity)
+            )
+        } else {
+            write!(
+                f,
+                "StandardEnv{{\n  names = {:?}\n  vars = {:?}\n  signals = {:?}\n  subcmps = {:?}\n}}",
+                self.subcmp_names, self.vars, self.signals, self.subcmps
+            )
+        }
     }
 }
 
@@ -43,6 +56,7 @@ impl<'a> StandardEnvData<'a> {
             vars: Default::default(),
             signals: Default::default(),
             subcmps: Default::default(),
+            subcmp_names: Default::default(),
             libs,
         }
     }
@@ -65,7 +79,7 @@ impl<'a> StandardEnvData<'a> {
     }
 
     pub fn get_subcmp_name(&self, subcmp_idx: usize) -> &String {
-        &self.subcmps[&subcmp_idx].name
+        &self.subcmp_names[&self.subcmps[&subcmp_idx].template_id]
     }
 
     pub fn get_subcmp_template_id(&self, subcmp_idx: usize) -> usize {
@@ -85,10 +99,7 @@ impl<'a> StandardEnvData<'a> {
     }
 
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
-        self.vars.iter().fold(BTreeMap::new(), |mut acc, e| {
-            acc.insert(*e.0, e.1.clone());
-            acc
-        })
+        sort(&self.vars, Clone::clone)
     }
 
     // WRITE OPERATIONS
@@ -177,10 +188,21 @@ impl<'a> StandardEnvData<'a> {
         count: usize,
         template_id: usize,
     ) -> Self {
-        let number_of_inputs = self.get_template(name).number_of_inputs;
         let mut copy = self;
+
+        match copy.subcmp_names.get(&template_id) {
+            None => {
+                copy.subcmp_names.insert(template_id, name.clone());
+            }
+            Some(old) => {
+                assert_eq!(old, name);
+            }
+        }
+
+        let number_of_inputs = copy.get_template(name).number_of_inputs;
         for i in base_index..(base_index + count) {
-            copy.subcmps.insert(i, SubcmpEnv::new(number_of_inputs, name, template_id));
+            let old = copy.subcmps.insert(i, SubcmpEnv::new(number_of_inputs, template_id));
+            assert!(old.is_none()); //no keys are overwritten
         }
         copy
     }
