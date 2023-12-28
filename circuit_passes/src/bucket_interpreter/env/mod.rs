@@ -34,19 +34,19 @@ pub trait LibraryAccess {
     fn get_template(&self, name: &String) -> Ref<TemplateCode>;
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct SubcmpEnv {
     signals: HashMap<usize, Value>,
     counter: usize,
     template_id: usize,
 }
 
-impl Display for SubcmpEnv {
+impl std::fmt::Debug for SubcmpEnv {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if PRINT_ENV_SORTED {
             write!(
                 f,
-                "SubcmpEnv{{ template_id = {:?} counter = {:?} signals = {:?} }}",
+                "SubcmpEnv{{ template_id = {:?}, counter = {:?}, signals = {:?} }}",
                 self.template_id,
                 self.counter,
                 sort(&self.signals, std::convert::identity)
@@ -54,7 +54,7 @@ impl Display for SubcmpEnv {
         } else {
             write!(
                 f,
-                "SubcmpEnv{{ template_id = {:?} counter = {:?} signals = {:?} }}",
+                "SubcmpEnv{{ template_id = {:?}, counter = {:?}, signals = {:?} }}",
                 self.template_id, self.counter, self.signals
             )
         }

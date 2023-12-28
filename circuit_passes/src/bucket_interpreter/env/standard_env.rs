@@ -24,17 +24,17 @@ impl Display for StandardEnvData<'_> {
         if PRINT_ENV_SORTED {
             write!(
                 f,
-                "StandardEnv{{\n  names = {:?}\n  vars = {:?}\n  signals = {:?}\n  subcmps = {:?}\n}}",
-                sort(&self.subcmp_names, std::convert::identity),
+                "StandardEnv{{\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
                 sort(&self.vars, std::convert::identity),
                 sort(&self.signals, std::convert::identity),
+                sort(&self.subcmp_names, std::convert::identity),
                 sort(&self.subcmps, std::convert::identity)
             )
         } else {
             write!(
                 f,
-                "StandardEnv{{\n  names = {:?}\n  vars = {:?}\n  signals = {:?}\n  subcmps = {:?}\n}}",
-                self.subcmp_names, self.vars, self.signals, self.subcmps
+                "StandardEnv{{\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
+                self.vars, self.signals, self.subcmp_names, self.subcmps
             )
         }
     }
