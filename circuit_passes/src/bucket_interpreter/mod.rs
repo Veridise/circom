@@ -148,20 +148,6 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         add_loc_if_err(self._execute_log_bucket(bucket, env, observe), bucket)
     }
 
-    pub fn execute_conditional_bucket<'env>(
-        &self,
-        cond: &'env InstructionPointer,
-        true_branch: &'env [InstructionPointer],
-        false_branch: &'env [InstructionPointer],
-        env: Env<'env>,
-        observe: bool,
-    ) -> Result<(Option<Value>, Option<bool>, Env<'env>), BadInterp> {
-        add_loc_if_err(
-            self._execute_conditional_bucket(cond, true_branch, false_branch, env, observe),
-            &**cond,
-        )
-    }
-
     pub fn execute_loop_bucket_once<'env>(
         &self,
         bucket: &'env LoopBucket,
@@ -250,6 +236,19 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             last = self.execute_instruction(inst, last.1, observe)?;
         }
         Ok(last)
+    }
+
+    pub fn compute_compute_bucket(&self, bucket: &ComputeBucket, env: &Env, observe: bool) -> RC {
+        add_loc_if_err(self._compute_compute_bucket(bucket, env, observe), bucket)
+    }
+
+    pub fn compute_condition(
+        &self,
+        cond: &InstructionPointer,
+        env: &Env,
+        observe: bool,
+    ) -> Result<Option<bool>, BadInterp> {
+        add_loc_if_err(self._compute_condition(cond, env, observe), cond.as_ref())
     }
 
     pub fn compute_instruction(&self, inst: &InstructionPointer, env: &Env, observe: bool) -> RC {
@@ -755,7 +754,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> RE<'env> {
-        let (value, cond, mut env) = self.execute_conditional_bucket(
+        let (value, cond, mut env) = self._execute_conditional_bucket(
             &bucket.cond,
             &bucket.if_branch,
             &bucket.else_branch,
@@ -840,6 +839,19 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         self._compute_log_bucket(bucket, &env, observe).map(|r| (r, env))
     }
 
+    fn _compute_condition(
+        &self,
+        cond: &InstructionPointer,
+        env: &Env,
+        observe: bool,
+    ) -> Result<Option<bool>, BadInterp> {
+        let executed_cond = self._compute_instruction(cond, env, observe)?;
+        let executed_cond = into_result(executed_cond, "branch condition")?;
+        //NOTE: `to_bool` returns an Err if the condition is Unknown.
+        // Here we must instead treat that error case as Option::None.
+        Ok(executed_cond.to_bool(&self.p).ok())
+    }
+
     fn _execute_conditional_bucket<'env>(
         &self,
         cond: &'env InstructionPointer,
@@ -848,15 +860,13 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> Result<(Option<Value>, Option<bool>, Env<'env>), BadInterp> {
-        let (executed_cond, env) = self._execute_instruction(cond, env, observe)?;
-        let executed_cond = into_result(executed_cond, "branch condition")?;
-        match executed_cond.to_bool(&self.p) {
-            Err(_) => Ok((None, None, env)),
-            Ok(true) => {
+        match self._compute_condition(cond, &env, observe)? {
+            None => Ok((None, None, env)),
+            Some(true) => {
                 let (ret, env) = self.execute_instructions(&true_branch, env, observe)?;
                 Ok((ret, Some(true), env))
             }
-            Ok(false) => {
+            Some(false) => {
                 let (ret, env) = self.execute_instructions(&false_branch, env, observe)?;
                 Ok((ret, Some(false), env))
             }
@@ -881,7 +891,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 ));
             }
 
-            let (value, cond, new_env) = self.execute_conditional_bucket(
+            let (value, cond, new_env) = self._execute_conditional_bucket(
                 &bucket.continue_condition,
                 &bucket.body,
                 &[],
