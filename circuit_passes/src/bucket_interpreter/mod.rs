@@ -312,7 +312,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
     }
 
     /****************************************************************************************************
-     * Private implemenation
+     * Private implementation
      * Allows any number of calls to the internal "_execute*bucket" functions without adding source
      * location information to the possible error report returned.
      * The '_compute*' functions can be used successfully for instructions that do not modify the Env.
