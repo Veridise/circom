@@ -7,8 +7,8 @@ use circom_algebra::modular_arithmetic;
 use program_structure::error_code::ReportCode;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
-use super::error::BadInterp;
-use super::{new_compute_err_result, new_compute_err, into_result};
+use super::error::{BadInterp, self};
+use super::into_result;
 
 /// Poor man's lattice that gives up the moment values are not equal
 /// It's a join semi lattice with a top (Unknown)
@@ -44,14 +44,14 @@ impl Value {
     pub fn get_u32(&self) -> Result<usize, BadInterp> {
         match self {
             KnownU32(i) => Ok(*i),
-            _ => new_compute_err_result(format!("Value is not a KnownU32! {}", self)),
+            _ => error::new_compute_err_result(format!("Value is not a KnownU32! {}", self)),
         }
     }
 
     pub fn get_bigint_as_string(&self) -> Result<String, BadInterp> {
         match self {
             KnownBigInt(b) => Ok(b.to_string()),
-            _ => new_compute_err_result(format!("Value is not a KnownBigInt! {}", self)),
+            _ => error::new_compute_err_result(format!("Value is not a KnownBigInt! {}", self)),
         }
     }
 
@@ -81,13 +81,15 @@ impl Value {
             KnownU32(0) => Ok(false),
             KnownU32(1) => Ok(true),
             KnownBigInt(n) => Ok(modular_arithmetic::as_bool(n, field)),
-            _ => new_compute_err_result(format!("Can't convert {} into a boolean!", self)),
+            _ => error::new_compute_err_result(format!("Can't convert {} into a boolean!", self)),
         }
     }
 
     pub fn to_value_bucket(&self, mem: &PassMemory) -> Result<ValueBucket, BadInterp> {
         match self {
-            Unknown => new_compute_err_result("Can't create a ValueBucket from an Unknown value!"),
+            Unknown => {
+                error::new_compute_err_result("Can't create a ValueBucket from an Unknown value!")
+            }
             KnownU32(n) => Ok(ValueBucket {
                 id: new_id(),
                 source_file_id: None,
@@ -259,7 +261,9 @@ pub fn bit_xor_value(lhs: &Value, rhs: &Value, field: &BigInt) -> Result<Value, 
 pub fn prefix_sub(v: &Value, field: &BigInt) -> Result<Value, BadInterp> {
     match v {
         Unknown => Ok(Unknown),
-        KnownU32(_n) => new_compute_err_result("Can't do negation given an unsigned integer!"),
+        KnownU32(_n) => {
+            error::new_compute_err_result("Can't do negation given an unsigned integer!")
+        }
         KnownBigInt(n) => Ok(KnownBigInt(modular_arithmetic::prefix_sub(n, field))),
     }
 }
@@ -274,23 +278,21 @@ pub fn complement(v: &Value, field: &BigInt) -> Result<Value, BadInterp> {
 
 pub fn to_address(v: &Value) -> Result<Value, BadInterp> {
     match v {
-        Unknown => new_compute_err_result("Can't convert an unknown value into an address!"),
+        Unknown => error::new_compute_err_result("Can't convert an unknown value into an address!"),
         KnownU32(size) => Ok(KnownU32(*size)),
-        KnownBigInt(b) => {
-            match b.to_u64() {
-                Some(x) => Ok(KnownU32(usize::try_from(x).map_err(|_| {
-                    new_compute_err(format!("Can't convert {} to a usize type!", b))
-                })?)),
-                None => new_compute_err_result(format!("Can't convert {} to a usize type!", b)),
-            }
-        }
+        KnownBigInt(b) => match b.to_u64() {
+            Some(x) => Ok(KnownU32(usize::try_from(x).map_err(|_| {
+                error::new_compute_err(format!("Can't convert {} to a usize type!", b))
+            })?)),
+            None => error::new_compute_err_result(format!("Can't convert {} to a usize type!", b)),
+        },
     }
 }
 
 pub fn mul_address(lhs: Value, rhs: &Value) -> Result<Value, BadInterp> {
     match (lhs, rhs) {
         (KnownU32(lhs), KnownU32(rhs)) => Ok(KnownU32(lhs * rhs)),
-        _ => new_compute_err_result(
+        _ => error::new_compute_err_result(
             "Can't do address multiplication given unknown values or big integers!",
         ),
     }
@@ -299,7 +301,7 @@ pub fn mul_address(lhs: Value, rhs: &Value) -> Result<Value, BadInterp> {
 pub fn add_address(lhs: Value, rhs: &Value) -> Result<Value, BadInterp> {
     match (lhs, rhs) {
         (KnownU32(lhs), KnownU32(rhs)) => Ok(KnownU32(lhs + rhs)),
-        _ => new_compute_err_result(
+        _ => error::new_compute_err_result(
             "Can't do address addition given unknown values or big integers!",
         ),
     }

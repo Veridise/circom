@@ -49,8 +49,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
 
     fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> Result<bool, BadInterp> {
         let interpreter = self.memory.build_interpreter(self.global_data, self);
-        let (eval, _) = interpreter.execute_call_bucket(bucket, env.clone(), false)?;
-        if let Some(eval) = eval {
+        if let Some(eval) = interpreter.compute_call_bucket(bucket, env, false)? {
             // Call buckets may not return a value directly
             if !eval.is_unknown() {
                 self.call_replacements.borrow_mut().insert(bucket.id, eval);
