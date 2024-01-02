@@ -7,7 +7,7 @@ pub const GENERATED_FN_PREFIX: &str = "..generated..";
 pub const CONSTRAINT_VALUES_FN_NAME: &str = "__constraint_values";
 pub const CONSTRAINT_VALUE_FN_NAME: &str = "__constraint_value";
 pub const ASSERT_FN_NAME: &str = "__assert";
-pub const LLVM_DONOTHING_FN_NAME: &str = "llvm.donothing";
+pub const LLVM_DONOTHING_FN_NAME: &str = "llvm.donothing"; //LLVM equivalent of a "nop" instruction
 
 mod stdlib {
     use inkwell::intrinsics::Intrinsic;

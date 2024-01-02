@@ -67,13 +67,7 @@ impl<'d> ConditionalFlatteningPass<'d> {
 impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
     fn on_branch_bucket(&self, bucket: &BranchBucket, env: &Env) -> Result<bool, BadInterp> {
         let interpreter = self.memory.build_interpreter(self.global_data, self);
-        let (_, cond_result, _) = interpreter.execute_conditional_bucket(
-            &bucket.cond,
-            &bucket.if_branch,
-            &bucket.else_branch,
-            env.clone(),
-            false,
-        )?;
+        let cond_result = interpreter.compute_condition(&bucket.cond, env, false)?;
         // Store the result for the current bucket in the list for the current caller.
         // NOTE: Store 'cond_result' even when it is None (meaning the BranchBucket
         //  condition could not be determined) so that it will fully differentiate the

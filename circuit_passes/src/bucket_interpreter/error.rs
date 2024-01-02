@@ -5,6 +5,8 @@ use program_structure::{
     error_code::ReportCode, error_definition::Report, file_definition::FileLibrary,
 };
 
+const NOT_COMPUTE: &str = "Compute does not support Env modification. Use execute instead.";
+
 #[derive(Clone)]
 pub struct BadInterp {
     is_error: bool,
@@ -81,6 +83,16 @@ impl BadInterp {
 }
 
 #[inline]
+pub fn new_inconsistency_err<S: ToString>(msg: S) -> BadInterp {
+    BadInterp::error(msg.to_string(), ReportCode::InconsistentStaticInformation)
+}
+
+#[inline]
+pub fn new_inconsistency_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
+    Err(new_inconsistency_err(msg))
+}
+
+#[inline]
 pub fn new_compute_err<S: ToString>(msg: S) -> BadInterp {
     BadInterp::error(msg.to_string(), ReportCode::NonComputableExpression)
 }
@@ -91,13 +103,26 @@ pub fn new_compute_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
 }
 
 #[inline]
-pub fn new_inconsistency_err<S: ToString>(msg: S) -> BadInterp {
-    BadInterp::error(msg.to_string(), ReportCode::InconsistentStaticInformation)
+pub fn modifies_env_err() -> BadInterp {
+    BadInterp::error(NOT_COMPUTE.to_string(), ReportCode::NonComputableExpression)
 }
 
 #[inline]
-pub fn new_inconsistency_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
-    Err(new_inconsistency_err(msg))
+pub fn modifies_env_err_result<R>() -> Result<R, BadInterp> {
+    Err(modifies_env_err())
+}
+
+#[inline]
+pub fn is_modifies_env_err(e: &BadInterp) -> bool {
+    e.is_error && e.message.eq(NOT_COMPUTE)
+}
+
+#[inline]
+pub fn is_modifies_env_err_result<R>(e: &Result<R, BadInterp>) -> bool {
+    match e {
+        Err(e) => is_modifies_env_err(e),
+        Ok(_) => false,
+    }
 }
 
 #[inline]
