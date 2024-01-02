@@ -116,8 +116,7 @@ impl WriteLLVMIR for CallBucket {
                     arg.produce_llvm_ir(producer).expect("Call arguments must produce a value!"),
                 ));
             }
-            let call_ret_val = create_call(producer, self.symbol.as_str(), &args);
-            return Some(call_ret_val);
+            return Some(create_call(producer, self.symbol.as_str(), &args));
         } else {
             // Create array with arena_size size
             let arena = create_alloca(
@@ -132,7 +131,7 @@ impl WriteLLVMIR for CallBucket {
                 .iter()
                 .scan(0, |state, arg_ty| {
                     let curr_offset = *state;
-                    *state = *state + arg_ty.size;
+                    *state += arg_ty.size;
                     Some(curr_offset)
                 })
                 .collect();
@@ -199,8 +198,8 @@ impl WriteLLVMIR for CallBucket {
             );
 
             match &self.return_info {
-                ReturnType::Intermediate { op_aux_no } => {
-                    todo!("ReturnType::Intermediate {:#?}", op_aux_no);
+                ReturnType::Intermediate { .. } => {
+                    return Some(call_ret_val);
                 }
                 ReturnType::Final(data) => {
                     let size = data.context.size;
