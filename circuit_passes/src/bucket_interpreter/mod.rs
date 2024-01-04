@@ -780,8 +780,9 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             println!("Running function {}", name);
         }
         let mut new_env = Env::new_standard_env(self.mem);
-        for (id, arg) in args.iter().enumerate() {
-            new_env = new_env.set_var(id, arg.clone());
+        let mut args_copy = args;
+        for (id, arg) in args_copy.drain(..).enumerate() {
+            new_env = new_env.set_var(id, arg);
         }
         let interp =
             self.mem.build_interpreter_with_scope(self.global_data, self.observer, name.clone());

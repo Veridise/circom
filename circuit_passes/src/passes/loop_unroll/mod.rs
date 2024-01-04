@@ -74,7 +74,7 @@ impl<'d> LoopUnrollPass<'d> {
             let interpreter = self.memory.build_interpreter(self.global_data, &recorder);
             let mut inner_env = env.clone();
             loop {
-                recorder.record_env_at_header(inner_env.clone());
+                recorder.record_header_env(&inner_env);
                 let (_, cond, new_env) =
                     interpreter.execute_loop_bucket_once(bucket, inner_env, true)?;
                 match cond {
@@ -87,31 +87,33 @@ impl<'d> LoopUnrollPass<'d> {
                 };
                 inner_env = new_env;
             }
+            recorder.drop_header_env(); //free Env from the final iteration
         }
         if DEBUG_LOOP_UNROLL {
             println!("recorder = {:?}", recorder);
         }
 
+        let num_iter = recorder.get_iter();
         let mut block_body = vec![];
-        if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() && recorder.get_iter() > 0 {
-            // If the loop body contains more than one instruction, extract it into a new
-            // function and generate 'recorder.get_iter()' number of calls to that function.
-            // Otherwise, just duplicate the body 'recorder.get_iter()' number of times.
+        if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() && num_iter > 0 {
+            // If the loop body contains more than one instruction, extract it into a
+            // new function and generate 'num_iter' number of calls to that function.
+            // Otherwise, just duplicate the body 'num_iter' number of times.
             match &bucket.body[..] {
                 [a] => {
-                    for _ in 0..recorder.get_iter() {
+                    for _ in 0..num_iter {
                         let mut copy = a.clone();
                         copy.update_id();
                         block_body.push(copy);
                     }
                 }
                 _ => {
-                    self.extractor.extract(bucket, &recorder, &mut block_body)?;
+                    self.extractor.extract(bucket, recorder, &mut block_body)?;
                 }
             }
         } else {
             //If the loop body is not safe to move into a new function, just unroll in-place.
-            for _ in 0..recorder.get_iter() {
+            for _ in 0..num_iter {
                 for s in &bucket.body {
                     let mut copy = s.clone();
                     copy.update_id();
@@ -119,7 +121,7 @@ impl<'d> LoopUnrollPass<'d> {
                 }
             }
         }
-        Ok((Some(block_body), recorder.get_iter()))
+        Ok((Some(block_body), num_iter))
     }
 
     // Will take the unrolled loop and interpretate it
