@@ -150,7 +150,7 @@ impl LoopBodyExtractor {
     pub fn extract<'a>(
         &self,
         bucket: &LoopBucket,
-        recorder: &'a EnvRecorder<'a, '_>,
+        recorder: EnvRecorder<'a, '_>,
         unrolled: &mut InstructionList,
     ) -> Result<(), BadInterp> {
         assert!(bucket.body.len() > 1);
@@ -220,7 +220,7 @@ impl LoopBodyExtractor {
 
             recorder.record_reverse_arg_mapping(
                 name.clone(),
-                recorder.get_vals_per_iter().get(&iter_num).unwrap().env_at_header.get_vars_sort(),
+                recorder.take_header_vars_for_iter(&iter_num),
                 extra_arg_info.get_reverse_passing_refs_for_itr(iter_num),
             );
         }
@@ -474,7 +474,7 @@ impl LoopBodyExtractor {
     /// unrolled and the indexing will become known constant values. This computes the
     /// extra arguments that will be needed.
     fn compute_extra_args<'a>(
-        recorder: &'a EnvRecorder<'a, '_>,
+        recorder: &EnvRecorder<'a, '_>,
     ) -> Result<ExtraArgsResult, BadInterp> {
         // Table structure indexed first by load/store/call BucketId, then by iteration number.
         //  View the first (BucketId) as columns and the second (iteration number) as rows.
@@ -492,22 +492,23 @@ impl LoopBodyExtractor {
         > = Default::default();
         //
         let mut bucket_to_args: IndexMap<BucketId, ArgIndex> = Default::default();
-        let vpi = recorder.get_vals_per_iter();
+        let mut vpi = recorder.take_loadstore_to_index_map();
         // NOTE: starts at 2 because the current component's signal arena and lvars are first.
         let mut next_idx: FuncArgIdx = 2;
         // First step is to collect all location references into the 'bucket_to_itr_to_ref' table.
         let all_loadstore_buckets: IndexSet<BucketId> =
-            vpi.values().flat_map(|x| x.loadstore_to_index.keys().cloned()).collect();
+            vpi.values().flat_map(|x| x.keys().cloned()).collect();
         for id in all_loadstore_buckets.iter() {
             let column = bucket_to_itr_to_ref.entry(*id).or_default();
             for iter_num in 0..recorder.get_iter() {
-                let temp = vpi[&iter_num].loadstore_to_index.get(id);
-                // ASSERT: index values are known in every (available) iteration
-                assert!(temp.is_none() || !temp.unwrap().1.is_unknown());
-                match temp {
-                    None => column.push(None),
-                    Some((a, v)) => column.push(Some((a.clone(), v.get_u32()?))),
-                }
+                column.push(match vpi.get_mut(&iter_num).unwrap().remove(id) {
+                    None => None,
+                    Some((a, v)) => {
+                        // ASSERT: index values are known in every available iteration
+                        assert!(!v.is_unknown());
+                        Some((a, v.get_u32()?))
+                    }
+                });
             }
             if DEBUG_LOOP_UNROLL {
                 println!("bucket {} refs by iteration: {:?}", id, column);
