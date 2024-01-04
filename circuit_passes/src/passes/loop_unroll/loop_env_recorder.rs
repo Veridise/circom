@@ -70,7 +70,10 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
     pub fn take_header_vars_for_iter(&self, iter: &usize) -> BTreeMap<usize, Value> {
         // 'record_env_at_header' should have been called for each iteration and this
         //  should only be called once per iteration so the unwrap should never fail.
-        self.vals_at_header_per_iter.borrow_mut().remove(iter).unwrap()
+        self.vals_at_header_per_iter
+            .borrow_mut()
+            .remove(iter)
+            .expect(format!("Cannot find cached values at header for iteration {}!", iter).as_str())
     }
 
     pub fn take_loadstore_to_index_map(
