@@ -18,21 +18,31 @@ pub struct PassMemory {
     //  wrapped separately and the template/function library values themselves are wrapped separately.
     templates_library: RefCell<HashMap<String, TemplateCode>>,
     functions_library: RefCell<HashMap<String, FunctionCode>>,
+    ///
     constant_fields: RefCell<Vec<String>>,
+    /// Current template header
     current_scope: RefCell<String>,
+    /// Current template or function source name
+    current_source_name: RefCell<String>,
+    ///
     io_map: RefCell<TemplateInstanceIOMap>,
+    ///
     signal_index_mapping: RefCell<HashMap<String, IndexMapping>>,
+    ///
     variables_index_mapping: RefCell<HashMap<String, IndexMapping>>,
+    ///
     component_addr_index_mapping: RefCell<HashMap<String, IndexMapping>>,
+    ///
     prime: String,
 }
 
 impl PassMemory {
-    pub fn new(prime: String, current_scope: String, io_map: TemplateInstanceIOMap) -> Self {
+    pub fn new(prime: String, io_map: TemplateInstanceIOMap) -> Self {
         PassMemory {
             prime,
-            current_scope: RefCell::new(current_scope),
             io_map: RefCell::new(io_map),
+            current_scope: Default::default(),
+            current_source_name: Default::default(),
             constant_fields: Default::default(),
             templates_library: Default::default(),
             functions_library: Default::default(),
@@ -65,6 +75,10 @@ impl PassMemory {
 
     pub fn set_scope(&self, template: &TemplateCode) {
         self.current_scope.replace(template.header.clone());
+    }
+
+    pub fn set_source_name(&self, name: &String) {
+        self.current_source_name.replace(name.clone());
     }
 
     pub fn run_template<'d>(
@@ -108,6 +122,10 @@ impl PassMemory {
 
     pub fn get_prime(&self) -> &String {
         &self.prime
+    }
+
+    pub fn get_current_source_name(&self) -> Ref<String> {
+        self.current_source_name.borrow()
     }
 
     pub fn get_field_constant(&self, index: usize) -> String {

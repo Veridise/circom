@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use compiler::circuit_design::template::TemplateCode;
-use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{ir_interface::*, BucketId};
 use compiler::intermediate_representation::{InstructionPointer, UpdateId};
 use crate::bucket_interpreter::env::Env;
@@ -10,10 +9,7 @@ use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::value::Value::{KnownU32, self};
-use crate::{
-    default__get_updated_field_constants, default__name, default__pre_hook_circuit,
-    default__pre_hook_template,
-};
+use crate::{default__name, default__run_template, default__get_mem};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 pub struct MappedToIndexedPass<'d> {
@@ -31,7 +27,7 @@ impl<'d> MappedToIndexedPass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         MappedToIndexedPass {
             global_data,
-            memory: PassMemory::new(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, Default::default()),
             replacements: Default::default(),
         }
     }
@@ -126,9 +122,8 @@ impl Observer<Env<'_>> for MappedToIndexedPass<'_> {
 
 impl CircuitTransformationPass for MappedToIndexedPass<'_> {
     default__name!("MappedToIndexedPass");
-    default__get_updated_field_constants!();
-    default__pre_hook_circuit!();
-    default__pre_hook_template!();
+    default__get_mem!();
+    default__run_template!();
 
     /*
         iangneal: Let the interpreter run to see if we can find any replacements.

@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, Ref};
 use std::collections::{BTreeMap, HashSet, HashMap};
 use std::fmt::{Debug, Formatter};
 use indexmap::IndexMap;
@@ -74,6 +74,10 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
             .borrow_mut()
             .remove(iter)
             .expect(format!("Cannot find cached values at header for iteration {}!", iter).as_str())
+    }
+
+    pub fn get_current_source_name(&self) -> Ref<String> {
+        self.mem.get_current_source_name()
     }
 
     pub fn take_loadstore_to_index_map(

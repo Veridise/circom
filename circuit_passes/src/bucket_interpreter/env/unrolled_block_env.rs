@@ -34,7 +34,7 @@ impl LibraryAccess for UnrolledBlockEnvData<'_> {
         if name.starts_with(LOOP_BODY_FN_PREFIX) {
             Ref::map(self.extractor.get_new_functions(), |f| {
                 f.iter()
-                    .find(|f| f.name.eq(name))
+                    .find(|f| f.header.eq(name))
                     .expect("Cannot find extracted function definition!")
             })
         } else {

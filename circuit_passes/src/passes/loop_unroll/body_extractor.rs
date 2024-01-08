@@ -156,6 +156,7 @@ impl LoopBodyExtractor {
         assert!(bucket.body.len() > 1);
         let extra_arg_info = Self::compute_extra_args(&recorder)?;
         let name = self.build_new_body(
+            &recorder.get_current_source_name(),
             bucket,
             extra_arg_info.bucket_to_args.clone(),
             extra_arg_info.num_args,
@@ -229,6 +230,7 @@ impl LoopBodyExtractor {
 
     fn build_new_body(
         &self,
+        source_body_name: &String,
         bucket: &LoopBucket,
         mut bucket_to_args: IndexMap<BucketId, ArgIndex>,
         num_args: usize,
@@ -295,7 +297,7 @@ impl LoopBodyExtractor {
         let new_func = Box::new(FunctionCodeInfo {
             source_file_id: bucket.source_file_id,
             line: bucket.line,
-            name: func_name.clone(),
+            name: source_body_name.clone(),
             header: func_name.clone(),
             body: new_body,
             params,

@@ -946,7 +946,16 @@ template PoseidonEx(nInputs, nOuts) {
 
 component main = PoseidonEx(4, 1);
 
-//Ensure there are only 7 and no more because duplicates were removed:
+
+//Ensure there are only 4 array initializers and no more:
+//
+//CHECK: define{{.*}} void @..generated..array.param.
+//CHECK: define{{.*}} void @..generated..array.param.
+//CHECK: define{{.*}} void @..generated..array.param.
+//CHECK: define{{.*}} void @..generated..array.param.
+//CHECK-NOT: define{{.*}} void @..generated..array.param.
+
+//Ensure there are only 7 generated loop function and no more because duplicates were removed:
 //
 //CHECK: define{{.*}} void @..generated..loop.body.
 //CHECK: define{{.*}} void @..generated..loop.body.

@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, HashSet};
 use std::ops::Range;
 use compiler::circuit_design::template::TemplateCode;
-use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{Instruction, InstructionPointer, new_id, BucketId};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
@@ -15,10 +14,7 @@ use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::operations::compute_operation;
 use crate::bucket_interpreter::{RC, to_bigint, into_result};
 use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
-use crate::{
-    default__get_updated_field_constants, default__name, default__pre_hook_template,
-    default__pre_hook_circuit,
-};
+use crate::{default__name, default__get_mem, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 struct ZeroingInterpreter<'a> {
@@ -85,7 +81,7 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         UnknownIndexSanitizationPass {
             global_data,
-            memory: PassMemory::new(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, Default::default()),
             load_replacements: Default::default(),
             store_replacements: Default::default(),
             scheduled_bounded_loads: Default::default(),
@@ -197,9 +193,8 @@ fn do_array_union(a: &HashSet<Range<usize>>, b: &HashSet<Range<usize>>) -> HashS
 
 impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
     default__name!("UnknownIndexSanitizationPass");
-    default__get_updated_field_constants!();
-    default__pre_hook_circuit!();
-    default__pre_hook_template!();
+    default__get_mem!();
+    default__run_template!();
 
     fn get_updated_bounded_array_loads(
         &self,
