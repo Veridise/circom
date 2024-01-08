@@ -6,6 +6,7 @@ use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
+use crate::bucket_interpreter::observed_visitor::ObservedVisitor;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
 use crate::{default__name, default__get_mem, default__run_template};
@@ -27,6 +28,39 @@ impl<'d> SimplificationPass<'d> {
             compute_replacements: Default::default(),
             call_replacements: Default::default(),
         }
+    }
+
+    fn contains_signal_load(expr: &InstructionPointer) -> Result<bool, BadInterp> {
+        #[derive(Default)]
+        struct LoadFromSignalFinder {
+            contains_signal_load: RefCell<bool>,
+        }
+        impl Observer<()> for LoadFromSignalFinder {
+            fn on_load_bucket(&self, bucket: &LoadBucket, _: &()) -> Result<bool, BadInterp> {
+                match bucket.address_type {
+                    AddressType::Variable => {}
+                    AddressType::Signal | AddressType::SubcmpSignal { .. } => {
+                        self.contains_signal_load.replace(true);
+                    }
+                }
+                Ok(true)
+            }
+
+            fn ignore_function_calls(&self) -> bool {
+                true
+            }
+
+            fn ignore_subcmp_calls(&self) -> bool {
+                true
+            }
+
+            fn ignore_extracted_function_calls(&self) -> bool {
+                true
+            }
+        }
+        let finder = LoadFromSignalFinder::default();
+        ObservedVisitor::new(&finder, None).visit_instruction(expr, &(), true)?;
+        Ok(finder.contains_signal_load.take())
     }
 }
 
@@ -53,6 +87,24 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
             }
         }
         Ok(true)
+    }
+
+    fn on_constraint_bucket(&self, bucket: &ConstraintBucket, _: &Env) -> Result<bool, BadInterp> {
+        match bucket {
+            ConstraintBucket::Equality(e) => {
+                // Only continue the search for simplifications if the bucket does not load any signals
+                SimplificationPass::contains_signal_load(e).map(|b| !b)
+            }
+            ConstraintBucket::Substitution(e) => {
+                // Only continue to search for simplification if the RHS does not load any signals
+                match e.as_ref() {
+                    Instruction::Store(StoreBucket { src, .. }) => {
+                        SimplificationPass::contains_signal_load(src).map(|b| !b)
+                    }
+                    _ => Ok(true),
+                }
+            }
+        }
     }
 
     fn ignore_function_calls(&self) -> bool {

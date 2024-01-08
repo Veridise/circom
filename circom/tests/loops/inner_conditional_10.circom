@@ -49,6 +49,7 @@ component main = Poseidon();
 //CHECK-NEXT:   store i256 0, i256* %[[T04]], align 4
 //CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T05]], align 4
+//TODO
 //CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
 //CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = load [0 x i256]*, [0 x i256]** %[[T07]], align 8
 //CHECK-NEXT:   %[[T09:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T08]], i32 0, i32 1
@@ -59,6 +60,7 @@ component main = Poseidon();
 //CHECK-NEXT:   store i32 %decrement.counter, i32* %[[T10]], align 4
 //CHECK-NEXT:   %[[T11:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
 //CHECK-NEXT:   %[[T12:[0-9a-zA-Z_.]+]] = load [0 x i256]*, [0 x i256]** %[[T11]], align 8
+//TODO
 //CHECK-NEXT:   call void @Sigma_0_run([0 x i256]* %[[T12]])
 //CHECK-NEXT:   %[[T13:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T09]], align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
