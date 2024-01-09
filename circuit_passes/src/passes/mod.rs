@@ -9,6 +9,7 @@ use compiler::intermediate_representation::{
 };
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::error::BadInterp;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::passes::{
     checks::assert_unique_ids_in_circuit, conditional_flattening::ConditionalFlatteningPass,
     const_arg_deduplication::ConstArgDeduplicationPass,
@@ -37,14 +38,6 @@ macro_rules! pre_hook {
     };
 }
 
-macro_rules! pre_hook_with_result {
-    ($name: ident, $bucket_ty: ty) => {
-        fn $name(&self, _bucket: &$bucket_ty) -> Result<(), BadInterp> {
-            Ok(())
-        }
-    };
-}
-
 #[macro_export]
 macro_rules! default__name {
     ($name: literal) => {
@@ -55,38 +48,45 @@ macro_rules! default__name {
 }
 
 #[macro_export]
-macro_rules! default__get_updated_field_constants {
+macro_rules! default__get_mem {
     () => {
-        fn get_updated_field_constants(&self) -> Vec<String> {
-            self.memory.get_field_constants_clone()
+        fn get_mem(&self) -> &PassMemory {
+            &self.memory
         }
     };
 }
 
 #[macro_export]
-macro_rules! default__pre_hook_circuit {
+macro_rules! default__run_template {
     () => {
-        fn pre_hook_circuit(&self, circuit: &Circuit) -> Result<(), BadInterp> {
-            self.memory.fill_from_circuit(circuit);
-            Ok(())
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! default__pre_hook_template {
-    () => {
-        fn pre_hook_template(&self, template: &TemplateCode) -> Result<(), BadInterp> {
-            self.memory.set_scope(template);
-            self.memory.run_template(self.global_data, self, template)?;
-            Ok(())
+        fn run_template(&self, template: &TemplateCode) -> Result<(), BadInterp> {
+            self.get_mem().run_template(self.global_data, self, template)
         }
     };
 }
 
 pub trait CircuitTransformationPass {
     fn name(&self) -> &str;
-    fn get_updated_field_constants(&self) -> Vec<String>;
+    fn get_mem(&self) -> &PassMemory;
+    fn run_template(&self, template: &TemplateCode) -> Result<(), BadInterp>;
+
+    fn get_updated_field_constants(&self) -> Vec<String> {
+        self.get_mem().get_field_constants_clone()
+    }
+
+    fn get_updated_bounded_array_loads(
+        &self,
+        old_array_loads: &HashSet<Range<usize>>,
+    ) -> HashSet<Range<usize>> {
+        old_array_loads.clone()
+    }
+
+    fn get_updated_bounded_array_stores(
+        &self,
+        old_array_stores: &HashSet<Range<usize>>,
+    ) -> HashSet<Range<usize>> {
+        old_array_stores.clone()
+    }
 
     fn transform_circuit(&self, circuit: &Circuit) -> Result<Circuit, BadInterp> {
         self.pre_hook_circuit(&circuit)?;
@@ -118,20 +118,6 @@ pub trait CircuitTransformationPass {
         };
         self.post_hook_circuit(&mut new_circuit)?;
         Ok(new_circuit)
-    }
-
-    fn get_updated_bounded_array_loads(
-        &self,
-        old_array_loads: &HashSet<Range<usize>>,
-    ) -> HashSet<Range<usize>> {
-        old_array_loads.clone()
-    }
-
-    fn get_updated_bounded_array_stores(
-        &self,
-        old_array_stores: &HashSet<Range<usize>>,
-    ) -> HashSet<Range<usize>> {
-        old_array_stores.clone()
     }
 
     fn transform_template(&self, template: &TemplateCode) -> Result<TemplateCode, BadInterp> {
@@ -184,26 +170,6 @@ pub trait CircuitTransformationPass {
         i.iter().map(|i| self.transform_instruction(i)).collect()
     }
 
-    fn pre_hook_instruction(&self, i: &Instruction) {
-        use compiler::intermediate_representation::Instruction::*;
-        match i {
-            Value(b) => self.pre_hook_value_bucket(b),
-            Load(b) => self.pre_hook_load_bucket(b),
-            Store(b) => self.pre_hook_store_bucket(b),
-            Compute(b) => self.pre_hook_compute_bucket(b),
-            Call(b) => self.pre_hook_call_bucket(b),
-            Branch(b) => self.pre_hook_branch_bucket(b),
-            Return(b) => self.pre_hook_return_bucket(b),
-            Assert(b) => self.pre_hook_assert_bucket(b),
-            Log(b) => self.pre_hook_log_bucket(b),
-            Loop(b) => self.pre_hook_loop_bucket(b),
-            CreateCmp(b) => self.pre_hook_create_cmp_bucket(b),
-            Constraint(b) => self.pre_hook_constraint_bucket(b),
-            Block(b) => self.pre_hook_unrolled_loop_bucket(b),
-            Nop(b) => self.pre_hook_nop_bucket(b),
-        }
-    }
-
     fn transform_instruction(&self, i: &Instruction) -> Result<InstructionPointer, BadInterp> {
         self.pre_hook_instruction(i);
         use compiler::intermediate_representation::Instruction::*;
@@ -225,9 +191,10 @@ pub trait CircuitTransformationPass {
         }
     }
 
-    // This macros both define the interface of each bucket method and
-    // the default behaviour which is to just copy the bucket without modifying it
-    fn transform_value_bucket(&self, bucket: &ValueBucket) -> Result<InstructionPointer, BadInterp> {
+    fn transform_value_bucket(
+        &self,
+        bucket: &ValueBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(ValueBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -289,7 +256,10 @@ pub trait CircuitTransformationPass {
         .allocate())
     }
 
-    fn transform_store_bucket(&self, bucket: &StoreBucket) -> Result<InstructionPointer, BadInterp> {
+    fn transform_store_bucket(
+        &self,
+        bucket: &StoreBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(StoreBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -360,7 +330,10 @@ pub trait CircuitTransformationPass {
         .allocate())
     }
 
-    fn transform_branch_bucket(&self, bucket: &BranchBucket) -> Result<InstructionPointer, BadInterp> {
+    fn transform_branch_bucket(
+        &self,
+        bucket: &BranchBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(BranchBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -373,7 +346,10 @@ pub trait CircuitTransformationPass {
         .allocate())
     }
 
-    fn transform_return_bucket(&self, bucket: &ReturnBucket) -> Result<InstructionPointer, BadInterp> {
+    fn transform_return_bucket(
+        &self,
+        bucket: &ReturnBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(ReturnBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -385,7 +361,10 @@ pub trait CircuitTransformationPass {
         .allocate())
     }
 
-    fn transform_assert_bucket(&self, bucket: &AssertBucket) -> Result<InstructionPointer, BadInterp> {
+    fn transform_assert_bucket(
+        &self,
+        bucket: &AssertBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(AssertBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -477,7 +456,10 @@ pub trait CircuitTransformationPass {
         .allocate())
     }
 
-    fn transform_block_bucket(&self, bucket: &BlockBucket) -> Result<InstructionPointer, BadInterp> {
+    fn transform_block_bucket(
+        &self,
+        bucket: &BlockBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(BlockBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -494,13 +476,46 @@ pub trait CircuitTransformationPass {
         Ok(NopBucket { id: new_id() }.allocate())
     }
 
+    fn pre_hook_circuit(&self, circuit: &Circuit) -> Result<(), BadInterp> {
+        self.get_mem().fill_from_circuit(circuit);
+        Ok(())
+    }
+
     fn post_hook_circuit(&self, _cir: &mut Circuit) -> Result<(), BadInterp> {
         Ok(())
     }
 
-    pre_hook_with_result!(pre_hook_circuit, Circuit);
-    pre_hook_with_result!(pre_hook_template, TemplateCode);
-    pre_hook_with_result!(pre_hook_function, FunctionCode);
+    fn pre_hook_template(&self, template: &TemplateCode) -> Result<(), BadInterp> {
+        self.get_mem().set_scope(template);
+        self.get_mem().set_source_name(&template.name);
+        self.run_template(template)?;
+        Ok(())
+    }
+
+    fn pre_hook_function(&self, function: &FunctionCode) -> Result<(), BadInterp> {
+        self.get_mem().set_source_name(&function.name);
+        Ok(())
+    }
+
+    fn pre_hook_instruction(&self, i: &Instruction) {
+        use compiler::intermediate_representation::Instruction::*;
+        match i {
+            Value(b) => self.pre_hook_value_bucket(b),
+            Load(b) => self.pre_hook_load_bucket(b),
+            Store(b) => self.pre_hook_store_bucket(b),
+            Compute(b) => self.pre_hook_compute_bucket(b),
+            Call(b) => self.pre_hook_call_bucket(b),
+            Branch(b) => self.pre_hook_branch_bucket(b),
+            Return(b) => self.pre_hook_return_bucket(b),
+            Assert(b) => self.pre_hook_assert_bucket(b),
+            Log(b) => self.pre_hook_log_bucket(b),
+            Loop(b) => self.pre_hook_loop_bucket(b),
+            CreateCmp(b) => self.pre_hook_create_cmp_bucket(b),
+            Constraint(b) => self.pre_hook_constraint_bucket(b),
+            Block(b) => self.pre_hook_unrolled_loop_bucket(b),
+            Nop(b) => self.pre_hook_nop_bucket(b),
+        }
+    }
 
     pre_hook!(pre_hook_value_bucket, ValueBucket);
     pre_hook!(pre_hook_load_bucket, LoadBucket);
@@ -641,7 +656,11 @@ impl PassManager {
         }
     }
 
-    pub fn transform_circuit(&self, circuit: Circuit, prime: &String) -> Result<Circuit, BadInterp> {
+    pub fn transform_circuit(
+        &self,
+        circuit: Circuit,
+        prime: &String,
+    ) -> Result<Circuit, BadInterp> {
         // NOTE: Used RefCell rather than a mutable reference because storing
         //  the mutable reference in EnvRecorder was causing rustc errors.
         let global_data = RefCell::new(GlobalPassData::new());

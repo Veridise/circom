@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::circuit_design::function::{FunctionCode, FunctionCodeInfo};
+use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::hir::very_concrete_program::Param;
 use compiler::intermediate_representation::{InstructionPointer, BucketId, UpdateId, new_id};
@@ -9,7 +10,7 @@ use compiler::intermediate_representation::ir_interface::*;
 use compiler::intermediate_representation::translate::ARRAY_PARAM_STORES;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::{default__get_updated_field_constants, default__name};
+use crate::{default__name, default__get_mem};
 use super::{CircuitTransformationPass, GlobalPassData, builders};
 
 pub struct ConstArgDeduplicationPass<'d> {
@@ -25,7 +26,7 @@ impl<'d> ConstArgDeduplicationPass<'d> {
     pub fn new(prime: String, _global_data: &'d RefCell<GlobalPassData>) -> Self {
         ConstArgDeduplicationPass {
             _global_data,
-            memory: PassMemory::new(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, Default::default()),
             template_headers_grpby_name: Default::default(),
             new_body_functions: Default::default(),
         }
@@ -69,15 +70,16 @@ impl<'d> ConstArgDeduplicationPass<'d> {
 
     fn get_or_create_function_for(
         &self,
-        meta: &dyn ObtainMeta,
         idx_val_pairs: Vec<(usize, usize)>,
+        meta: &dyn ObtainMeta,
+        name: &String,
         const_stores: Vec<&InstructionPointer>,
     ) -> String {
         // NOTE: no need to store to 'global_data' because all references are 'lvars'
         self.new_body_functions
             .borrow_mut()
             .entry(idx_val_pairs)
-            .or_insert_with(|| self.create_function_for(meta, const_stores))
+            .or_insert_with(|| self.create_function_for(meta, name, const_stores))
             .header
             .clone()
     }
@@ -85,6 +87,7 @@ impl<'d> ConstArgDeduplicationPass<'d> {
     fn create_function_for(
         &self,
         meta: &dyn ObtainMeta,
+        name: &String,
         const_stores: Vec<&InstructionPointer>,
     ) -> FunctionCode {
         // Copy the list of stores and add a "return void" at the end
@@ -111,8 +114,8 @@ impl<'d> ConstArgDeduplicationPass<'d> {
         Box::new(FunctionCodeInfo {
             source_file_id: meta.get_source_file_id().clone(),
             line: meta.get_line(),
-            name: func_name.clone(),
-            header: func_name.clone(),
+            name: name.clone(),
+            header: func_name,
             body: new_body,
             params: vec![Param { name: String::from("lvars"), length: vec![0] }],
             returns: vec![], // void return type on the function
@@ -123,7 +126,12 @@ impl<'d> ConstArgDeduplicationPass<'d> {
 
 impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
     default__name!("ConstArgDeduplicationPass");
-    default__get_updated_field_constants!();
+    default__get_mem!();
+
+    fn run_template(&self, _: &TemplateCode) -> Result<(), BadInterp> {
+        // No need to actually run templates
+        Ok(())
+    }
 
     fn pre_hook_circuit(&self, circuit: &Circuit) -> Result<(), BadInterp> {
         self.memory.fill_from_circuit(circuit);
@@ -186,7 +194,12 @@ impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
                         let meta_info: &dyn ObtainMeta = &**const_stores[0];
                         new_body.push(builders::build_call(
                             meta_info,
-                            self.get_or_create_function_for(meta_info, idx_val_pairs, const_stores),
+                            self.get_or_create_function_for(
+                                idx_val_pairs,
+                                meta_info,
+                                &self.memory.get_current_source_name(),
+                                const_stores,
+                            ),
                             vec![builders::build_storage_ptr_ref(meta_info, AddressType::Variable)],
                         ));
                     }

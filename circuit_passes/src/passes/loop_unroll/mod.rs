@@ -16,10 +16,7 @@ use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
-use crate::{
-    default__name, default__get_updated_field_constants, default__pre_hook_circuit,
-    default__pre_hook_template,
-};
+use crate::{default__name, default__get_mem, default__run_template};
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 use super::{CircuitTransformationPass, GlobalPassData};
 use self::body_extractor::LoopBodyExtractor;
@@ -42,7 +39,7 @@ impl<'d> LoopUnrollPass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         LoopUnrollPass {
             global_data,
-            memory: PassMemory::new(prime, String::from(""), Default::default()),
+            memory: PassMemory::new(prime, Default::default()),
             replacements: Default::default(),
             extractor: Default::default(),
         }
@@ -167,9 +164,8 @@ impl Observer<Env<'_>> for LoopUnrollPass<'_> {
 
 impl CircuitTransformationPass for LoopUnrollPass<'_> {
     default__name!("LoopUnrollPass");
-    default__get_updated_field_constants!();
-    default__pre_hook_circuit!();
-    default__pre_hook_template!();
+    default__get_mem!();
+    default__run_template!();
 
     fn post_hook_circuit(&self, cir: &mut Circuit) -> Result<(), BadInterp> {
         // Transform and add the new body functions

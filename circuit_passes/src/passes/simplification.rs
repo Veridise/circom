@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use compiler::circuit_design::template::TemplateCode;
-use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{InstructionPointer, new_id, BucketId};
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
@@ -9,15 +8,12 @@ use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
-use crate::{
-    default__get_updated_field_constants, default__name, default__pre_hook_circuit,
-    default__pre_hook_template,
-};
+use crate::{default__name, default__get_mem, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 pub struct SimplificationPass<'d> {
-    global_data: &'d RefCell<GlobalPassData>,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
+    global_data: &'d RefCell<GlobalPassData>,
     memory: PassMemory,
     compute_replacements: RefCell<HashMap<BucketId, Value>>,
     call_replacements: RefCell<HashMap<BucketId, Value>>,
@@ -27,7 +23,7 @@ impl<'d> SimplificationPass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         SimplificationPass {
             global_data,
-            memory: PassMemory::new(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, Default::default()),
             compute_replacements: Default::default(),
             call_replacements: Default::default(),
         }
@@ -74,9 +70,8 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
 
 impl CircuitTransformationPass for SimplificationPass<'_> {
     default__name!("SimplificationPass");
-    default__get_updated_field_constants!();
-    default__pre_hook_circuit!();
-    default__pre_hook_template!();
+    default__get_mem!();
+    default__run_template!();
 
     fn transform_compute_bucket(
         &self,

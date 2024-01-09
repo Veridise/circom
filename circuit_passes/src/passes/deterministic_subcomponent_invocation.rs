@@ -1,17 +1,13 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use compiler::circuit_design::template::TemplateCode;
-use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::intermediate_representation::ir_interface::StatusInput::{Last, NoLast};
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
-use crate::{
-    default__get_updated_field_constants, default__name, default__pre_hook_template,
-    default__pre_hook_circuit,
-};
+use crate::{default__name, default__get_mem, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 pub struct DeterministicSubCmpInvokePass<'d> {
@@ -25,7 +21,7 @@ impl<'d> DeterministicSubCmpInvokePass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         DeterministicSubCmpInvokePass {
             global_data,
-            memory: PassMemory::new(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, Default::default()),
             replacements: Default::default(),
         }
     }
@@ -88,9 +84,8 @@ impl Observer<Env<'_>> for DeterministicSubCmpInvokePass<'_> {
 
 impl CircuitTransformationPass for DeterministicSubCmpInvokePass<'_> {
     default__name!("DeterministicSubCmpInvokePass");
-    default__get_updated_field_constants!();
-    default__pre_hook_circuit!();
-    default__pre_hook_template!();
+    default__get_mem!();
+    default__run_template!();
 
     fn transform_address_type(&self, address: &AddressType) -> Result<AddressType, BadInterp> {
         let replacements = self.replacements.borrow();

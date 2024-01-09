@@ -5,6 +5,7 @@ use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::error::BadInterp;
+use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::{observer::Observer, env::LibraryAccess};
 use crate::bucket_interpreter::observed_visitor::ObservedVisitor;
 use crate::default__name;
@@ -44,6 +45,14 @@ impl Observer<()> for UnusedFuncRemovalPass<'_> {
 
 impl CircuitTransformationPass for UnusedFuncRemovalPass<'_> {
     default__name!("UnusedFuncRemovalPass");
+
+    fn get_mem(&self) -> &PassMemory {
+        unreachable!()
+    }
+
+    fn run_template(&self, _: &TemplateCode) -> Result<(), BadInterp> {
+        unreachable!()
+    }
 
     fn get_updated_field_constants(&self) -> Vec<String> {
         unreachable!()

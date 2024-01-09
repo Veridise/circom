@@ -10,10 +10,7 @@ use crate::bucket_interpreter::env::{Env, LibraryAccess};
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
-use crate::{
-    default__get_updated_field_constants, default__name, default__pre_hook_circuit,
-    default__pre_hook_template,
-};
+use crate::{default__name, default__run_template, default__get_mem};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 type BranchValues = BTreeMap<BucketId, Option<bool>>;
@@ -42,7 +39,7 @@ impl<'d> ConditionalFlatteningPass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         ConditionalFlatteningPass {
             global_data,
-            memory: PassMemory::new(prime, "".to_string(), Default::default()),
+            memory: PassMemory::new(prime, Default::default()),
             evaluated_conditions: Default::default(),
             branch_bucket_order: Default::default(),
             new_functions: Default::default(),
@@ -108,9 +105,8 @@ impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
 
 impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
     default__name!("ConditionalFlattening");
-    default__get_updated_field_constants!();
-    default__pre_hook_circuit!();
-    default__pre_hook_template!();
+    default__get_mem!();
+    default__run_template!();
 
     fn post_hook_circuit(&self, cir: &mut Circuit) -> Result<(), BadInterp> {
         // Add the new functions

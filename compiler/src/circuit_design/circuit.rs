@@ -118,6 +118,7 @@ impl WriteLLVMIR for Circuit {
                     void_type(producer).fn_type(&param_types, false)
                 },
             );
+            function.set_section(Some(&f.name));
 
             // Preserve names (only for generated b/c source functions use only 1 argument)
             if name.starts_with(GENERATED_FN_PREFIX) {
