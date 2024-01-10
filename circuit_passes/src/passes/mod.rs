@@ -488,8 +488,7 @@ pub trait CircuitTransformationPass {
     fn pre_hook_template(&self, template: &TemplateCode) -> Result<(), BadInterp> {
         self.get_mem().set_scope(template);
         self.get_mem().set_source_name(&template.name);
-        self.run_template(template)?;
-        Ok(())
+        self.run_template(template)
     }
 
     fn pre_hook_function(&self, function: &FunctionCode) -> Result<(), BadInterp> {
