@@ -49,7 +49,9 @@ impl ToString for FunctionCodeInfo {
 
 impl WriteLLVMIR for FunctionCodeInfo {
     fn produce_llvm_ir<'ctx, 'prod>(&self, producer: &'prod dyn LLVMIRProducer<'ctx>) -> Option<LLVMInstruction<'ctx>> {
-        println!("Generating code for {}", self.header);
+        if cfg!(debug_assertions) {
+            println!("Generating code for {}", self.header);
+        }
         Self::manage_debug_loc_from_curr(producer, self);
         let function = producer.current_function();
         let main = create_bb(producer, function, self.header.as_str());
