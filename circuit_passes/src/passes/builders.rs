@@ -78,8 +78,6 @@ pub fn build_indexed_storage_ptr_ref(
 ) -> InstructionPointer {
     //NOTE: The only way to produce a pointer value in the circom bucket structure is to represent
     //  it as a function call, either CallBucket directly or LoadBucket with a `bounded_fn` given.
-    //  The LLVM IR producer ignores the index parameter on a LoadBucket when `bounded_fn` is
-    //  given so we must use a CallBucket here with `FR_INDEX_ARR_PTR` to apply the index.
     build_custom_fn_load_bucket(bucket, FR_INDEX_ARR_PTR, addr_type, build_u32_value(bucket, index))
 }
 

@@ -807,9 +807,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         observe: bool,
     ) -> RE<'env> {
         let mut env = env;
-        let res = if bucket.symbol.eq(FR_IDENTITY_ARR_PTR) || bucket.symbol.eq(FR_INDEX_ARR_PTR) {
-            (Some(Unknown), env)
-        } else if bucket.symbol.starts_with(GENERATED_FN_PREFIX) {
+        let res = if bucket.symbol.starts_with(GENERATED_FN_PREFIX) {
             // The extracted loop body and array parameter functions can change any values in
             //  the environment via the parameters passed to it. So interpret the function and
             //  keep the resulting Env (as if the function had executed inline).
