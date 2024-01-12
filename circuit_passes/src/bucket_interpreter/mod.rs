@@ -8,7 +8,6 @@ pub(crate) mod operations;
 
 use std::cell::RefCell;
 use std::vec;
-use code_producers::llvm_elements::fr::{FR_IDENTITY_ARR_PTR, FR_INDEX_ARR_PTR};
 use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
