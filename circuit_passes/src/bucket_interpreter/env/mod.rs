@@ -268,14 +268,6 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn set_all_to_unk(self) -> Self {
-        match self {
-            Env::Standard(d) => Env::Standard(d.set_all_to_unk()),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_all_to_unk()),
-            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_all_to_unk()),
-        }
-    }
-
     /// Sets all the signals of the subcmp to UNK
     pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
         Ok(match self {

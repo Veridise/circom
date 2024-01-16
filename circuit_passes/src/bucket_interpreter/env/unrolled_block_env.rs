@@ -106,10 +106,6 @@ impl<'a> UnrolledBlockEnvData<'a> {
         new_env!(self.base.set_signal(idx, value), self.extractor)
     }
 
-    pub fn set_all_to_unk(self) -> Self {
-        new_env!(self.base.set_all_to_unk(), self.extractor)
-    }
-
     pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
         Ok(new_env!(self.base.set_subcmp_to_unk(subcmp_idx)?, self.extractor))
     }

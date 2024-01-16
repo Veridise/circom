@@ -265,10 +265,6 @@ impl<'a> ExtractedFuncEnvData<'a> {
         update_inner!(self, self.base.set_signal(idx, value))
     }
 
-    pub fn set_all_to_unk(self) -> Self {
-        update_inner!(self, self.base.set_all_to_unk())
-    }
-
     pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
         // The index here is already converted within BucketInterpreter::get_write_operations_in_store_bucket
         //  via interpreting the LocationRule and performing the PassMemory lookup on the unchanged scope

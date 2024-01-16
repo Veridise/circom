@@ -115,20 +115,6 @@ impl<'a> StandardEnvData<'a> {
         copy
     }
 
-    pub fn set_all_to_unk(self) -> Self {
-        let mut copy = self;
-        for (_, v) in copy.vars.iter_mut() {
-            *v = Value::Unknown;
-        }
-        for (_, v) in copy.signals.iter_mut() {
-            *v = Value::Unknown;
-        }
-        for (_, v) in copy.subcmps.iter_mut() {
-            v.signals.clear();
-        }
-        copy
-    }
-
     /// Sets all the signals of the subcmp to UNK
     pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
         self.update_subcmp(subcmp_idx, SubcmpEnv::reset)
