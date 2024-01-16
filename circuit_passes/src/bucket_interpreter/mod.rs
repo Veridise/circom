@@ -8,6 +8,7 @@ pub(crate) mod operations;
 
 use std::cell::RefCell;
 use std::vec;
+use code_producers::llvm_elements::fr;
 use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
@@ -807,6 +808,16 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
     ) -> RE<'env> {
         let mut env = env;
         let res = if bucket.symbol.starts_with(GENERATED_FN_PREFIX) {
+            // ASSUME: The arguments to a generated function will always be LoadBucket with 'bounded_fn'
+            //  that are intended to generate pointers or a call to some built-in function that returns
+            //  a pointer so there is no need to compute/execute their values here because a pointer
+            //  is not an actual value and thus must return Value::Unknown anyway.
+            assert!(bucket.arguments.iter().all(|a| match a.as_ref() {
+                Instruction::Load(LoadBucket { bounded_fn: Some(symbol), .. }) =>
+                    fr::is_builtin_function(symbol),
+                Instruction::Call(CallBucket { symbol, .. }) => fr::is_builtin_function(symbol),
+                _ => false,
+            }));
             // The extracted loop body and array parameter functions can change any values in
             //  the environment via the parameters passed to it. So interpret the function and
             //  keep the resulting Env (as if the function had executed inline).
