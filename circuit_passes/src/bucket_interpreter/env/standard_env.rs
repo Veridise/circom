@@ -115,9 +115,49 @@ impl<'a> StandardEnvData<'a> {
         copy
     }
 
-    /// Sets all the signals of the subcmp to UNK
-    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
-        self.update_subcmp(subcmp_idx, SubcmpEnv::reset)
+    pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        let mut copy = self;
+        if let Some(idxs) = idxs {
+            for idx in idxs {
+                copy.vars.insert(idx, Value::Unknown);
+            }
+        } else {
+            for (_, v) in copy.vars.iter_mut() {
+                *v = Value::Unknown;
+            }
+        }
+        copy
+    }
+
+    pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        let mut copy = self;
+        if let Some(idxs) = idxs {
+            for idx in idxs {
+                copy.signals.insert(idx, Value::Unknown);
+            }
+        } else {
+            for (_, v) in copy.signals.iter_mut() {
+                *v = Value::Unknown;
+            }
+        }
+        copy
+    }
+
+    pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
+        self,
+        subcmp_idxs: Option<T>,
+    ) -> Result<Self, BadInterp> {
+        let mut copy = self;
+        if let Some(idxs) = subcmp_idxs {
+            for idx in idxs {
+                copy = copy.update_subcmp(idx, SubcmpEnv::reset)?;
+            }
+        } else {
+            for (_, v) in copy.subcmps.iter_mut() {
+                v.signals.clear();
+            }
+        }
+        Ok(copy)
     }
 
     pub fn set_subcmp_signal(

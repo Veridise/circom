@@ -5,8 +5,18 @@ use compiler::intermediate_representation::ir_interface::{
     LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket, StoreBucket,
     BlockBucket, ValueBucket,
 };
-
 use super::error::BadInterp;
+
+#[macro_export]
+macro_rules! observe {
+    ($self:ident, $on_inst_fn: ident, $inst:expr, $env:ident, $observe:ident) => {
+        if $observe {
+            $self.observer.$on_inst_fn($inst, &$env)?
+        } else {
+            false
+        }
+    };
+}
 
 /// Will get called everytime some visitor is about to visit a bucket,
 /// with access to the state data prior to the execution of the bucket.

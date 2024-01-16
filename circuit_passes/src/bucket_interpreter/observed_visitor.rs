@@ -240,8 +240,7 @@ impl<'a, S> ObservedVisitor<'a, S> {
         state: &S,
         observe: bool,
     ) -> Result<(), BadInterp> {
-        let keep_observing =
-            if observe { self.observer.on_instruction(inst, state)? } else { observe };
+        let keep_observing = observe!(self, on_instruction, inst, state, observe);
         match inst.as_ref() {
             Instruction::Value(b) => self.visit_value_bucket(b, state, keep_observing),
             Instruction::Load(b) => self.visit_load_bucket(b, state, keep_observing),

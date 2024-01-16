@@ -2,14 +2,16 @@ pub mod value;
 pub mod env;
 pub mod error;
 pub mod memory;
+#[macro_use]
 pub mod observer;
 pub mod observed_visitor;
 pub(crate) mod operations;
 
 use std::cell::RefCell;
+use std::ops::Range;
 use std::vec;
-use code_producers::llvm_elements::fr;
-use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
+use code_producers::llvm_elements::{fr, array_switch};
+use code_producers::llvm_elements::stdlib::{GENERATED_FN_PREFIX, LLVM_DONOTHING_FN_NAME};
 use compiler::intermediate_representation::{Instruction, InstructionList, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
@@ -483,10 +485,16 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
     }
 
     fn _compute_load_bucket(&self, bucket: &LoadBucket, env: &Env, observe: bool) -> RC {
+        if let Some(_) = &bucket.bounded_fn {
+            // LoadBucket with 'bounded_fn' cannot be interpreted in the normal way. It
+            //  must be specific to the function. Currently, there are none that give
+            //  a known value so take the conservative approach to always return Unknown.
+            return Ok(Some(Unknown));
+        }
         match &bucket.address_type {
             AddressType::Variable => {
                 let continue_observing =
-                    if observe { self.observer.on_location_rule(&bucket.src, env)? } else { false };
+                    observe!(self, on_location_rule, &bucket.src, env, observe);
                 let idx = match &bucket.src {
                     LocationRule::Indexed { location, .. } => {
                         self._compute_instruction(location, env, continue_observing)?
@@ -495,17 +503,14 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 };
                 let idx = into_result(idx, "load source variable")?;
                 if idx.is_unknown() {
-                    Ok(Some(Unknown))
+                    return Ok(Some(Unknown));
                 } else {
-                    Ok(Some(env.get_var(idx.get_u32()?)))
+                    return Ok(Some(env.get_var(idx.get_u32()?)));
                 }
             }
             AddressType::Signal => {
-                let continue_observing = if observe {
-                    self.observer.on_location_rule(&bucket.src, &env)?
-                } else {
-                    false
-                };
+                let continue_observing =
+                    observe!(self, on_location_rule, &bucket.src, env, observe);
                 let idx = match &bucket.src {
                     LocationRule::Indexed { location, .. } => {
                         self._compute_instruction(location, env, continue_observing)?
@@ -514,19 +519,16 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 };
                 let idx = into_result(idx, "load source signal")?;
                 if idx.is_unknown() {
-                    Ok(Some(Unknown))
+                    return Ok(Some(Unknown));
                 } else {
-                    Ok(Some(env.get_signal(idx.get_u32()?)))
+                    return Ok(Some(env.get_signal(idx.get_u32()?)));
                 }
             }
             AddressType::SubcmpSignal { cmp_address, .. } => {
                 let addr = self._compute_instruction(cmp_address, env, observe)?;
                 let addr = Value::into_u32_result(addr, "load source subcomponent")?;
-                let continue_observing = if observe {
-                    self.observer.on_location_rule(&bucket.src, &env)?
-                } else {
-                    false
-                };
+                let continue_observing =
+                    observe!(self, on_location_rule, &bucket.src, env, observe);
                 let idx = match &bucket.src {
                     LocationRule::Indexed { location, .. } => {
                         let i = self._compute_instruction(location, env, continue_observing)?;
@@ -550,9 +552,9 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                         }
                     }
                 };
-                Ok(Some(env.get_subcmp_signal(addr, idx)))
+                return Ok(Some(env.get_subcmp_signal(addr, idx)));
             }
-        }
+        };
     }
 
     fn _execute_load_bucket<'env>(
@@ -569,14 +571,14 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         &self,
         address: &'env AddressType,
         location: &'env LocationRule,
+        possible_range: Option<Range<usize>>, // use None if no bounds are known
         value: Value,
         env: Env<'env>,
         observe: bool,
     ) -> Result<Env<'env>, BadInterp> {
         match address {
             AddressType::Variable => {
-                let continue_observing =
-                    if observe { self.observer.on_location_rule(location, &env)? } else { false };
+                let continue_observing = observe!(self, on_location_rule, location, env, observe);
                 let (idx, env) = match location {
                     LocationRule::Indexed { location, .. } => {
                         self._execute_instruction(location, env, continue_observing)?
@@ -585,14 +587,16 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 };
                 let idx = into_result(idx, "store destination variable")?;
                 if idx.is_unknown() {
-                    Ok(env)
+                    // All variables in the range must be marked as unknown if the index is unknown
+                    return Ok(env.set_vars_to_unk(possible_range));
                 } else {
-                    Ok(env.set_var(idx.get_u32()?, value))
+                    let idx = idx.get_u32()?;
+                    assert!(possible_range.is_none() || possible_range.unwrap().contains(&idx));
+                    return Ok(env.set_var(idx, value));
                 }
             }
             AddressType::Signal => {
-                let continue_observing =
-                    if observe { self.observer.on_location_rule(location, &env)? } else { false };
+                let continue_observing = observe!(self, on_location_rule, location, env, observe);
                 let (idx, env) = match location {
                     LocationRule::Indexed { location, .. } => {
                         self._execute_instruction(location, env, continue_observing)?
@@ -601,16 +605,18 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 };
                 let idx = into_result(idx, "store destination signal")?;
                 if idx.is_unknown() {
-                    Ok(env)
+                    // All signals in the range must be marked as unknown if the index is unknown
+                    return Ok(env.set_signals_to_unk(possible_range));
                 } else {
-                    Ok(env.set_signal(idx.get_u32()?, value))
+                    let idx = idx.get_u32()?;
+                    assert!(possible_range.is_none() || possible_range.unwrap().contains(&idx));
+                    return Ok(env.set_signal(idx, value));
                 }
             }
             AddressType::SubcmpSignal { cmp_address, input_information, .. } => {
                 let (addr, env) = self._execute_instruction(cmp_address, env, observe)?;
                 let addr = Value::into_u32_result(addr, "store destination subcomponent")?;
-                let continue_observing =
-                    if observe { self.observer.on_location_rule(location, &env)? } else { false };
+                let continue_observing = observe!(self, on_location_rule, location, env, observe);
                 let (idx, env, sub_cmp_name) = match location {
                     LocationRule::Indexed { location, template_header } => {
                         let (i, e) =
@@ -668,13 +674,20 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                         _ => {}
                     }
                 }
-                Ok(env)
+                return Ok(env);
             }
-        }
+        };
     }
 
-    fn _compute_store_bucket(&self, _: &StoreBucket, _: &Env, _: bool) -> RC {
-        //ASSUME: A StoreBucket always updates the Env so "compute" is NOT sufficient.
+    fn _compute_store_bucket(&self, bucket: &StoreBucket, _: &Env, _: bool) -> RC {
+        // A StoreBucket that uses the "llvm.donothing" function to
+        //  represent a no-op instruction will not update the Env.
+        if let Some(f) = &bucket.bounded_fn {
+            if f.eq(LLVM_DONOTHING_FN_NAME) {
+                return Ok(None);
+            }
+        }
+        // Other StoreBucket will update the Env so "compute" is NOT sufficient.
         error::modifies_env_err_result()
     }
 
@@ -684,16 +697,39 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> RE<'env> {
-        let (src, env) = self._execute_instruction(&bucket.src, env, observe)?;
-        let src = into_result(src, "store source value")?;
-        let env = self.store_value_in_address(
-            &bucket.dest_address_type,
-            &bucket.dest,
-            src,
-            env,
-            observe,
-        )?;
-        Ok((None, env))
+        if let Some(f) = &bucket.bounded_fn {
+            if f.eq(LLVM_DONOTHING_FN_NAME) {
+                // A StoreBucket that uses the "llvm.donothing" function to
+                //  represent a no-op instruction will not update the Env.
+                return Ok((None, env));
+            } else if let Some(r) = array_switch::get_array_switch_range(f) {
+                // Here the index is unknown so, regardless of the value,
+                //  all values in the range must be set to Unknown.
+                let env = self.store_value_in_address(
+                    &bucket.dest_address_type,
+                    &bucket.dest,
+                    Some(r),
+                    Unknown,
+                    env,
+                    observe,
+                )?;
+                return Ok((None, env));
+            } else {
+                todo!("Unexpected bounded_fn: {}", f);
+            }
+        } else {
+            let (src, env) = self._execute_instruction(&bucket.src, env, observe)?;
+            let src = into_result(src, "store source value")?;
+            let env = self.store_value_in_address(
+                &bucket.dest_address_type,
+                &bucket.dest,
+                None,
+                src,
+                env,
+                observe,
+            )?;
+            return Ok((None, env));
+        }
     }
 
     fn _impl_compute_bucket<'env, E>(
@@ -844,6 +880,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 .store_value_in_address(
                     &final_data.dest_address_type,
                     &final_data.dest,
+                    None,
                     into_result(res.0, "function return value")?,
                     res.1,
                     observe,
@@ -895,16 +932,10 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 &mut subcmps,
                 &env,
             )?;
-
-            for var in vars {
-                env = env.set_var(var, Unknown);
-            }
-            for signal in signals {
-                env = env.set_signal(signal, Unknown);
-            }
-            for subcmp_id in subcmps {
-                env = env.set_subcmp_to_unk(subcmp_id)?;
-            }
+            env = env
+                .set_vars_to_unk(Some(vars))
+                .set_signals_to_unk(Some(signals))
+                .set_subcmps_to_unk(Some(subcmps))?;
         }
 
         Ok((value, env))
@@ -1136,16 +1167,10 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             |s, b, e, v| {
                 let mut env = e;
                 let (vars, signals, subcmps) = s.get_write_operations_in_body(b, &env)?;
-
-                for var in vars {
-                    env = env.set_var(var, Unknown);
-                }
-                for signal in signals {
-                    env = env.set_signal(signal, Unknown);
-                }
-                for subcmp_id in subcmps {
-                    env = env.set_subcmp_to_unk(subcmp_id)?;
-                }
+                env = env
+                    .set_vars_to_unk(Some(vars))
+                    .set_signals_to_unk(Some(signals))
+                    .set_subcmps_to_unk(Some(subcmps))?;
                 Ok((v, env))
             },
         )
@@ -1235,8 +1260,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
     }
 
     fn _compute_instruction(&self, inst: &InstructionPointer, env: &Env, observe: bool) -> RC {
-        let continue_observing =
-            if observe { self.observer.on_instruction(inst, env)? } else { observe };
+        let continue_observing = observe!(self, on_instruction, inst, env, observe);
         match inst.as_ref() {
             Instruction::Value(b) => self._compute_value_bucket(b, env, continue_observing),
             Instruction::Load(b) => self._compute_load_bucket(b, env, continue_observing),
@@ -1285,8 +1309,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> RE<'env> {
-        let continue_observing =
-            if observe { self.observer.on_instruction(inst, &env)? } else { observe };
+        let continue_observing = observe!(self, on_instruction, inst, env, observe);
         match inst.as_ref() {
             Instruction::Value(b) => self._execute_value_bucket(b, env, continue_observing),
             Instruction::Load(b) => self._execute_load_bucket(b, env, continue_observing),
