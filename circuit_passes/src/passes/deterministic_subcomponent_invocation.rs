@@ -87,27 +87,14 @@ impl CircuitTransformationPass for DeterministicSubCmpInvokePass<'_> {
     default__get_mem!();
     default__run_template!();
 
-    fn transform_address_type(&self, address: &AddressType) -> Result<AddressType, BadInterp> {
-        let replacements = self.replacements.borrow();
-        match address {
-            AddressType::SubcmpSignal {
-                cmp_address,
-                uniform_parallel_value,
-                is_output,
-                input_information,
-                counter_override,
-            } => Ok(AddressType::SubcmpSignal {
-                cmp_address: self.transform_instruction(&cmp_address)?,
-                uniform_parallel_value: uniform_parallel_value.clone(),
-                is_output: *is_output,
-                input_information: if replacements.contains_key(&address) {
-                    InputInformation::Input { status: replacements[&address].clone() }
-                } else {
-                    input_information.clone()
-                },
-                counter_override: *counter_override,
-            }),
-            x => Ok(x.clone()),
+    fn transform_subcmp_input_information(
+        &self,
+        subcmp_address: &AddressType,
+        inp_info: &InputInformation,
+    ) -> InputInformation {
+        if let Some(s) = self.replacements.borrow().get(subcmp_address) {
+            return InputInformation::Input { status: s.clone() };
         }
+        self.transform_subcmp_input_information_default(subcmp_address, inp_info)
     }
 }

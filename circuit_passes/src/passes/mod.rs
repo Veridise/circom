@@ -160,6 +160,14 @@ pub trait CircuitTransformationPass {
 
     fn transform_body(
         &self,
+        header: &String,
+        body: &InstructionList,
+    ) -> Result<InstructionList, BadInterp> {
+        self.transform_body_default(header, body)
+    }
+
+    fn transform_body_default(
+        &self,
         _header: &String,
         body: &InstructionList,
     ) -> Result<InstructionList, BadInterp> {
@@ -195,6 +203,13 @@ pub trait CircuitTransformationPass {
         &self,
         bucket: &ValueBucket,
     ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_value_bucket_default(bucket)
+    }
+
+    fn transform_value_bucket_default(
+        &self,
+        bucket: &ValueBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(ValueBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -207,7 +222,30 @@ pub trait CircuitTransformationPass {
         .allocate())
     }
 
+    fn transform_subcmp_input_information(
+        &self,
+        subcmp_address: &AddressType,
+        inp_info: &InputInformation,
+    ) -> InputInformation {
+        self.transform_subcmp_input_information_default(subcmp_address, inp_info)
+    }
+
+    fn transform_subcmp_input_information_default(
+        &self,
+        _subcmp_address: &AddressType,
+        inp_info: &InputInformation,
+    ) -> InputInformation {
+        inp_info.clone()
+    }
+
     fn transform_address_type(&self, address: &AddressType) -> Result<AddressType, BadInterp> {
+        self.transform_address_type_default(address)
+    }
+
+    fn transform_address_type_default(
+        &self,
+        address: &AddressType,
+    ) -> Result<AddressType, BadInterp> {
         Ok(match address {
             AddressType::SubcmpSignal {
                 cmp_address,
@@ -219,7 +257,8 @@ pub trait CircuitTransformationPass {
                 cmp_address: self.transform_instruction(cmp_address)?,
                 uniform_parallel_value: uniform_parallel_value.clone(),
                 is_output: *is_output,
-                input_information: input_information.clone(),
+                input_information: self
+                    .transform_subcmp_input_information(address, input_information),
                 counter_override: *counter_override,
             },
             x => x.clone(),
@@ -227,6 +266,14 @@ pub trait CircuitTransformationPass {
     }
 
     fn transform_location_rule(
+        &self,
+        bucket_id: &BucketId,
+        location_rule: &LocationRule,
+    ) -> Result<LocationRule, BadInterp> {
+        self.transform_location_rule_default(bucket_id, location_rule)
+    }
+
+    fn transform_location_rule_default(
         &self,
         _bucket_id: &BucketId,
         location_rule: &LocationRule,
@@ -243,7 +290,30 @@ pub trait CircuitTransformationPass {
         })
     }
 
+    fn transform_bounded_fn(
+        &self,
+        bucket_id: &BucketId,
+        bounded_fn: &Option<String>,
+    ) -> Option<String> {
+        self.transform_bounded_fn_default(bucket_id, bounded_fn)
+    }
+
+    fn transform_bounded_fn_default(
+        &self,
+        _bucket_id: &BucketId,
+        bounded_fn: &Option<String>,
+    ) -> Option<String> {
+        bounded_fn.clone()
+    }
+
     fn transform_load_bucket(&self, bucket: &LoadBucket) -> Result<InstructionPointer, BadInterp> {
+        self.transform_load_bucket_default(bucket)
+    }
+
+    fn transform_load_bucket_default(
+        &self,
+        bucket: &LoadBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(LoadBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -251,12 +321,19 @@ pub trait CircuitTransformationPass {
             message_id: bucket.message_id,
             address_type: self.transform_address_type(&bucket.address_type)?,
             src: self.transform_location_rule(&bucket.id, &bucket.src)?,
-            bounded_fn: bucket.bounded_fn.clone(),
+            bounded_fn: self.transform_bounded_fn(&bucket.id, &bucket.bounded_fn),
         }
         .allocate())
     }
 
     fn transform_store_bucket(
+        &self,
+        bucket: &StoreBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_store_bucket_default(bucket)
+    }
+
+    fn transform_store_bucket_default(
         &self,
         bucket: &StoreBucket,
     ) -> Result<InstructionPointer, BadInterp> {
@@ -270,12 +347,19 @@ pub trait CircuitTransformationPass {
             dest_address_type: self.transform_address_type(&bucket.dest_address_type)?,
             dest: self.transform_location_rule(&bucket.id, &bucket.dest)?,
             src: self.transform_instruction(&bucket.src)?,
-            bounded_fn: bucket.bounded_fn.clone(),
+            bounded_fn: self.transform_bounded_fn(&bucket.id, &bucket.bounded_fn),
         }
         .allocate())
     }
 
     fn transform_compute_bucket(
+        &self,
+        bucket: &ComputeBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_compute_bucket_default(bucket)
+    }
+
+    fn transform_compute_bucket_default(
         &self,
         bucket: &ComputeBucket,
     ) -> Result<InstructionPointer, BadInterp> {
@@ -296,6 +380,14 @@ pub trait CircuitTransformationPass {
         bucket_id: &BucketId,
         final_data: &FinalData,
     ) -> Result<FinalData, BadInterp> {
+        self.transform_final_data_default(bucket_id, final_data)
+    }
+
+    fn transform_final_data_default(
+        &self,
+        bucket_id: &BucketId,
+        final_data: &FinalData,
+    ) -> Result<FinalData, BadInterp> {
         Ok(FinalData {
             context: final_data.context,
             dest_is_output: final_data.dest_is_output,
@@ -309,6 +401,14 @@ pub trait CircuitTransformationPass {
         bucket_id: &BucketId,
         return_type: &ReturnType,
     ) -> Result<ReturnType, BadInterp> {
+        self.transform_return_type_default(bucket_id, return_type)
+    }
+
+    fn transform_return_type_default(
+        &self,
+        bucket_id: &BucketId,
+        return_type: &ReturnType,
+    ) -> Result<ReturnType, BadInterp> {
         Ok(match return_type {
             ReturnType::Final(f) => ReturnType::Final(self.transform_final_data(bucket_id, f)?),
             x => x.clone(),
@@ -316,6 +416,13 @@ pub trait CircuitTransformationPass {
     }
 
     fn transform_call_bucket(&self, bucket: &CallBucket) -> Result<InstructionPointer, BadInterp> {
+        self.transform_call_bucket_default(bucket)
+    }
+
+    fn transform_call_bucket_default(
+        &self,
+        bucket: &CallBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(CallBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -331,6 +438,13 @@ pub trait CircuitTransformationPass {
     }
 
     fn transform_branch_bucket(
+        &self,
+        bucket: &BranchBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_branch_bucket_default(bucket)
+    }
+
+    fn transform_branch_bucket_default(
         &self,
         bucket: &BranchBucket,
     ) -> Result<InstructionPointer, BadInterp> {
@@ -350,6 +464,13 @@ pub trait CircuitTransformationPass {
         &self,
         bucket: &ReturnBucket,
     ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_return_bucket_default(bucket)
+    }
+
+    fn transform_return_bucket_default(
+        &self,
+        bucket: &ReturnBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(ReturnBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -365,6 +486,13 @@ pub trait CircuitTransformationPass {
         &self,
         bucket: &AssertBucket,
     ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_assert_bucket_default(bucket)
+    }
+
+    fn transform_assert_bucket_default(
+        &self,
+        bucket: &AssertBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(AssertBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -375,7 +503,14 @@ pub trait CircuitTransformationPass {
         .allocate())
     }
 
-    fn transform_log_bucket_arg(
+    fn transform_log_bucket_args(
+        &self,
+        args: &Vec<LogBucketArg>,
+    ) -> Result<Vec<LogBucketArg>, BadInterp> {
+        self.transform_log_bucket_args_default(args)
+    }
+
+    fn transform_log_bucket_args_default(
         &self,
         args: &Vec<LogBucketArg>,
     ) -> Result<Vec<LogBucketArg>, BadInterp> {
@@ -390,17 +525,31 @@ pub trait CircuitTransformationPass {
     }
 
     fn transform_log_bucket(&self, bucket: &LogBucket) -> Result<InstructionPointer, BadInterp> {
+        self.transform_log_bucket_default(bucket)
+    }
+
+    fn transform_log_bucket_default(
+        &self,
+        bucket: &LogBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(LogBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
-            argsprint: self.transform_log_bucket_arg(&bucket.argsprint)?,
+            argsprint: self.transform_log_bucket_args(&bucket.argsprint)?,
         }
         .allocate())
     }
 
     fn transform_loop_bucket(&self, bucket: &LoopBucket) -> Result<InstructionPointer, BadInterp> {
+        self.transform_loop_bucket_default(bucket)
+    }
+
+    fn transform_loop_bucket_default(
+        &self,
+        bucket: &LoopBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(LoopBucket {
             id: new_id(),
             source_file_id: bucket.source_file_id,
@@ -413,6 +562,13 @@ pub trait CircuitTransformationPass {
     }
 
     fn transform_create_cmp_bucket(
+        &self,
+        bucket: &CreateCmpBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_create_cmp_bucket_default(bucket)
+    }
+
+    fn transform_create_cmp_bucket_default(
         &self,
         bucket: &CreateCmpBucket,
     ) -> Result<InstructionPointer, BadInterp> {
@@ -441,22 +597,64 @@ pub trait CircuitTransformationPass {
         .allocate())
     }
 
+    fn transform_substitution_constraint(
+        &self,
+        i: &InstructionPointer,
+    ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_substitution_constraint_default(i)
+    }
+
+    fn transform_substitution_constraint_default(
+        &self,
+        i: &InstructionPointer,
+    ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_instruction(i)
+    }
+
+    fn transform_equality_constraint(
+        &self,
+        i: &InstructionPointer,
+    ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_equality_constraint_default(i)
+    }
+
+    fn transform_equality_constraint_default(
+        &self,
+        i: &InstructionPointer,
+    ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_instruction(i)
+    }
+
     fn transform_constraint_bucket(
+        &self,
+        bucket: &ConstraintBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_constraint_bucket_default(bucket)
+    }
+
+    fn transform_constraint_bucket_default(
         &self,
         bucket: &ConstraintBucket,
     ) -> Result<InstructionPointer, BadInterp> {
         Ok(match bucket {
             ConstraintBucket::Substitution(i) => {
-                ConstraintBucket::Substitution(self.transform_instruction(i)?)
+                ConstraintBucket::Substitution(self.transform_substitution_constraint(i)?)
             }
             ConstraintBucket::Equality(i) => {
-                ConstraintBucket::Equality(self.transform_instruction(i)?)
+                ConstraintBucket::Equality(self.transform_equality_constraint(i)?)
             }
         }
         .allocate())
     }
 
     fn transform_block_bucket(
+        &self,
+        bucket: &BlockBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
+        self.transform_block_bucket_default(bucket)
+    }
+
+    fn transform_block_bucket_default(
         &self,
         bucket: &BlockBucket,
     ) -> Result<InstructionPointer, BadInterp> {
@@ -472,7 +670,14 @@ pub trait CircuitTransformationPass {
         .allocate())
     }
 
-    fn transform_nop_bucket(&self, _bucket: &NopBucket) -> Result<InstructionPointer, BadInterp> {
+    fn transform_nop_bucket(&self, bucket: &NopBucket) -> Result<InstructionPointer, BadInterp> {
+        self.transform_nop_bucket_default(bucket)
+    }
+
+    fn transform_nop_bucket_default(
+        &self,
+        _bucket: &NopBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
         Ok(NopBucket { id: new_id() }.allocate())
     }
 

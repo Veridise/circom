@@ -2,6 +2,8 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
+// OBSERVE: The A_run function first assigns the 5 array values to 'lvars' followed by the scalar constant.
+//          Then it calls @fr_copy_n to copy the array and finally a @__constraint_values call for each index.
 template A(n, S) {
     signal output out[n];
 

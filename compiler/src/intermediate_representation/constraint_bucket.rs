@@ -11,6 +11,8 @@ use crate::intermediate_representation::{Instruction, InstructionPointer, SExp, 
 use crate::intermediate_representation::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
 use crate::translating_traits::{WriteC, WriteLLVMIR, WriteWasm};
 
+use super::BucketId;
+
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ConstraintBucket {
     Substitution(InstructionPointer),
@@ -30,6 +32,10 @@ impl ConstraintBucket {
             ConstraintBucket::Substitution(i) => i,
             ConstraintBucket::Equality(i) => i,
         }
+    }
+
+    pub fn get_id(&self) -> BucketId {
+        self.unwrap().get_id()
     }
 }
 

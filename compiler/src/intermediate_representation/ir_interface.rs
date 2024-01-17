@@ -1,3 +1,4 @@
+use super::BucketId;
 pub use super::address_type::{AddressType, InputInformation, StatusInput};
 pub use super::assert_bucket::AssertBucket;
 pub use super::branch_bucket::BranchBucket;
@@ -307,6 +308,26 @@ impl Instruction {
             .label_name(idx),
             Block(BlockBucket { label, .. }) => format!("{}{}", label, idx),
             Nop(_) => format!("nop{}", idx),
+        }
+    }
+
+    pub fn get_id(&self) -> BucketId {
+        use Instruction::*;
+        match self {
+            Value(b) => b.id,
+            Load(b) => b.id,
+            Store(b) => b.id,
+            Compute(b) => b.id,
+            Call(b) => b.id,
+            Branch(b) => b.id,
+            Return(b) => b.id,
+            Assert(b) => b.id,
+            Log(b) => b.id,
+            Loop(b) => b.id,
+            CreateCmp(b) => b.id,
+            Constraint(b) => b.get_id(),
+            Block(b) => b.id,
+            Nop(b) => b.id,
         }
     }
 }
