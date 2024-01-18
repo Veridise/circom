@@ -6,10 +6,13 @@ use code_producers::llvm_elements::IndexMapping;
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
+use compiler::num_bigint::BigInt;
+use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::env::{Env, LibraryAccess};
 use crate::bucket_interpreter::observer::Observer;
 use crate::passes::GlobalPassData;
+use super::InterpreterFlags;
 use super::error::BadInterp;
 
 pub struct PassMemory {
@@ -33,13 +36,13 @@ pub struct PassMemory {
     ///
     component_addr_index_mapping: RefCell<HashMap<String, IndexMapping>>,
     ///
-    prime: String,
+    prime: BigInt,
 }
 
 impl PassMemory {
     pub fn new(prime: String, io_map: TemplateInstanceIOMap) -> Self {
         PassMemory {
-            prime,
+            prime: UsefulConstants::new(&prime).get_p().clone(),
             io_map: RefCell::new(io_map),
             current_scope: Default::default(),
             current_source_name: Default::default(),
@@ -60,6 +63,20 @@ impl PassMemory {
         self.build_interpreter_with_scope(
             global_data,
             observer,
+            InterpreterFlags::default(),
+            self.current_scope.borrow().to_string(),
+        )
+    }
+    pub fn build_interpreter_with_flags<'a, 'd: 'a>(
+        &'a self,
+        global_data: &'d RefCell<GlobalPassData>,
+        observer: &'a dyn for<'e> Observer<Env<'e>>,
+        flags: InterpreterFlags,
+    ) -> BucketInterpreter {
+        self.build_interpreter_with_scope(
+            global_data,
+            observer,
+            flags,
             self.current_scope.borrow().to_string(),
         )
     }
@@ -68,9 +85,10 @@ impl PassMemory {
         &'a self,
         global_data: &'d RefCell<GlobalPassData>,
         observer: &'a dyn for<'e> Observer<Env<'e>>,
+        flags: InterpreterFlags,
         scope: String,
     ) -> BucketInterpreter {
-        BucketInterpreter::init(global_data, observer, self, scope)
+        BucketInterpreter::init(global_data, observer, flags, self, scope)
     }
 
     pub fn set_scope(&self, template: &TemplateCode) {
@@ -120,7 +138,7 @@ impl PassMemory {
             .replace(circuit.llvm_data.component_index_mapping.clone());
     }
 
-    pub fn get_prime(&self) -> &String {
+    pub fn get_prime(&self) -> &BigInt {
         &self.prime
     }
 

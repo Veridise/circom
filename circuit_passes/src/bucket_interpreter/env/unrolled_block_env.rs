@@ -106,12 +106,19 @@ impl<'a> UnrolledBlockEnvData<'a> {
         new_env!(self.base.set_signal(idx, value), self.extractor)
     }
 
-    pub fn set_all_to_unk(self) -> Self {
-        new_env!(self.base.set_all_to_unk(), self.extractor)
+    pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        new_env!(self.base.set_vars_to_unk(idxs), self.extractor)
     }
 
-    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
-        Ok(new_env!(self.base.set_subcmp_to_unk(subcmp_idx)?, self.extractor))
+    pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        new_env!(self.base.set_signals_to_unk(idxs), self.extractor)
+    }
+
+    pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
+        self,
+        subcmp_idxs: Option<T>,
+    ) -> Result<Self, BadInterp> {
+        Ok(new_env!(self.base.set_subcmps_to_unk(subcmp_idxs)?, self.extractor))
     }
 
     pub fn set_subcmp_signal(

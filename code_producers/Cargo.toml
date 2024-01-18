@@ -19,3 +19,4 @@ inkwell = { git = "https://github.com/Veridise/inkwell", branch = "master", feat
 llvm-sys = { version = "130", features = ["prefer-dynamic"] }
 ansi_term = "0.12.1"
 uuid = "1.3.4"
+lazy-regex = "3.1.0"

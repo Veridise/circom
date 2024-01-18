@@ -62,6 +62,10 @@ impl Value {
         }
     }
 
+    pub fn is_known(&self) -> bool {
+        !self.is_unknown()
+    }
+
     pub fn is_u32(&self) -> bool {
         match self {
             KnownU32(_) => true,

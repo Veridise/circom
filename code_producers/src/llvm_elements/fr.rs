@@ -50,7 +50,7 @@ pub const FR_NULL_I256_PTR: &str = "null_i256_ptr";
 thread_local!(
     /// Contains all "built-in" functions that can be generated in
     /// the Circom IR prior to the stage where LLVM IR is generated.
-    pub static BUILT_IN_NAMES: std::collections::HashSet<&'static str> = {
+    static BUILT_IN_NAMES: std::collections::HashSet<&'static str> = {
       let mut result =  std::collections::HashSet::default();
       result.insert(FR_INDEX_ARR_PTR);
       result.insert(FR_IDENTITY_ARR_PTR);
@@ -61,6 +61,10 @@ thread_local!(
       result
     }
 );
+
+pub fn is_builtin_function(name: &str) -> bool {
+    BUILT_IN_NAMES.with(|s| s.contains(name))
+}
 
 macro_rules! fr_nullary_op {
     ($name: expr, $producer: expr, $retTy: expr) => {{

@@ -179,15 +179,7 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
         if let Some(unrolled_loop) = self.replacements.borrow().get(&bucket.id) {
             return self.transform_instruction(unrolled_loop);
         }
-        Ok(LoopBucket {
-            id: new_id(),
-            source_file_id: bucket.source_file_id,
-            line: bucket.line,
-            message_id: bucket.message_id,
-            continue_condition: self.transform_instruction(&bucket.continue_condition)?,
-            body: self.transform_instructions(&bucket.body)?,
-        }
-        .allocate())
+        self.transform_loop_bucket_default(bucket)
     }
 }
 

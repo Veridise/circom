@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashSet;
-use code_producers::llvm_elements::fr::BUILT_IN_NAMES;
+use code_producers::llvm_elements::fr;
 use compiler::intermediate_representation::InstructionPointer;
 use compiler::intermediate_representation::ir_interface::*;
 use super::env::LibraryAccess;
@@ -88,7 +88,7 @@ impl<'a, S> ObservedVisitor<'a, S> {
             let name = &bucket.symbol;
             if self.visited_funcs.borrow_mut().insert(name.clone()) {
                 // Skip those that cannot be visited (i.e. not yet in Circuit.functions)
-                if !BUILT_IN_NAMES.with(|f| f.contains(name.as_str())) {
+                if !fr::is_builtin_function(name) {
                     self.visit_instructions(
                         &libs.get_function(name).body,
                         state,
@@ -240,8 +240,7 @@ impl<'a, S> ObservedVisitor<'a, S> {
         state: &S,
         observe: bool,
     ) -> Result<(), BadInterp> {
-        let keep_observing =
-            if observe { self.observer.on_instruction(inst, state)? } else { observe };
+        let keep_observing = observe!(self, on_instruction, inst, state, observe);
         match inst.as_ref() {
             Instruction::Value(b) => self.visit_value_bucket(b, state, keep_observing),
             Instruction::Load(b) => self.visit_load_bucket(b, state, keep_observing),

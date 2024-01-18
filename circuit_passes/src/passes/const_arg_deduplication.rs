@@ -209,9 +209,8 @@ impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
             for i in body_iter {
                 new_body.push(self.transform_instruction(i)?)
             }
-            Ok(new_body)
-        } else {
-            self.transform_instructions(body)
+            return Ok(new_body);
         }
+        self.transform_body_default(header, body)
     }
 }

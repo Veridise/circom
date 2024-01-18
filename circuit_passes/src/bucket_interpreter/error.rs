@@ -136,3 +136,14 @@ pub fn add_loc_if_err<R, B: ObtainMeta>(
         new_r
     })
 }
+
+#[inline]
+pub fn map_ok<A, B, F>(r: Result<A, BadInterp>, f: F) -> Result<B, BadInterp>
+where
+    F: Fn(A) -> Result<B, BadInterp>,
+{
+    match r {
+        Ok(a) => f(a),
+        Err(e) => Err(e),
+    }
+}

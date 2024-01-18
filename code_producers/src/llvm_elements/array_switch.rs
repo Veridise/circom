@@ -6,7 +6,7 @@ use super::types::bigint_type;
 mod array_switch {
     use std::convert::TryInto;
     use std::ops::Range;
-
+    use lazy_regex::regex_captures;
     use crate::llvm_elements::functions::{create_bb, create_function};
     use crate::llvm_elements::instructions::{
         create_call, create_return_void, create_store, create_gep, create_load, create_return,
@@ -23,6 +23,14 @@ mod array_switch {
 
     pub fn get_store_symbol(index_range: &Range<usize>) -> String {
         format!("__array_store__{}_to_{}", index_range.start, index_range.end)
+    }
+
+    pub fn get_array_switch_range(name: &str) -> Option<Range<usize>> {
+        regex_captures!(r"__array_(load|store)__(\d+)_to_(\d+)", name).map(|(_, _, start, end)| {
+            let start = start.parse::<usize>().unwrap();
+            let end = end.parse::<usize>().unwrap();
+            start..end
+        })
     }
 
     pub fn create_array_load_fn<'a>(producer: &dyn LLVMIRProducer<'a>, index_range: &Range<usize>) {
@@ -129,13 +137,19 @@ pub fn array_ptr_ty<'a>(producer: &dyn LLVMIRProducer<'a>) -> PointerType<'a> {
     bigint_ty.array_type(0).ptr_type(Default::default())
 }
 
-pub fn load_array_load_fns<'a>(producer: &dyn LLVMIRProducer<'a>, scheduled_array_loads: &HashSet<Range<usize>>) {
+pub fn load_array_load_fns<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    scheduled_array_loads: &HashSet<Range<usize>>,
+) {
     for range in scheduled_array_loads {
         array_switch::create_array_load_fn(producer, range);
     }
 }
 
-pub fn load_array_stores_fns<'a>(producer: &dyn LLVMIRProducer<'a>, scheduled_array_stores: &HashSet<Range<usize>>) {
+pub fn load_array_stores_fns<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    scheduled_array_stores: &HashSet<Range<usize>>,
+) {
     for range in scheduled_array_stores {
         array_switch::create_array_store_fn(producer, range);
     }
@@ -147,4 +161,8 @@ pub fn get_array_load_name(index_range: &Range<usize>) -> String {
 
 pub fn get_array_store_name(index_range: &Range<usize>) -> String {
     array_switch::get_store_symbol(index_range)
+}
+
+pub fn get_array_switch_range(name: &str) -> Option<Range<usize>> {
+    array_switch::get_array_switch_range(name)
 }

@@ -265,15 +265,24 @@ impl<'a> ExtractedFuncEnvData<'a> {
         update_inner!(self, self.base.set_signal(idx, value))
     }
 
-    pub fn set_all_to_unk(self) -> Self {
-        update_inner!(self, self.base.set_all_to_unk())
+    pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        // Local variables are referenced in the normal way
+        update_inner!(self, self.base.set_vars_to_unk(idxs))
     }
 
-    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
-        // The index here is already converted within BucketInterpreter::get_write_operations_in_store_bucket
+    pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        // Signals are referenced in the normal way
+        update_inner!(self, self.base.set_signals_to_unk(idxs))
+    }
+
+    pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
+        self,
+        subcmp_idxs: Option<T>,
+    ) -> Result<Self, BadInterp> {
+        // The indexes here are already converted within BucketInterpreter::get_write_operations_in_store_bucket
         //  via interpreting the LocationRule and performing the PassMemory lookup on the unchanged scope
         //  (per comment in BucketInterpreter::run_function_loopbody).
-        Ok(update_inner!(self, self.base.set_subcmp_to_unk(subcmp_idx)?))
+        Ok(update_inner!(self, self.base.set_subcmps_to_unk(subcmp_idxs)?))
     }
 
     pub fn set_subcmp_signal(

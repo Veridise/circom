@@ -174,19 +174,7 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
                 .allocate());
             }
         }
-        // Default case: no change
-        Ok(CallBucket {
-            id: new_id(),
-            source_file_id: bucket.source_file_id,
-            line: bucket.line,
-            message_id: bucket.message_id,
-            symbol: bucket.symbol.to_string(),
-            argument_types: bucket.argument_types.clone(),
-            arguments: self.transform_instructions(&bucket.arguments)?,
-            arena_size: bucket.arena_size,
-            return_info: self.transform_return_type(&bucket.id, &bucket.return_info)?,
-        }
-        .allocate())
+        self.transform_call_bucket_default(bucket)
     }
 
     fn transform_branch_bucket(
@@ -206,16 +194,6 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
             };
             return self.transform_block_bucket(&block);
         }
-        // Default case: no change
-        Ok(BranchBucket {
-            id: new_id(),
-            source_file_id: bucket.source_file_id,
-            line: bucket.line,
-            message_id: bucket.message_id,
-            cond: self.transform_instruction(&bucket.cond)?,
-            if_branch: self.transform_instructions(&bucket.if_branch)?,
-            else_branch: self.transform_instructions(&bucket.else_branch)?,
-        }
-        .allocate())
+        self.transform_branch_bucket_default(bucket)
     }
 }

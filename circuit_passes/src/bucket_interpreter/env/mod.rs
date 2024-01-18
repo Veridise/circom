@@ -268,20 +268,33 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn set_all_to_unk(self) -> Self {
+    /// Sets the given variables to Value::Unknown, for all signals if None.
+    pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         match self {
-            Env::Standard(d) => Env::Standard(d.set_all_to_unk()),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_all_to_unk()),
-            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_all_to_unk()),
+            Env::Standard(d) => Env::Standard(d.set_vars_to_unk(idxs)),
+            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_vars_to_unk(idxs)),
+            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_vars_to_unk(idxs)),
         }
     }
 
-    /// Sets all the signals of the subcmp to UNK
-    pub fn set_subcmp_to_unk(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
+    /// Sets the given signals to Value::Unknown, for all signals if None.
+    pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        match self {
+            Env::Standard(d) => Env::Standard(d.set_signals_to_unk(idxs)),
+            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_signals_to_unk(idxs)),
+            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_signals_to_unk(idxs)),
+        }
+    }
+
+    /// Sets all the signals of the given subcomponent(s) to Value::Unknown, for all subcomponents if None.
+    pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
+        self,
+        subcmp_idxs: Option<T>,
+    ) -> Result<Self, BadInterp> {
         Ok(match self {
-            Env::Standard(d) => Env::Standard(d.set_subcmp_to_unk(subcmp_idx)?),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_subcmp_to_unk(subcmp_idx)?),
-            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_subcmp_to_unk(subcmp_idx)?),
+            Env::Standard(d) => Env::Standard(d.set_subcmps_to_unk(subcmp_idxs)?),
+            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_subcmps_to_unk(subcmp_idxs)?),
+            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_subcmps_to_unk(subcmp_idxs)?),
         })
     }
 

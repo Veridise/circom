@@ -58,34 +58,36 @@ pub fn build_storage_ptr_ref(
     bucket: &dyn ObtainMeta,
     addr_type: AddressType,
 ) -> InstructionPointer {
+    //NOTE: The only way to produce a pointer value in the circom bucket structure is to represent
+    //  it as a function call, either CallBucket directly or LoadBucket with a 'bounded_fn' given.
+    //NOTE: The 'FR_IDENTITY_ARR_PTR' function has only one parameter so the offset "location"
+    //  parameter will be ignored by the LLVM IR producer. Using 'usize::MAX' here to make it more
+    //  obvious if a bug creeps in due to future changes.
     build_custom_fn_load_bucket(
         bucket,
         FR_IDENTITY_ARR_PTR,
         addr_type,
-        build_u32_value(bucket, 0), //use index 0 to ref the entire storage array
+        build_u32_value(bucket, usize::MAX),
     )
 }
 
-//NOTE: When the 'bounded_fn' for LoadBucket is Some(_), the index parameter
-//  is ignored so we must instead use `FR_INDEX_ARR_PTR` to apply the index.
-//  Uses of that function can be inlined later.
-// NOTE: Must start with `GENERATED_FN_PREFIX` to use `ExtractedFunctionCtx`
 pub fn build_indexed_storage_ptr_ref(
     bucket: &dyn ObtainMeta,
     addr_type: AddressType,
     index: AddressOffset,
 ) -> InstructionPointer {
-    build_call(
-        bucket,
-        FR_INDEX_ARR_PTR,
-        vec![build_storage_ptr_ref(bucket, addr_type), build_u32_value(bucket, index)],
-    )
+    //NOTE: The only way to produce a pointer value in the circom bucket structure is to represent
+    //  it as a function call, either CallBucket directly or LoadBucket with a `bounded_fn` given.
+    build_custom_fn_load_bucket(bucket, FR_INDEX_ARR_PTR, addr_type, build_u32_value(bucket, index))
 }
 
 pub fn build_subcmp_counter_storage_ptr_ref(
     bucket: &dyn ObtainMeta,
     sub_cmp_id: InstructionPointer,
 ) -> InstructionPointer {
+    //NOTE: The 'FR_PTR_CAST_I32_I256' function has only one parameter so the offset "location"
+    //  parameter will be ignored by the LLVM IR producer. Using 'usize::MAX' here to make it more
+    //  obvious if a bug creeps in due to future changes.
     build_custom_fn_load_bucket(
         bucket,
         FR_PTR_CAST_I32_I256,
@@ -96,7 +98,7 @@ pub fn build_subcmp_counter_storage_ptr_ref(
             input_information: InputInformation::NoInput,
             counter_override: true,
         },
-        build_u32_value(bucket, usize::MAX), //index is ignored for these
+        build_u32_value(bucket, usize::MAX),
     )
 }
 
