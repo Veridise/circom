@@ -40,8 +40,8 @@ template B(n) {
 
 component main = B(2);
 
-// NOTE: The loop in template A is the only that that is extracted for
-//  now becauseMapped locations currently block body extraction.
+// NOTE: The loop in template A is the only that is extracted for now
+//  because mapped locations currently block loop body extraction.
 //
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
