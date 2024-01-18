@@ -152,7 +152,7 @@ impl IncludesGraph {
         let path = path.iter().map(|file| -> String {
             let file = format!("{}", file.display());
             let (_, file) = file.rsplit_once("/").unwrap();
-            file.clone().to_string()
+            file.to_string()
         }).collect::<Vec<String>>();
         let mut path_covered = format!("{}", path[0]);
         for file in &path[1..] {
