@@ -16,6 +16,7 @@ pub struct SimplificationPass<'d> {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     global_data: &'d RefCell<GlobalPassData>,
     memory: PassMemory,
+    within_constraint: RefCell<bool>,
     compute_replacements: RefCell<HashMap<BucketId, Value>>,
     call_replacements: RefCell<HashMap<BucketId, Value>>,
     constraint_eq_replacements: RefCell<HashMap<BucketId, Vec<Value>>>,
@@ -27,6 +28,7 @@ impl<'d> SimplificationPass<'d> {
         SimplificationPass {
             global_data,
             memory: PassMemory::new(prime, Default::default()),
+            within_constraint: Default::default(),
             compute_replacements: Default::default(),
             call_replacements: Default::default(),
             constraint_eq_replacements: Default::default(),
@@ -34,11 +36,11 @@ impl<'d> SimplificationPass<'d> {
         }
     }
 
-    fn build_interpreter(&self, all_signals_unknown: bool) -> BucketInterpreter {
+    fn build_interpreter(&self) -> BucketInterpreter {
         self.memory.build_interpreter_with_flags(
             self.global_data,
             self,
-            InterpreterFlags { all_signals_unknown },
+            InterpreterFlags { all_signals_unknown: self.within_constraint.borrow().to_owned() },
         )
     }
 
@@ -54,7 +56,7 @@ impl<'d> SimplificationPass<'d> {
 
 impl Observer<Env<'_>> for SimplificationPass<'_> {
     fn on_compute_bucket(&self, bucket: &ComputeBucket, env: &Env) -> Result<bool, BadInterp> {
-        let interp = self.build_interpreter(false);
+        let interp = self.build_interpreter();
         let v = interp.compute_compute_bucket(bucket, env, false)?;
         let v = v.expect("Compute bucket must produce a value!");
         if !v.is_unknown() {
@@ -66,7 +68,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
     }
 
     fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> Result<bool, BadInterp> {
-        let interp = self.build_interpreter(false);
+        let interp = self.build_interpreter();
         if let Some(v) = interp.compute_call_bucket(bucket, env, false)? {
             // Call buckets may not return a value directly
             if !v.is_unknown() {
@@ -82,6 +84,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
         bucket: &ConstraintBucket,
         env: &Env,
     ) -> Result<bool, BadInterp> {
+        self.within_constraint.replace(true);
         // Match the expected structure of ConstraintBucket instances but don't fail if there's something different.
         match bucket {
             ConstraintBucket::Equality(e) => {
@@ -89,7 +92,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                     if let Instruction::Compute(ComputeBucket { stack, .. }) = evaluate.as_ref() {
                         // Compute Value for each instruction on the stack and store it
                         let mut values = Vec::with_capacity(stack.len());
-                        let interp = self.build_interpreter(true);
+                        let interp = self.build_interpreter();
                         for inst in stack {
                             let v = interp.compute_instruction(inst, env, false)?;
                             let v = v.expect("Compute bucket operand must produce a value!");
@@ -106,15 +109,17 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                 if let Instruction::Store(bucket) = e.as_ref() {
                     // Check the context size to only simplify scalar stores.
                     if bucket.context.size <= 1 {
-                        // Interpret the RHS expression, treating all signals as unknown to ensure they are preserved
+                        // Interpret the RHS expression, treating all signals as unknown to ensure they are preserved.
                         let src = {
-                            let interp = self.build_interpreter(true);
-                            let v = interp.compute_instruction(&bucket.src, env, false)?;
+                            let interp = self.build_interpreter();
+                            // Leave this Observer enabled so that ComputeBucket w/in the RHS expression
+                            //  could be simplified if the entire expression will not be simplified.
+                            let v = interp.compute_instruction(&bucket.src, env, true)?;
                             v.expect("Store bucket source must produce a value!")
                         };
 
-                        // Interpret the LHS memory reference normally
-                        let interp = self.build_interpreter(false);
+                        // Interpret the LHS memory reference
+                        let interp = self.build_interpreter();
                         let dest = interp.compute_location_index(
                             &bucket.dest,
                             env,
@@ -141,6 +146,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                 }
             }
         }
+        self.within_constraint.replace(false);
         Ok(false) // always return false because nothing else within needs to be checked
     }
 

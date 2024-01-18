@@ -534,26 +534,21 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             AddressType::Signal => {
                 let continue_observing =
                     observe!(self, on_location_rule, &bucket.src, env, observe);
-                if self.flags.all_signals_unknown {
-                    return Ok(Some(Unknown));
-                }
                 let idx = self.compute_location_index(
                     &bucket.src,
                     env,
                     continue_observing,
                     "load source signal",
                 )?;
-                if idx.is_unknown() {
+                // NOTE: The 'all_signals_unknown' flag must be checked at the very
+                //  end so that the remainder of the expression is still visited.
+                if self.flags.all_signals_unknown || idx.is_unknown() {
                     return Ok(Some(Unknown));
                 } else {
                     return Ok(Some(env.get_signal(idx.get_u32()?)));
                 }
             }
             AddressType::SubcmpSignal { cmp_address, .. } => {
-                if self.flags.all_signals_unknown {
-                    observe!(self, on_location_rule, &bucket.src, env, observe);
-                    return Ok(Some(Unknown));
-                }
                 let addr = self._compute_instruction(cmp_address, env, observe)?;
                 let addr = Value::into_u32_result(addr, "load source subcomponent")?;
                 let continue_observing =
@@ -581,7 +576,13 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                         }
                     }
                 };
-                return Ok(Some(env.get_subcmp_signal(addr, idx)));
+                // NOTE: The 'all_signals_unknown' flag must be checked at the very
+                //  end so that the remainder of the expression is still visited.
+                if self.flags.all_signals_unknown {
+                    return Ok(Some(Unknown));
+                } else {
+                    return Ok(Some(env.get_subcmp_signal(addr, idx)));
+                }
             }
         };
     }
