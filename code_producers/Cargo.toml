@@ -13,9 +13,9 @@ handlebars = "4.1.3"
 lz_fnv = "0.1.2"
 num-bigint-dig = "0.6.0"
 serde_json = "1.0.68"
-inkwell = { git = "https://github.com/Veridise/inkwell", branch = "master", features = ["llvm13-0"] }
+inkwell = { git = "https://github.com/TheDan64/inkwell", tag = "0.2.0", features = ["llvm13-0"] }
 # Cause llvm-sys to link against LLVM dynamically if possible. This helps prevent some linker errors on macOS.
-# TODO: update our fork of inkwell since upstream has a feature flag for this now.
+# NOTE: inkwell has the "llvm13-0-prefer-dynamic" feature flag for this if we update to commit 4030f764f1c889f36429ac02ef32e04fcfa8ce33.
 llvm-sys = { version = "130", features = ["prefer-dynamic"] }
 ansi_term = "0.12.1"
 uuid = "1.3.4"

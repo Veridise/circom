@@ -654,8 +654,8 @@ dependencies = [
 
 [[package]]
 name = "inkwell"
-version = "0.1.1"
-source = "git+https://github.com/Veridise/inkwell?branch=master#828650aed2077753a74dad9a6d81188ad271e078"
+version = "0.2.0"
+source = "git+https://github.com/TheDan64/inkwell?tag=0.2.0#04fac601505b572e1b0af2890dfb262f40afe814"
 dependencies = [
  "either",
  "inkwell_internals",
@@ -667,12 +667,12 @@ dependencies = [
 
 [[package]]
 name = "inkwell_internals"
-version = "0.7.0"
-source = "git+https://github.com/Veridise/inkwell?branch=master#828650aed2077753a74dad9a6d81188ad271e078"
+version = "0.8.0"
+source = "git+https://github.com/TheDan64/inkwell?tag=0.2.0#04fac601505b572e1b0af2890dfb262f40afe814"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn",
 ]
 
 [[package]]
@@ -1014,7 +1014,7 @@ dependencies = [
  "pest_meta",
  "proc-macro2",
  "quote",
- "syn 2.0.46",
+ "syn",
 ]
 
 [[package]]
@@ -1357,7 +1357,7 @@ checksum = "a3385e45322e8f9931410f01b3031ec534c3947d0e94c18049af4d9f9907d4e0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.46",
+ "syn",
 ]
 
 [[package]]
@@ -1429,17 +1429,6 @@ dependencies = [
  "program_structure",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "syn"
-version = "1.0.109"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
 ]
 
 [[package]]
@@ -1518,7 +1507,7 @@ checksum = "fa0faa943b50f3db30a20aa7e265dbc66076993efed8463e8de414e5d06d3471"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.46",
+ "syn",
 ]
 
 [[package]]
