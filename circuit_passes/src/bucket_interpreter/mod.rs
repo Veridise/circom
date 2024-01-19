@@ -438,16 +438,9 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 self.get_write_operations_in_body_rec(&bucket.body, vars, signals, subcmps, env)?
             }
             Instruction::CreateCmp(_) => {} // Should not have a StoreBucket inside
-            Instruction::Constraint(bucket) => self.get_write_operations_in_inst_rec(
-                match bucket {
-                    ConstraintBucket::Substitution(i) => i,
-                    ConstraintBucket::Equality(i) => i,
-                },
-                vars,
-                signals,
-                subcmps,
-                env,
-            )?,
+            Instruction::Constraint(bucket) => {
+                self.get_write_operations_in_inst_rec(bucket.unwrap(), vars, signals, subcmps, env)?
+            }
             Instruction::Block(bucket) => {
                 self.get_write_operations_in_body_rec(&bucket.body, vars, signals, subcmps, env)?
             }
@@ -1242,14 +1235,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: &Env,
         observe: bool,
     ) -> RC {
-        self._compute_instruction(
-            match bucket {
-                ConstraintBucket::Substitution(i) => i,
-                ConstraintBucket::Equality(i) => i,
-            },
-            env,
-            observe,
-        )
+        self._compute_instruction(bucket.unwrap(), env, observe)
     }
 
     fn _execute_constraint_bucket<'env>(
@@ -1258,14 +1244,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> RE<'env> {
-        self._execute_instruction(
-            match bucket {
-                ConstraintBucket::Substitution(i) => i,
-                ConstraintBucket::Equality(i) => i,
-            },
-            env,
-            observe,
-        )
+        self._execute_instruction(bucket.unwrap(), env, observe)
     }
 
     fn _compute_block_bucket(&self, bucket: &BlockBucket, env: &Env, observe: bool) -> RC {

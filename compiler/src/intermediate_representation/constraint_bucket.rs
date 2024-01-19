@@ -2,9 +2,12 @@ use code_producers::c_elements::CProducer;
 use code_producers::llvm_elements::types::bigint_type;
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::llvm_elements::{
-    LLVMInstruction, new_constraint, to_basic_metadata_enum, LLVMIRProducer, AnyType, new_constraint_with_name,
+    LLVMInstruction, new_constraint, to_basic_metadata_enum, LLVMIRProducer, AnyType,
+    new_constraint_with_name,
 };
-use code_producers::llvm_elements::instructions::{create_call, create_load, get_instruction_arg, get_data_from_gep, create_gep};
+use code_producers::llvm_elements::instructions::{
+    create_call, create_load, get_instruction_arg, get_data_from_gep, create_gep,
+};
 use code_producers::llvm_elements::stdlib::{CONSTRAINT_VALUE_FN_NAME, CONSTRAINT_VALUES_FN_NAME};
 use code_producers::wasm_elements::WASMProducer;
 use crate::intermediate_representation::{Instruction, InstructionPointer, SExp, ToSExp, UpdateId};
@@ -53,38 +56,19 @@ impl Allocate for ConstraintBucket {
 
 impl ObtainMeta for ConstraintBucket {
     fn get_source_file_id(&self) -> &Option<usize> {
-        match self {
-            ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i,
-        }
-        .get_source_file_id()
+        self.unwrap().get_source_file_id()
     }
     fn get_line(&self) -> usize {
-        match self {
-            ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i,
-        }
-        .get_line()
+        self.unwrap().get_line()
     }
     fn get_message_id(&self) -> usize {
-        match self {
-            ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i,
-        }
-        .get_message_id()
+        self.unwrap().get_message_id()
     }
 }
 
 impl ToString for ConstraintBucket {
     fn to_string(&self) -> String {
-        format!(
-            "CONSTRAINT:{}",
-            match self {
-                ConstraintBucket::Substitution(i) => i,
-                ConstraintBucket::Equality(i) => i,
-            }
-            .to_string()
-        )
+        format!("CONSTRAINT:{}", self.unwrap().to_string())
     }
 }
 
@@ -107,13 +91,11 @@ impl WriteLLVMIR for ConstraintBucket {
     ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
-        // TODO: Create the constraint call
-        let prev = match self {
-            ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i,
-        }
-        .produce_llvm_ir(producer)
-        .expect("A constrained instruction MUST produce a value!");
+        // Create the constraint call
+        let inner = self
+            .unwrap()
+            .produce_llvm_ir(producer)
+            .expect("A constrained instruction MUST produce a value!");
 
         const STORE_SRC_IDX: u32 = 1;
         const STORE_DST_IDX: u32 = 0;
@@ -131,14 +113,22 @@ impl WriteLLVMIR for ConstraintBucket {
                             assert_ne!(0, arg_ty.size, "size should be non-zero");
                         }
                         1
-                    },
-                    _ => unreachable!("Instruction {:#?} should not be used for constraint substitution", i),
+                    }
+                    _ => unreachable!(
+                        "Instruction {:#?} should not be used for constraint substitution",
+                        i
+                    ),
                 };
                 assert_ne!(0, size, "must have non-zero size");
                 if size == 1 {
-                    let lhs = get_instruction_arg(prev.into_instruction_value(), STORE_DST_IDX);
-                    assert_eq!(bigint_type(producer).as_any_type_enum(), lhs.get_type(), "wrong type");
-                    let rhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_SRC_IDX);
+                    let lhs = get_instruction_arg(inner.into_instruction_value(), STORE_DST_IDX);
+                    assert_eq!(
+                        bigint_type(producer).as_any_type_enum(),
+                        lhs.get_type(),
+                        "wrong type"
+                    );
+                    let rhs_ptr =
+                        get_instruction_arg(inner.into_instruction_value(), STORE_SRC_IDX);
                     let rhs = create_load(producer, rhs_ptr.into_pointer_value());
                     let constr = new_constraint(producer);
                     let call = create_call(
@@ -152,9 +142,17 @@ impl WriteLLVMIR for ConstraintBucket {
                     );
                     Some(call)
                 } else {
-                    let lhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_DST_IDX).into_pointer_value();
-                    assert_eq!(bigint_type(producer).ptr_type(Default::default()), lhs_ptr.get_type(), "wrong type");
-                    let rhs_ptr = get_instruction_arg(prev.into_instruction_value(), STORE_SRC_IDX).into_pointer_value();
+                    let lhs_ptr =
+                        get_instruction_arg(inner.into_instruction_value(), STORE_DST_IDX)
+                            .into_pointer_value();
+                    assert_eq!(
+                        bigint_type(producer).ptr_type(Default::default()),
+                        lhs_ptr.get_type(),
+                        "wrong type"
+                    );
+                    let rhs_ptr =
+                        get_instruction_arg(inner.into_instruction_value(), STORE_SRC_IDX)
+                            .into_pointer_value();
                     let mut last_call = None;
                     let (lhs_ptr, lhs_base_off) = get_data_from_gep(producer, lhs_ptr);
                     let (rhs_ptr, rhs_base_off) = get_data_from_gep(producer, rhs_ptr);
@@ -165,7 +163,10 @@ impl WriteLLVMIR for ConstraintBucket {
                         let rhs_gep = create_gep(producer, rhs_ptr, &[zero(producer), rhs_idx]);
                         let lhs = create_load(producer, lhs_gep.into_pointer_value());
                         let rhs = create_load(producer, rhs_gep.into_pointer_value());
-                        let constr = new_constraint_with_name(producer, format!("constraint_{}", i).as_str());
+                        let constr = new_constraint_with_name(
+                            producer,
+                            format!("constraint_{}", i).as_str(),
+                        );
                         last_call = Some(create_call(
                             producer,
                             CONSTRAINT_VALUES_FN_NAME,
@@ -179,10 +180,9 @@ impl WriteLLVMIR for ConstraintBucket {
 
                     last_call
                 }
-
             }
             ConstraintBucket::Equality(_) => {
-                let bool = get_instruction_arg(prev.into_instruction_value(), ASSERT_IDX);
+                let bool = get_instruction_arg(inner.into_instruction_value(), ASSERT_IDX);
                 let constr = new_constraint(producer);
                 let call = create_call(
                     producer,
@@ -197,20 +197,12 @@ impl WriteLLVMIR for ConstraintBucket {
 
 impl WriteWasm for ConstraintBucket {
     fn produce_wasm(&self, producer: &WASMProducer) -> Vec<String> {
-        match self {
-            ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i,
-        }
-        .produce_wasm(producer)
+        self.unwrap().produce_wasm(producer)
     }
 }
 
 impl WriteC for ConstraintBucket {
     fn produce_c(&self, producer: &CProducer, is_parallel: Option<bool>) -> (Vec<String>, String) {
-        match self {
-            ConstraintBucket::Substitution(i) => i,
-            ConstraintBucket::Equality(i) => i,
-        }
-        .produce_c(producer, is_parallel)
+        self.unwrap().produce_c(producer, is_parallel)
     }
 }

@@ -996,7 +996,7 @@ fn translate_variable(
     state: &mut State,
     context: &Context,
 ) -> InstructionPointer {
-    use Expression::{Variable};
+    use Expression::Variable;
     let var_expr = expression.clone();
     if let Variable { meta, name, access, .. } = expression {
         let tag_access = check_tag_access(&name, &access, state);

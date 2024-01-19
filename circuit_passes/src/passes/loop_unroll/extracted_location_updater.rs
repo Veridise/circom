@@ -315,13 +315,7 @@ impl ExtractedFunctionLocationUpdater<'_> {
         bucket: &mut ConstraintBucket,
         to_insert_after: &mut InstructionList,
     ) {
-        self._check_instruction(
-            match bucket {
-                ConstraintBucket::Substitution(i) => i,
-                ConstraintBucket::Equality(i) => i,
-            },
-            to_insert_after,
-        );
+        self._check_instruction(bucket.unwrap_mut(), to_insert_after);
     }
 
     fn _check_block_bucket(
