@@ -11,6 +11,7 @@ use code_producers::llvm_elements::instructions::{
 };
 use code_producers::llvm_elements::stdlib::{CONSTRAINT_VALUE_FN_NAME, CONSTRAINT_VALUES_FN_NAME};
 use code_producers::wasm_elements::WASMProducer;
+use crate::intermediate_representation::call_bucket::ReturnType;
 use crate::intermediate_representation::{Instruction, InstructionPointer, SExp, ToSExp, UpdateId};
 use crate::intermediate_representation::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
 use crate::translating_traits::{WriteC, WriteLLVMIR, WriteWasm};
@@ -130,18 +131,13 @@ impl WriteLLVMIR for ConstraintBucket {
                 let size = match i.as_ref() {
                     Instruction::Store(b) => b.context.size,
                     Instruction::Call(b) => {
-                        for arg_ty in &b.argument_types {
-                            if arg_ty.size > 1 {
-                                todo!("not yet handling call arg array logic");
-                            }
-                            assert_ne!(0, arg_ty.size, "size should be non-zero");
+                        if let ReturnType::Final(f) = &b.return_info {
+                            f.context.size
+                        } else {
+                            1
                         }
-                        1
                     }
-                    _ => unreachable!(
-                        "Instruction {:#?} should not be used for constraint substitution",
-                        i
-                    ),
+                    _ => unreachable!("Invalid constraint substitution instruction {:#?}", i),
                 };
                 assert_ne!(0, size, "must have non-zero size");
                 if size == 1 {
