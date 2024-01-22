@@ -13,9 +13,9 @@ use inkwell::debug_info::{DebugInfoBuilder, DICompileUnit};
 use inkwell::module::Module;
 use inkwell::passes::PassManager;
 use inkwell::types::{AnyTypeEnum, BasicType, BasicTypeEnum, IntType};
-use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntValue, PointerValue};
+use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntValue};
 pub use inkwell::types::AnyType;
-pub use inkwell::values::{AnyValue, AnyValueEnum, FunctionValue, InstructionOpcode};
+pub use inkwell::values::{AnyValue, AnyValueEnum, FunctionValue, InstructionOpcode, PointerValue};
 pub use inkwell::debug_info::AsDIScope;
 pub use inkwell::module::Linkage;
 
@@ -240,10 +240,7 @@ pub fn new_constraint<'a>(producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a>
 
 #[inline]
 pub fn any_value_wraps_basic_value(v: AnyValueEnum) -> bool {
-    match BasicValueEnum::try_from(v) {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    BasicValueEnum::try_from(v).is_ok()
 }
 
 #[inline]
@@ -263,12 +260,8 @@ pub fn to_basic_enum<'a, T: AnyValue<'a>>(v: T) -> BasicValueEnum<'a> {
 
 #[inline]
 pub fn to_basic_metadata_enum(value: AnyValueEnum) -> BasicMetadataValueEnum {
-    match BasicMetadataValueEnum::try_from(value) {
-        Ok(v) => v,
-        Err(_) => {
-            panic!("Attempted to convert a value that does not support BasicMetadataValueEnum")
-        }
-    }
+    BasicMetadataValueEnum::try_from(value)
+        .expect("Attempted to convert a value that does not support BasicMetadataValueEnum")
 }
 
 #[inline]

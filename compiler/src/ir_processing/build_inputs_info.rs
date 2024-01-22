@@ -1,5 +1,5 @@
 use crate::intermediate_representation::ir_interface::*;
-use std::collections::{HashSet};
+use std::collections::HashSet;
 
 type ComponentsSet = HashSet<String>;
 
@@ -56,11 +56,7 @@ pub fn visit_constraint(bucket: &mut ConstraintBucket,
                         unknown_last_component: &mut ComponentsSet,
                         found_unknown_address: bool,
                         inside_loop: bool) -> bool {
-    let x = match bucket {
-        ConstraintBucket::Substitution(i) => i,
-        ConstraintBucket::Equality(i) => i
-    };
-    visit_instruction(x, known_last_component, unknown_last_component, found_unknown_address, inside_loop)
+    visit_instruction(bucket.unwrap_mut(), known_last_component, unknown_last_component, found_unknown_address, inside_loop)
 }
 
 pub fn visit_branch(

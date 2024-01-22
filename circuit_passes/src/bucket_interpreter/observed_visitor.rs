@@ -147,14 +147,7 @@ impl<'a, S> ObservedVisitor<'a, S> {
         state: &S,
         observe: bool,
     ) -> Result<(), BadInterp> {
-        self.visit_instruction(
-            match bucket {
-                ConstraintBucket::Substitution(i) => i,
-                ConstraintBucket::Equality(i) => i,
-            },
-            state,
-            observe,
-        )?;
+        self.visit_instruction(bucket.unwrap(), state, observe)?;
         Ok(())
     }
 

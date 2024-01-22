@@ -301,11 +301,7 @@ impl Instruction {
             CreateCmp(_) => format!("create_cmp{}", idx),
             Log(_) => format!("log{}", idx),
             // We use the label name of the wrapped instruction
-            Constraint(v) => match v {
-                ConstraintBucket::Substitution(i) => i,
-                ConstraintBucket::Equality(i) => i,
-            }
-            .label_name(idx),
+            Constraint(v) => v.unwrap().label_name(idx),
             Block(BlockBucket { label, .. }) => format!("{}{}", label, idx),
             Nop(_) => format!("nop{}", idx),
         }
