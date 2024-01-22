@@ -1,15 +1,15 @@
+use std::convert::TryFrom;
 use inkwell::basic_block::BasicBlock;
 use inkwell::IntPredicate::{EQ, NE, SLT, SGT, SLE, SGE};
 use inkwell::types::{AnyTypeEnum, PointerType, IntType};
 use inkwell::values::{
-    AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue,
-    InstructionOpcode, InstructionValue, IntMathValue, IntValue, PointerValue,
+    AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, FunctionValue, InstructionOpcode,
+    InstructionValue, IntMathValue, IntValue, PointerValue,
 };
 use crate::llvm_elements::LLVMIRProducer;
 use crate::llvm_elements::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
 use crate::llvm_elements::functions::create_bb;
 use crate::llvm_elements::types::{bigint_type, i32_type};
-use crate::llvm_elements::values::zero;
 
 use super::types::bool_type;
 
@@ -832,31 +832,30 @@ pub fn create_switch<'a>(
     producer.builder().build_switch(value, else_block, cases)
 }
 
-/// Extracts the pointer and the second index of a gep instruction
-/// getelementptr %ptr, 0, %idx ---> (%ptr, %idx)
-pub fn get_data_from_gep<'a>(
-    producer: &dyn LLVMIRProducer<'a>,
-    gep: PointerValue<'a>,
-) -> (PointerValue<'a>, usize) {
-    let inst = gep.as_instruction().expect("GEP has to be an instruction!");
-    debug_assert!(inst.get_opcode() == InstructionOpcode::GetElementPtr);
-    let ptr = inst
+/// Extracts the pointer and the indexes of a gep instruction
+/// getelementptr %ptr, 0, %idx ---> (%ptr, [0, %idx])
+pub fn get_data_from_gep<'a>(gep: PointerValue<'a>) -> (PointerValue<'a>, Vec<u64>) {
+    let inst = gep.as_instruction().expect("expected an instruction!");
+    debug_assert!(inst.get_opcode() == InstructionOpcode::GetElementPtr, "expected a GEP");
+    let base_ptr = inst
         .get_operand(0)
-        .expect("Pointer is missing in GEP")
+        .expect("Base pointer is missing in GEP")
         .expect_left("Pointer value must be a basic value!")
         .into_pointer_value();
-    let fst_idx = inst
-        .get_operand(1)
-        .expect("First index is missing in GEP")
-        .expect_left("First index must be a basic value!");
-    debug_assert!(fst_idx == zero(producer));
-    let op = inst.get_operand(2);
-    let idx = op
-        .expect("Second index is missing in GEP that is meant to be a signal")
-        .expect_left("Second index must be a basic value!");
-    let n = match idx {
-        BasicValueEnum::IntValue(v) => v.get_sign_extended_constant(),
-        _ => panic!("Second index must be an integer value!"),
-    };
-    (ptr, n.expect("Could not load the integer value of the IntValue!") as usize)
+
+    let count = inst.get_num_operands();
+    let mut ret = Vec::with_capacity(count as usize);
+    for i in 1..count {
+        let idx = inst
+            .get_operand(i)
+            .expect(format!("Missing operand {} in GEP", i).as_str())
+            .expect_left(format!("Operand {} is not a basic value", i).as_str())
+            .into_int_value()
+            .get_sign_extended_constant()
+            .expect(format!("Operand {} is not a constant int value", i).as_str());
+        let idx = u64::try_from(idx)
+            .expect(format!("Value of operand {} is too large: {}", i, idx).as_str());
+        ret.push(idx);
+    }
+    (base_ptr, ret)
 }

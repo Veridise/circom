@@ -1,9 +1,10 @@
+use std::convert::TryFrom;
 use code_producers::c_elements::CProducer;
 use code_producers::llvm_elements::types::bigint_type;
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::llvm_elements::{
-    LLVMInstruction, new_constraint, to_basic_metadata_enum, LLVMIRProducer, AnyType,
-    new_constraint_with_name,
+    AnyType, AnyValueEnum, InstructionOpcode, LLVMInstruction, LLVMIRProducer, PointerValue,
+    new_constraint, to_basic_metadata_enum, new_constraint_with_name,
 };
 use code_producers::llvm_elements::instructions::{
     create_call, create_load, get_instruction_arg, get_data_from_gep, create_gep,
@@ -13,7 +14,6 @@ use code_producers::wasm_elements::WASMProducer;
 use crate::intermediate_representation::{Instruction, InstructionPointer, SExp, ToSExp, UpdateId};
 use crate::intermediate_representation::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
 use crate::translating_traits::{WriteC, WriteLLVMIR, WriteWasm};
-
 use super::BucketId;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -39,6 +39,23 @@ impl ConstraintBucket {
 
     pub fn get_id(&self) -> BucketId {
         self.unwrap().get_id()
+    }
+
+    fn new_offset_gep<'a>(
+        producer: &dyn LLVMIRProducer<'a>,
+        base_ptr: PointerValue<'a>,
+        idxs: &Vec<u64>,
+        offset: u64,
+    ) -> AnyValueEnum<'a> {
+        let indices = match idxs[..] {
+            // If there was no 0 index in the original GEP, don't create one for this GEP
+            [i] => vec![create_literal_u32(producer, i + offset)],
+            // Add initial index 0 if the original GEP had it
+            [0, i] => vec![zero(producer), create_literal_u32(producer, i + offset)],
+            // No other case should happen
+            _ => panic!("Unexpected indexing {:?} on {}", idxs, base_ptr),
+        };
+        create_load(producer, create_gep(producer, base_ptr, &indices).into_pointer_value())
     }
 }
 
@@ -84,6 +101,16 @@ impl UpdateId for ConstraintBucket {
     }
 }
 
+macro_rules! debug_assert_bigint_type {
+    ($producer:ident, $type:expr) => {
+        debug_assert_eq!(
+            bigint_type($producer).as_any_type_enum(),
+            $type,
+            "expected bigint value type"
+        );
+    };
+}
+
 impl WriteLLVMIR for ConstraintBucket {
     fn produce_llvm_ir<'a, 'b>(
         &self,
@@ -96,10 +123,7 @@ impl WriteLLVMIR for ConstraintBucket {
             .unwrap()
             .produce_llvm_ir(producer)
             .expect("A constrained instruction MUST produce a value!");
-
-        const STORE_SRC_IDX: u32 = 1;
-        const STORE_DST_IDX: u32 = 0;
-        const ASSERT_IDX: u32 = 0;
+        let inner = inner.into_instruction_value();
 
         match self {
             ConstraintBucket::Substitution(i) => {
@@ -121,48 +145,52 @@ impl WriteLLVMIR for ConstraintBucket {
                 };
                 assert_ne!(0, size, "must have non-zero size");
                 if size == 1 {
-                    let lhs = get_instruction_arg(inner.into_instruction_value(), STORE_DST_IDX);
-                    assert_eq!(
-                        bigint_type(producer).as_any_type_enum(),
-                        lhs.get_type(),
-                        "wrong type"
+                    //ASSERT: It's a STORE like: store i256 %1, i256* %2, align 4
+                    assert_eq!(inner.get_opcode(), InstructionOpcode::Store);
+                    const STORE_VAL_IDX: u32 = 0;
+                    const STORE_PTR_IDX: u32 = 1;
+
+                    let stored_val = get_instruction_arg(inner, STORE_VAL_IDX);
+                    debug_assert_bigint_type!(producer, stored_val.get_type());
+                    let loaded_val = create_load(
+                        producer,
+                        get_instruction_arg(inner, STORE_PTR_IDX).into_pointer_value(),
                     );
-                    let rhs_ptr =
-                        get_instruction_arg(inner.into_instruction_value(), STORE_SRC_IDX);
-                    let rhs = create_load(producer, rhs_ptr.into_pointer_value());
+                    debug_assert_bigint_type!(producer, loaded_val.get_type());
                     let constr = new_constraint(producer);
                     let call = create_call(
                         producer,
                         CONSTRAINT_VALUES_FN_NAME,
                         &[
-                            to_basic_metadata_enum(lhs),
-                            to_basic_metadata_enum(rhs),
+                            to_basic_metadata_enum(stored_val),
+                            to_basic_metadata_enum(loaded_val),
                             to_basic_metadata_enum(constr),
                         ],
                     );
                     Some(call)
                 } else {
-                    let lhs_ptr =
-                        get_instruction_arg(inner.into_instruction_value(), STORE_DST_IDX)
-                            .into_pointer_value();
-                    assert_eq!(
-                        bigint_type(producer).ptr_type(Default::default()),
-                        lhs_ptr.get_type(),
-                        "wrong type"
-                    );
-                    let rhs_ptr =
-                        get_instruction_arg(inner.into_instruction_value(), STORE_SRC_IDX)
-                            .into_pointer_value();
+                    //ASSERT: It's a CALL like: @fr_copy_n(i256* %3, i256* %2, i32 2)
+                    assert_eq!(inner.get_opcode(), InstructionOpcode::Call);
+                    const COPY_SRC_IDX: u32 = 0;
+                    const COPY_DST_IDX: u32 = 1;
+
+                    let src_ptr = get_instruction_arg(inner, COPY_SRC_IDX).into_pointer_value();
+                    debug_assert_bigint_type!(producer, src_ptr.get_type().get_element_type());
+                    let dst_ptr = get_instruction_arg(inner, COPY_DST_IDX).into_pointer_value();
+                    debug_assert_bigint_type!(producer, dst_ptr.get_type().get_element_type());
+                    //NOTE: These pointers will normally be something like:
+                    //      getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
+                    //  but within an extracted loop body function they could have only a single index:
+                    //      getelementptr i256, i256* %subfix_0, i32 0
+                    let (src_ptr, src_idxs) = get_data_from_gep(src_ptr);
+                    let (dst_ptr, dst_idxs) = get_data_from_gep(dst_ptr);
+
                     let mut last_call = None;
-                    let (lhs_ptr, lhs_base_off) = get_data_from_gep(producer, lhs_ptr);
-                    let (rhs_ptr, rhs_base_off) = get_data_from_gep(producer, rhs_ptr);
                     for i in 0..size {
-                        let lhs_idx = create_literal_u32(producer, (lhs_base_off + i) as u64);
-                        let rhs_idx = create_literal_u32(producer, (rhs_base_off + i) as u64);
-                        let lhs_gep = create_gep(producer, lhs_ptr, &[zero(producer), lhs_idx]);
-                        let rhs_gep = create_gep(producer, rhs_ptr, &[zero(producer), rhs_idx]);
-                        let lhs = create_load(producer, lhs_gep.into_pointer_value());
-                        let rhs = create_load(producer, rhs_gep.into_pointer_value());
+                        let idx = u64::try_from(i)
+                            .expect(format!("failed to convert to u64: {}", i).as_str());
+                        let src = Self::new_offset_gep(producer, src_ptr, &src_idxs, idx);
+                        let dst = Self::new_offset_gep(producer, dst_ptr, &dst_idxs, idx);
                         let constr = new_constraint_with_name(
                             producer,
                             format!("constraint_{}", i).as_str(),
@@ -171,25 +199,20 @@ impl WriteLLVMIR for ConstraintBucket {
                             producer,
                             CONSTRAINT_VALUES_FN_NAME,
                             &[
-                                to_basic_metadata_enum(lhs),
-                                to_basic_metadata_enum(rhs),
+                                to_basic_metadata_enum(src),
+                                to_basic_metadata_enum(dst),
                                 to_basic_metadata_enum(constr),
                             ],
                         ));
                     }
-
                     last_call
                 }
             }
             ConstraintBucket::Equality(_) => {
-                let bool = get_instruction_arg(inner.into_instruction_value(), ASSERT_IDX);
-                let constr = new_constraint(producer);
-                let call = create_call(
-                    producer,
-                    CONSTRAINT_VALUE_FN_NAME,
-                    &[to_basic_metadata_enum(bool), to_basic_metadata_enum(constr)],
-                );
-                Some(call)
+                const ASSERT_IDX: u32 = 0;
+                let assert = to_basic_metadata_enum(get_instruction_arg(inner, ASSERT_IDX));
+                let constr = to_basic_metadata_enum(new_constraint(producer));
+                Some(create_call(producer, CONSTRAINT_VALUE_FN_NAME, &[assert, constr]))
             }
         }
     }
