@@ -331,9 +331,10 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         observe: bool,
         label: S,
     ) -> Result<Value, BadInterp> {
+        let continue_observing = observe!(self, on_location_rule, location, env, observe);
         match location {
             LocationRule::Indexed { location, .. } => {
-                let res = self._compute_instruction(location, env, observe);
+                let res = self._compute_instruction(location, env, continue_observing);
                 assert!(
                     !error::is_modifies_env_err_result(&res),
                     "index instruction never modifies environment"
@@ -508,16 +509,10 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             //  a known value so take the conservative approach to always return Unknown.
             return Ok(Some(Unknown));
         }
-
-        let continue_observing = observe!(self, on_location_rule, &bucket.src, env, observe);
         match &bucket.address_type {
             AddressType::Variable => {
-                let idx = self.compute_location_index(
-                    &bucket.src,
-                    env,
-                    continue_observing,
-                    "load source variable",
-                )?;
+                let idx =
+                    self.compute_location_index(&bucket.src, env, observe, "load source variable")?;
                 if idx.is_unknown() {
                     return Ok(Some(Unknown));
                 } else {
@@ -525,12 +520,8 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 }
             }
             AddressType::Signal => {
-                let idx = self.compute_location_index(
-                    &bucket.src,
-                    env,
-                    continue_observing,
-                    "load source signal",
-                )?;
+                let idx =
+                    self.compute_location_index(&bucket.src, env, observe, "load source signal")?;
                 // NOTE: The 'all_signals_unknown' flag must be checked at the very
                 //  end so that the remainder of the expression is still visited.
                 if self.flags.all_signals_unknown || idx.is_unknown() {
@@ -540,8 +531,11 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 }
             }
             AddressType::SubcmpSignal { cmp_address, .. } => {
-                let addr = self._compute_instruction(cmp_address, env, continue_observing)?;
+                let addr = self._compute_instruction(cmp_address, env, observe)?;
                 let addr = Value::into_u32_result(addr, "load source subcomponent")?;
+                //NOTE: The 'continue_observing' flag only applies to what is inside the LocationRule.
+                let continue_observing =
+                    observe!(self, on_location_rule, &bucket.src, env, observe);
                 let idx = match &bucket.src {
                     LocationRule::Indexed { location, .. } => {
                         let i = self._compute_instruction(location, env, continue_observing)?;
@@ -595,13 +589,12 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> Result<Env<'env>, BadInterp> {
-        let continue_observing = observe!(self, on_location_rule, location, env, observe);
         match address {
             AddressType::Variable => {
                 let idx = self.compute_location_index(
                     location,
                     &env,
-                    continue_observing,
+                    observe,
                     "store destination variable",
                 )?;
                 if idx.is_unknown() {
@@ -617,7 +610,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 let idx = self.compute_location_index(
                     location,
                     &env,
-                    continue_observing,
+                    observe,
                     "store destination signal",
                 )?;
                 if idx.is_unknown() {
@@ -630,9 +623,10 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 }
             }
             AddressType::SubcmpSignal { cmp_address, input_information, .. } => {
-                let (addr, env) =
-                    self._execute_instruction(cmp_address, env, continue_observing)?;
+                let (addr, env) = self._execute_instruction(cmp_address, env, observe)?;
                 let addr = Value::into_u32_result(addr, "store destination subcomponent")?;
+                //NOTE: The 'continue_observing' flag only applies to what is inside the LocationRule.
+                let continue_observing = observe!(self, on_location_rule, location, env, observe);
                 let (idx, env, sub_cmp_name) = match location {
                     LocationRule::Indexed { location, template_header } => {
                         let (i, e) =
