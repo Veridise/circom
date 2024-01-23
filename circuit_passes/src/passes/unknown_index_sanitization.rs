@@ -123,9 +123,20 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
         }
     }
 
-    fn is_location_unknown(&self, location: &LocationRule, env: &Env) -> Result<bool, BadInterp> {
+    fn is_location_unknown(
+        &self,
+        location: &LocationRule,
+        location_owner: &BucketId,
+        env: &Env,
+    ) -> Result<bool, BadInterp> {
         let interpreter = self.memory.build_interpreter(self.global_data, self);
-        let idx = interpreter.compute_location_index(location, env, false, "indexed location")?;
+        let idx = interpreter.compute_location_index(
+            location,
+            location_owner,
+            env,
+            false,
+            "indexed location",
+        )?;
         Ok(idx.is_unknown())
     }
 }
@@ -138,7 +149,7 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
 impl Observer<Env<'_>> for UnknownIndexSanitizationPass<'_> {
     fn on_load_bucket(&self, bucket: &LoadBucket, env: &Env) -> Result<bool, BadInterp> {
         let location = &bucket.src;
-        if self.is_location_unknown(location, env)? {
+        if self.is_location_unknown(location, &bucket.id, env)? {
             let address = &bucket.address_type;
             let index_range = self.find_bounds(address, location, env)?;
             self.bounded_fn_replacements
@@ -151,7 +162,7 @@ impl Observer<Env<'_>> for UnknownIndexSanitizationPass<'_> {
 
     fn on_store_bucket(&self, bucket: &StoreBucket, env: &Env) -> Result<bool, BadInterp> {
         let location = &bucket.dest;
-        if self.is_location_unknown(location, env)? {
+        if self.is_location_unknown(location, &bucket.id, env)? {
             let address = &bucket.dest_address_type;
             let index_range = self.find_bounds(address, location, env)?;
             self.bounded_fn_replacements

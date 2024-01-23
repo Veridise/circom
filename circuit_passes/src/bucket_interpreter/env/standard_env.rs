@@ -199,7 +199,6 @@ impl<'a> StandardEnvData<'a> {
         _subcmp_idx: usize,
         _name: &String,
         _interpreter: &BucketInterpreter,
-        _observe: bool,
     ) -> Self {
         // The env returns Unknown by default to any index that does not have a value
         // So we can fake executing a subcomponent and any read to the output

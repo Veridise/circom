@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashSet;
 use code_producers::llvm_elements::fr;
+use compiler::intermediate_representation::BucketId;
 use compiler::intermediate_representation::InstructionPointer;
 use compiler::intermediate_representation::ir_interface::*;
 use super::env::LibraryAccess;
@@ -34,16 +35,19 @@ impl<'a, S> ObservedVisitor<'a, S> {
 
     pub fn visit_location_rule(
         &self,
-        location_rule: &LocationRule,
+        location: &LocationRule,
+        location_owner: &BucketId,
         state: &S,
         observe: bool,
     ) -> Result<(), BadInterp> {
-        match location_rule {
+        let keep_observing =
+            observe!(self, on_location_rule, location, state, observe, location_owner);
+        match location {
             LocationRule::Indexed { location, .. } => {
-                self.visit_instruction(location, state, observe)?;
+                self.visit_instruction(location, state, keep_observing)?;
             }
             LocationRule::Mapped { indexes, .. } => {
-                self.visit_instructions(indexes, state, observe)?;
+                self.visit_instructions(indexes, state, keep_observing)?;
             }
         }
         Ok(())
@@ -56,7 +60,7 @@ impl<'a, S> ObservedVisitor<'a, S> {
         observe: bool,
     ) -> Result<(), BadInterp> {
         self.visit_address_type(&bucket.address_type, state, observe)?;
-        self.visit_location_rule(&bucket.src, state, observe)?;
+        self.visit_location_rule(&bucket.src, &bucket.id, state, observe)?;
         Ok(())
     }
 
@@ -68,7 +72,7 @@ impl<'a, S> ObservedVisitor<'a, S> {
     ) -> Result<(), BadInterp> {
         self.visit_instruction(&bucket.src, state, observe)?;
         self.visit_address_type(&bucket.dest_address_type, state, observe)?;
-        self.visit_location_rule(&bucket.dest, state, observe)?;
+        self.visit_location_rule(&bucket.dest, &bucket.id, state, observe)?;
         Ok(())
     }
 
@@ -81,7 +85,7 @@ impl<'a, S> ObservedVisitor<'a, S> {
         self.visit_instructions(&bucket.arguments, state, observe)?;
         if let ReturnType::Final(fd) = &bucket.return_info {
             self.visit_address_type(&fd.dest_address_type, state, observe)?;
-            self.visit_location_rule(&fd.dest, state, observe)?;
+            self.visit_location_rule(&fd.dest, &bucket.id, state, observe)?;
         }
         // Visit the callee function body if it was not visited before and if given LibraryAccess
         if let Some(libs) = self.libs {
