@@ -143,9 +143,8 @@ impl<'a> UnrolledBlockEnvData<'a> {
         subcmp_idx: usize,
         name: &String,
         interpreter: &BucketInterpreter,
-        observe: bool,
     ) -> Self {
-        new_env!(self.base.run_subcmp(subcmp_idx, name, interpreter, observe), self.extractor)
+        new_env!(self.base.run_subcmp(subcmp_idx, name, interpreter), self.extractor)
     }
 
     pub fn create_subcmp(

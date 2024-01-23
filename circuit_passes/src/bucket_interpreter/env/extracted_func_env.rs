@@ -345,7 +345,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
         Ok(self)
     }
 
-    pub fn run_subcmp(self, _: usize, _: &String, _: &BucketInterpreter, _: bool) -> Self {
+    pub fn run_subcmp(self, _: usize, _: &String, _: &BucketInterpreter) -> Self {
         //Return self just like the StandardEnvData
         self
     }

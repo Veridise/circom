@@ -69,6 +69,9 @@ pub trait Observer<S> {
         Ok(true)
     }
 
+    // Implementation node: the return value here determines if the Instruction instance
+    //  nested within the LocationRule is observed which means this must be called before
+    //  the inner Instruction is visited and its return value passed in for the observe flag.
     fn on_location_rule(
         &self,
         _location_rule: &LocationRule,

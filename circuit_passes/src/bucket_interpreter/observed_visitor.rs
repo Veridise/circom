@@ -38,12 +38,13 @@ impl<'a, S> ObservedVisitor<'a, S> {
         state: &S,
         observe: bool,
     ) -> Result<(), BadInterp> {
+        let keep_observing = observe!(self, on_location_rule, location_rule, state, observe);
         match location_rule {
             LocationRule::Indexed { location, .. } => {
-                self.visit_instruction(location, state, observe)?;
+                self.visit_instruction(location, state, keep_observing)?;
             }
             LocationRule::Mapped { indexes, .. } => {
-                self.visit_instructions(indexes, state, observe)?;
+                self.visit_instructions(indexes, state, keep_observing)?;
             }
         }
         Ok(())

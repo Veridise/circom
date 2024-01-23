@@ -340,15 +340,14 @@ impl<'a> Env<'a> {
         subcmp_idx: usize,
         name: &String,
         interpreter: &BucketInterpreter,
-        observe: bool,
     ) -> Self {
         match self {
-            Env::Standard(d) => Env::Standard(d.run_subcmp(subcmp_idx, name, interpreter, observe)),
+            Env::Standard(d) => Env::Standard(d.run_subcmp(subcmp_idx, name, interpreter)),
             Env::UnrolledBlock(d) => {
-                Env::UnrolledBlock(d.run_subcmp(subcmp_idx, name, interpreter, observe))
+                Env::UnrolledBlock(d.run_subcmp(subcmp_idx, name, interpreter))
             }
             Env::ExtractedFunction(d) => {
-                Env::ExtractedFunction(d.run_subcmp(subcmp_idx, name, interpreter, observe))
+                Env::ExtractedFunction(d.run_subcmp(subcmp_idx, name, interpreter))
             }
         }
     }
