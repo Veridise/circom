@@ -122,6 +122,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                         let interp = self.build_interpreter();
                         let dest = interp.compute_location_index(
                             &bucket.dest,
+                            &bucket.id,
                             env,
                             false,
                             "store source value",

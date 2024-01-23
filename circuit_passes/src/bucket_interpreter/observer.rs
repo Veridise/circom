@@ -1,5 +1,5 @@
 use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
-use compiler::intermediate_representation::{Instruction, InstructionPointer};
+use compiler::intermediate_representation::{BucketId, Instruction, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::{
     AssertBucket, BranchBucket, CallBucket, ComputeBucket, ConstraintBucket, CreateCmpBucket,
     LoadBucket, LocationRule, LogBucket, LoopBucket, NopBucket, ReturnBucket, StoreBucket,
@@ -9,9 +9,9 @@ use super::error::BadInterp;
 
 #[macro_export]
 macro_rules! observe {
-    ($self:ident, $on_inst_fn: ident, $inst:expr, $env:ident, $observe:ident) => {
+    ($self:ident, $on_inst_fn: ident, $inst:expr, $env:ident, $observe:ident $(, $bucket_id:expr)?) => {
         if $observe {
-            $self.observer.$on_inst_fn($inst, &$env)?
+            $self.observer.$on_inst_fn($inst, &$env, $($bucket_id)?)?
         } else {
             false
         }
@@ -72,7 +72,12 @@ pub trait Observer<S> {
     // Implementation node: the return value here determines if the Instruction instance
     //  nested within the LocationRule is observed which means this must be called before
     //  the inner Instruction is visited and its return value passed in for the observe flag.
-    fn on_location_rule(&self, _location: &LocationRule, _state: &S) -> Result<bool, BadInterp> {
+    fn on_location_rule(
+        &self,
+        _location: &LocationRule,
+        _state: &S,
+        _owner: &BucketId,
+    ) -> Result<bool, BadInterp> {
         Ok(true)
     }
 

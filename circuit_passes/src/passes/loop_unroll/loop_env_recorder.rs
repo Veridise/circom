@@ -131,10 +131,9 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         addr_ty: AddressType,
         val: Value,
     ) -> Result<(), BadInterp> {
-        let iter = self.get_iter();
         self.loadstore_to_index_per_iter
             .borrow_mut()
-            .entry(iter)
+            .entry(self.get_iter())
             .or_default()
             .insert(*bucket_id, (addr_ty, val));
         Ok(())
@@ -301,7 +300,18 @@ impl Observer<Env<'_>> for EnvRecorder<'_, '_> {
         Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
-    fn on_location_rule(&self, _: &LocationRule, _: &Env) -> Result<bool, BadInterp> {
+    fn on_location_rule(
+        &self,
+        _: &LocationRule,
+        _: &Env,
+        location_owner: &BucketId,
+    ) -> Result<bool, BadInterp> {
+        if let Some(m) = self.loadstore_to_index_per_iter.borrow().get(&self.get_iter()) {
+            if m.contains_key(location_owner) {
+                // A substitution exists for the owner so don't continue within the LocationRule
+                return Ok(false);
+            }
+        }
         Ok(self.is_safe_to_move()) //continue observing unless something unsafe has been found
     }
 
