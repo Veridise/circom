@@ -3,20 +3,20 @@ pragma circom 2.0.0;
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
 // This case initially triggered the "assert!(bucket_to_args.is_empty());" line in body_extractor.rs
-//  because the entire expression 'in[byte_order[i]]'' is replaced but the 'byte_order[i]' expression
+//  because the entire expression 'in[arr[i]]'' is replaced but the 'arr[i]' expression
 //  is also listed in the "bucket_to_args" map as a safe replacement.
-template EmulatedAesencRowShifting() {
+template FixIdxNested() {
     signal input in[16];
     signal output out[16];
     
-    var byte_order[16] = [0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12, 1, 6, 11];
+    var arr[16] = [0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12, 1, 6, 11];
 
     for (var i = 0; i < 16; i++) {
-        out[i] <== in[byte_order[i]];
+        out[i] <== in[arr[i]];
     }
 }
 
-component main = EmulatedAesencRowShifting();
+component main = FixIdxNested();
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0, i256* %fix_1){{.*}} {
@@ -45,7 +45,7 @@ component main = EmulatedAesencRowShifting();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} void @EmulatedAesencRowShifting_0_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @FixIdxNested_0_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [17 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8
