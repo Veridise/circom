@@ -9,7 +9,7 @@ pub const CONSTRAINT_VALUE_FN_NAME: &str = "__constraint_value";
 pub const ASSERT_FN_NAME: &str = "__assert";
 pub const LLVM_DONOTHING_FN_NAME: &str = "llvm.donothing"; //LLVM equivalent of a "nop" instruction
 
-mod stdlib {
+mod stdlib_private {
     use inkwell::intrinsics::Intrinsic;
     use inkwell::values::AnyValue;
 
@@ -24,14 +24,14 @@ mod stdlib {
         ASSERT_FN_NAME, CONSTRAINT_VALUE_FN_NAME, CONSTRAINT_VALUES_FN_NAME, LLVM_DONOTHING_FN_NAME,
     };
 
-    pub fn llvm_donothing_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    pub fn llvm_donothing_fn(producer: &dyn LLVMIRProducer) {
         Intrinsic::find(LLVM_DONOTHING_FN_NAME)
             .unwrap()
             .get_declaration(&producer.llvm().module, &[])
             .unwrap();
     }
 
-    pub fn constraint_values_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    pub fn constraint_values_fn(producer: &dyn LLVMIRProducer) {
         let bigint_ty = bigint_type(producer);
         let args = &[
             bigint_ty.into(),
@@ -59,7 +59,7 @@ mod stdlib {
         create_return_void(producer);
     }
 
-    pub fn constraint_value_fn<'a, 'b>(producer: &dyn LLVMIRProducer<'a>) {
+    pub fn constraint_value_fn(producer: &dyn LLVMIRProducer) {
         let args =
             &[bool_type(producer).into(), bool_type(producer).ptr_type(Default::default()).into()];
         let void_ty = void_type(producer);
@@ -81,7 +81,7 @@ mod stdlib {
         create_return_void(producer);
     }
 
-    pub fn assert_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    pub fn assert_fn(producer: &dyn LLVMIRProducer) {
         let func = create_function(
             producer,
             &None,
@@ -103,7 +103,7 @@ mod stdlib {
         create_return_void(producer);
     }
 
-    pub fn abort_declared_fn<'a>(producer: &dyn LLVMIRProducer<'a>) {
+    pub fn abort_declared_fn(producer: &dyn LLVMIRProducer) {
         let f = create_function(
             producer,
             &None,
@@ -116,10 +116,10 @@ mod stdlib {
     }
 }
 
-pub fn load_stdlib<'a>(producer: &dyn LLVMIRProducer<'a>) {
-    stdlib::llvm_donothing_fn(producer);
-    stdlib::constraint_values_fn(producer);
-    stdlib::constraint_value_fn(producer);
-    stdlib::abort_declared_fn(producer);
-    stdlib::assert_fn(producer);
+pub fn load_stdlib(producer: &dyn LLVMIRProducer) {
+    stdlib_private::llvm_donothing_fn(producer);
+    stdlib_private::constraint_values_fn(producer);
+    stdlib_private::constraint_value_fn(producer);
+    stdlib_private::abort_declared_fn(producer);
+    stdlib_private::assert_fn(producer);
 }

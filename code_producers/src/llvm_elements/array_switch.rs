@@ -3,7 +3,7 @@ use inkwell::types::PointerType;
 use crate::llvm_elements::LLVMIRProducer;
 use super::types::bigint_type;
 
-mod array_switch {
+mod array_switch_private {
     use std::convert::TryInto;
     use std::ops::Range;
     use lazy_regex::regex_captures;
@@ -33,7 +33,7 @@ mod array_switch {
         })
     }
 
-    pub fn create_array_load_fn<'a>(producer: &dyn LLVMIRProducer<'a>, index_range: &Range<usize>) {
+    pub fn create_array_load_fn(producer: &dyn LLVMIRProducer, index_range: &Range<usize>) {
         // args: array, index
         // return: bigint loaded from array
         let bool_ty = bool_type(producer);
@@ -56,7 +56,7 @@ mod array_switch {
 
         // build the switch cases
         let mut cases = vec![];
-        for idx in index_range.clone().into_iter() {
+        for idx in index_range.clone() {
             let case_val = i32_ty.const_int(idx.try_into().unwrap(), false);
             let case_bb = create_bb(producer, func, format!("case_{}", idx).as_str());
             producer.set_current_bb(case_bb);
@@ -78,10 +78,7 @@ mod array_switch {
         create_switch(producer, arr_idx, else_bb, &cases);
     }
 
-    pub fn create_array_store_fn<'a>(
-        producer: &dyn LLVMIRProducer<'a>,
-        index_range: &Range<usize>,
-    ) {
+    pub fn create_array_store_fn(producer: &dyn LLVMIRProducer, index_range: &Range<usize>) {
         // args: array, index, value
         // return: void
         let bool_ty = bool_type(producer);
@@ -109,7 +106,7 @@ mod array_switch {
 
         // build the switch cases
         let mut cases = vec![];
-        for idx in index_range.clone().into_iter() {
+        for idx in index_range.clone() {
             let case_val = i32_ty.const_int(idx.try_into().unwrap(), false);
             let case_bb = create_bb(producer, func, format!("case_{}", idx).as_str());
             producer.set_current_bb(case_bb);
@@ -137,32 +134,32 @@ pub fn array_ptr_ty<'a>(producer: &dyn LLVMIRProducer<'a>) -> PointerType<'a> {
     bigint_ty.array_type(0).ptr_type(Default::default())
 }
 
-pub fn load_array_load_fns<'a>(
-    producer: &dyn LLVMIRProducer<'a>,
+pub fn load_array_load_fns(
+    producer: &dyn LLVMIRProducer,
     scheduled_array_loads: &HashSet<Range<usize>>,
 ) {
     for range in scheduled_array_loads {
-        array_switch::create_array_load_fn(producer, range);
+        array_switch_private::create_array_load_fn(producer, range);
     }
 }
 
-pub fn load_array_stores_fns<'a>(
-    producer: &dyn LLVMIRProducer<'a>,
+pub fn load_array_stores_fns(
+    producer: &dyn LLVMIRProducer,
     scheduled_array_stores: &HashSet<Range<usize>>,
 ) {
     for range in scheduled_array_stores {
-        array_switch::create_array_store_fn(producer, range);
+        array_switch_private::create_array_store_fn(producer, range);
     }
 }
 
 pub fn get_array_load_name(index_range: &Range<usize>) -> String {
-    array_switch::get_load_symbol(index_range)
+    array_switch_private::get_load_symbol(index_range)
 }
 
 pub fn get_array_store_name(index_range: &Range<usize>) -> String {
-    array_switch::get_store_symbol(index_range)
+    array_switch_private::get_store_symbol(index_range)
 }
 
 pub fn get_array_switch_range(name: &str) -> Option<Range<usize>> {
-    array_switch::get_array_switch_range(name)
+    array_switch_private::get_array_switch_range(name)
 }

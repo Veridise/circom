@@ -21,7 +21,7 @@ pub fn create_function<'a>(
     let f = llvm.module.add_function(name, ty, None);
     f.set_linkage(inkwell::module::Linkage::Internal); //default to Internal, allows removal if unused
     if let Some(file_id) = source_file_id {
-        match llvm.get_debug_info(&file_id) {
+        match llvm.get_debug_info(file_id) {
             Err(msg) => panic!("{}", msg),
             Ok((dib, dcu)) => {
                 f.set_subprogram(dib.create_function(
@@ -157,14 +157,18 @@ impl<'a> ExtractedFunctionCtx<'a> {
         }
     }
 
+    #[allow(clippy::get_first)]
     fn get_lvars_ptr(&self) -> PointerValue<'a> {
-        *self.args.get(0).expect("Function must have at least 1 argument for lvar array!")
+        *self
+            .args
+            .get(0)
+            .unwrap_or_else(|| panic!("Function must have at least 1 argument for lvar array!"))
     }
 
     fn get_signals_ptr(&self) -> PointerValue<'a> {
-        *self.args.get(1).expect(
-            format!("No signals argument for {:?}", self.current_function.get_name()).as_str(),
-        )
+        *self.args.get(1).unwrap_or_else(|| {
+            panic!("No signals argument for {:?}!", self.current_function.get_name())
+        })
     }
 
     fn get_arg_ptr(&self, id: AnyValueEnum<'a>) -> PointerValue<'a> {
@@ -172,7 +176,10 @@ impl<'a> ExtractedFunctionCtx<'a> {
             .into_int_value()
             .get_zero_extended_constant()
             .expect("must reference a constant argument index");
-        *self.args.get(num as usize).expect("must reference a valid argument index")
+        *self
+            .args
+            .get(num as usize)
+            .unwrap_or_else(|| panic!("must reference a valid argument index"))
     }
 }
 

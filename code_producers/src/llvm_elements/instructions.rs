@@ -663,7 +663,7 @@ pub fn find_function<'a>(producer: &dyn LLVMIRProducer<'a>, name: &str) -> Funct
         .llvm()
         .module
         .get_function(name)
-        .expect(format!("Cannot find function {}", name).as_str())
+        .unwrap_or_else(|| panic!("Cannot find function {}", name))
 }
 
 pub fn create_call<'a>(
@@ -675,7 +675,7 @@ pub fn create_call<'a>(
     let params = f.get_params();
     let checked_arguments: Vec<BasicMetadataValueEnum<'a>> = arguments
         .into_iter()
-        .zip(params.into_iter())
+        .zip(params.iter())
         .map(|(arg, param)| {
             if arg.is_int_value() && param.is_int_value() {
                 ensure_int_type_match(
@@ -685,7 +685,7 @@ pub fn create_call<'a>(
                 )
                 .into()
             } else {
-                arg.clone()
+                *arg
             }
         })
         .collect();
@@ -834,7 +834,7 @@ pub fn create_switch<'a>(
 
 /// Extracts the pointer and the indexes of a gep instruction
 /// getelementptr %ptr, 0, %idx ---> (%ptr, [0, %idx])
-pub fn get_data_from_gep<'a>(gep: PointerValue<'a>) -> (PointerValue<'a>, Vec<u64>) {
+pub fn get_data_from_gep(gep: PointerValue) -> (PointerValue, Vec<u64>) {
     let inst = gep.as_instruction().expect("expected an instruction!");
     debug_assert!(inst.get_opcode() == InstructionOpcode::GetElementPtr, "expected a GEP");
     let base_ptr = inst
@@ -848,13 +848,13 @@ pub fn get_data_from_gep<'a>(gep: PointerValue<'a>) -> (PointerValue<'a>, Vec<u6
     for i in 1..count {
         let idx = inst
             .get_operand(i)
-            .expect(format!("Missing operand {} in GEP", i).as_str())
-            .expect_left(format!("Operand {} is not a basic value", i).as_str())
+            .unwrap_or_else(|| panic!("Missing operand {} in GEP", i))
+            .left_or_else(|_| panic!("Operand {} is not a basic value", i))
             .into_int_value()
             .get_sign_extended_constant()
-            .expect(format!("Operand {} is not a constant int value", i).as_str());
+            .unwrap_or_else(|| panic!("Operand {} is not a constant int value", i));
         let idx = u64::try_from(idx)
-            .expect(format!("Value of operand {} is too large: {}", i, idx).as_str());
+            .unwrap_or_else(|_| panic!("Value of operand {} is too large: {}", i, idx));
         ret.push(idx);
     }
     (base_ptr, ret)
