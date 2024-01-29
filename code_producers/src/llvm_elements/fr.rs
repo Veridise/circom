@@ -306,7 +306,6 @@ fn array_copy_fn(producer: &dyn LLVMIRProducer) {
         FR_ARRAY_COPY_FN_NAME,
         void_type(producer).fn_type(args, false),
     );
-    add_inline_attribute(producer, func);
     let main = create_bb(producer, func, FR_ARRAY_COPY_FN_NAME);
     producer.set_current_bb(main);
 
