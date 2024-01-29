@@ -60,7 +60,7 @@ pub fn write_llvm_ir(circuit: &Circuit, program_archive: &ProgramArchive, llvm_f
     let _ = File::create(llvm_file).map_err(|err| {
         eprintln!("Error creating the LLVM file {}: {}", llvm_file, err)
     })?;
-    circuit.produce_llvm_ir(program_archive, &llvm_file)
+    circuit.produce_llvm_ir(program_archive, llvm_file)
 }
 
 fn produce_debug_output(circuit: &Circuit) -> Result<(), ()> {

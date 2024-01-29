@@ -1251,7 +1251,7 @@ where
         let id = if key.eq(&constant_coefficient) {
             ArithmeticExpression::constant_coefficient()
         } else {
-            map.get(&key).expect(&format!("Unknown signal: {}", key)).clone()
+            map.get(&key).unwrap_or_else(|| panic!("Unknown signal: {}", key)).clone()
         };
         coefficients_as_correspondence.insert(id, value.clone());
     }

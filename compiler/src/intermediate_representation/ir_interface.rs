@@ -61,7 +61,7 @@ impl ObtainMeta for ObtainMetaImpl {
 impl ObtainMetaImpl {
     pub fn from(bucket: &dyn ObtainMeta) -> ObtainMetaImpl {
         ObtainMetaImpl {
-            source_file_id: bucket.get_source_file_id().clone(),
+            source_file_id: *bucket.get_source_file_id(),
             line: bucket.get_line(),
             message_id: bucket.get_message_id(),
         }
@@ -197,7 +197,7 @@ impl WriteWasm for Instruction {
 
 impl WriteLLVMIR for Instruction {
     /// This must always return the final statement in the current BasicBlock or None if empty.
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         use Instruction::*;
         match self {
             Value(v) => v.produce_llvm_ir(producer),

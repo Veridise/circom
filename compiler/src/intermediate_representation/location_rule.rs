@@ -62,7 +62,7 @@ impl UpdateId for LocationRule {
 }
 
 impl WriteLLVMIR for LocationRule {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         match self {
             LocationRule::Indexed { location, .. } => location.produce_llvm_ir(producer),
             LocationRule::Mapped { .. } => unreachable!("LocationRule::Mapped should have been replaced"),

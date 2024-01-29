@@ -61,9 +61,8 @@ impl ToSExp for AddressType {
 impl UpdateId for AddressType {
     fn update_id(&mut self) {
         use AddressType::*;
-        match self {
-            SubcmpSignal { cmp_address, .. } => cmp_address.update_id(),
-            _ => {}
+        if let SubcmpSignal { cmp_address, .. } = self {
+            cmp_address.update_id()
         }
     }
 }

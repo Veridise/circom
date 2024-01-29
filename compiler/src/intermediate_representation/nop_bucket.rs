@@ -53,9 +53,9 @@ impl UpdateId for NopBucket {
 }
 
 impl WriteLLVMIR for NopBucket {
-    fn produce_llvm_ir<'a, 'b>(
+    fn produce_llvm_ir<'a>(
         &self,
-        _producer: &'b dyn LLVMIRProducer<'a>,
+        _producer: &dyn LLVMIRProducer<'a>,
     ) -> Option<LLVMInstruction<'a>> {
         None
     }

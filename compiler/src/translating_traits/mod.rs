@@ -33,10 +33,8 @@ pub trait WriteWasm {
 
 pub trait WriteLLVMIR {
     /// This must always return the final statement in the current BasicBlock or None if empty.
-    fn produce_llvm_ir<'a, 'b>(
-        &self,
-        producer: &'b dyn LLVMIRProducer<'a>,
-    ) -> Option<LLVMInstruction<'a>>;
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>)
+        -> Option<LLVMInstruction<'a>>;
 
     fn write_llvm_ir(
         &self,

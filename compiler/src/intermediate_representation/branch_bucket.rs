@@ -92,7 +92,7 @@ impl UpdateId for BranchBucket {
 }
 
 impl WriteLLVMIR for BranchBucket {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
         // Necessary basic blocks
@@ -133,7 +133,7 @@ impl WriteLLVMIR for BranchBucket {
             }
             //Any other case
             create_br(producer, merge_bb);
-            return true;
+            true
         };
 
         // Then branch

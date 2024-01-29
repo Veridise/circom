@@ -17,9 +17,9 @@ fn main() {
         let test_name = path
             .to_str()
             .unwrap()
-            .replace("/", "_")
+            .replace('/', "_")
             .replace(".circom", "")
-            .replace("-", "_")
+            .replace('-', "_")
             .to_lowercase();
 
         test_code = format!(
@@ -37,7 +37,7 @@ fn main() {
         );
     }
 
-    generate_file(&dest_path, test_code.as_bytes());
+    generate_file(dest_path, test_code.as_bytes());
 }
 
 fn generate_file<P: AsRef<Path>>(path: P, text: &[u8]) {
