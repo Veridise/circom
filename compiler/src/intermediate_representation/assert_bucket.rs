@@ -70,7 +70,7 @@ impl UpdateId for AssertBucket {
 }
 
 impl WriteLLVMIR for AssertBucket {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
         let bool = self.evaluate.produce_llvm_ir(producer)

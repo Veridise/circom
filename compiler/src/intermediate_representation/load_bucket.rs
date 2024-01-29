@@ -78,7 +78,7 @@ impl UpdateId for LoadBucket {
 }
 
 impl WriteLLVMIR for LoadBucket {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         // NOTE: do not change debug location for a load because it is not a top-level source statement
 
         // Generate the code of the location and use the last value as the reference

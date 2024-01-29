@@ -78,9 +78,9 @@ impl UpdateId for LoopBucket {
 }
 
 impl WriteLLVMIR for LoopBucket {
-    fn produce_llvm_ir<'a, 'b>(
+    fn produce_llvm_ir<'a>(
         &self,
-        producer: &'b dyn LLVMIRProducer<'a>,
+        producer: &dyn LLVMIRProducer<'a>,
     ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 

@@ -45,9 +45,9 @@ impl Default for Circuit {
 }
 
 impl WriteLLVMIR for Circuit {
-    fn produce_llvm_ir<'a, 'b>(
+    fn produce_llvm_ir<'a>(
         &self,
-        producer: &'b dyn LLVMIRProducer<'a>,
+        producer: &dyn LLVMIRProducer<'a>,
     ) -> Option<LLVMInstruction<'a>> {
         // Code for prelude
 
@@ -98,7 +98,7 @@ impl WriteLLVMIR for Circuit {
                 f.name.as_str(),
                 name,
                 if f.returns.len() == 1 {
-                    let single_size = *f.returns.get(0).unwrap();
+                    let single_size = *f.returns.first().unwrap();
                     if single_size == 0 {
                         //single dimension of size 0 indicates [0 x i256]* should be used
                         bigint_type(producer)

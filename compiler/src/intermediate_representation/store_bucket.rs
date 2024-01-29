@@ -89,8 +89,8 @@ impl UpdateId for StoreBucket {
 
 impl StoreBucket {
     /// The caller must manage the debug location information before calling this function.
-    pub fn produce_llvm_ir<'a, 'b>(
-        producer: &'b dyn LLVMIRProducer<'a>,
+    pub fn produce_llvm_ir<'a>(
+        producer: &dyn LLVMIRProducer<'a>,
         src: Either<AnyValueEnum<'a>, &InstructionPointer>,
         dest: &LocationRule,
         dest_address_type: &AddressType,
@@ -192,56 +192,50 @@ impl StoreBucket {
 
         // If we have a subcomponent storage decrement the counter by the size of the store (i.e., context.size)
         if let AddressType::SubcmpSignal { cmp_address, .. } = &dest_address_type {
-            let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
+            let addr = cmp_address
+                .produce_llvm_ir(producer)
+                .expect("The address of a subcomponent must yield a value!");
             let counter = producer.template_ctx().load_subcmp_counter(producer, addr, true);
             if let Some(counter) = counter {
                 let value = create_load_with_name(producer, counter, "load.subcmp.counter");
-                let new_value = create_sub_with_name(producer, value.into_int_value(), create_literal_u32(producer, context.size as u64), "decrement.counter");
+                let new_value = create_sub_with_name(
+                    producer,
+                    value.into_int_value(),
+                    create_literal_u32(producer, context.size as u64),
+                    "decrement.counter",
+                );
                 create_store(producer, counter, new_value);
             }
         }
 
         // If the input information is unknown add a check that checks the counter and if its zero call the subcomponent
         // If its last just call run directly
-        if let AddressType::SubcmpSignal { input_information, cmp_address, .. } = &dest_address_type
+        if let AddressType::SubcmpSignal {
+            input_information: InputInformation::Input { status },
+            cmp_address,
+            ..
+        } = &dest_address_type
         {
-            if let InputInformation::Input { status } = input_information {
-                let sub_cmp_name = match &dest {
-                    LocationRule::Indexed { template_header, .. } => template_header.clone(),
-                    LocationRule::Mapped { .. } => unreachable!("LocationRule::Mapped should have been replaced"),
-                }.expect("Could not get the name of the subcomponent");
-                match status {
-                    StatusInput::Last => {
-                        // If we reach this point gep is the address of the subcomponent so we can just reuse it
-                        let addr = cmp_address
-                            .produce_llvm_ir(producer)
-                            .expect("The address of a subcomponent must yield a value!");
-                        let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        create_call(producer, run_fn_name(sub_cmp_name).as_str(), &[subcmp.into()]);
-                    }
-                    StatusInput::Unknown => {
-                        panic!("There should not be Unknown input status");
-                        // let current_function = producer.current_function();
-                        // let run_bb = create_bb(producer, current_function, format!("maybe_run.{}", sub_cmp_name).as_str());
-                        // let continue_bb = create_bb(producer, current_function,"continue.store");
-                        // // Here we need to get the counter and check if its 0
-                        // // If its is then call the run function because it means that all signals have been assigned
-                        // let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                        // let counter = producer.template_ctx().load_subcmp_counter(producer, addr, false);
-                        // let value = create_load_with_name(producer, counter, "load.subcmp.counter");
-                        // let is_zero = create_eq_with_name(producer, zero(producer), value.into_int_value(), "subcmp.counter.isZero");
-                        // create_conditional_branch(producer, is_zero.into_int_value(), run_bb, continue_bb);
-                        // producer.set_current_bb(run_bb);
-                        //
-                        // let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                        // let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
-                        //
-                        // create_call(producer, run_fn_name(sub_cmp_name).as_str(), &[subcmp.into()]);
-                        // create_br(producer,continue_bb);
-                        // producer.set_current_bb(continue_bb);
-                    }
-                    _ => {}
+            let sub_cmp_name = match &dest {
+                LocationRule::Indexed { template_header, .. } => template_header.clone(),
+                LocationRule::Mapped { .. } => {
+                    unreachable!("LocationRule::Mapped should have been replaced")
                 }
+            }
+            .expect("Could not get the name of the subcomponent");
+            match status {
+                StatusInput::Last => {
+                    // If we reach this point gep is the address of the subcomponent so we can just reuse it
+                    let addr = cmp_address
+                        .produce_llvm_ir(producer)
+                        .expect("The address of a subcomponent must yield a value!");
+                    let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
+                    create_call(producer, run_fn_name(sub_cmp_name).as_str(), &[subcmp.into()]);
+                }
+                StatusInput::Unknown => {
+                    unreachable!("There should not be Unknown input status");
+                }
+                _ => {}
             }
         }
         store
@@ -249,10 +243,20 @@ impl StoreBucket {
 }
 
 impl WriteLLVMIR for StoreBucket {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
         // A store instruction has a source that states the origin of the value that is going to be stored
-        Self::produce_llvm_ir(producer, Either::Right(&self.src), &self.dest, &self.dest_address_type, self.context, &self.bounded_fn)
+        Self::produce_llvm_ir(
+            producer,
+            Either::Right(&self.src),
+            &self.dest,
+            &self.dest_address_type,
+            self.context,
+            &self.bounded_fn,
+        )
     }
 }
 

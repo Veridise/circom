@@ -113,9 +113,9 @@ macro_rules! debug_assert_bigint_type {
 }
 
 impl WriteLLVMIR for ConstraintBucket {
-    fn produce_llvm_ir<'a, 'b>(
+    fn produce_llvm_ir<'a>(
         &self,
-        producer: &'b dyn LLVMIRProducer<'a>,
+        producer: &dyn LLVMIRProducer<'a>,
     ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
@@ -184,7 +184,7 @@ impl WriteLLVMIR for ConstraintBucket {
                     let mut last_call = None;
                     for i in 0..size {
                         let idx = u64::try_from(i)
-                            .expect(format!("failed to convert to u64: {}", i).as_str());
+                            .unwrap_or_else(|_| panic!("failed to convert to u64: {}", i));
                         let src = Self::new_offset_gep(producer, src_ptr, &src_idxs, idx);
                         let dst = Self::new_offset_gep(producer, dst_ptr, &dst_idxs, idx);
                         let constr = new_constraint_with_name(

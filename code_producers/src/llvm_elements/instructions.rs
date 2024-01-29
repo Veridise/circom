@@ -674,7 +674,7 @@ pub fn create_call<'a>(
     let f = find_function(producer, name);
     let params = f.get_params();
     let checked_arguments: Vec<BasicMetadataValueEnum<'a>> = arguments
-        .into_iter()
+        .iter()
         .zip(params.iter())
         .map(|(arg, param)| {
             if arg.is_int_value() && param.is_int_value() {

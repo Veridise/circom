@@ -48,7 +48,7 @@ impl ToString for ValueBucket {
         let template_id = self.message_id.to_string();
         let parse_as = self.parse_as.to_string();
         let op_aux_number = self.op_aux_no.to_string();
-        let value = self.value.clone();
+        let value = self.value;
         format!(
             "VALUE(line:{},template_id:{},as:{},op_number:{},value:{})",
             line, template_id, parse_as, op_aux_number, value
@@ -76,7 +76,7 @@ impl UpdateId for ValueBucket {
 }
 
 impl WriteLLVMIR for ValueBucket {
-    fn produce_llvm_ir<'a, 'b>(&self, producer: &'b dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
         // NOTE: do not change debug location for a value because it is not a top-level source statement
 
         // Represents a literal value

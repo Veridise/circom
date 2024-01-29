@@ -101,9 +101,9 @@ impl WriteLLVMIR for CallBucket {
     /// Since calls use the same internal IR as templates they expect the same memory layout.
     /// Any signal is copied previously to an arena and the function uses that arena
     /// as a set of local variables.
-    fn produce_llvm_ir<'a, 'b>(
+    fn produce_llvm_ir<'a>(
         &self,
-        producer: &'b dyn LLVMIRProducer<'a>,
+        producer: &dyn LLVMIRProducer<'a>,
     ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
@@ -198,9 +198,7 @@ impl WriteLLVMIR for CallBucket {
             );
 
             match &self.return_info {
-                ReturnType::Intermediate { .. } => {
-                    return Some(call_ret_val);
-                }
+                ReturnType::Intermediate { .. } => Some(call_ret_val),
                 ReturnType::Final(data) => {
                     let size = data.context.size;
                     let source_of_store = if size == 1 {
@@ -224,7 +222,7 @@ impl WriteLLVMIR for CallBucket {
                         &None,
                     );
                 }
-            };
+            }
         }
     }
 }
