@@ -27,14 +27,14 @@ template Poseidon() {
 component main = Poseidon();
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %subfix_[[X1:[0-9]+]], i256* %subfix_[[X2:[0-9]+]], [0 x i256]* %sub_[[X2]], i256* %subc_[[X2]]){{.*}} {
+//CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %subsig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X2]], i256* %subc_[[X2]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.T\.T]]:
 //CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true1:
 //CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 0
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subfix_[[X1]], i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %[[T01]], i256* %[[T02]], align 4
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T02]], align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
@@ -59,7 +59,7 @@ component main = Poseidon();
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.F\.F}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %subfix_[[X1:[0-9]+]], i256* %subfix_[[X2:[0-9]+]], [0 x i256]* %sub_[[X2]], i256* %subc_[[X2]]){{.*}} {
+//CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %subsig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X2]], i256* %subc_[[X2]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.F\.F]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
@@ -79,14 +79,14 @@ component main = Poseidon();
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.F\.T\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %subfix_[[X1:[0-9]+]], i256* %subfix_[[X2:[0-9]+]], [0 x i256]* %sub_[[X2]], i256* %subc_[[X2]]){{.*}} {
+//CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %subsig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X2]], i256* %subc_[[X2]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_3:[0-9]+\.F\.T\.T]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false1:
 //CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 0
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subfix_[[X2]], i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subsig_[[X2]], i32 0
 //CHECK-NEXT:   store i256 %[[T01]], i256* %[[T02]], align 4
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T02]], align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1

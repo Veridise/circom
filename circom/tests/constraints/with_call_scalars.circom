@@ -20,7 +20,7 @@ template ComputeFee() {
 component main = ComputeFee();
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
@@ -32,7 +32,7 @@ component main = ComputeFee();
 //CHECK-NEXT:   store i256 %[[T2:[0-9]+]], i256* %[[T0:[0-9]+]], align 4
 //CHECK-NEXT:   %[[T3:[0-9]+]] = bitcast [3 x i256]* %[[FUN_NAME]]_arena to i256*
 //CHECK-NEXT:   %call.[[FUN_NAME]] = call i256 @[[FUN_NAME]](i256* %[[T3:[0-9]+]])
-//CHECK-NEXT:   %[[T4:[0-9]+]] = getelementptr i256, i256* %fix_0, i32 0
+//CHECK-NEXT:   %[[T4:[0-9]+]] = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   store i256 %call.[[FUN_NAME]], i256* %[[T4:[0-9]+]], align 4
 //CHECK-NEXT:   %[[T5:[0-9]+]] = load i256, i256* %[[T4:[0-9]+]], align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1

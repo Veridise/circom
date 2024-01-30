@@ -45,7 +45,7 @@ component main = CallInLoop(2, 3);
 //     out <-- b[0];
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
@@ -53,7 +53,7 @@ component main = CallInLoop(2, 3);
 //CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 1
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
 //CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 3, i256 %1)
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %fix_0, i32 0
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %var_0, i32 0
 //CHECK-NEXT:   store i256 %call.fr_add, i256* %2, align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
@@ -70,7 +70,7 @@ component main = CallInLoop(2, 3);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
+//CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
@@ -95,7 +95,7 @@ component main = CallInLoop(2, 3);
 //CHECK-NEXT:   store i256 3, i256* %8, align 4
 //CHECK-NEXT:   %9 = bitcast [15 x i256]* %fun_0_arena to i256*
 //CHECK-NEXT:   %call.fun_0 = call i256 @fun_0(i256* %9)
-//CHECK-NEXT:   %10 = getelementptr i256, i256* %fix_0, i32 0
+//CHECK-NEXT:   %10 = getelementptr i256, i256* %var_0, i32 0
 //CHECK-NEXT:   store i256 %call.fun_0, i256* %10, align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 

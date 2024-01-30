@@ -24,7 +24,7 @@ template Num2Bits(n) {
 component main = Num2Bits(3);
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
-//CHECK-SAME: i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %subfix_[[X3:[0-9]+]], 
+//CHECK-SAME: i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %subsig_[[X3:[0-9]+]], 
 //CHECK-SAME: [0 x i256]* %sub_[[X3]], i256* %subc_[[X3]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.T]]:
 //CHECK-NEXT:   br label %store1
@@ -32,7 +32,7 @@ component main = Num2Bits(3);
 //CHECK-NEXT: store1:
 //CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 3
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %subfix_[[X1]], i32 0
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %1, i256* %2, align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
@@ -48,9 +48,9 @@ component main = Num2Bits(3);
 //CHECK-NEXT:   br label %store4
 //CHECK-EMPTY: 
 //CHECK-NEXT: store4:
-//CHECK-NEXT:   %5 = getelementptr i256, i256* %subfix_[[X3]], i32 0
+//CHECK-NEXT:   %5 = getelementptr i256, i256* %subsig_[[X3]], i32 0
 //CHECK-NEXT:   %6 = load i256, i256* %5, align 4
-//CHECK-NEXT:   %7 = getelementptr i256, i256* %fix_[[X2]], i32 0
+//CHECK-NEXT:   %7 = getelementptr i256, i256* %sig_[[X2]], i32 0
 //CHECK-NEXT:   store i256 %6, i256* %7, align 4
 //CHECK-NEXT:   br label %store5
 //CHECK-EMPTY: 

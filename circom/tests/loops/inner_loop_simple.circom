@@ -21,7 +21,7 @@ component main = InnerLoops(2, 3);
 // %lvars = { n, m, b[0], b[1], i, j }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
@@ -31,7 +31,7 @@ component main = InnerLoops(2, 3);
 //CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i32 @fr_cast_to_addr(i256 %[[T01]])
 //CHECK-NEXT:   %[[A01:[0-9a-zA-Z_.]+]] = mul i32 1, %[[C01]]
 //CHECK-NEXT:   %[[A02:[0-9a-zA-Z_.]+]] = add i32 %[[A01]], 2
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_0, i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T02]], align 4
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 %[[A02]]
 //CHECK-NEXT:   store i256 %[[T03]], i256* %[[T04]], align 4

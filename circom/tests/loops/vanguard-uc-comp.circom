@@ -25,7 +25,7 @@ component main = Num2Bits(2);
 // %subcmps = []
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %fix_[[X3:[0-9]+]], i256* %fix_[[X4:[0-9]+]]){{.*}} {
+//CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %sig_[[X3:[0-9]+]], i256* %sig_[[X4:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
@@ -36,14 +36,14 @@ component main = Num2Bits(2);
 //CHECK-NEXT:   %3 = load i256, i256* %2, align 4
 //CHECK-NEXT:   %call.fr_shr = call i256 @fr_shr(i256 %1, i256 %3)
 //CHECK-NEXT:   %call.fr_bit_and = call i256 @fr_bit_and(i256 %call.fr_shr, i256 1)
-//CHECK-NEXT:   %4 = getelementptr i256, i256* %fix_[[X1]], i32 0
+//CHECK-NEXT:   %4 = getelementptr i256, i256* %sig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %call.fr_bit_and, i256* %4, align 4
 //CHECK-NEXT:   br label %assert2
 //CHECK-EMPTY: 
 //CHECK-NEXT: assert2:
-//CHECK-NEXT:   %5 = getelementptr i256, i256* %fix_[[X2]], i32 0
+//CHECK-NEXT:   %5 = getelementptr i256, i256* %sig_[[X2]], i32 0
 //CHECK-NEXT:   %6 = load i256, i256* %5, align 4
-//CHECK-NEXT:   %7 = getelementptr i256, i256* %fix_[[X3]], i32 0
+//CHECK-NEXT:   %7 = getelementptr i256, i256* %sig_[[X3]], i32 0
 //CHECK-NEXT:   %8 = load i256, i256* %7, align 4
 //CHECK-NEXT:   %call.fr_sub = call i256 @fr_sub(i256 %8, i256 1)
 //CHECK-NEXT:   %call.fr_mul = call i256 @fr_mul(i256 %6, i256 %call.fr_sub)
@@ -56,7 +56,7 @@ component main = Num2Bits(2);
 //CHECK-NEXT: store3:
 //CHECK-NEXT:   %9 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
 //CHECK-NEXT:   %10 = load i256, i256* %9, align 4
-//CHECK-NEXT:   %11 = getelementptr i256, i256* %fix_[[X4]], i32 0
+//CHECK-NEXT:   %11 = getelementptr i256, i256* %sig_[[X4]], i32 0
 //CHECK-NEXT:   %12 = load i256, i256* %11, align 4
 //CHECK-NEXT:   %13 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
 //CHECK-NEXT:   %14 = load i256, i256* %13, align 4

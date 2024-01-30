@@ -29,15 +29,15 @@ template InnerConditional7(N) {
 component main = InnerConditional7(3);
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.F([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]]){{.*}} {
+//CHECK-SAME:  i256* %var_[[X1:[0-9]+]], i256* %var_[[X2:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.F]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false1:
-//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_[[X2]], i32 0
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X2]], i32 0
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
 //CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i256 @fr_sub(i256 %[[T01]], i256 111)
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_[[X1]], i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %[[C01]], i256* %[[T02]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
@@ -54,12 +54,12 @@ component main = InnerConditional7(3);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.T([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]]){{.*}} {
+//CHECK-SAME: i256* %var_[[X1:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_3:[0-9]+\.T]]:
 //CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true1:
-//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_[[X1]], i32 0
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X1]], i32 0
 //CHECK-NEXT:   store i256 777, i256* %[[T00]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
