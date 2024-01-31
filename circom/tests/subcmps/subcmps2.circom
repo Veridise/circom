@@ -35,14 +35,14 @@ template Caller() {
 component main = Caller();
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %fix_[[X1:[0-9]+]]){{.*}} {
+//CHECK-SAME: i256* %sig_[[X1:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
 //CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %fix_[[X1]], i32 0
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %sig_[[X1]], i32 0
 //CHECK-NEXT:   %3 = load i256, i256* %2, align 4
 //CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %1, i256 %3)
 //CHECK-NEXT:   %4 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
@@ -62,19 +62,19 @@ component main = Caller();
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.F}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], [0 x i256]* %sub_[[X3:[0-9]+]], i256* %subc_[[X4:[0-9]+]]){{.*}} {
+//CHECK-SAME: i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X3:[0-9]+]], i256* %subc_[[X4:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.F]]:
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
 //CHECK-NEXT: call1:
 //CHECK-NEXT:   %nop_0_arena = alloca [1 x i256], align 8
 //CHECK-NEXT:   %0 = getelementptr [1 x i256], [1 x i256]* %nop_0_arena, i32 0, i32 0
-//CHECK-NEXT:   %1 = getelementptr i256, i256* %fix_[[X2]], i32 0
+//CHECK-NEXT:   %1 = getelementptr i256, i256* %sig_[[X2]], i32 0
 //CHECK-NEXT:   %2 = load i256, i256* %1, align 4
 //CHECK-NEXT:   store i256 %2, i256* %0, align 4
 //CHECK-NEXT:   %3 = bitcast [1 x i256]* %nop_0_arena to i256*
 //CHECK-NEXT:   %call.nop_0 = call i256 @nop_0(i256* %3)
-//CHECK-NEXT:   %4 = getelementptr i256, i256* %subfix_[[X1]], i32 0
+//CHECK-NEXT:   %4 = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %call.nop_0, i256* %4, align 4
 //CHECK-NEXT:   %5 = load i256, i256* %4, align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
@@ -104,19 +104,19 @@ component main = Caller();
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME: i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], [0 x i256]* %sub_[[X3:[0-9]+]], i256* %subc_[[X4:[0-9]+]]){{.*}} {
+//CHECK-SAME: i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X3:[0-9]+]], i256* %subc_[[X4:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_3:[0-9]+\.T]]:
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
 //CHECK-NEXT: call1:
 //CHECK-NEXT:   %nop_0_arena = alloca [1 x i256], align 8
 //CHECK-NEXT:   %0 = getelementptr [1 x i256], [1 x i256]* %nop_0_arena, i32 0, i32 0
-//CHECK-NEXT:   %1 = getelementptr i256, i256* %fix_[[X2]], i32 0
+//CHECK-NEXT:   %1 = getelementptr i256, i256* %sig_[[X2]], i32 0
 //CHECK-NEXT:   %2 = load i256, i256* %1, align 4
 //CHECK-NEXT:   store i256 %2, i256* %0, align 4
 //CHECK-NEXT:   %3 = bitcast [1 x i256]* %nop_0_arena to i256*
 //CHECK-NEXT:   %call.nop_0 = call i256 @nop_0(i256* %3)
-//CHECK-NEXT:   %4 = getelementptr i256, i256* %subfix_[[X1]], i32 0
+//CHECK-NEXT:   %4 = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %call.nop_0, i256* %4, align 4
 //CHECK-NEXT:   %5 = load i256, i256* %4, align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1

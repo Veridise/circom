@@ -23,7 +23,7 @@ template InnerConditional8(N) {
 component main = InnerConditional8(4);
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %fix_[[X3:[0-9]+]], i256* %fix_[[X4:[0-9]+]]){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_[[X1:[0-9]+]], i256* %var_[[X2:[0-9]+]], i256* %var_[[X3:[0-9]+]], i256* %var_[[X4:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
@@ -51,18 +51,18 @@ component main = InnerConditional8(4);
 //CHECK-NEXT:   br label %store9
 //CHECK-EMPTY: 
 //CHECK-NEXT: if.then:
-//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_[[X4]], i32 0
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X4]], i32 0
 //CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T05]], align 4
 //CHECK-NEXT:   %[[C06:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T06]], i256 999)
-//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_[[X3]], i32 0
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X3]], i32 0
 //CHECK-NEXT:   store i256 %[[C06]], i256* %[[T07]], align 4
 //CHECK-NEXT:   br label %if.merge
 //CHECK-EMPTY: 
 //CHECK-NEXT: if.else:
-//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_[[X2]], i32 0
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X2]], i32 0
 //CHECK-NEXT:   %[[T09:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T08]], align 4
 //CHECK-NEXT:   %[[C03:[0-9a-zA-Z_.]+]] = call i256 @fr_sub(i256 %[[T09]], i256 111)
-//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_[[X1]], i32 0
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %[[C03]], i256* %[[T10]], align 4
 //CHECK-NEXT:   br label %if.merge
 //CHECK-EMPTY: 

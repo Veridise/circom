@@ -56,12 +56,12 @@ component main = InnerLoops(5);
 //CHECK-NEXT: }
 // 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
+//CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
 //CHECK-NEXT: store{{[0-9]+}}:
-//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_0, i32 0
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
 //CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
 //CHECK-NEXT:   store i256 %[[T01]], i256* %[[T02]], align 4
@@ -80,12 +80,12 @@ component main = InnerLoops(5);
 //CHECK-NEXT: }
 // 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_3:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
+//CHECK-SAME: [[$F_ID_3:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_3]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
 //CHECK-NEXT: store{{[0-9]+}}:
-//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_0, i32 0
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
 //CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 3
 //CHECK-NEXT:   store i256 %[[T01]], i256* %[[T02]], align 4
@@ -104,12 +104,12 @@ component main = InnerLoops(5);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_4:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
+//CHECK-SAME: [[$F_ID_4:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_4]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
 //CHECK-NEXT: store{{[0-9]+}}:
-//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_0, i32 0
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
 //CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 4
 //CHECK-NEXT:   store i256 %[[T01]], i256* %[[T02]], align 4
@@ -128,12 +128,12 @@ component main = InnerLoops(5);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_5:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
+//CHECK-SAME: [[$F_ID_5:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_5]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
 //CHECK-NEXT: store{{[0-9]+}}:
-//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %fix_0, i32 0
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
 //CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
 //CHECK-NEXT:   store i256 %[[T01]], i256* %[[T02]], align 4

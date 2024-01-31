@@ -26,15 +26,15 @@ template SubCmps0B(n) {
 component main = SubCmps0B(2);
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
-//CHECK-SAME: i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %fix_[[X3:[0-9]+]], i256* %subfix_[[X4:[0-9]+]],
-//CHECK-SAME: i256* %subfix_[[X5:[0-9]+]], [0 x i256]* %sub_[[X5]], i256* %subc_[[X5]]){{.*}} {
+//CHECK-SAME: i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %sig_[[X3:[0-9]+]], i256* %subsig_[[X4:[0-9]+]],
+//CHECK-SAME: i256* %subsig_[[X5:[0-9]+]], [0 x i256]* %sub_[[X5]], i256* %subc_[[X5]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.T]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %0 = getelementptr i256, i256* %fix_[[X2]], i32 0
+//CHECK-NEXT:   %0 = getelementptr i256, i256* %sig_[[X2]], i32 0
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %subfix_[[X1]], i32 0
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %1, i256* %2, align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
@@ -50,14 +50,14 @@ component main = SubCmps0B(2);
 //CHECK-NEXT:   br label %store4
 //CHECK-EMPTY: 
 //CHECK-NEXT: store4:
-//CHECK-NEXT:   %5 = getelementptr i256, i256* %subfix_[[X4]], i32 0
+//CHECK-NEXT:   %5 = getelementptr i256, i256* %subsig_[[X4]], i32 0
 //CHECK-NEXT:   %6 = load i256, i256* %5, align 4
-//CHECK-NEXT:   %7 = getelementptr i256, i256* %fix_[[X3]], i32 0
+//CHECK-NEXT:   %7 = getelementptr i256, i256* %sig_[[X3]], i32 0
 //CHECK-NEXT:   store i256 %6, i256* %7, align 4
 //CHECK-NEXT:   br label %store5
 //CHECK-EMPTY: 
 //CHECK-NEXT: store5:
-//CHECK-NEXT:   %8 = getelementptr i256, i256* %subfix_[[X5]], i32 0
+//CHECK-NEXT:   %8 = getelementptr i256, i256* %subsig_[[X5]], i32 0
 //CHECK-NEXT:   %9 = load i256, i256* %8, align 4
 //CHECK-NEXT:   %10 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
 //CHECK-NEXT:   store i256 %9, i256* %10, align 4

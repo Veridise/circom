@@ -21,14 +21,14 @@ pub type ToOriginalLocation = HashMap<FuncArgIdx, (AddressType, AddressOffset)>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ArgIndex {
-    Signal(FuncArgIdx),
+    Signal(FuncArgIdx, &'static str),
     SubCmp { signal: FuncArgIdx, arena: FuncArgIdx, counter: FuncArgIdx },
 }
 
 impl ArgIndex {
     pub fn get_signal_idx(&self) -> FuncArgIdx {
         match *self {
-            ArgIndex::Signal(signal) => signal,
+            ArgIndex::Signal(signal, _) => signal,
             ArgIndex::SubCmp { signal, .. } => signal,
         }
     }
@@ -183,7 +183,7 @@ impl LoopBodyExtractor {
             for (loc, ai) in passing_refs {
                 match loc {
                     None => match ai {
-                        ArgIndex::Signal(signal) => {
+                        ArgIndex::Signal(signal, _) => {
                             args[signal] = builders::build_null_ptr(bucket, FR_NULL_I256_PTR);
                         }
                         ArgIndex::SubCmp { signal, arena, counter } => {
@@ -193,7 +193,7 @@ impl LoopBodyExtractor {
                         }
                     },
                     Some((at, val)) => match ai {
-                        ArgIndex::Signal(signal) => {
+                        ArgIndex::Signal(signal, _) => {
                             args[signal] =
                                 builders::build_indexed_storage_ptr_ref(bucket, at.clone(), *val)
                         }
@@ -246,14 +246,14 @@ impl LoopBodyExtractor {
         params[1] = Param { name: String::from("signals"), length: vec![0] };
         for (i, arg_index) in bucket_to_args.values().enumerate() {
             match arg_index {
-                ArgIndex::Signal(signal) => {
+                ArgIndex::Signal(signal, prefix) => {
                     //Single signal uses scalar pointer
-                    params[*signal] = Param { name: format!("fix_{}", i), length: vec![] };
+                    params[*signal] = Param { name: format!("{}_{}", prefix, i), length: vec![] };
                 }
                 ArgIndex::SubCmp { signal, arena, counter } => {
                     //Subcomponent arena requires array pointer but the others are scalar
                     params[*arena] = Param { name: format!("sub_{}", i), length: vec![0] };
-                    params[*signal] = Param { name: format!("subfix_{}", i), length: vec![] };
+                    params[*signal] = Param { name: format!("subsig_{}", i), length: vec![] };
                     params[*counter] = Param { name: format!("subc_{}", i), length: vec![] };
                 }
             }
@@ -515,17 +515,30 @@ impl LoopBodyExtractor {
             if DEBUG_LOOP_UNROLL {
                 println!("bucket {} refs by iteration: {:?}", id, column);
             }
-            // ASSERT: same AddressType kind for this bucket in every (available) iteration
-            assert!(checks::all_same(Self::filter_map(column, |(x, _)| std::mem::discriminant(x))));
+            if column.len() > 0 {
+                // ASSERT: same AddressType kind for this bucket in every (available) iteration
+                assert!(checks::all_same(Self::filter_map(column, |(x, _)| {
+                    std::mem::discriminant(x)
+                })));
 
-            // If the computed index value for this bucket is NOT the same across all available
-            //  iterations (i.e. where it is not None, see earlier comment) or if the AddressType
-            //  is SubcmpSignal, then an extra function argument is needed for it.
-            if Self::filter_map_any(column, |(x, _)| matches!(x, AddressType::SubcmpSignal { .. }))
-                || !checks::all_same(Self::filter_map(column, |(_, y)| *y))
-            {
-                bucket_to_args.insert(*id, ArgIndex::Signal(next_idx));
-                next_idx += 1;
+                // If the computed index value for this bucket is NOT the same across all available
+                //  iterations (i.e. where it is not None, see earlier comment) or if the AddressType
+                //  is SubcmpSignal, then an extra function argument is needed for it.
+                if Self::filter_map_any(column, |(x, _)| {
+                    matches!(x, AddressType::SubcmpSignal { .. })
+                }) || !checks::all_same(Self::filter_map(column, |(_, y)| *y))
+                {
+                    // column.iter().find(Option::is_some);
+                    let kind = column.iter().find_map(|x| x.as_ref().map(|(a, _)| a));
+                    debug_assert!(kind.is_some(), "Condition above implies there's at least one.");
+                    let prefix = match kind.unwrap() {
+                        AddressType::Variable => "var",
+                        AddressType::Signal => "sig",
+                        AddressType::SubcmpSignal { .. } => "subsig",
+                    };
+                    bucket_to_args.insert(*id, ArgIndex::Signal(next_idx, prefix));
+                    next_idx += 1;
+                }
             }
         }
         if DEBUG_LOOP_UNROLL {
@@ -598,16 +611,19 @@ impl LoopBodyExtractor {
             let counter_idx: FuncArgIdx = next_idx + 1;
             next_idx += 2;
             for b in buckets {
-                if let Some(ArgIndex::Signal(sig)) = bucket_to_args.get(b) {
-                    bucket_to_args.insert(
-                        *b,
-                        ArgIndex::SubCmp { signal: *sig, arena: arena_idx, counter: counter_idx },
-                    );
-                } else {
-                    // All buckets had ArgIndex::Signal added earlier
-                    //  and no bucket appears in more than one group.
-                    unreachable!()
-                }
+                bucket_to_args.entry(*b).and_modify(|e| {
+                    if let ArgIndex::Signal(sig, _) = e {
+                        *e = ArgIndex::SubCmp {
+                            signal: *sig,
+                            arena: arena_idx,
+                            counter: counter_idx,
+                        };
+                    } else {
+                        // All buckets had ArgIndex::Signal added earlier
+                        //  and no bucket appears in more than one group.
+                        unreachable!()
+                    }
+                });
             }
         }
         //Keep only the table columns where extra parameters are necessary

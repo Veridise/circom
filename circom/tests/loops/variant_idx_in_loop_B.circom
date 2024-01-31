@@ -20,14 +20,14 @@ component main = VariantIndex(2);
 // %subcmps = []
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %fix_0){{.*}} {
+//CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0){{.*}} {
 //CHECK:      store{{[0-9]+}}:
 //CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 1
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
 //CHECK-NEXT:   %2 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 3
 //CHECK-NEXT:   %3 = load i256, i256* %2, align 4
 //CHECK-NEXT:   %call.fr_shr = call i256 @fr_shr(i256 %1, i256 %3)
-//CHECK-NEXT:   %4 = getelementptr i256, i256* %fix_0, i32 0
+//CHECK-NEXT:   %4 = getelementptr i256, i256* %var_0, i32 0
 //CHECK-NEXT:   store i256 %call.fr_shr, i256* %4, align 4
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 

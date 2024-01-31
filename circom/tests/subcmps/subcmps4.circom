@@ -36,14 +36,14 @@ template SubCmps4(n) {
 component main = SubCmps4(3);
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %fix_[[X1:[0-9]+]]){{.*}} {
+//CHECK-SAME:  i256* %sig_[[X1:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
 //CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %fix_0, i32 0
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   %3 = load i256, i256* %2, align 4
 //CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %1, i256 %3)
 //CHECK-NEXT:   %4 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
@@ -63,15 +63,15 @@ component main = SubCmps4(3);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T\.F}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %subfix_[[X3:[0-9]+]],
-//CHECK-SAME:  i256* %fix_[[X4:[0-9]+]], [0 x i256]* %sub_[[X3]], i256* %subc_[[X3]]){{.*}} {
+//CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %subsig_[[X3:[0-9]+]],
+//CHECK-SAME:  i256* %sig_[[X4:[0-9]+]], [0 x i256]* %sub_[[X3]], i256* %subc_[[X3]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.T\.F]]:
 //CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true1:
-//CHECK-NEXT:   %0 = getelementptr i256, i256* %fix_[[X2]], i32 0
+//CHECK-NEXT:   %0 = getelementptr i256, i256* %sig_[[X2]], i32 0
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %subfix_[[X1]], i32 0
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %1, i256* %2, align 4
 //CHECK-NEXT:   %3 = load i256, i256* %2, align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
@@ -95,15 +95,15 @@ component main = SubCmps4(3);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.F\.F}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %subfix_[[X3:[0-9]+]],
-//CHECK-SAME:  i256* %fix_[[X4:[0-9]+]], [0 x i256]* %sub_[[X3]], i256* %subc_[[X3]]){{.*}} {
+//CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %subsig_[[X3:[0-9]+]],
+//CHECK-SAME:  i256* %sig_[[X4:[0-9]+]], [0 x i256]* %sub_[[X3]], i256* %subc_[[X3]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_3:[0-9]+\.F\.F]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false1:
-//CHECK-NEXT:   %0 = getelementptr i256, i256* %fix_[[X4]], i32 0
+//CHECK-NEXT:   %0 = getelementptr i256, i256* %sig_[[X4]], i32 0
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %subfix_[[X3]], i32 0
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %subsig_[[X3]], i32 0
 //CHECK-NEXT:   store i256 %1, i256* %2, align 4
 //CHECK-NEXT:   %3 = load i256, i256* %2, align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
@@ -127,15 +127,15 @@ component main = SubCmps4(3);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %subfix_[[X3:[0-9]+]],
-//CHECK-SAME:  i256* %fix_[[X4:[0-9]+]], [0 x i256]* %sub_[[X3]], i256* %subc_[[X3]]){{.*}} {
+//CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %subsig_[[X3:[0-9]+]],
+//CHECK-SAME:  i256* %sig_[[X4:[0-9]+]], [0 x i256]* %sub_[[X3]], i256* %subc_[[X3]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_4:[0-9]+\.T\.T]]:
 //CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true1:
-//CHECK-NEXT:   %0 = getelementptr i256, i256* %fix_[[X2]], i32 0
+//CHECK-NEXT:   %0 = getelementptr i256, i256* %sig_[[X2]], i32 0
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %subfix_[[X1]], i32 0
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %1, i256* %2, align 4
 //CHECK-NEXT:   %3 = load i256, i256* %2, align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
@@ -160,15 +160,15 @@ component main = SubCmps4(3);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.F\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %subfix_[[X1:[0-9]+]], i256* %fix_[[X2:[0-9]+]], i256* %subfix_[[X3:[0-9]+]],
-//CHECK-SAME:  i256* %fix_[[X4:[0-9]+]], [0 x i256]* %sub_[[X3]], i256* %subc_[[X3]]){{.*}} {
+//CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %subsig_[[X3:[0-9]+]],
+//CHECK-SAME:  i256* %sig_[[X4:[0-9]+]], [0 x i256]* %sub_[[X3]], i256* %subc_[[X3]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_5:[0-9]+\.F\.T]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false1:
-//CHECK-NEXT:   %0 = getelementptr i256, i256* %fix_[[X4]], i32 0
+//CHECK-NEXT:   %0 = getelementptr i256, i256* %sig_[[X4]], i32 0
 //CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %subfix_[[X3]], i32 0
+//CHECK-NEXT:   %2 = getelementptr i256, i256* %subsig_[[X3]], i32 0
 //CHECK-NEXT:   store i256 %1, i256* %2, align 4
 //CHECK-NEXT:   %3 = load i256, i256* %2, align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
