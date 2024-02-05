@@ -1,3 +1,4 @@
+use inkwell::attributes::AttributeLoc;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::ContextRef;
@@ -41,6 +42,13 @@ pub fn create_function<'a>(
         }
     };
     f
+}
+
+pub fn add_attribute(producer: &dyn LLVMIRProducer, func: FunctionValue, key: &str, val: &str) {
+    func.add_attribute(
+        AttributeLoc::Function,
+        producer.context().create_string_attribute(key, val),
+    );
 }
 
 pub fn create_bb<'a>(

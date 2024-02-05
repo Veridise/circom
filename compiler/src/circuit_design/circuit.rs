@@ -10,7 +10,7 @@ use code_producers::c_elements::*;
 use code_producers::llvm_elements::array_switch::{load_array_stores_fns, load_array_load_fns};
 use code_producers::llvm_elements::*;
 use code_producers::llvm_elements::fr::load_fr;
-use code_producers::llvm_elements::functions::{create_function, FunctionLLVMIRProducer, ExtractedFunctionLLVMIRProducer, create_bb};
+use code_producers::llvm_elements::functions::{add_attribute, create_bb, create_function, ExtractedFunctionLLVMIRProducer, FunctionLLVMIRProducer};
 use code_producers::llvm_elements::instructions::{create_alloca, create_call, create_gep, create_load, create_return_void};
 use code_producers::llvm_elements::stdlib::{load_stdlib, GENERATED_FN_PREFIX};
 use code_producers::llvm_elements::types::{bigint_type, i32_type, void_type};
@@ -120,11 +120,19 @@ impl WriteLLVMIR for Circuit {
             );
             function.set_section(Some(&f.name));
 
-            // Preserve names (only for generated b/c source functions use only 1 argument)
             if name.starts_with(GENERATED_FN_PREFIX) {
+                // Preserve names (only for generated b/c source functions use only 1 argument)
                 for (i, p) in f.params.iter().enumerate() {
                     function.get_nth_param(i as u32).unwrap().set_name(&p.name);
                 }
+                // Add source location attribute so functions generated from different source
+                //  locations will not be merged.
+                add_attribute(
+                    producer,
+                    function,
+                    "src-loc",
+                    &format!("{:?}:{:?}", f.get_source_file_id(), f.get_line()),
+                );
             }
 
             funcs.insert(name, function);
