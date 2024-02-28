@@ -42,7 +42,7 @@ pub trait WriteLLVMIR {
         out_path: &str,
         data: &LLVMCircuitData,
     ) -> Result<(), ()> {
-        let context = Box::new(create_context());
+        let context = create_context();
         let top_level = TopLevelLLVMIRProducer::new(
             &context,
             program_archive,

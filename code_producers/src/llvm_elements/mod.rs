@@ -138,9 +138,8 @@ impl LLVMCircuitData {
 }
 
 pub struct TopLevelLLVMIRProducer<'a> {
-    pub context: &'a Context,
     current_module: LLVM<'a>,
-    pub field_tracking: Vec<String>,
+    field_tracking: Vec<String>,
     main_template_header: String,
 }
 
@@ -190,6 +189,7 @@ impl<'a> TopLevelLLVMIRProducer<'a> {
     }
 }
 
+#[inline]
 pub fn create_context() -> Context {
     Context::create()
 }
@@ -203,7 +203,6 @@ impl<'a> TopLevelLLVMIRProducer<'a> {
         main_template_header: String,
     ) -> Self {
         TopLevelLLVMIRProducer {
-            context,
             current_module: LLVM::from_context(context, program_archive, llvm_path),
             field_tracking,
             main_template_header,
@@ -365,7 +364,7 @@ impl<'a> LLVM<'a> {
         // Verify that bitcode can be written, parsed, and re-verified
         {
             let buff = self.module.write_bitcode_to_memory();
-            let context = Context::create();
+            let context = create_context();
             let new_module =
                 Module::parse_bitcode_from_buffer(&buff, &context).map_err(|llvm_err| {
                     eprintln!(
@@ -398,10 +397,12 @@ impl<'a> LLVM<'a> {
     }
 }
 
+#[inline]
 pub fn run_fn_name(name: String) -> String {
     format!("{}_run", name)
 }
 
+#[inline]
 pub fn build_fn_name(name: String) -> String {
     format!("{}_build", name)
 }
