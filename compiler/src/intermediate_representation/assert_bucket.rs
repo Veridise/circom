@@ -56,7 +56,6 @@ impl ToSExp for AssertBucket {
         SExp::List(vec![
             SExp::Atom("ASSERT".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
             self.evaluate.to_sexp()
         ])
     }

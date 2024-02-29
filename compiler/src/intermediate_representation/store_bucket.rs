@@ -70,7 +70,9 @@ impl ToSExp for StoreBucket {
         SExp::List(vec![
             SExp::Atom("STORE".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
+            SExp::Atom(format!("context:{:?}", self.context)),
+            SExp::Atom(format!("dest_is_output:{}", self.dest_is_output)),
+            SExp::Atom(format!("bounded_fn:{:?}", self.bounded_fn)),
             self.dest_address_type.to_sexp(),
             self.dest.to_sexp(),
             self.src.to_sexp()

@@ -1,6 +1,6 @@
 use super::types::*;
 use crate::hir::very_concrete_program::Param;
-use crate::intermediate_representation::InstructionList;
+use crate::intermediate_representation::{InstructionList, SExp, ToSExp};
 use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
@@ -44,6 +44,20 @@ impl ToString for FunctionCodeInfo {
             body = format!("{}{}\n", body, i.to_string());
         }
         format!("FUNCTION({})(\n{})", self.header, body)
+    }
+}
+
+impl ToSExp for FunctionCodeInfo {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("FUNCTION".to_string()),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("header:{}", self.header)),
+            SExp::Atom(format!("name:{}", self.name)),
+            SExp::Atom(format!("params:{:?}", self.params)),
+            SExp::Atom(format!("returns:{:?}", self.returns)),
+            self.body.to_sexp(),
+        ])
     }
 }
 

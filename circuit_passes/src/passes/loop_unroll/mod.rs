@@ -9,7 +9,7 @@ use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{
-    BucketId, InstructionList, InstructionPointer, new_id, UpdateId,
+    new_id, BucketId, InstructionList, InstructionPointer, ToSExp, UpdateId
 };
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
@@ -53,12 +53,7 @@ impl<'d> LoopUnrollPass<'d> {
         if DEBUG_LOOP_UNROLL {
             println!("\nTry unrolling loop {}:", bucket.id); //TODO: TEMP
             for (i, s) in bucket.body.iter().enumerate() {
-                println!(
-                    "[{}/{}]{}",
-                    i + 1,
-                    bucket.body.len(),
-                    compiler::intermediate_representation::ToSExp::to_sexp(&**s).to_pretty(100)
-                );
+                println!("[{}/{}]{}", i + 1, bucket.body.len(), s.to_sexp().to_pretty(100));
             }
             for (i, s) in bucket.body.iter().enumerate() {
                 println!("[{}/{}]{:?}", i + 1, bucket.body.len(), s);

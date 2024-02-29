@@ -61,9 +61,8 @@ impl ToSExp for ValueBucket {
         SExp::List(vec![
             SExp::Atom("VALUE".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
-            SExp::Atom(format!("as:{}", self.parse_as.to_string())),
-            SExp::Atom(format!("op_number:{}", self.op_aux_no)),
+            SExp::Atom(format!("parse_as:{}", self.parse_as.to_string())),
+            SExp::Atom(format!("op_aux_no:{}", self.op_aux_no)),
             SExp::Atom(self.value.to_string())
         ])
     }

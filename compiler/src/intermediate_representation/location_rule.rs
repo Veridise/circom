@@ -41,7 +41,7 @@ impl ToSExp for LocationRule {
             Mapped { signal_code, indexes } => SExp::List(vec![
                 SExp::Atom("MAPPED".to_string()),
                 SExp::Atom(signal_code.to_string()),
-                SExp::List(indexes.iter().map(|i| i.to_sexp()).collect())
+                indexes.to_sexp(),
             ])
         }
     }
