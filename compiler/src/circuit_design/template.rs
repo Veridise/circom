@@ -1,4 +1,4 @@
-use crate::intermediate_representation::InstructionList;
+use crate::intermediate_representation::{InstructionList, SExp, ToSExp};
 use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
@@ -59,6 +59,23 @@ impl ToString for TemplateCodeInfo {
             body = format!("{}{}\n", body, i.to_string());
         }
         format!("TEMPLATE({})(\n{})", self.header, body)
+    }
+}
+
+impl ToSExp for TemplateCodeInfo {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(vec![
+            SExp::Atom("TEMPLATE".to_string()),
+            SExp::Atom(format!("id:{}", self.id)),
+            SExp::Atom(format!("line:{}", self.line)),
+            SExp::Atom(format!("header:{}", self.header)),
+            SExp::Atom(format!("name:{}", self.name)),
+            SExp::Atom(format!(
+                "signals: {{in:{}, out:{}, mid:{}}}",
+                self.number_of_inputs, self.number_of_outputs, self.number_of_intermediates
+            )),
+            self.body.to_sexp(),
+        ])
     }
 }
 

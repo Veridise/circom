@@ -55,7 +55,6 @@ impl ToSExp for ReturnBucket {
         SExp::List(vec![
             SExp::Atom("RETURN".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
             self.value.to_sexp()
         ])
     }

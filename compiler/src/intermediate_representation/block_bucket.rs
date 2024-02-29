@@ -61,9 +61,8 @@ impl ToSExp for BlockBucket {
         SExp::List(vec![
             SExp::Atom("BLOCK".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
             SExp::Atom(format!("n_iterations:{}", self.n_iters)),
-            SExp::List(self.body.iter().map(|i| i.to_sexp()).collect()),
+            self.body.to_sexp(),
         ])
     }
 }

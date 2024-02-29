@@ -81,9 +81,8 @@ impl ToSExp for CallBucket {
         SExp::List(vec![
             SExp::Atom("CALL".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
             SExp::Atom(self.symbol.clone()),
-            SExp::List(self.arguments.iter().map(|i| i.to_sexp()).collect()),
+            self.arguments.to_sexp(),
         ])
     }
 }

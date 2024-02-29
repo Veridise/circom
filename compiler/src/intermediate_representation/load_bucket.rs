@@ -62,7 +62,7 @@ impl ToSExp for LoadBucket {
         SExp::List(vec![
             SExp::Atom("LOAD".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
+            SExp::Atom(format!("bounded_fn:{:?}", self.bounded_fn)),
             self.address_type.to_sexp(),
             self.src.to_sexp()
         ])

@@ -60,9 +60,8 @@ impl ToSExp for LoopBucket {
         SExp::List(vec![
             SExp::Atom("LOOP".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
             self.continue_condition.to_sexp(),
-            SExp::List(self.body.iter().map(|i| i.to_sexp()).collect()),
+            self.body.to_sexp(),
         ])
     }
 }

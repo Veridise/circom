@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use super::BucketId;
 pub use super::address_type::{AddressType, InputInformation, StatusInput};
 pub use super::assert_bucket::AssertBucket;
@@ -260,6 +262,18 @@ impl ToString for Instruction {
             Block(v) => v.to_string(),
             Nop(v) => v.to_string()
         }
+    }
+}
+
+impl ToSExp for InstructionList {
+    fn to_sexp(&self) -> SExp {
+        SExp::List(self.iter().map(ToSExp::to_sexp).collect())
+    }
+}
+
+impl ToSExp for InstructionPointer {
+    fn to_sexp(&self) -> SExp {
+        self.deref().to_sexp()
     }
 }
 

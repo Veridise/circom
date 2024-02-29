@@ -70,10 +70,9 @@ impl ToSExp for BranchBucket {
         SExp::List(vec![
             SExp::Atom("IF".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
             self.cond.to_sexp(),
-            SExp::List(self.if_branch.iter().map(|i| i.to_sexp()).collect()),
-            SExp::List(self.else_branch.iter().map(|i| i.to_sexp()).collect())
+            self.if_branch.to_sexp(),
+            self.else_branch.to_sexp(),
         ])
     }
 }

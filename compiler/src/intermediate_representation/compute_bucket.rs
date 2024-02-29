@@ -155,10 +155,9 @@ impl ToSExp for ComputeBucket {
         SExp::List(vec![
             SExp::Atom("COMPUTE".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
-            SExp::Atom(format!("op_number:{}", self.op_aux_no)),
+            SExp::Atom(format!("op_aux_no:{}", self.op_aux_no)),
             SExp::Atom(self.op.to_string()),
-            SExp::List(self.stack.iter().map(|i| i.to_sexp()).collect()),
+            self.stack.to_sexp(),
         ])
     }
 }

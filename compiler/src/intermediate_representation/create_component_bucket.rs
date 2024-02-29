@@ -78,7 +78,6 @@ impl ToSExp for CreateCmpBucket {
         SExp::List(vec![
             SExp::Atom("CREATE_CMP".to_string()),
             SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("template_id:{}", self.message_id)),
             SExp::Atom(format!("name:{}", self.symbol)),
             self.sub_cmp_id.to_sexp()
         ])
