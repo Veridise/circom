@@ -83,8 +83,7 @@ pub fn create_pow_with_name<'a, T: IntMathValue<'a> + Copy>(
             bldr.build_load(ptr_abv, "").into_int_value(),
         );
         // XXX: Assumption: If the value is 0 the we go to the end block
-        let _cond =
-            create_conditional_branch(producer, res_cond.into_int_value(), bb_lp_body, bb_lp_end);
+        create_conditional_branch(producer, res_cond.into_int_value(), bb_lp_body, bb_lp_end);
 
         //// Loop body block
         producer.set_current_bb(bb_lp_body);
