@@ -101,17 +101,17 @@ pub trait CircuitTransformationPass {
             .map(|f| self.transform_function(f))
             .collect::<Result<_, _>>()?;
         let field_tracking = self.get_updated_field_constants();
-        let bounded_loads =
+        let array_loads =
             self.get_updated_bounded_array_loads(&circuit.llvm_data.bounded_array_loads);
-        let bounded_stores =
+        let array_stores =
             self.get_updated_bounded_array_stores(&circuit.llvm_data.bounded_array_stores);
         let mut new_circuit = Circuit {
             wasm_producer: circuit.wasm_producer.clone(),
             c_producer: circuit.c_producer.clone(),
             llvm_data: circuit.llvm_data.clone_with_updates(
                 field_tracking,
-                bounded_loads,
-                bounded_stores,
+                array_loads,
+                array_stores,
             ),
             templates,
             functions,
@@ -686,7 +686,7 @@ pub trait CircuitTransformationPass {
         Ok(())
     }
 
-    fn post_hook_circuit(&self, _cir: &mut Circuit) -> Result<(), BadInterp> {
+    fn post_hook_circuit(&self, _: &mut Circuit) -> Result<(), BadInterp> {
         Ok(())
     }
 

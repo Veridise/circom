@@ -141,7 +141,7 @@ impl SSACollector {
     }
 
     pub fn dump_vars(&self) -> IndexMapping {
-        let mut mapping = HashMap::new();
+        let mut mapping = IndexMapping::new();
         for (addr, lengths) in self.vars.values() {
             let size = lengths.iter().fold(1, |acc, i| acc * i);
             let range = (*addr)..(addr + size);
@@ -161,7 +161,7 @@ impl SSACollector {
     }
 
     pub fn dump_signals(&self) -> IndexMapping {
-        let mut mapping = HashMap::new();
+        let mut mapping = IndexMapping::new();
         for (addr, lengths) in self.signals.values() {
             let size = lengths.iter().fold(1, |acc, i| acc * i);
             let range = (*addr)..(addr + size);
@@ -177,7 +177,7 @@ impl SSACollector {
     }
 
     pub fn dump_components(&self) -> IndexMapping {
-        let mut mapping = HashMap::new();
+        let mut mapping = IndexMapping::new();
         for (addr, lengths) in self.components_addrs.values() {
             let size = lengths.iter().fold(1, |acc, i| acc * i);
             let range = (*addr)..(addr + size);

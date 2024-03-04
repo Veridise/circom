@@ -9,7 +9,7 @@ use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{
-    new_id, BucketId, InstructionList, InstructionPointer, ToSExp, UpdateId
+    new_id, BucketId, InstructionList, InstructionPointer, ToSExp, UpdateId,
 };
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
@@ -181,7 +181,7 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
 #[cfg(test)]
 mod test {
     use std::cell::RefCell;
-    use std::collections::HashMap;
+    use code_producers::llvm_elements::IndexMapping;
     use compiler::circuit_design::template::TemplateCodeInfo;
     use compiler::compiler_interface::Circuit;
     use compiler::intermediate_representation::{Instruction, new_id};
@@ -198,9 +198,9 @@ mod test {
         let global_data = RefCell::new(GlobalPassData::new());
         let pass = LoopUnrollPass::new(prime, &global_data);
         let mut circuit = example_program();
-        circuit.llvm_data.variable_index_mapping.insert("test_0".to_string(), HashMap::new());
-        circuit.llvm_data.signal_index_mapping.insert("test_0".to_string(), HashMap::new());
-        circuit.llvm_data.component_index_mapping.insert("test_0".to_string(), HashMap::new());
+        circuit.llvm_data.variable_index_mapping.insert("test_0".to_string(), IndexMapping::new());
+        circuit.llvm_data.signal_index_mapping.insert("test_0".to_string(), IndexMapping::new());
+        circuit.llvm_data.component_index_mapping.insert("test_0".to_string(), IndexMapping::new());
         let new_circuit =
             pass.transform_circuit(&circuit).map_err(|e| e.get_message().clone()).unwrap();
         if cfg!(debug_assertions) {

@@ -1,11 +1,11 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::circuit_design::function::{FunctionCode, FunctionCodeInfo};
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
 use compiler::hir::very_concrete_program::Param;
-use compiler::intermediate_representation::{InstructionPointer, BucketId, UpdateId, new_id};
+use compiler::intermediate_representation::{new_id, BucketId, InstructionPointer, UpdateId};
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::intermediate_representation::translate::ARRAY_PARAM_STORES;
 use crate::bucket_interpreter::error::BadInterp;
@@ -13,11 +13,15 @@ use crate::bucket_interpreter::memory::PassMemory;
 use crate::{default__name, default__get_mem};
 use super::{CircuitTransformationPass, GlobalPassData, builders};
 
+/// Extracts the constant argument initialization section of a template into
+/// *.array.param.* functions and replaces the original section with a call to
+/// the function. This reduces the overall size of the LLVM IR by allowing
+/// templates with the same constant arguments to reuse the same function.
+/// NOTE: See `post_hook_circuit` below because it defines another transformation
+/// that happens in this pass that is unrelated to constant argument deduplication.
 pub struct ConstArgDeduplicationPass<'d> {
     _global_data: &'d RefCell<GlobalPassData>,
     memory: PassMemory,
-    // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    template_headers_grpby_name: RefCell<HashMap<String, HashSet<String>>>,
     // new_body_functions: RefCell<Vec<FunctionCode>>,
     new_body_functions: RefCell<HashMap<Vec<(usize, usize)>, FunctionCode>>,
 }
@@ -27,7 +31,6 @@ impl<'d> ConstArgDeduplicationPass<'d> {
         ConstArgDeduplicationPass {
             _global_data,
             memory: PassMemory::new(prime, Default::default()),
-            template_headers_grpby_name: Default::default(),
             new_body_functions: Default::default(),
         }
     }
@@ -130,17 +133,6 @@ impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
 
     fn run_template(&self, _: &TemplateCode) -> Result<(), BadInterp> {
         // No need to actually run templates
-        Ok(())
-    }
-
-    fn pre_hook_circuit(&self, circuit: &Circuit) -> Result<(), BadInterp> {
-        self.memory.fill_from_circuit(circuit);
-        // Group templates by name (i.e. those produced from the same Circom template)
-        let mut template_groups: HashMap<String, HashSet<String>> = Default::default();
-        for t in &circuit.templates {
-            template_groups.entry(t.name.clone()).or_default().insert(t.header.clone());
-        }
-        self.template_headers_grpby_name.replace(template_groups);
         Ok(())
     }
 
