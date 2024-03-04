@@ -21,7 +21,8 @@ pub struct PassMemory {
     //  wrapped separately and the template/function library values themselves are wrapped separately.
     templates_library: RefCell<HashMap<String, TemplateCode>>,
     functions_library: RefCell<HashMap<String, FunctionCode>>,
-    ///
+    /// Mirrors `LLVMCircuitData::field_tracking`.
+    /// When ValueBucket is parsed as a bigint, its value is the index into this map.
     constant_fields: RefCell<Vec<String>>,
     /// Current template header
     current_scope: RefCell<String>,
@@ -32,7 +33,7 @@ pub struct PassMemory {
     ///
     signal_index_mapping: RefCell<HashMap<String, IndexMapping>>,
     ///
-    variables_index_mapping: RefCell<HashMap<String, IndexMapping>>,
+    variable_index_mapping: RefCell<HashMap<String, IndexMapping>>,
     ///
     component_addr_index_mapping: RefCell<HashMap<String, IndexMapping>>,
     ///
@@ -50,7 +51,7 @@ impl PassMemory {
             templates_library: Default::default(),
             functions_library: Default::default(),
             signal_index_mapping: Default::default(),
-            variables_index_mapping: Default::default(),
+            variable_index_mapping: Default::default(),
             component_addr_index_mapping: Default::default(),
         }
     }
@@ -132,7 +133,7 @@ impl PassMemory {
         }
         self.constant_fields.replace(circuit.llvm_data.field_tracking.clone());
         self.io_map.replace(circuit.llvm_data.io_map.clone());
-        self.variables_index_mapping.replace(circuit.llvm_data.variable_index_mapping.clone());
+        self.variable_index_mapping.replace(circuit.llvm_data.variable_index_mapping.clone());
         self.signal_index_mapping.replace(circuit.llvm_data.signal_index_mapping.clone());
         self.component_addr_index_mapping
             .replace(circuit.llvm_data.component_index_mapping.clone());
@@ -175,7 +176,7 @@ impl PassMemory {
     }
 
     pub fn get_variables_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
-        self.variables_index_mapping.borrow()[scope][index].clone()
+        self.variable_index_mapping.borrow()[scope][index].clone()
     }
 
     pub fn get_current_scope_variables_index_mapping(&self, index: &usize) -> Range<usize> {
