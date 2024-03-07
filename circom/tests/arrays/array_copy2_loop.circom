@@ -2,7 +2,7 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
-// Scalar copy version of `array_copy2.circom` test. Output is identical except for basic blocks.
+// Scalar copy version of `array_copy2_vec.circom` test. Output is identical except for basic blocks.
 template Array2(n) {
     signal input a[n];
     signal output b[n];
