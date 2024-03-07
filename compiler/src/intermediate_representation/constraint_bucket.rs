@@ -56,7 +56,7 @@ impl ConstraintBucket {
             // No other case should happen
             _ => panic!("Unexpected indexing {:?} on {}", idxs, base_ptr),
         };
-        create_load(producer, create_gep(producer, base_ptr, &indices).into_pointer_value())
+        create_load(producer, create_gep(producer, base_ptr, &indices))
     }
 }
 

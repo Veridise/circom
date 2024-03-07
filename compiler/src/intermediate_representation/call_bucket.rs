@@ -3,7 +3,7 @@ use either::Either;
 use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer, to_basic_metadata_enum};
+use code_producers::llvm_elements::{to_basic_metadata_enum, AnyValue, LLVMIRProducer, LLVMInstruction};
 use code_producers::llvm_elements::instructions::{
     create_alloca, create_call, create_gep, create_store, pointer_cast,
 };
@@ -140,8 +140,7 @@ impl WriteLLVMIR for CallBucket {
                 self.arguments.iter().zip(&self.argument_types).zip(offsets)
             {
                 let i = create_literal_u32(producer, offset as u64);
-                let ptr = create_gep(producer, arena.into_pointer_value(), &[zero(producer), i])
-                    .into_pointer_value();
+                let ptr = create_gep(producer, arena, &[zero(producer), i]);
                 if arg_ty.size > 1 {
                     let src_arg = match arg.as_ref() {
                         Instruction::Load(v) => {
@@ -163,8 +162,7 @@ impl WriteLLVMIR for CallBucket {
                                     );
                                     producer.template_ctx().get_subcmp_signal(producer, addr, index)
                                 }
-                            }
-                            .into_pointer_value();
+                            };
                             gep
                         }
                         _ => unreachable!(),
@@ -185,7 +183,7 @@ impl WriteLLVMIR for CallBucket {
 
             let arena = pointer_cast(
                 producer,
-                arena.into_pointer_value(),
+                arena,
                 bigint_type(producer).ptr_type(Default::default()),
             );
 
@@ -210,7 +208,7 @@ impl WriteLLVMIR for CallBucket {
                             producer,
                             arena,
                             &[i32_type(producer).const_int(self.arguments.len() as u64, false)],
-                        )
+                        ).as_any_value_enum()
                     };
                     return StoreBucket::produce_llvm_ir(
                         producer,

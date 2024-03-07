@@ -177,12 +177,10 @@ pub fn create_array_copy_with_name<'a, T: IntMathValue<'a>>(
     // i
     let cur_idx = create_load_with_name(producer, ptr_lp_var, "current_idx").into_int_value();
     // src[i]
-    let src_ptr =
-        create_gep_with_name(producer, src, &[cur_idx], "src_ptr_at_idx").into_pointer_value();
+    let src_ptr = create_gep_with_name(producer, src, &[cur_idx], "src_ptr_at_idx");
     let src_val = create_load_with_name(producer, src_ptr, "src_val_at_idx");
     // dst[i]
-    let dst_ptr =
-        create_gep_with_name(producer, dst, &[cur_idx], "dst_ptr_at_idx").into_pointer_value();
+    let dst_ptr = create_gep_with_name(producer, dst, &[cur_idx], "dst_ptr_at_idx");
     // dst[i] = src[i]
     create_store(producer, dst_ptr, src_val);
 
@@ -728,7 +726,7 @@ pub fn create_alloca<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     ty: AnyTypeEnum<'a>,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> PointerValue<'a> {
     match ty {
         AnyTypeEnum::ArrayType(ty) => producer.llvm().builder.build_alloca(ty, name),
         AnyTypeEnum::FloatType(ty) => producer.llvm().builder.build_alloca(ty, name),
@@ -739,7 +737,6 @@ pub fn create_alloca<'a>(
         AnyTypeEnum::FunctionType(_) => panic!("We cannot allocate a function type!"),
         AnyTypeEnum::VoidType(_) => panic!("We cannot allocate a void type!"),
     }
-    .as_any_value_enum()
 }
 
 pub fn create_load_with_name<'a>(
@@ -762,18 +759,15 @@ pub fn create_gep_with_name<'a>(
     ptr: PointerValue<'a>,
     indices: &[IntValue<'a>],
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> PointerValue<'a> {
     unsafe { producer.llvm().builder.build_gep(ptr, indices, name) }
-        .as_instruction()
-        .unwrap()
-        .as_any_value_enum()
 }
 
 pub fn create_gep<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     ptr: PointerValue<'a>,
     indices: &[IntValue<'a>],
-) -> AnyValueEnum<'a> {
+) -> PointerValue<'a> {
     create_gep_with_name(producer, ptr, indices, "")
 }
 

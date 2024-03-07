@@ -344,9 +344,10 @@ fn index_arr_ptr_fn(producer: &dyn LLVMIRProducer) {
 
     let main = create_bb(producer, func, FR_INDEX_ARR_PTR);
     producer.set_current_bb(main);
-    let gep =
-        create_gep(producer, arr.into_pointer_value(), &[zero(producer), idx.into_int_value()]);
-    create_return(producer, gep.into_pointer_value());
+    create_return(
+        producer,
+        create_gep(producer, arr.into_pointer_value(), &[zero(producer), idx.into_int_value()]),
+    );
 }
 
 fn identity_arr_ptr_fn(producer: &dyn LLVMIRProducer) {

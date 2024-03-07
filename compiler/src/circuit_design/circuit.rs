@@ -183,13 +183,11 @@ impl WriteLLVMIR for Circuit {
                 to_basic_type_enum(bigint_ptr.ptr_type(Default::default())),
                 to_basic_type_enum(i32_type(producer))
             ], false);
-            let alloca = create_alloca(producer,
-                                       component_memory.as_any_type_enum(),
-                                       "").into_pointer_value();
+            let alloca = create_alloca(producer, component_memory.as_any_type_enum(), "");
             create_call(producer,
                                 build_fn_name(producer.get_main_template_header().clone()).as_str(),
                                 &[alloca.into()]);
-            let signals_ptr = create_gep(producer, alloca, &[zero(producer), zero(producer)]).into_pointer_value();
+            let signals_ptr = create_gep(producer, alloca, &[zero(producer), zero(producer)]);
             let signals = create_load(producer, signals_ptr).into_pointer_value();
             create_call(producer,
             run_fn_name(producer.get_main_template_header().clone()).as_str(),

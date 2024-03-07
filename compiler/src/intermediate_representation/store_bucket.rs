@@ -126,8 +126,7 @@ impl StoreBucket {
                             let subcmp = producer.template_ctx().load_subcmp_addr(producer, addr);
                             create_gep(producer, subcmp, &[zero(producer)])
                         }
-                    }
-                    .into_pointer_value();
+                    };
                     let arr_ptr = pointer_cast(producer, arr_ptr, array_ptr_ty(producer));
                     Some(create_call(
                         producer,
@@ -146,8 +145,7 @@ impl StoreBucket {
                             .expect("The address of a subcomponent must yield a value!");
                         producer.template_ctx().get_subcmp_signal(producer, addr, dest_index)
                     }
-                }
-                .into_pointer_value();
+                };
                 if context.size > 1 {
                     // In the non-scalar case, produce an array copy. If the stored source
                     //  is a LoadBucket, first convert it into an address.
@@ -173,7 +171,7 @@ impl StoreBucket {
                                         producer.template_ctx().load_subcmp_addr(producer, addr);
                                     create_gep(producer, subcmp, &[zero(producer), src_index])
                                 }
-                            };
+                            }.into();
                         }
                     }
                     Some(create_call(
