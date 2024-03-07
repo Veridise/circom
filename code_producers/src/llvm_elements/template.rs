@@ -105,7 +105,7 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
         create_gep(producer, self.load_subcmp_addr(producer, subcmp_id), &[zero(producer), index])
     }
 
-    fn get_signal(
+    fn get_signal_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
@@ -122,7 +122,7 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
 
 impl<'a> BodyCtx<'a> for StdTemplateCtx<'a> {
     /// Returns a reference to the local variable associated to the index
-    fn get_variable(
+    fn get_lvar_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,

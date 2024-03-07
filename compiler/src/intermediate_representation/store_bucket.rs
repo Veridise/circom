@@ -3,7 +3,7 @@ use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{AnyValueEnum, LLVMInstruction, LLVMIRProducer, to_enum, run_fn_name, fr::FR_ARRAY_COPY_FN_NAME};
-use code_producers::llvm_elements::array_switch::array_ptr_ty;
+use code_producers::llvm_elements::array_switch::unsized_array_ptr_ty;
 use code_producers::llvm_elements::instructions::{
     create_call, create_gep, create_load_with_name, create_store, create_sub_with_name,
     pointer_cast,
@@ -127,7 +127,7 @@ impl StoreBucket {
                             create_gep(producer, subcmp, &[zero(producer)])
                         }
                     };
-                    let arr_ptr = pointer_cast(producer, arr_ptr, array_ptr_ty(producer));
+                    let arr_ptr = pointer_cast(producer, arr_ptr, unsized_array_ptr_ty(producer));
                     Some(create_call(
                         producer,
                         name.as_str(),
@@ -137,8 +137,8 @@ impl StoreBucket {
             }
             None => {
                 let dest_gep = match &dest_address_type {
-                    AddressType::Variable => producer.body_ctx().get_variable(producer, dest_index),
-                    AddressType::Signal => producer.template_ctx().get_signal(producer, dest_index),
+                    AddressType::Variable => producer.body_ctx().get_lvar_ref(producer, dest_index),
+                    AddressType::Signal => producer.template_ctx().get_signal_ref(producer, dest_index),
                     AddressType::SubcmpSignal { cmp_address, .. } => {
                         let addr = cmp_address
                             .produce_llvm_ir(producer)
@@ -158,10 +158,10 @@ impl StoreBucket {
                                 .into_int_value();
                             source = match &v.address_type {
                                 AddressType::Variable => {
-                                    producer.body_ctx().get_variable(producer, src_index)
+                                    producer.body_ctx().get_lvar_ref(producer, src_index)
                                 }
                                 AddressType::Signal => {
-                                    producer.template_ctx().get_signal(producer, src_index)
+                                    producer.template_ctx().get_signal_ref(producer, src_index)
                                 }
                                 AddressType::SubcmpSignal { cmp_address, .. } => {
                                     let addr = cmp_address.produce_llvm_ir(producer).expect(

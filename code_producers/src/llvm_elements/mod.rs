@@ -38,7 +38,7 @@ pub type LLVMInstruction<'a> = AnyValueEnum<'a>;
 pub type DebugCtx<'a> = (DebugInfoBuilder<'a>, DICompileUnit<'a>);
 
 pub trait BodyCtx<'a> {
-    fn get_variable(
+    fn get_lvar_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
@@ -79,7 +79,7 @@ pub trait TemplateCtx<'a> {
     ) -> PointerValue<'a>;
 
     /// Returns a pointer to the signal associated to the index
-    fn get_signal(
+    fn get_signal_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,

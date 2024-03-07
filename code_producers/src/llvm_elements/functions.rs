@@ -77,7 +77,7 @@ impl<'a> FunctionCtx<'a> {
 }
 
 impl<'a> BodyCtx<'a> for FunctionCtx<'a> {
-    fn get_variable(
+    fn get_lvar_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
@@ -192,7 +192,7 @@ impl<'a> ExtractedFunctionCtx<'a> {
 }
 
 impl<'a> BodyCtx<'a> for ExtractedFunctionCtx<'a> {
-    fn get_variable(
+    fn get_lvar_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
@@ -249,7 +249,7 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
         create_gep(producer, self.load_subcmp_addr(producer, subcmp_id), &[index])
     }
 
-    fn get_signal(
+    fn get_signal_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,

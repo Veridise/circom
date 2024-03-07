@@ -129,7 +129,7 @@ mod array_switch_private {
     }
 }
 
-pub fn array_ptr_ty<'a>(producer: &dyn LLVMIRProducer<'a>) -> PointerType<'a> {
+pub fn unsized_array_ptr_ty<'a>(producer: &dyn LLVMIRProducer<'a>) -> PointerType<'a> {
     let bigint_ty = bigint_type(producer);
     bigint_ty.array_type(0).ptr_type(Default::default())
 }

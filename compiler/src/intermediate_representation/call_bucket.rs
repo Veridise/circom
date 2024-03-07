@@ -151,10 +151,10 @@ impl WriteLLVMIR for CallBucket {
                                 .into_int_value();
                             let gep = match &v.address_type {
                                 AddressType::Variable => {
-                                    producer.body_ctx().get_variable(producer, index)
+                                    producer.body_ctx().get_lvar_ref(producer, index)
                                 }
                                 AddressType::Signal => {
-                                    producer.template_ctx().get_signal(producer, index)
+                                    producer.template_ctx().get_signal_ref(producer, index)
                                 }
                                 AddressType::SubcmpSignal { cmp_address, .. } => {
                                     let addr = cmp_address.produce_llvm_ir(producer).expect(
