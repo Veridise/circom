@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use compiler::circuit_design::template::TemplateCode;
-use compiler::intermediate_representation::{InstructionPointer, BucketId, new_id};
+use compiler::intermediate_representation::{new_id, BucketId, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::{InterpreterFlags, BucketInterpreter, operations};
 use crate::bucket_interpreter::env::Env;
@@ -94,7 +94,9 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                         let mut values = Vec::with_capacity(stack.len());
                         let interp = self.build_interpreter();
                         for inst in stack {
-                            let v = interp.compute_instruction(inst, env, false)?;
+                            // Leave this Observer enabled so that ComputeBucket w/in the RHS expression
+                            //  could be simplified even if the entire expression will not be simplified.
+                            let v = interp.compute_instruction(inst, env, true)?;
                             let v = v.expect("Compute bucket operand must produce a value!");
                             values.push(v);
                         }
@@ -113,7 +115,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                         let src = {
                             let interp = self.build_interpreter();
                             // Leave this Observer enabled so that ComputeBucket w/in the RHS expression
-                            //  could be simplified if the entire expression will not be simplified.
+                            //  could be simplified even if the entire expression will not be simplified.
                             let v = interp.compute_instruction(&bucket.src, env, true)?;
                             v.expect("Store bucket source must produce a value!")
                         };
