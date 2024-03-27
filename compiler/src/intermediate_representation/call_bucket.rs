@@ -1,16 +1,18 @@
-use code_producers::llvm_elements::fr::FR_ARRAY_COPY_FN_NAME;
+use std::convert::TryFrom;
 use either::Either;
-use super::ir_interface::*;
-use crate::translating_traits::*;
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{to_basic_metadata_enum, AnyValue, LLVMIRProducer, LLVMInstruction};
+use code_producers::llvm_elements::{
+    fr::FR_ARRAY_COPY_FN_NAME, to_basic_metadata_enum, AnyValue, LLVMIRProducer, LLVMInstruction,
+};
 use code_producers::llvm_elements::instructions::{
     create_alloca, create_call, create_gep, create_store, pointer_cast,
 };
 use code_producers::llvm_elements::types::{bigint_type, i32_type};
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
+use super::{BucketId, new_id, SExp, ToSExp, UpdateId};
+use super::ir_interface::*;
+use crate::translating_traits::*;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FinalData {
@@ -107,7 +109,7 @@ impl WriteLLVMIR for CallBucket {
         Self::manage_debug_loc_from_curr(producer, self);
 
         // Check arena_size==0 which indicates arguments should not be placed into arena
-        let arena_size = self.arena_size;
+        let arena_size = u32::try_from(self.arena_size).expect("overflow");
         if arena_size == 0 {
             let mut args = vec![];
             for arg in self.arguments.iter() {
@@ -120,26 +122,16 @@ impl WriteLLVMIR for CallBucket {
             // Create array with arena_size size
             let arena = create_alloca(
                 producer,
-                bigint_type(producer).array_type(arena_size as u32).into(),
+                bigint_type(producer).array_type(arena_size).into(),
                 format!("{}_arena", self.symbol).as_str(),
             );
 
-            // Get the offsets based on the sizes of the arguments
-            let offsets: Vec<usize> = self
-                .argument_types
-                .iter()
-                .scan(0, |state, arg_ty| {
-                    let curr_offset = *state;
-                    *state += arg_ty.size;
-                    Some(curr_offset)
-                })
-                .collect();
-
             // Copy arguments into elements of the arena by indexing order (arg 0 -> arena 0, arg 1 -> arena 1, etc)
-            for ((arg, arg_ty), offset) in
-                self.arguments.iter().zip(&self.argument_types).zip(offsets)
-            {
-                let i = create_literal_u32(producer, offset as u64);
+            let mut arena_offset = 0;
+            for (arg, arg_ty) in self.arguments.iter().zip(&self.argument_types) {
+                let i =
+                    create_literal_u32(producer, u64::try_from(arena_offset).expect("overflow"));
+                arena_offset += arg_ty.size;
                 let ptr = create_gep(producer, arena, &[zero(producer), i]);
                 if arg_ty.size > 1 {
                     let src_arg = match arg.as_ref() {
@@ -181,13 +173,10 @@ impl WriteLLVMIR for CallBucket {
                 }
             }
 
-            let arena = pointer_cast(
-                producer,
-                arena,
-                bigint_type(producer).ptr_type(Default::default()),
-            );
+            let arena =
+                pointer_cast(producer, arena, bigint_type(producer).ptr_type(Default::default()));
 
-            // Call function passing the array as argument
+            // Call function, passing the arena array as the argument.
             let call_ret_val = create_call(
                 producer,
                 self.symbol.as_str(),
@@ -199,16 +188,18 @@ impl WriteLLVMIR for CallBucket {
                 ReturnType::Final(data) => {
                     let size = data.context.size;
                     let source_of_store = if size == 1 {
-                        //For scalar returns, store the returned value to
-                        //  the proper index in the current function's arena.
+                        //For scalar returns, store the returned value directly.
                         call_ret_val
                     } else {
-                        //For array returns, copy the data from the callee arena to the caller arena.
+                        //For array returns, copy the data from the callee arena.
+                        assert!(arena_offset < usize::try_from(arena_size).expect("overflow"), "TODO: return data in unexpected location");
                         create_gep(
                             producer,
                             arena,
-                            &[i32_type(producer).const_int(self.arguments.len() as u64, false)],
-                        ).as_any_value_enum()
+                            &[i32_type(producer)
+                                .const_int(u64::try_from(arena_offset).expect("overflow"), false)],
+                        )
+                        .as_any_value_enum()
                     };
                     return StoreBucket::produce_llvm_ir(
                         producer,
