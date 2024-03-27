@@ -1,12 +1,21 @@
 use std::collections::HashMap;
 use std::fs::File;
-use compiler::hir::very_concrete_program::{TemplateInstance, VCP};
+use compiler::hir::very_concrete_program::{TemplateInstance, VCF, VCP};
 use compiler::intermediate_representation::translate::{initialize_signals, SignalInfo, State};
 use code_producers::llvm_elements::{build_fn_name, run_fn_name};
 use constant_tracking::ConstantTracker;
 use program_structure::ast::SignalType;
 use program_structure::file_definition::FileLibrary;
 use serde::Serialize;
+
+#[derive(Serialize)]
+struct TypeDesc(String);
+
+impl From<&Vec<usize>> for TypeDesc {
+    fn from(lengths: &Vec<usize>) -> Self {
+        TypeDesc(format!("{:?}", lengths))
+    }
+}
 
 #[derive(Serialize)]
 struct Meta {
@@ -42,8 +51,9 @@ struct TemplateSummary {
 #[derive(Serialize)]
 struct FunctionSummary {
     name: String,
-    params: Vec<String>,
     logic_fn_name: String,
+    params: Vec<(String, TypeDesc)>,
+    ret_ty: TypeDesc,
 }
 
 #[derive(Serialize)]
@@ -173,21 +183,27 @@ impl SummaryRoot {
         }
     }
 
-    pub fn new(vcp: &VCP) -> SummaryRoot {
-        let meta = Meta { is_ir_ssa: false, prime: vcp.prime.clone() };
-        let mut templates = vec![];
-
-        for template in &vcp.templates {
-            let template_summary = Self::process_template(template, vcp);
-            templates.push(template_summary);
+    fn process_function(function: &VCF) -> FunctionSummary {
+        FunctionSummary {
+            name: function.name.clone(),
+            logic_fn_name: function.header.clone(),
+            params: function
+                .params_types
+                .iter()
+                .map(|t| (t.name.clone(), TypeDesc::from(&t.length)))
+                .collect(),
+            ret_ty: TypeDesc::from(&function.return_type),
         }
+    }
+
+    pub fn new(vcp: &VCP) -> SummaryRoot {
         SummaryRoot {
             version: env!("CARGO_PKG_VERSION").to_string(),
             compiler: "circom".to_string(),
             framework: None,
-            meta,
-            components: templates,
-            functions: vec![],
+            meta: Meta { is_ir_ssa: false, prime: vcp.prime.clone() },
+            components: vcp.templates.iter().map(|t| Self::process_template(t, vcp)).collect(),
+            functions: vcp.functions.iter().map(Self::process_function).collect(),
         }
     }
 
