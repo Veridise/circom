@@ -136,7 +136,7 @@ impl StoreBucket {
                 }
             }
             None => {
-                let dest_gep = make_ref(producer, &dest_address_type, dest_index);
+                let dest_gep = make_ref(producer, &dest_address_type, dest_index, false);
                 if context.size > 1 {
                     // In the non-scalar case, produce an array copy. If the stored source
                     //  is a LoadBucket, first convert it into an address.
@@ -147,22 +147,7 @@ impl StoreBucket {
                                 .produce_llvm_ir(producer)
                                 .expect("We need to produce some kind of instruction!")
                                 .into_int_value();
-                            source = match &v.address_type {
-                                AddressType::Variable => {
-                                    producer.body_ctx().get_lvar_ref(producer, src_index)
-                                }
-                                AddressType::Signal => {
-                                    producer.template_ctx().get_signal_ref(producer, src_index)
-                                }
-                                AddressType::SubcmpSignal { cmp_address, .. } => {
-                                    let addr = cmp_address.produce_llvm_ir(producer).expect(
-                                        "The address of a subcomponent must yield a value!",
-                                    );
-                                    let subcmp =
-                                        producer.template_ctx().load_subcmp_addr(producer, addr);
-                                    create_gep(producer, subcmp, &[zero(producer), src_index])
-                                }
-                            }.into();
+                            source = make_ref(producer, &v.address_type, src_index, false).into();
                         }
                     }
                     Some(create_call(

@@ -87,7 +87,7 @@ impl WriteLLVMIR for ReturnBucket {
                         .produce_llvm_ir(producer)
                         .expect("We need to produce some kind of instruction!")
                         .into_int_value();
-                    Some(create_return(producer, make_ref(producer, &i.address_type, index)))
+                    Some(create_return(producer, make_ref(producer, &i.address_type, index, false)))
                 }
                 _ => unreachable!("Expected a load instruction. Found {:?}", self.value),
             },

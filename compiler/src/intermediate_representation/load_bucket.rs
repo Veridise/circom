@@ -1,4 +1,4 @@
-use super::ir_interface::*;
+use super::{ir_interface::*, make_ref};
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::array_switch::unsized_array_ptr_ty;
@@ -107,22 +107,8 @@ impl WriteLLVMIR for LoadBucket {
                     pointer_cast(producer, arr_ptr, unsized_array_ptr_ty(producer))
                 };
                 create_call(producer, name.as_str(), &[get_ptr().into(), index.into()])
-            },
-            None => {
-                let gep = match &self.address_type {
-                    AddressType::Variable => producer.body_ctx().get_lvar_ref(producer, index),
-                    AddressType::Signal => producer.template_ctx().get_signal_ref(producer, index),
-                    AddressType::SubcmpSignal { cmp_address, counter_override, ..  } => {
-                        let addr = cmp_address.produce_llvm_ir(producer).expect("The address of a subcomponent must yield a value!");
-                        if *counter_override {
-                            producer.template_ctx().load_subcmp_counter(producer, addr, false).expect("could not find counter!")
-                        } else {
-                            producer.template_ctx().get_subcmp_signal(producer, addr, index)
-                        }
-                    }
-                };
-                create_load(producer, gep)
-            },
+            }
+            None => create_load(producer, make_ref(producer, &self.address_type, index, true)),
         };
         Some(load)
     }

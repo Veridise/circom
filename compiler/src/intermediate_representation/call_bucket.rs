@@ -141,7 +141,7 @@ impl WriteLLVMIR for CallBucket {
                                 .produce_llvm_ir(producer)
                                 .expect("We need to produce some kind of instruction!")
                                 .into_int_value();
-                            make_ref(producer, &v.address_type, index)
+                            make_ref(producer, &v.address_type, index, false)
                         }
                         _ => unreachable!(),
                     };
