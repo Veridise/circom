@@ -109,7 +109,7 @@ impl WriteLLVMIR for CallBucket {
         Self::manage_debug_loc_from_curr(producer, self);
 
         // Check arena_size==0 which indicates arguments should not be placed into arena
-        let arena_size =self.arena_size;
+        let arena_size = self.arena_size;
         if arena_size == 0 {
             let mut args = vec![];
             for arg in self.arguments.iter() {
