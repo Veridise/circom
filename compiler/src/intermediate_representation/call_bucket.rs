@@ -109,7 +109,7 @@ impl WriteLLVMIR for CallBucket {
         Self::manage_debug_loc_from_curr(producer, self);
 
         // Check arena_size==0 which indicates arguments should not be placed into arena
-        let arena_size = u32::try_from(self.arena_size).expect("overflow");
+        let arena_size =self.arena_size;
         if arena_size == 0 {
             let mut args = vec![];
             for arg in self.arguments.iter() {
@@ -120,6 +120,7 @@ impl WriteLLVMIR for CallBucket {
             return Some(create_call(producer, self.symbol.as_str(), &args));
         } else {
             // Create array with arena_size size
+            let arena_size = u32::try_from(arena_size).expect("overflow");
             let arena = create_alloca(
                 producer,
                 bigint_type(producer).array_type(arena_size).into(),
