@@ -13,9 +13,11 @@ use inkwell::debug_info::{DebugInfoBuilder, DICompileUnit};
 use inkwell::module::Module;
 use inkwell::passes::PassManager;
 use inkwell::types::{AnyTypeEnum, BasicType, BasicTypeEnum, IntType};
-use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum, IntValue};
+use inkwell::values::{ArrayValue, BasicMetadataValueEnum, BasicValueEnum};
 pub use inkwell::types::AnyType;
-pub use inkwell::values::{AnyValue, AnyValueEnum, FunctionValue, InstructionOpcode, PointerValue};
+pub use inkwell::values::{
+    AnyValue, AnyValueEnum, FunctionValue, InstructionOpcode, IntValue, PointerValue,
+};
 pub use inkwell::debug_info::AsDIScope;
 pub use inkwell::module::Linkage;
 
@@ -38,13 +40,13 @@ pub type LLVMInstruction<'a> = AnyValueEnum<'a>;
 pub type DebugCtx<'a> = (DebugInfoBuilder<'a>, DICompileUnit<'a>);
 
 pub trait BodyCtx<'a> {
-    fn get_variable(
+    fn get_lvar_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
-    ) -> AnyValueEnum<'a>;
+    ) -> PointerValue<'a>;
 
-    fn get_variable_array(&self, producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a>;
+    fn get_variable_array(&self, producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a>;
 }
 
 pub trait TemplateCtx<'a> {
@@ -76,17 +78,17 @@ pub trait TemplateCtx<'a> {
         producer: &dyn LLVMIRProducer<'a>,
         subcmp_id: AnyValueEnum<'a>,
         index: IntValue<'a>,
-    ) -> AnyValueEnum<'a>;
+    ) -> PointerValue<'a>;
 
     /// Returns a pointer to the signal associated to the index
-    fn get_signal(
+    fn get_signal_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
-    ) -> AnyValueEnum<'a>;
+    ) -> PointerValue<'a>;
 
     /// Returns a pointer to the signal array
-    fn get_signal_array(&self, producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a>;
+    fn get_signal_array(&self, producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a>;
 }
 
 pub trait LLVMIRProducer<'a> {
@@ -226,12 +228,11 @@ pub fn new_constraint_with_name<'a>(
     let kind = producer.context().get_kind_id("constraint");
     let node = producer.context().metadata_node(&[s.into()]);
     alloca
-        .into_pointer_value()
         .as_instruction()
         .unwrap()
         .set_metadata(node, kind)
         .expect("Could not setup metadata marker for constraint value");
-    alloca
+    alloca.as_any_value_enum()
 }
 
 pub fn new_constraint<'a>(producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {

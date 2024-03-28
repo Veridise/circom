@@ -77,16 +77,16 @@ impl<'a> FunctionCtx<'a> {
 }
 
 impl<'a> BodyCtx<'a> for FunctionCtx<'a> {
-    fn get_variable(
+    fn get_lvar_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
-    ) -> AnyValueEnum<'a> {
+    ) -> PointerValue<'a> {
         create_gep(producer, self.arena, &[index])
     }
 
-    fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {
-        self.arena.into()
+    fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a> {
+        self.arena
     }
 }
 
@@ -192,17 +192,17 @@ impl<'a> ExtractedFunctionCtx<'a> {
 }
 
 impl<'a> BodyCtx<'a> for ExtractedFunctionCtx<'a> {
-    fn get_variable(
+    fn get_lvar_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
-    ) -> AnyValueEnum<'a> {
+    ) -> PointerValue<'a> {
         //'gep' must read through the pointer with 0 and then index the array
         create_gep(producer, self.get_lvars_ptr(), &[zero(producer), index])
     }
 
-    fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {
-        self.get_lvars_ptr().into()
+    fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a> {
+        self.get_lvars_ptr()
     }
 }
 
@@ -244,22 +244,22 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
         producer: &dyn LLVMIRProducer<'a>,
         subcmp_id: AnyValueEnum<'a>,
         index: IntValue<'a>,
-    ) -> AnyValueEnum<'a> {
+    ) -> PointerValue<'a> {
         assert_eq!(zero(producer), index);
         create_gep(producer, self.load_subcmp_addr(producer, subcmp_id), &[index])
     }
 
-    fn get_signal(
+    fn get_signal_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
-    ) -> AnyValueEnum<'a> {
+    ) -> PointerValue<'a> {
         //'gep' must read through the pointer with 0 and then index the array
         create_gep(producer, self.get_signals_ptr(), &[zero(producer), index])
     }
 
-    fn get_signal_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {
-        self.get_signals_ptr().into()
+    fn get_signal_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a> {
+        self.get_signals_ptr()
     }
 }
 

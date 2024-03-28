@@ -2,10 +2,9 @@ use super::ir_interface::*;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use code_producers::llvm_elements::instructions::{create_return_from_any_value, create_return_void};
+use code_producers::llvm_elements::instructions::{create_return, create_return_from_any_value, create_return_void};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
-
+use crate::intermediate_representation::{make_ref, new_id, BucketId, SExp, ToSExp, UpdateId};
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct ReturnBucket {
@@ -68,15 +67,30 @@ impl UpdateId for ReturnBucket {
 }
 
 impl WriteLLVMIR for ReturnBucket {
-    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
-
-        if self.with_size > 1 {
-            Some(create_return_void(producer))
-        } else {
-            let ret_value = self.value.produce_llvm_ir(producer)
-                .expect("Return instruction must produce a value to return");
-            Some(create_return_from_any_value(producer, ret_value))
+        match self.with_size {
+            0 => Some(create_return_void(producer)),
+            1 => Some(create_return_from_any_value(
+                producer,
+                self.value
+                    .produce_llvm_ir(producer)
+                    .expect("Return instruction must produce a value to return"),
+            )),
+            _ => match self.value.as_ref() {
+                Instruction::Load(i) => {
+                    let index = i
+                        .src
+                        .produce_llvm_ir(producer)
+                        .expect("We need to produce some kind of instruction!")
+                        .into_int_value();
+                    Some(create_return(producer, make_ref(producer, &i.address_type, index, false)))
+                }
+                _ => unreachable!("Expected a load instruction. Found {:?}", self.value),
+            },
         }
     }
 }

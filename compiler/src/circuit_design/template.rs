@@ -110,14 +110,14 @@ impl WriteLLVMIR for TemplateCodeInfo {
 
         let cmp_mem = build_function.get_nth_param(0).unwrap();
         // Allocate memory for the component
-        let alloca = create_alloca(producer, bigint_type(producer).array_type(n_signals as u32).as_any_type_enum(), "").into_pointer_value();
+        let alloca = create_alloca(producer, bigint_type(producer).array_type(n_signals as u32).as_any_type_enum(), "");
         // Get the counter as a pointer
-        let counter_ptr = create_gep(producer, cmp_mem.into_pointer_value(), &[zero(producer), create_literal_u32(producer, 1)]).into_pointer_value();
+        let counter_ptr = create_gep(producer, cmp_mem.into_pointer_value(), &[zero(producer), create_literal_u32(producer, 1)]);
         // Create a literal value of the initial value of the counter
         let initial_counter_value = create_literal_u32(producer, self.number_of_inputs as u64);
         // Write that value in the counter
         create_store(producer, counter_ptr, initial_counter_value.as_any_value_enum());
-        let signals_mem = create_gep(producer, cmp_mem.into_pointer_value(), &[zero(producer), zero(producer)]).into_pointer_value();
+        let signals_mem = create_gep(producer, cmp_mem.into_pointer_value(), &[zero(producer), zero(producer)]);
         //let signals = create_load(producer, alloca);
         let ptr = pointer_cast(producer, alloca, bigint_ptr.ptr_type(Default::default()));
         create_store(producer, signals_mem, ptr.into());

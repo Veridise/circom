@@ -279,17 +279,7 @@ impl LoopBodyExtractor {
             }
         }
         assert!(bucket_to_args.is_empty());
-        new_body.push(
-            ReturnBucket {
-                id: new_id(),
-                source_file_id: bucket.source_file_id,
-                line: bucket.line,
-                message_id: bucket.message_id,
-                with_size: usize::MAX, // size > 1 will produce "return void" LLVM instruction
-                value: NopBucket { id: new_id() }.allocate(),
-            }
-            .allocate(),
-        );
+        new_body.push(builders::build_void_return(bucket));
         // Create new function to hold the copied body
         // NOTE: This name must start with `GENERATED_FN_PREFIX` (which is the prefix
         //  of `LOOP_BODY_FN_PREFIX`) so that `ExtractedFunctionCtx` will be used.

@@ -61,7 +61,7 @@ mod array_switch_private {
             let case_bb = create_bb(producer, func, format!("case_{}", idx).as_str());
             producer.set_current_bb(case_bb);
 
-            let ptr = create_gep(producer, arr, &[zero(producer), case_val]).into_pointer_value();
+            let ptr = create_gep(producer, arr, &[zero(producer), case_val]);
             let val = create_load(producer, ptr).into_int_value();
             create_return(producer, val);
 
@@ -111,7 +111,7 @@ mod array_switch_private {
             let case_bb = create_bb(producer, func, format!("case_{}", idx).as_str());
             producer.set_current_bb(case_bb);
 
-            let ptr = create_gep(producer, arr, &[zero(producer), case_val]).into_pointer_value();
+            let ptr = create_gep(producer, arr, &[zero(producer), case_val]);
             create_store(producer, ptr, val.into());
             create_return_void(producer);
 
@@ -129,7 +129,7 @@ mod array_switch_private {
     }
 }
 
-pub fn array_ptr_ty<'a>(producer: &dyn LLVMIRProducer<'a>) -> PointerType<'a> {
+pub fn unsized_array_ptr_ty<'a>(producer: &dyn LLVMIRProducer<'a>) -> PointerType<'a> {
     let bigint_ty = bigint_type(producer);
     bigint_ty.array_type(0).ptr_type(Default::default())
 }

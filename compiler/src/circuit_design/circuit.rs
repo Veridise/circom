@@ -97,25 +97,28 @@ impl WriteLLVMIR for Circuit {
                 f.get_line(),
                 f.name.as_str(),
                 name,
-                if f.returns.len() == 1 {
-                    let single_size = *f.returns.first().unwrap();
-                    if single_size == 0 {
+                match &f.returns[..] {
+                    [] => {
+                        // zero dimensions indicates void return
+                        void_type(producer).fn_type(&param_types, false)
+                    }
+                    [0] => {
                         //single dimension of size 0 indicates [0 x i256]* should be used
                         bigint_type(producer)
                             .array_type(0)
                             .ptr_type(Default::default())
                             .fn_type(&param_types, false)
-                    } else if single_size == 1 {
-                        // single dimension of size 1 is a scalar
-                        bigint_type(producer).fn_type(&param_types, false)
-                    } else {
-                        // single dimension size>1 must return via pointer argument
-                        void_type(producer).fn_type(&param_types, false)
                     }
-                } else {
-                    // multiple dimensions must return via pointer argument
-                    //  and zero dimensions indicates void return
-                    void_type(producer).fn_type(&param_types, false)
+                    [1] => {
+                        // single dimension of size 1 is a scalar return
+                        bigint_type(producer).fn_type(&param_types, false)
+                    }
+                    _ => {
+                        // multiple dimensions or single dimension size>1 must return a pointer to the result
+                        bigint_type(producer)
+                            .ptr_type(Default::default())
+                            .fn_type(&param_types, false)
+                    }
                 },
             );
             function.set_section(Some(&f.name));
@@ -183,13 +186,11 @@ impl WriteLLVMIR for Circuit {
                 to_basic_type_enum(bigint_ptr.ptr_type(Default::default())),
                 to_basic_type_enum(i32_type(producer))
             ], false);
-            let alloca = create_alloca(producer,
-                                       component_memory.as_any_type_enum(),
-                                       "").into_pointer_value();
+            let alloca = create_alloca(producer, component_memory.as_any_type_enum(), "");
             create_call(producer,
                                 build_fn_name(producer.get_main_template_header().clone()).as_str(),
                                 &[alloca.into()]);
-            let signals_ptr = create_gep(producer, alloca, &[zero(producer), zero(producer)]).into_pointer_value();
+            let signals_ptr = create_gep(producer, alloca, &[zero(producer), zero(producer)]);
             let signals = create_load(producer, signals_ptr).into_pointer_value();
             create_call(producer,
             run_fn_name(producer.get_main_template_header().clone()).as_str(),

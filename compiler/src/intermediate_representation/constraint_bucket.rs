@@ -49,6 +49,7 @@ impl ConstraintBucket {
         offset: u64,
     ) -> AnyValueEnum<'a> {
         let indices = match idxs[..] {
+            [] => return create_load(producer, base_ptr),
             // If there was no 0 index in the original GEP, don't create one for this GEP
             [i] => vec![create_literal_u32(producer, i + offset)],
             // Add initial index 0 if the original GEP had it
@@ -56,7 +57,7 @@ impl ConstraintBucket {
             // No other case should happen
             _ => panic!("Unexpected indexing {:?} on {}", idxs, base_ptr),
         };
-        create_load(producer, create_gep(producer, base_ptr, &indices).into_pointer_value())
+        create_load(producer, create_gep(producer, base_ptr, &indices))
     }
 }
 
@@ -178,6 +179,8 @@ impl WriteLLVMIR for ConstraintBucket {
                     //      getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
                     //  but within an extracted loop body function they could have only a single index:
                     //      getelementptr i256, i256* %subfix_0, i32 0
+                    //  It may also be the result of a call expression:
+                    //      %call.feeShiftTable_0 = call i256* @feeShiftTable_0(i256* %0)
                     let (src_ptr, src_idxs) = get_data_from_gep(src_ptr);
                     let (dst_ptr, dst_idxs) = get_data_from_gep(dst_ptr);
 
