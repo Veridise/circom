@@ -16,7 +16,7 @@ template CallRetTest() {
 
 component main = CallRetTest();
 
-//CHECK-LABEL: define{{.*}} void @sum_0(i256* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} i256* @sum_0(i256* %0){{.*}} {
 //CHECK-NEXT: sum_0:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY:
@@ -29,7 +29,8 @@ component main = CallRetTest();
 //CHECK-NEXT:   br label %return2
 //CHECK-EMPTY:
 //CHECK-NEXT: return2:
-//CHECK-NEXT:   ret void
+//CHECK-NEXT:   %5 = getelementptr i256, i256* %0, i32 4
+//CHECK-NEXT:   ret i256* %5
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @CallRetTest_0_run([0 x i256]* %0){{.*}} {
@@ -44,10 +45,9 @@ component main = CallRetTest();
 //CHECK-NEXT:   %2 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 4
 //CHECK-NEXT:   call void @fr_copy_n(i256* %2, i256* %1, i32 4)
 //CHECK-NEXT:   %3 = bitcast [8 x i256]* %sum_0_arena to i256*
-//CHECK-NEXT:   call void @sum_0(i256* %3)
-//CHECK-NEXT:   %4 = getelementptr i256, i256* %3, i32 4
-//CHECK-NEXT:   %5 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
-//CHECK-NEXT:   call void @fr_copy_n(i256* %4, i256* %5, i32 4)
+//CHECK-NEXT:   %call.sum_0 = call i256* @sum_0(i256* %3)
+//CHECK-NEXT:   %4 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
+//CHECK-NEXT:   call void @fr_copy_n(i256* %call.sum_0, i256* %4, i32 4)
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY:
 //CHECK-NEXT: prologue:

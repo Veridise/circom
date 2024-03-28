@@ -829,26 +829,38 @@ pub fn create_switch<'a>(
 /// getelementptr %ptr, 0, %idx ---> (%ptr, [0, %idx])
 pub fn get_data_from_gep(gep: PointerValue) -> (PointerValue, Vec<u64>) {
     let inst = gep.as_instruction().expect("expected an instruction!");
-    debug_assert!(inst.get_opcode() == InstructionOpcode::GetElementPtr, "expected a GEP");
-    let base_ptr = inst
-        .get_operand(0)
-        .expect("Base pointer is missing in GEP")
-        .expect_left("Pointer value must be a basic value!")
-        .into_pointer_value();
-
-    let count = inst.get_num_operands();
-    let mut ret = Vec::with_capacity(count as usize);
-    for i in 1..count {
-        let idx = inst
-            .get_operand(i)
-            .unwrap_or_else(|| panic!("Missing operand {} in GEP", i))
-            .left_or_else(|_| panic!("Operand {} is not a basic value", i))
-            .into_int_value()
-            .get_sign_extended_constant()
-            .unwrap_or_else(|| panic!("Operand {} is not a constant int value", i));
-        let idx = u64::try_from(idx)
-            .unwrap_or_else(|_| panic!("Value of operand {} is too large: {}", i, idx));
-        ret.push(idx);
+    match inst.get_opcode() {
+        InstructionOpcode::Call => {
+            let base_ptr = inst
+                .get_first_use()
+                .expect("Unable to find use of returned value in caller")
+                .get_used_value()
+                .expect_left("Pointer value must be a basic value!")
+                .into_pointer_value();
+            (base_ptr, vec![])
+        }
+        InstructionOpcode::GetElementPtr => {
+            let base_ptr = inst
+                .get_operand(0)
+                .expect("Base pointer is missing in GEP")
+                .expect_left("Pointer value must be a basic value!")
+                .into_pointer_value();
+            let count = inst.get_num_operands();
+            let mut ret = Vec::with_capacity(count as usize);
+            for i in 1..count {
+                let idx = inst
+                    .get_operand(i)
+                    .unwrap_or_else(|| panic!("Missing operand {} in GEP", i))
+                    .left_or_else(|_| panic!("Operand {} is not a basic value", i))
+                    .into_int_value()
+                    .get_sign_extended_constant()
+                    .unwrap_or_else(|| panic!("Operand {} is not a constant int value", i));
+                let idx = u64::try_from(idx)
+                    .unwrap_or_else(|_| panic!("Value of operand {} is too large: {}", i, idx));
+                ret.push(idx);
+            }
+            (base_ptr, ret)
+        }
+        _ => unreachable!("Did not expect {:?}", inst.get_opcode()),
     }
-    (base_ptr, ret)
 }

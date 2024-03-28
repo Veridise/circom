@@ -1,5 +1,5 @@
 pub use either::Either;
-use super::ir_interface::*;
+use super::{ir_interface::*, make_ref};
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{AnyValueEnum, LLVMInstruction, LLVMIRProducer, to_enum, run_fn_name, fr::FR_ARRAY_COPY_FN_NAME};
@@ -136,16 +136,7 @@ impl StoreBucket {
                 }
             }
             None => {
-                let dest_gep = match &dest_address_type {
-                    AddressType::Variable => producer.body_ctx().get_lvar_ref(producer, dest_index),
-                    AddressType::Signal => producer.template_ctx().get_signal_ref(producer, dest_index),
-                    AddressType::SubcmpSignal { cmp_address, .. } => {
-                        let addr = cmp_address
-                            .produce_llvm_ir(producer)
-                            .expect("The address of a subcomponent must yield a value!");
-                        producer.template_ctx().get_subcmp_signal(producer, addr, dest_index)
-                    }
-                };
+                let dest_gep = make_ref(producer, &dest_address_type, dest_index);
                 if context.size > 1 {
                     // In the non-scalar case, produce an array copy. If the stored source
                     //  is a LoadBucket, first convert it into an address.

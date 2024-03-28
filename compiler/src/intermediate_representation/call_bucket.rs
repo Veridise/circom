@@ -2,15 +2,15 @@ use std::convert::TryFrom;
 use either::Either;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{
-    fr::FR_ARRAY_COPY_FN_NAME, to_basic_metadata_enum, AnyValue, LLVMIRProducer, LLVMInstruction,
+    fr::FR_ARRAY_COPY_FN_NAME, to_basic_metadata_enum, LLVMIRProducer, LLVMInstruction,
 };
 use code_producers::llvm_elements::instructions::{
     create_alloca, create_call, create_gep, create_store, pointer_cast,
 };
-use code_producers::llvm_elements::types::{bigint_type, i32_type};
+use code_producers::llvm_elements::types::bigint_type;
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::wasm_elements::*;
-use super::{BucketId, new_id, SExp, ToSExp, UpdateId};
+use super::{make_ref, new_id, BucketId, SExp, ToSExp, UpdateId};
 use super::ir_interface::*;
 use crate::translating_traits::*;
 
@@ -141,21 +141,7 @@ impl WriteLLVMIR for CallBucket {
                                 .produce_llvm_ir(producer)
                                 .expect("We need to produce some kind of instruction!")
                                 .into_int_value();
-                            let gep = match &v.address_type {
-                                AddressType::Variable => {
-                                    producer.body_ctx().get_lvar_ref(producer, index)
-                                }
-                                AddressType::Signal => {
-                                    producer.template_ctx().get_signal_ref(producer, index)
-                                }
-                                AddressType::SubcmpSignal { cmp_address, .. } => {
-                                    let addr = cmp_address.produce_llvm_ir(producer).expect(
-                                        "The address of a subcomponent must yield a value!",
-                                    );
-                                    producer.template_ctx().get_subcmp_signal(producer, addr, index)
-                                }
-                            };
-                            gep
+                            make_ref(producer, &v.address_type, index)
                         }
                         _ => unreachable!(),
                     };
@@ -185,31 +171,14 @@ impl WriteLLVMIR for CallBucket {
 
             match &self.return_info {
                 ReturnType::Intermediate { .. } => Some(call_ret_val),
-                ReturnType::Final(data) => {
-                    let size = data.context.size;
-                    let source_of_store = if size == 1 {
-                        //For scalar returns, store the returned value directly.
-                        call_ret_val
-                    } else {
-                        //For array returns, copy the data from the callee arena.
-                        assert!(arena_offset < usize::try_from(arena_size).expect("overflow"), "TODO: return data in unexpected location");
-                        create_gep(
-                            producer,
-                            arena,
-                            &[i32_type(producer)
-                                .const_int(u64::try_from(arena_offset).expect("overflow"), false)],
-                        )
-                        .as_any_value_enum()
-                    };
-                    return StoreBucket::produce_llvm_ir(
-                        producer,
-                        Either::Left(source_of_store),
-                        &data.dest,
-                        &data.dest_address_type,
-                        InstrContext { size },
-                        &None,
-                    );
-                }
+                ReturnType::Final(data) => StoreBucket::produce_llvm_ir(
+                    producer,
+                    Either::Left(call_ret_val),
+                    &data.dest,
+                    &data.dest_address_type,
+                    data.context,
+                    &None,
+                ),
             }
         }
     }

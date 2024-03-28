@@ -100,17 +100,7 @@ impl<'d> ConstArgDeduplicationPass<'d> {
             copy.update_id();
             new_body.push(copy);
         }
-        new_body.push(
-            ReturnBucket {
-                id: new_id(),
-                source_file_id: meta.get_source_file_id().clone(),
-                line: meta.get_line(),
-                message_id: meta.get_message_id(),
-                with_size: usize::MAX, // size > 1 will produce "return void" LLVM instruction
-                value: NopBucket { id: new_id() }.allocate(),
-            }
-            .allocate(),
-        );
+        new_body.push(builders::build_void_return(meta));
         // Create new function to hold the copied body
         // NOTE: This name must start with `GENERATED_FN_PREFIX` so that `ExtractedFunctionCtx` will be used.
         let func_name = format!("{}array.param.{}", GENERATED_FN_PREFIX, new_id());
