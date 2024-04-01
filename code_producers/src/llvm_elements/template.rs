@@ -1,6 +1,5 @@
 use std::default::Default;
 use inkwell::basic_block::BasicBlock;
-use inkwell::builder::Builder;
 use inkwell::context::ContextRef;
 use inkwell::types::{AnyType, BasicType, PointerType};
 use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
@@ -163,10 +162,6 @@ impl<'a, 'b> LLVMIRProducer<'a> for TemplateLLVMIRProducer<'a, 'b> {
 
     fn current_function(&self) -> FunctionValue<'a> {
         self.ctx.current_function
-    }
-
-    fn builder(&self) -> &Builder<'a> {
-        self.parent.builder()
     }
 
     fn constant_fields(&self) -> &Vec<String> {

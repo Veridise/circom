@@ -1,6 +1,5 @@
 use inkwell::attributes::AttributeLoc;
 use inkwell::basic_block::BasicBlock;
-use inkwell::builder::Builder;
 use inkwell::context::ContextRef;
 use inkwell::debug_info::AsDIScope;
 use inkwell::types::FunctionType;
@@ -127,10 +126,6 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for FunctionLLVMIRProducer<'ctx, 'prod> {
 
     fn current_function(&self) -> FunctionValue<'ctx> {
         self.ctx.current_function
-    }
-
-    fn builder(&self) -> &Builder<'ctx> {
-        self.parent.builder()
     }
 
     fn constant_fields(&self) -> &Vec<String> {
@@ -303,10 +298,6 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for ExtractedFunctionLLVMIRProducer<'ctx,
 
     fn current_function(&self) -> FunctionValue<'ctx> {
         self.ctx.current_function
-    }
-
-    fn builder(&self) -> &Builder<'ctx> {
-        self.parent.builder()
     }
 
     fn constant_fields(&self) -> &Vec<String> {

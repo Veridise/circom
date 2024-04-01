@@ -98,7 +98,6 @@ pub trait LLVMIRProducer<'a> {
     fn template_ctx(&self) -> &dyn TemplateCtx<'a>;
     fn body_ctx(&self) -> &dyn BodyCtx<'a>;
     fn current_function(&self) -> FunctionValue<'a>;
-    fn builder(&self) -> &Builder<'a>;
     fn constant_fields(&self) -> &Vec<String>;
     fn get_template_mem_arg(&self, run_fn: FunctionValue<'a>) -> ArrayValue<'a>;
     fn get_main_template_header(&self) -> &String;
@@ -168,10 +167,6 @@ impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
 
     fn current_function(&self) -> FunctionValue<'a> {
         panic!("The top level llvm producer does not have a current function");
-    }
-
-    fn builder(&self) -> &Builder<'a> {
-        &self.llvm().builder
     }
 
     fn constant_fields(&self) -> &Vec<String> {
@@ -277,7 +272,7 @@ pub fn to_basic_type_enum<'a, T: BasicType<'a>>(ty: T) -> BasicTypeEnum<'a> {
 
 pub struct LLVM<'a> {
     module: Module<'a>,
-    builder: Builder<'a>,
+    pub builder: Builder<'a>,
     debug: HashMap<usize, DebugCtx<'a>>, //indexed by file_id
 }
 

@@ -744,7 +744,7 @@ pub fn create_load_with_name<'a>(
     ptr: PointerValue<'a>,
     name: &str,
 ) -> AnyValueEnum<'a> {
-    producer.builder().build_load(ptr, name).as_any_value_enum()
+    producer.llvm().builder.build_load(ptr, name).as_any_value_enum()
 }
 
 pub fn create_load<'a>(
@@ -805,7 +805,7 @@ pub fn pointer_cast_with_name<'a>(
     to: PointerType<'a>,
     name: &str,
 ) -> PointerValue<'a> {
-    producer.builder().build_pointer_cast(from, to, name)
+    producer.llvm().builder.build_pointer_cast(from, to, name)
 }
 
 pub fn pointer_cast<'a>(
@@ -813,7 +813,7 @@ pub fn pointer_cast<'a>(
     from: PointerValue<'a>,
     to: PointerType<'a>,
 ) -> PointerValue<'a> {
-    producer.builder().build_pointer_cast(from, to, "")
+    producer.llvm().builder.build_pointer_cast(from, to, "")
 }
 
 pub fn create_switch<'a>(
@@ -822,7 +822,7 @@ pub fn create_switch<'a>(
     else_block: BasicBlock<'a>,
     cases: &[(IntValue<'a>, BasicBlock<'a>)],
 ) -> InstructionValue<'a> {
-    producer.builder().build_switch(value, else_block, cases)
+    producer.llvm().builder.build_switch(value, else_block, cases)
 }
 
 /// Extracts the pointer and the indexes of a gep instruction
