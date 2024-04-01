@@ -45,6 +45,7 @@ fn build_template_instances(
     let mut tmp_id = 0;
     let mut string_table = HashMap::new();
     for template in ti {
+        circuit.summary_producer.add_template(&template);
         let header = template.template_header;
         let name = template.template_name;
         let instance_values = template.header;
@@ -145,6 +146,7 @@ fn build_function_instances(
 ) -> (FieldTracker, HashMap<String, usize>, HashMap<String, usize>) {
     let mut function_to_arena_size = HashMap::new();
     for instance in instances {
+        let mut summary = circuit.summary_producer.add_function(&instance);
         let msg = format!("Error in function {}", instance.header);
         let header = instance.header;
         let name = instance.name;
@@ -183,6 +185,7 @@ fn build_function_instances(
         };
         let code = instance.body;
         let out = translate::translate_code(code, code_info);
+        summary.iter_mut().for_each(|f| f.set_arena_size(out.stack_depth));
         string_table = out.string_table;
         field_tracker = out.constant_tracker;
         function_info.body = out.code;
@@ -276,6 +279,12 @@ fn initialize_llvm_data(vcp: &VCP, database: &TemplateDB) -> LLVMCircuitData {
     producer.main_header = vcp.get_main_instance().unwrap().template_header.clone();
     producer.io_map = build_io_map(vcp, database);
     producer
+}
+
+fn initialize_summary(circuit: &mut Circuit, vcp: &VCP, summary_flag: bool) {
+    if summary_flag {
+        circuit.summary_producer.init(vcp.main_id, &vcp.prime);
+    }
 }
 
 fn main_input_list(main: &TemplateInstance) -> InputList {
@@ -384,6 +393,7 @@ pub fn build_circuit(vcp: VCP, flag: CompilationFlags, version: &str) -> Circuit
     circuit.wasm_producer = initialize_wasm_producer(&vcp, &template_database, flag.wat_flag, version);
     circuit.c_producer = initialize_c_producer(&vcp, &template_database, version);
     circuit.llvm_data = initialize_llvm_data(&vcp, &template_database);
+    initialize_summary(&mut circuit, &vcp, flag.summary_flag);
 
     let field_tracker = FieldTracker::new();
     let circuit_info = CircuitInfo {

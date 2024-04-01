@@ -223,9 +223,6 @@ mod test {
 
     fn example_program() -> Circuit {
         Circuit {
-            wasm_producer: Default::default(),
-            c_producer: Default::default(),
-            llvm_data: Default::default(),
             templates: vec![Box::new(TemplateCodeInfo {
                 id: 0,
                 source_file_id: None,
@@ -506,6 +503,7 @@ mod test {
                 number_of_components: 0,
             })],
             functions: vec![],
+            ..Default::default()
         }
     }
 }

@@ -44,9 +44,6 @@ fn start() -> Result<(), ()> {
         r1cs: user_input.r1cs_file().to_string(),
         json_constraints: user_input.json_constraints_file().to_string(),
         prime: user_input.prime(),
-        summary_file: user_input.summary_file().to_string(),
-        summary_flag: user_input.summary_flag(),
-        llvm_folder: user_input.llvm_folder().to_string()
     };
     let circuit = execution_user::execute_project(program_archive.clone(), config)?;
     let compilation_config = CompilerConfig {
@@ -63,7 +60,8 @@ fn start() -> Result<(), ()> {
         c_file: user_input.c_file().to_string(),
         llvm_file: user_input.llvm_file().to_string(),
         llvm_folder: user_input.llvm_folder().to_string(),
-        clean_llvm: !user_input.summary_flag(), // If we generate the summary then the llvm folder is prepared at that step
+        summary_file: user_input.summary_file().to_string(),
+        summary_flag: user_input.summary_flag(),
         dat_file: user_input.dat_file().to_string(),
         wat_file: user_input.wat_file().to_string(),
         wasm_file: user_input.wasm_file().to_string(),
