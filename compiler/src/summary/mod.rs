@@ -14,7 +14,7 @@ impl From<&Vec<usize>> for TypeDesc {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
 struct Meta {
     is_ir_ssa: bool,
     prime: String,
@@ -60,7 +60,7 @@ impl FunctionSummary {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
 struct SummaryRoot {
     version: String,
     compiler: String,
@@ -89,97 +89,106 @@ fn index_names(lengths: &[usize]) -> Vec<String> {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct SummaryProducer {
-    pub summary_flag: bool,
-    pub main_id: usize,
-    template_summaries: Vec<TemplateSummary>,
-    function_summaries: Vec<FunctionSummary>,
+    main_id: usize,
+    summary: Option<SummaryRoot>, // None if summary flag is false
 }
 
 impl SummaryProducer {
-    pub fn add_function(&mut self, function: &VCF) -> &mut FunctionSummary {
-        self.function_summaries.push(FunctionSummary {
-            name: function.name.clone(),
-            logic_fn_name: function.header.clone(),
-            params: function
-                .params_types
-                .iter()
-                .map(|t| (t.name.clone(), TypeDesc::from(&t.length)))
-                .collect(),
-            ret_ty: TypeDesc::from(&function.return_type),
-            arena_size: 0,
-        });
-        self.function_summaries.last_mut().unwrap()
-    }
-
-    pub fn add_template(&mut self, template: &TemplateInstance) -> &mut TemplateSummary {
-        let is_main = template.template_id == self.main_id;
-        let mut signals: Vec<SignalSummary> = vec![];
-        for signal in &template.signals {
-            let signal_names = if signal.lengths.is_empty() {
-                vec![signal.name.clone()]
-            } else {
-                index_names(&signal.lengths)
-                    .iter()
-                    .map(|indices| format!("{}{indices}", signal.name))
-                    .collect()
-            };
-            let vis = match &signal.xtype {
-                SignalType::Output => "output",
-                SignalType::Input => "input",
-                SignalType::Intermediate => "intermediate",
-            };
-            for name in signal_names {
-                signals.push(SignalSummary {
-                    public: is_main && template.public_inputs.contains(&name),
-                    visibility: vis.to_string(),
-                    idx: signals.len(),
-                    name,
-                });
-            }
-        }
-
-        let mut subcmps: Vec<SubcmpSummary> = vec![];
-        for subcmp in &template.components {
-            let subcmp_names = if subcmp.lengths.is_empty() {
-                vec![subcmp.name.clone()]
-            } else {
-                index_names(&subcmp.lengths)
-                    .iter()
-                    .map(|indices| format!("{}{indices}", subcmp.name))
-                    .collect()
-            };
-            for name in subcmp_names {
-                subcmps.push(SubcmpSummary { idx: subcmps.len(), name })
-            }
-        }
-
-        self.template_summaries.push(TemplateSummary {
-            name: template.template_name.clone(),
-            main: is_main,
-            id: template.template_id,
-            subcmps,
-            signals,
-            logic_fn_name: run_fn_name(template.template_header.clone()),
-            constructor_fn_name: build_fn_name(template.template_header.clone()),
-        });
-        self.template_summaries.last_mut().unwrap()
-    }
-
-    pub fn write_to_file(
-        &self,
-        summary_file: &str,
-        prime: &String,
-    ) -> Result<(), serde_json::Error> {
-        let sum = SummaryRoot {
+    pub fn init(&mut self, main_id: usize, prime: &String) {
+        self.main_id = main_id;
+        self.summary = Some(SummaryRoot {
             version: env!("CARGO_PKG_VERSION").to_string(),
             compiler: "circom".to_string(),
             framework: None,
             meta: Meta { is_ir_ssa: false, prime: prime.clone() },
-            components: self.template_summaries.clone(),
-            functions: self.function_summaries.clone(),
-        };
+            components: vec![],
+            functions: vec![],
+        });
+    }
 
-        let writer = File::create(summary_file).unwrap();
-        serde_json::to_writer(&writer, &sum)
+    pub fn add_function(&mut self, function: &VCF) -> Option<&mut FunctionSummary> {
+        if let Some(summary) = &mut self.summary {
+            summary.functions.push(FunctionSummary {
+                name: function.name.clone(),
+                logic_fn_name: function.header.clone(),
+                params: function
+                    .params_types
+                    .iter()
+                    .map(|t| (t.name.clone(), TypeDesc::from(&t.length)))
+                    .collect(),
+                ret_ty: TypeDesc::from(&function.return_type),
+                arena_size: 0,
+            });
+            summary.functions.last_mut()
+        } else {
+            None
+        }
+    }
+
+    pub fn add_template(&mut self, template: &TemplateInstance) -> Option<&mut TemplateSummary> {
+        if let Some(summary) = &mut self.summary {
+            let is_main = template.template_id == self.main_id;
+            let mut signals: Vec<SignalSummary> = vec![];
+            for signal in &template.signals {
+                let signal_names = if signal.lengths.is_empty() {
+                    vec![signal.name.clone()]
+                } else {
+                    index_names(&signal.lengths)
+                        .iter()
+                        .map(|indices| format!("{}{indices}", signal.name))
+                        .collect()
+                };
+                let vis = match &signal.xtype {
+                    SignalType::Output => "output",
+                    SignalType::Input => "input",
+                    SignalType::Intermediate => "intermediate",
+                };
+                for name in signal_names {
+                    signals.push(SignalSummary {
+                        public: is_main && template.public_inputs.contains(&name),
+                        visibility: vis.to_string(),
+                        idx: signals.len(),
+                        name,
+                    });
+                }
+            }
+
+            let mut subcmps: Vec<SubcmpSummary> = vec![];
+            for subcmp in &template.components {
+                let subcmp_names = if subcmp.lengths.is_empty() {
+                    vec![subcmp.name.clone()]
+                } else {
+                    index_names(&subcmp.lengths)
+                        .iter()
+                        .map(|indices| format!("{}{indices}", subcmp.name))
+                        .collect()
+                };
+                for name in subcmp_names {
+                    subcmps.push(SubcmpSummary { idx: subcmps.len(), name })
+                }
+            }
+
+            summary.components.push(TemplateSummary {
+                name: template.template_name.clone(),
+                main: is_main,
+                id: template.template_id,
+                subcmps,
+                signals,
+                logic_fn_name: run_fn_name(template.template_header.clone()),
+                constructor_fn_name: build_fn_name(template.template_header.clone()),
+            });
+            summary.components.last_mut()
+        } else {
+            None
+        }
+    }
+
+    pub fn write_to_file(&self, summary_file: &str) -> Result<(), serde_json::Error> {
+        if let Some(summary) = &self.summary {
+            let writer = File::create(summary_file).unwrap();
+            serde_json::to_writer(&writer, summary)
+        } else {
+            Ok(())
+        }
     }
 }

@@ -102,7 +102,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
     }
 
     if config.summary_flag {
-        generate_summary(config.summary_file.as_str(), config.llvm_folder.as_str(), &circuit, prime)?;
+        generate_summary(config.summary_file.as_str(), config.llvm_folder.as_str(), &circuit)?;
     }
 
     if config.llvm_flag {
@@ -140,7 +140,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
     Ok(())
 }
 
-fn generate_summary(summary_file: &str, llvm_folder: &str, circuit: &Circuit, prime: &String) -> Result<(), ()> {
+fn generate_summary(summary_file: &str, llvm_folder: &str, circuit: &Circuit) -> Result<(), ()> {
     if Path::new(llvm_folder).is_dir() {
         std::fs::remove_dir_all(llvm_folder).map_err(|err| {
             eprintln!("{} {}", Colour::Red.paint("Could not write the output in the given path:"), err);
@@ -151,7 +151,7 @@ fn generate_summary(summary_file: &str, llvm_folder: &str, circuit: &Circuit, pr
         eprintln!("{} {}", Colour::Red.paint("Could not write the output in the given path:"), err);
         ()
     })?;
-    match circuit.summary_producer.write_to_file(summary_file, prime) {
+    match circuit.summary_producer.write_to_file(summary_file) {
         Err(err) => {
             eprintln!("{} {}", Colour::Red.paint("Could not write the output in the given path:"), err);
             Err(())
