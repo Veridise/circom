@@ -1,6 +1,7 @@
+use std::path::Path;
 use ansi_term::Colour;
 use circuit_passes::passes::PassManager;
-use compiler::compiler_interface::{self, Config, VCP};
+use compiler::compiler_interface::{self, Circuit, Config, VCP};
 use program_structure::error_definition::Report;
 use program_structure::error_code::ReportCode;
 use program_structure::file_definition::FileLibrary;
@@ -17,7 +18,8 @@ pub struct CompilerConfig {
     pub c_file: String,
     pub llvm_file: String,
     pub llvm_folder: String,
-    pub clean_llvm: bool,
+    pub summary_file: String,
+    pub summary_flag: bool,
     pub dat_file: String,
     pub wat_flag: bool,
     pub wasm_flag: bool,
@@ -31,8 +33,13 @@ pub struct CompilerConfig {
 pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &String) -> Result<(), ()> {
     let circuit = compiler_interface::run_compiler(
         config.vcp,
-        Config { debug_output: config.debug_output, produce_input_log: config.produce_input_log, wat_flag: config.wat_flag },
-        VERSION
+        Config {
+            debug_output: config.debug_output,
+            produce_input_log: config.produce_input_log,
+            wat_flag: config.wat_flag,
+            summary_flag: config.summary_flag,
+        },
+        VERSION,
     )?;
 
     if config.c_flag {
@@ -94,6 +101,10 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
         (false, false) => {}
     }
 
+    if config.summary_flag {
+        generate_summary(config.summary_file.as_str(), config.llvm_folder.as_str(), &circuit, prime)?;
+    }
+
     if config.llvm_flag {
         // Only run the passes if we are going to generate LLVM code
         let pm = PassManager::new();
@@ -119,7 +130,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
                     &program_archive,
                     &config.llvm_folder,
                     &config.llvm_file,
-                    config.clean_llvm,
+                    !config.summary_flag, // If we generate the summary then the llvm folder is prepared at that step
                 )?;
                 println!("{} {}", Colour::Green.paint("Written successfully:"), config.llvm_file);
             }
@@ -127,6 +138,29 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
     }
 
     Ok(())
+}
+
+fn generate_summary(summary_file: &str, llvm_folder: &str, circuit: &Circuit, prime: &String) -> Result<(), ()> {
+    if Path::new(llvm_folder).is_dir() {
+        std::fs::remove_dir_all(llvm_folder).map_err(|err| {
+            eprintln!("{} {}", Colour::Red.paint("Could not write the output in the given path:"), err);
+            ()
+        })?;
+    }
+    std::fs::create_dir(llvm_folder).map_err(|err| {
+        eprintln!("{} {}", Colour::Red.paint("Could not write the output in the given path:"), err);
+        ()
+    })?;
+    match circuit.summary_producer.write_to_file(summary_file, prime) {
+        Err(err) => {
+            eprintln!("{} {}", Colour::Red.paint("Could not write the output in the given path:"), err);
+            Err(())
+        }
+        Ok(()) => {
+            println!("{} {}", Colour::Green.paint("Written summary successfully:"), summary_file);
+            Ok(())
+        }
+    }
 }
 
 fn wat_to_wasm(wat_file: &str, wasm_file: &str) -> Result<(), Report> {

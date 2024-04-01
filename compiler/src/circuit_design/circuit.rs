@@ -5,6 +5,7 @@ use super::template::{TemplateCode, TemplateCodeInfo};
 use super::types::*;
 use crate::hir::very_concrete_program::VCP;
 use crate::intermediate_representation::ir_interface::ObtainMeta;
+use crate::summary::SummaryProducer;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::array_switch::{load_array_stores_fns, load_array_load_fns};
@@ -20,7 +21,8 @@ use program_structure::program_archive::ProgramArchive;
 
 pub struct CompilationFlags {
     pub main_inputs_log: bool,
-    pub wat_flag:bool,
+    pub wat_flag: bool,
+    pub summary_flag: bool,
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -28,6 +30,7 @@ pub struct Circuit {
     pub wasm_producer: WASMProducer,
     pub c_producer: CProducer,
     pub llvm_data: LLVMCircuitData,
+    pub summary_producer: SummaryProducer,
     pub templates: Vec<TemplateCode>,
     pub functions: Vec<FunctionCode>,
 }
@@ -38,6 +41,7 @@ impl Default for Circuit {
             c_producer: CProducer::default(),
             wasm_producer: WASMProducer::default(),
             llvm_data: LLVMCircuitData::default(),
+            summary_producer: SummaryProducer::default(),
             templates: Vec::new(),
             functions: Vec::new(),
         }

@@ -108,6 +108,7 @@ pub trait CircuitTransformationPass {
         let mut new_circuit = Circuit {
             wasm_producer: circuit.wasm_producer.clone(),
             c_producer: circuit.c_producer.clone(),
+            summary_producer: circuit.summary_producer.clone(),
             llvm_data: circuit.llvm_data.clone_with_updates(
                 field_tracking,
                 array_loads,

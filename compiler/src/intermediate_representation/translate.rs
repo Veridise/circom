@@ -372,7 +372,7 @@ fn initialize_constants(state: &mut State, file_lib: &FileLibrary, constants: Ve
     }
 }
 
-pub fn initialize_signals(state: &mut State, file_lib: &FileLibrary, signals: Vec<Signal>, body: &Statement) {
+fn initialize_signals(state: &mut State, file_lib: &FileLibrary, signals: Vec<Signal>, body: &Statement) {
     let meta = body.get_meta();
     let line_num = file_lib.get_line(meta.get_start(), meta.get_file_id()).unwrap();
     for signal in signals {

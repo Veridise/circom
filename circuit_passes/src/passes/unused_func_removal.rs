@@ -107,6 +107,7 @@ impl CircuitTransformationPass for UnusedFuncRemovalPass<'_> {
         Ok(Circuit {
             wasm_producer: circuit.wasm_producer.clone(),
             c_producer: circuit.c_producer.clone(),
+            summary_producer: circuit.summary_producer.clone(),
             llvm_data: circuit.llvm_data.clone_with_updates(
                 circuit.llvm_data.field_tracking.clone(),
                 self.get_updated_bounded_array_loads(&circuit.llvm_data.bounded_array_loads),
