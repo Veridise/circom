@@ -93,12 +93,10 @@ pub trait TemplateCtx<'a> {
 
 pub trait LLVMIRProducer<'a> {
     fn llvm(&self) -> &LLVM<'a>;
-    fn context(&self) -> ContextRef<'a>;
     fn set_current_bb(&self, bb: BasicBlock<'a>);
     fn template_ctx(&self) -> &dyn TemplateCtx<'a>;
     fn body_ctx(&self) -> &dyn BodyCtx<'a>;
     fn current_function(&self) -> FunctionValue<'a>;
-    fn builder(&self) -> &Builder<'a>;
     fn constant_fields(&self) -> &Vec<String>;
     fn get_template_mem_arg(&self, run_fn: FunctionValue<'a>) -> ArrayValue<'a>;
     fn get_main_template_header(&self) -> &String;
@@ -139,19 +137,14 @@ impl LLVMCircuitData {
 }
 
 pub struct TopLevelLLVMIRProducer<'a> {
-    pub context: &'a Context,
     current_module: LLVM<'a>,
-    pub field_tracking: Vec<String>,
+    field_tracking: Vec<String>,
     main_template_header: String,
 }
 
 impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
     fn llvm(&self) -> &LLVM<'a> {
         &self.current_module
-    }
-
-    fn context(&self) -> ContextRef<'a> {
-        self.current_module.module.get_context()
     }
 
     fn set_current_bb(&self, bb: BasicBlock<'a>) {
@@ -168,10 +161,6 @@ impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
 
     fn current_function(&self) -> FunctionValue<'a> {
         panic!("The top level llvm producer does not have a current function");
-    }
-
-    fn builder(&self) -> &Builder<'a> {
-        &self.llvm().builder
     }
 
     fn constant_fields(&self) -> &Vec<String> {
@@ -195,6 +184,7 @@ impl<'a> TopLevelLLVMIRProducer<'a> {
     }
 }
 
+#[inline]
 pub fn create_context() -> Context {
     Context::create()
 }
@@ -208,7 +198,6 @@ impl<'a> TopLevelLLVMIRProducer<'a> {
         main_template_header: String,
     ) -> Self {
         TopLevelLLVMIRProducer {
-            context,
             current_module: LLVM::from_context(context, program_archive, llvm_path),
             field_tracking,
             main_template_header,
@@ -223,10 +212,11 @@ pub fn new_constraint_with_name<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     name: &str,
 ) -> AnyValueEnum<'a> {
+    let ctx = producer.llvm().context();
     let alloca = create_alloca(producer, bool_type(producer).into(), name);
-    let s = producer.context().metadata_string("constraint");
-    let kind = producer.context().get_kind_id("constraint");
-    let node = producer.context().metadata_node(&[s.into()]);
+    let s = ctx.metadata_string("constraint");
+    let kind = ctx.get_kind_id("constraint");
+    let node = ctx.metadata_node(&[s.into()]);
     alloca
         .as_instruction()
         .unwrap()
@@ -277,7 +267,7 @@ pub fn to_basic_type_enum<'a, T: BasicType<'a>>(ty: T) -> BasicTypeEnum<'a> {
 
 pub struct LLVM<'a> {
     module: Module<'a>,
-    builder: Builder<'a>,
+    pub builder: Builder<'a>,
     debug: HashMap<usize, DebugCtx<'a>>, //indexed by file_id
 }
 
@@ -340,6 +330,10 @@ impl<'a> LLVM<'a> {
         LLVM { module: m, builder: context.create_builder(), debug: debug_info }
     }
 
+    pub fn context(&self) -> ContextRef<'a> {
+        self.module.get_context()
+    }
+
     pub fn get_debug_info(&self, file_id: &usize) -> Result<&DebugCtx, String> {
         self.debug
             .get(file_id)
@@ -370,7 +364,7 @@ impl<'a> LLVM<'a> {
         // Verify that bitcode can be written, parsed, and re-verified
         {
             let buff = self.module.write_bitcode_to_memory();
-            let context = Context::create();
+            let context = create_context();
             let new_module =
                 Module::parse_bitcode_from_buffer(&buff, &context).map_err(|llvm_err| {
                     eprintln!(
@@ -403,10 +397,12 @@ impl<'a> LLVM<'a> {
     }
 }
 
+#[inline]
 pub fn run_fn_name(name: String) -> String {
     format!("{}_run", name)
 }
 
+#[inline]
 pub fn build_fn_name(name: String) -> String {
     format!("{}_build", name)
 }

@@ -128,8 +128,8 @@ impl WriteLLVMIR for ConstraintBucket {
         let inner = inner.into_instruction_value();
 
         match self {
-            ConstraintBucket::Substitution(i) => {
-                let size = match i.as_ref() {
+            ConstraintBucket::Substitution(sub) => {
+                let size = match sub.as_ref() {
                     Instruction::Store(b) => b.context.size,
                     Instruction::Call(b) => {
                         if let ReturnType::Final(f) = &b.return_info {
@@ -138,11 +138,11 @@ impl WriteLLVMIR for ConstraintBucket {
                             1
                         }
                     }
-                    _ => unreachable!("Invalid constraint substitution instruction {:#?}", i),
+                    _ => unreachable!("Invalid constraint substitution instruction {:#?}", sub),
                 };
                 assert_ne!(0, size, "must have non-zero size");
                 if size == 1 {
-                    //ASSERT: It's a STORE like: store i256 %1, i256* %2, align 4
+                    //ASSERT: It's a scalar STORE like: store i256 %1, i256* %2, align 4
                     assert_eq!(inner.get_opcode(), InstructionOpcode::Store);
                     const STORE_VAL_IDX: u32 = 0;
                     const STORE_PTR_IDX: u32 = 1;
@@ -208,6 +208,8 @@ impl WriteLLVMIR for ConstraintBucket {
                 }
             }
             ConstraintBucket::Equality(_) => {
+                //ASSERT: It's a CALL like: call void @__assert(i1 %call.fr_eq)
+                assert_eq!(inner.get_opcode(), InstructionOpcode::Call);
                 const ASSERT_IDX: u32 = 0;
                 let assert = to_basic_metadata_enum(get_instruction_arg(inner, ASSERT_IDX));
                 let constr = to_basic_metadata_enum(new_constraint(producer));

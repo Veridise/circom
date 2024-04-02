@@ -42,7 +42,7 @@ pub trait WriteLLVMIR {
         out_path: &str,
         data: &LLVMCircuitData,
     ) -> Result<(), ()> {
-        let context = Box::new(create_context());
+        let context = create_context();
         let top_level = TopLevelLLVMIRProducer::new(
             &context,
             program_archive,
@@ -68,9 +68,9 @@ pub trait WriteLLVMIR {
     ) {
         match obj.get_source_file_id().and_then(|i| producer.llvm().get_debug_info(&i).ok()) {
             // Set active debug location based on the ObtainMeta location information
-            Some((dib, _)) => producer.builder().set_current_debug_location(
+            Some((dib, _)) => producer.llvm().builder.set_current_debug_location(
                 dib.create_debug_location(
-                    producer.context(),
+                    producer.llvm().context(),
                     obj.get_line() as u32,
                     0,
                     get_current()
@@ -81,7 +81,7 @@ pub trait WriteLLVMIR {
                 ),
             ),
             // Clear active debug location if no associated file or no DebugInfo for that file
-            None => producer.builder().unset_current_debug_location(),
+            None => producer.llvm().builder.unset_current_debug_location(),
         };
     }
 }

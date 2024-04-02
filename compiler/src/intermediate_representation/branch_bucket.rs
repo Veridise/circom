@@ -147,7 +147,7 @@ impl WriteLLVMIR for BranchBucket {
 
         //If there are no jumps to the merge block, it is unreachable.
         if !jump_from_if && !jump_from_else {
-            let u = producer.builder().build_unreachable();
+            let u = producer.llvm().builder.build_unreachable();
             Some(u.as_any_value_enum())
         } else {
             None //merge block is empty

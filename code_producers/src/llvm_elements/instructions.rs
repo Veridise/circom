@@ -6,12 +6,10 @@ use inkwell::values::{
     AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, FunctionValue, InstructionOpcode,
     InstructionValue, IntMathValue, IntValue, PointerValue,
 };
-use crate::llvm_elements::LLVMIRProducer;
-use crate::llvm_elements::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
-use crate::llvm_elements::functions::create_bb;
-use crate::llvm_elements::types::{bigint_type, i32_type};
-
-use super::types::bool_type;
+use super::{LLVMIRProducer, LLVMInstruction};
+use super::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
+use super::functions::create_bb;
+use super::types::{bigint_type, bool_type, i32_type};
 
 // bigint abv;
 // if (rhs < 0)
@@ -29,7 +27,7 @@ pub fn create_pow_with_name<'a, T: IntMathValue<'a> + Copy>(
     lhs: T,
     rhs: T,
     _name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     let bldr = &producer.llvm().builder;
     let ty = bigint_type(producer);
 
@@ -133,7 +131,7 @@ pub fn create_pow<'a, T: IntMathValue<'a> + Copy>(
     in_func: FunctionValue<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_pow_with_name(producer, in_func, lhs, rhs, "")
 }
 
@@ -207,7 +205,7 @@ pub fn create_add_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_add(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -215,7 +213,7 @@ pub fn create_add<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_add_with_name(producer, lhs, rhs, "")
 }
 
@@ -224,7 +222,7 @@ pub fn create_sub_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_sub(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -232,7 +230,7 @@ pub fn create_sub<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_sub_with_name(producer, lhs, rhs, "")
 }
 
@@ -241,7 +239,7 @@ pub fn create_mul_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_mul(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -249,7 +247,7 @@ pub fn create_mul<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_mul_with_name(producer, lhs, rhs, "")
 }
 
@@ -258,7 +256,7 @@ pub fn create_div_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_signed_div(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -266,7 +264,7 @@ pub fn create_div<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_div_with_name(producer, lhs, rhs, "")
 }
 
@@ -274,7 +272,7 @@ pub fn create_inv_with_name<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     let lhs = bigint_type(producer).const_int(1, false);
     let rhs = val.as_basic_value_enum().into_int_value();
     producer.llvm().builder.build_int_signed_div(lhs, rhs, name).as_any_value_enum()
@@ -283,7 +281,7 @@ pub fn create_inv_with_name<'a, T: IntMathValue<'a>>(
 pub fn create_inv<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_inv_with_name(producer, val, "")
 }
 
@@ -292,7 +290,7 @@ pub fn create_mod_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_signed_rem(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -300,7 +298,7 @@ pub fn create_mod<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_mod_with_name(producer, lhs, rhs, "")
 }
 
@@ -309,7 +307,7 @@ pub fn create_eq_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_compare(EQ, lhs, rhs, name).as_any_value_enum()
 }
 
@@ -317,7 +315,7 @@ pub fn create_eq<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_eq_with_name(producer, lhs, rhs, "")
 }
 
@@ -326,7 +324,7 @@ pub fn create_neq_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_compare(NE, lhs, rhs, name).as_any_value_enum()
 }
 
@@ -334,7 +332,7 @@ pub fn create_neq<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_neq_with_name(producer, lhs, rhs, "")
 }
 
@@ -343,7 +341,7 @@ pub fn create_lt_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_compare(SLT, lhs, rhs, name).as_any_value_enum()
 }
 
@@ -351,7 +349,7 @@ pub fn create_lt<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_lt_with_name(producer, lhs, rhs, "")
 }
 
@@ -360,7 +358,7 @@ pub fn create_gt_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_compare(SGT, lhs, rhs, name).as_any_value_enum()
 }
 
@@ -368,7 +366,7 @@ pub fn create_gt<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_gt_with_name(producer, lhs, rhs, "")
 }
 
@@ -377,7 +375,7 @@ pub fn create_le_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_compare(SLE, lhs, rhs, name).as_any_value_enum()
 }
 
@@ -385,7 +383,7 @@ pub fn create_le<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_le_with_name(producer, lhs, rhs, "")
 }
 
@@ -394,7 +392,7 @@ pub fn create_ge_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_compare(SGE, lhs, rhs, name).as_any_value_enum()
 }
 
@@ -402,7 +400,7 @@ pub fn create_ge<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_ge_with_name(producer, lhs, rhs, "")
 }
 
@@ -410,14 +408,14 @@ pub fn create_neg_with_name<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     v: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_int_neg(v, name).as_any_value_enum()
 }
 
 pub fn create_neg<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     v: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_neg_with_name(producer, v, "")
 }
 
@@ -426,7 +424,7 @@ pub fn create_shl_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_left_shift(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -434,7 +432,7 @@ pub fn create_shl<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_shl_with_name(producer, lhs, rhs, "")
 }
 
@@ -443,7 +441,7 @@ pub fn create_shr_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     // Use sign_extend=true because values are signed.
     producer.llvm().builder.build_right_shift(lhs, rhs, true, name).as_any_value_enum()
 }
@@ -452,7 +450,7 @@ pub fn create_shr<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_shr_with_name(producer, lhs, rhs, "")
 }
 
@@ -461,7 +459,7 @@ pub fn create_bit_and_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_and(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -469,7 +467,7 @@ pub fn create_bit_and<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_bit_and_with_name(producer, lhs, rhs, "")
 }
 
@@ -478,7 +476,7 @@ pub fn create_bit_or_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_or(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -486,7 +484,7 @@ pub fn create_bit_or<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_bit_or_with_name(producer, lhs, rhs, "")
 }
 
@@ -495,7 +493,7 @@ pub fn create_bit_xor_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_xor(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -503,7 +501,7 @@ pub fn create_bit_xor<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_bit_xor_with_name(producer, lhs, rhs, "")
 }
 
@@ -511,7 +509,7 @@ pub fn ensure_bool_with_name<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     let int_val = val.as_basic_value_enum().into_int_value();
     if int_val.get_type() != bool_type(producer) {
         create_neq_with_name(producer, int_val, bigint_type(producer).const_zero(), name)
@@ -523,7 +521,7 @@ pub fn ensure_bool_with_name<'a, T: IntMathValue<'a>>(
 pub fn ensure_bool<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     ensure_bool_with_name(producer, val, "")
 }
 
@@ -557,7 +555,7 @@ pub fn create_logic_and_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_and(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -565,7 +563,7 @@ pub fn create_logic_and<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_logic_and_with_name(producer, lhs, rhs, "")
 }
 
@@ -574,7 +572,7 @@ pub fn create_logic_or_with_name<'a, T: IntMathValue<'a>>(
     lhs: T,
     rhs: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_or(lhs, rhs, name).as_any_value_enum()
 }
 
@@ -582,7 +580,7 @@ pub fn create_logic_or<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     lhs: T,
     rhs: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_logic_or_with_name(producer, lhs, rhs, "")
 }
 
@@ -590,14 +588,14 @@ pub fn create_logic_not_with_name<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_not(val, name).as_any_value_enum()
 }
 
 pub fn create_logic_not<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_logic_not_with_name(producer, val, "")
 }
 
@@ -605,7 +603,7 @@ pub fn create_store<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     ptr: PointerValue<'a>,
     value: AnyValueEnum<'a>,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     match value {
         AnyValueEnum::ArrayValue(v) => producer.llvm().builder.build_store(ptr, v),
         AnyValueEnum::IntValue(v) => {
@@ -621,14 +619,14 @@ pub fn create_store<'a>(
     .as_any_value_enum()
 }
 
-pub fn create_return_void<'a>(producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {
+pub fn create_return_void<'a>(producer: &dyn LLVMIRProducer<'a>) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_return(None).as_any_value_enum()
 }
 
 pub fn create_return<'a, V: BasicValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: V,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     let f = producer
         .llvm()
         .builder
@@ -651,7 +649,7 @@ pub fn create_return<'a, V: BasicValue<'a>>(
     producer.llvm().builder.build_return(Some(&ret_val)).as_any_value_enum()
 }
 
-pub fn create_br<'a>(producer: &dyn LLVMIRProducer<'a>, bb: BasicBlock<'a>) -> AnyValueEnum<'a> {
+pub fn create_br<'a>(producer: &dyn LLVMIRProducer<'a>, bb: BasicBlock<'a>) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_unconditional_branch(bb).as_any_value_enum()
 }
 
@@ -667,7 +665,7 @@ pub fn create_call<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     name: &str,
     arguments: &[BasicMetadataValueEnum<'a>],
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     let f = find_function(producer, name);
     let params = f.get_params();
     let checked_arguments: Vec<BasicMetadataValueEnum<'a>> = arguments
@@ -698,7 +696,7 @@ pub fn create_conditional_branch<'a>(
     comparison: IntValue<'a>,
     then_block: BasicBlock<'a>,
     else_block: BasicBlock<'a>,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     let bool_comparison = ensure_bool(producer, comparison).into_int_value();
     producer
         .llvm()
@@ -710,7 +708,7 @@ pub fn create_conditional_branch<'a>(
 pub fn create_return_from_any_value<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     val: AnyValueEnum<'a>,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     match val {
         AnyValueEnum::ArrayValue(x) => create_return(producer, x),
         AnyValueEnum::IntValue(x) => create_return(producer, x),
@@ -743,14 +741,14 @@ pub fn create_load_with_name<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     ptr: PointerValue<'a>,
     name: &str,
-) -> AnyValueEnum<'a> {
-    producer.builder().build_load(ptr, name).as_any_value_enum()
+) -> LLVMInstruction<'a> {
+    producer.llvm().builder.build_load(ptr, name).as_any_value_enum()
 }
 
 pub fn create_load<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     ptr: PointerValue<'a>,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_load_with_name(producer, ptr, "")
 }
 
@@ -771,7 +769,7 @@ pub fn create_gep<'a>(
     create_gep_with_name(producer, ptr, indices, "")
 }
 
-pub fn get_instruction_arg(inst: InstructionValue, idx: u32) -> AnyValueEnum {
+pub fn get_instruction_arg(inst: InstructionValue, idx: u32) -> LLVMInstruction {
     let r = inst.get_operand(idx).unwrap();
     if r.is_left() {
         r.unwrap_left().as_any_value_enum()
@@ -784,7 +782,7 @@ pub fn create_cast_to_addr_with_name<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: T,
     name: &str,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     producer
         .llvm()
         .builder
@@ -795,7 +793,7 @@ pub fn create_cast_to_addr_with_name<'a, T: IntMathValue<'a>>(
 pub fn create_cast_to_addr<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: T,
-) -> AnyValueEnum<'a> {
+) -> LLVMInstruction<'a> {
     create_cast_to_addr_with_name(producer, val, "")
 }
 
@@ -805,7 +803,7 @@ pub fn pointer_cast_with_name<'a>(
     to: PointerType<'a>,
     name: &str,
 ) -> PointerValue<'a> {
-    producer.builder().build_pointer_cast(from, to, name)
+    producer.llvm().builder.build_pointer_cast(from, to, name)
 }
 
 pub fn pointer_cast<'a>(
@@ -813,7 +811,7 @@ pub fn pointer_cast<'a>(
     from: PointerValue<'a>,
     to: PointerType<'a>,
 ) -> PointerValue<'a> {
-    producer.builder().build_pointer_cast(from, to, "")
+    producer.llvm().builder.build_pointer_cast(from, to, "")
 }
 
 pub fn create_switch<'a>(
@@ -822,7 +820,7 @@ pub fn create_switch<'a>(
     else_block: BasicBlock<'a>,
     cases: &[(IntValue<'a>, BasicBlock<'a>)],
 ) -> InstructionValue<'a> {
-    producer.builder().build_switch(value, else_block, cases)
+    producer.llvm().builder.build_switch(value, else_block, cases)
 }
 
 /// Extracts the pointer and the indexes of a gep instruction

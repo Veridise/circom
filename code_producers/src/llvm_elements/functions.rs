@@ -1,7 +1,5 @@
 use inkwell::attributes::AttributeLoc;
 use inkwell::basic_block::BasicBlock;
-use inkwell::builder::Builder;
-use inkwell::context::ContextRef;
 use inkwell::debug_info::AsDIScope;
 use inkwell::types::FunctionType;
 use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
@@ -47,7 +45,7 @@ pub fn create_function<'a>(
 pub fn add_attribute(producer: &dyn LLVMIRProducer, func: FunctionValue, key: &str, val: &str) {
     func.add_attribute(
         AttributeLoc::Function,
-        producer.context().create_string_attribute(key, val),
+        producer.llvm().context().create_string_attribute(key, val),
     );
 }
 
@@ -56,7 +54,7 @@ pub fn create_bb<'a>(
     func: FunctionValue<'a>,
     name: &str,
 ) -> BasicBlock<'a> {
-    producer.context().append_basic_block(func, name)
+    producer.llvm().context().append_basic_block(func, name)
 }
 
 struct FunctionCtx<'a> {
@@ -109,10 +107,6 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for FunctionLLVMIRProducer<'ctx, 'prod> {
         self.parent.llvm()
     }
 
-    fn context(&self) -> ContextRef<'ctx> {
-        self.parent.context()
-    }
-
     fn set_current_bb(&self, bb: BasicBlock<'ctx>) {
         self.parent.set_current_bb(bb)
     }
@@ -127,10 +121,6 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for FunctionLLVMIRProducer<'ctx, 'prod> {
 
     fn current_function(&self) -> FunctionValue<'ctx> {
         self.ctx.current_function
-    }
-
-    fn builder(&self) -> &Builder<'ctx> {
-        self.parent.builder()
     }
 
     fn constant_fields(&self) -> &Vec<String> {
@@ -285,10 +275,6 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for ExtractedFunctionLLVMIRProducer<'ctx,
         self.parent.llvm()
     }
 
-    fn context(&self) -> ContextRef<'ctx> {
-        self.parent.context()
-    }
-
     fn set_current_bb(&self, bb: BasicBlock<'ctx>) {
         self.parent.set_current_bb(bb)
     }
@@ -303,10 +289,6 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for ExtractedFunctionLLVMIRProducer<'ctx,
 
     fn current_function(&self) -> FunctionValue<'ctx> {
         self.ctx.current_function
-    }
-
-    fn builder(&self) -> &Builder<'ctx> {
-        self.parent.builder()
     }
 
     fn constant_fields(&self) -> &Vec<String> {
