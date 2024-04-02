@@ -106,10 +106,11 @@ impl StoreBucket {
             .expect("We need to produce some kind of instruction!")
             .into_int_value();
 
-        let mut source = match src {
+        // Use a closure here to avoid creating dead code if this value is not used
+        let mut source: Box<dyn Fn() -> LLVMInstruction<'a>> = Box::new(|| match src {
             Either::Left(s) => s,
             Either::Right(s) => to_enum(s.produce_llvm_ir(producer).unwrap()),
-        };
+        });
 
         // If we have bounds for an unknown index, we will get the base address and let the function check the bounds
         let store = match &bounded_fn {
@@ -133,7 +134,7 @@ impl StoreBucket {
                     Some(create_call(
                         producer,
                         name.as_str(),
-                        &[arr_ptr.into(), dest_index.into(), source.into_int_value().into()],
+                        &[arr_ptr.into(), dest_index.into(), source().into_int_value().into()],
                     ))
                 }
             }
@@ -144,26 +145,28 @@ impl StoreBucket {
                     //  is a LoadBucket, first convert it into an address.
                     if let Either::Right(r) = src {
                         if let Instruction::Load(v) = &**r {
-                            let src_index = v
-                                .src
-                                .produce_llvm_ir(producer)
-                                .expect("We need to produce some kind of instruction!")
-                                .into_int_value();
-                            source = make_ref(producer, &v.address_type, src_index, false).into();
+                            source = Box::new(move || {
+                                let src_index = v
+                                    .src
+                                    .produce_llvm_ir(producer)
+                                    .expect("We need to produce some kind of instruction!")
+                                    .into_int_value();
+                                make_ref(producer, &v.address_type, src_index, false).into()
+                            });
                         }
                     }
                     Some(create_call(
                         producer,
                         FR_ARRAY_COPY_FN_NAME,
                         &[
-                            source.into_pointer_value().into(),
+                            source().into_pointer_value().into(),
                             dest_gep.into(),
                             create_literal_u32(producer, context.size as u64).into(),
                         ],
                     ))
                 } else {
                     // In the scalar case, just produce a store from the source value that was given
-                    Some(create_store(producer, dest_gep, source))
+                    Some(create_store(producer, dest_gep, source()))
                 }
             }
         };
