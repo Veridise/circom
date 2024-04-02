@@ -9,7 +9,7 @@ use code_producers::llvm_elements::{
 };
 use code_producers::llvm_elements::functions::{create_bb, create_function};
 use code_producers::llvm_elements::instructions::{
-    create_alloca, create_br, create_gep, create_return_void, create_store, pointer_cast,
+    create_alloca, create_br, create_gep, create_return_void, create_store, create_pointer_cast,
 };
 use code_producers::llvm_elements::template::{create_template_struct, TemplateLLVMIRProducer};
 use code_producers::llvm_elements::types::{bigint_type, i32_type, void_type};
@@ -119,7 +119,7 @@ impl WriteLLVMIR for TemplateCodeInfo {
         create_store(producer, counter_ptr, initial_counter_value.as_any_value_enum());
         let signals_mem = create_gep(producer, cmp_mem.into_pointer_value(), &[zero(producer), zero(producer)]);
         //let signals = create_load(producer, alloca);
-        let ptr = pointer_cast(producer, alloca, bigint_ptr.ptr_type(Default::default()));
+        let ptr = create_pointer_cast(producer, alloca, bigint_ptr.ptr_type(Default::default()));
         create_store(producer, signals_mem, ptr.into());
         // Return that memory
         create_return_void(producer);

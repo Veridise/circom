@@ -327,7 +327,7 @@ fn ptr_cast_i32_i256_fn(producer: &dyn LLVMIRProducer) {
     let (res, func) = fr_unary_op_base!(FR_PTR_CAST_I32_I256, producer, ty_32, ty_256);
     add_inline_attribute(producer, func);
     // Cast the i32* to i256* and return
-    create_return(producer, pointer_cast(producer, res.into_pointer_value(), ty_256));
+    create_return(producer, create_pointer_cast(producer, res.into_pointer_value(), ty_256));
 }
 
 fn ptr_cast_i256_i32_fn(producer: &dyn LLVMIRProducer) {
@@ -336,7 +336,7 @@ fn ptr_cast_i256_i32_fn(producer: &dyn LLVMIRProducer) {
     let (res, func) = fr_unary_op_base!(FR_PTR_CAST_I256_I32, producer, ty_256, ty_32);
     add_inline_attribute(producer, func);
     // Cast the i256* to i32* and return
-    create_return(producer, pointer_cast(producer, res.into_pointer_value(), ty_32));
+    create_return(producer, create_pointer_cast(producer, res.into_pointer_value(), ty_32));
 }
 
 fn null_i256_arr_ptr_fn(producer: &dyn LLVMIRProducer) {

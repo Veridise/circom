@@ -24,8 +24,6 @@ pub use inkwell::module::Linkage;
 use program_structure::program_archive::ProgramArchive;
 
 use crate::components::TemplateInstanceIOMap;
-use crate::llvm_elements::types::bool_type;
-use crate::llvm_elements::instructions::create_alloca;
 
 pub mod stdlib;
 pub mod template;
@@ -39,6 +37,12 @@ pub mod array_switch;
 pub type LLVMInstruction<'a> = AnyValueEnum<'a>;
 pub type DebugCtx<'a> = (DebugInfoBuilder<'a>, DICompileUnit<'a>);
 
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum ConstraintKind {
+    Substitution,
+    Equality,
+}
+
 pub trait BodyCtx<'a> {
     fn get_lvar_ref(
         &self,
@@ -47,9 +51,34 @@ pub trait BodyCtx<'a> {
     ) -> PointerValue<'a>;
 
     fn get_variable_array(&self, producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a>;
+
+    fn get_wrapping_constraint(&self) -> Option<ConstraintKind>;
+    fn set_wrapping_constraint(&self, value: Option<ConstraintKind>);
 }
 
-pub trait TemplateCtx<'a> {
+struct BaseBodyCtx<'a> {
+    current_function: FunctionValue<'a>,
+
+    // Flags below are wrapped in RefCell because the reference to
+    // the context is immutable but we need mutability.
+    inside_constraint: RefCell<Option<ConstraintKind>>,
+}
+
+impl<'a> BaseBodyCtx<'a> {
+    fn new(current_function: FunctionValue<'a>) -> Self {
+        BaseBodyCtx { current_function, inside_constraint: Default::default() }
+    }
+
+    fn get_wrapping_constraint(&self) -> Option<ConstraintKind> {
+        self.inside_constraint.borrow().clone()
+    }
+
+    fn set_wrapping_constraint(&self, value: Option<ConstraintKind>) {
+        self.inside_constraint.replace(value);
+    }
+}
+
+pub trait TemplateCtx<'a>: BodyCtx<'a> {
     /// Returns the memory address of the subcomponent
     fn load_subcmp(
         &self,
@@ -207,27 +236,6 @@ impl<'a> TopLevelLLVMIRProducer<'a> {
 
 pub type LLVMAdapter<'a> = &'a Rc<RefCell<LLVM<'a>>>;
 pub type BigIntType<'a> = IntType<'a>; // i256
-
-pub fn new_constraint_with_name<'a>(
-    producer: &dyn LLVMIRProducer<'a>,
-    name: &str,
-) -> AnyValueEnum<'a> {
-    let ctx = producer.llvm().context();
-    let alloca = create_alloca(producer, bool_type(producer).into(), name);
-    let s = ctx.metadata_string("constraint");
-    let kind = ctx.get_kind_id("constraint");
-    let node = ctx.metadata_node(&[s.into()]);
-    alloca
-        .as_instruction()
-        .unwrap()
-        .set_metadata(node, kind)
-        .expect("Could not setup metadata marker for constraint value");
-    alloca.as_any_value_enum()
-}
-
-pub fn new_constraint<'a>(producer: &dyn LLVMIRProducer<'a>) -> AnyValueEnum<'a> {
-    new_constraint_with_name(producer, "constraint")
-}
 
 #[inline]
 pub fn any_value_wraps_basic_value(v: AnyValueEnum) -> bool {

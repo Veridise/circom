@@ -2,10 +2,10 @@ use std::default::Default;
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{AnyType, BasicType, PointerType};
 use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
-use crate::llvm_elements::{BodyCtx, LLVM, LLVMIRProducer, TemplateCtx};
-use crate::llvm_elements::instructions::{create_alloca, create_gep, create_load};
-use crate::llvm_elements::types::{bigint_type, i32_type};
-use crate::llvm_elements::values::{create_literal_u32, zero};
+use super::{BaseBodyCtx, BodyCtx, ConstraintKind, LLVM, LLVMIRProducer, TemplateCtx};
+use super::instructions::{create_alloca, create_gep, create_load};
+use super::types::{bigint_type, i32_type};
+use super::values::{create_literal_u32, zero};
 
 pub fn create_template_struct<'a>(
     producer: &dyn LLVMIRProducer<'a>,
@@ -15,9 +15,9 @@ pub fn create_template_struct<'a>(
 }
 
 struct StdTemplateCtx<'a> {
+    base: BaseBodyCtx<'a>,
     stack: PointerValue<'a>,
     subcmps: PointerValue<'a>,
-    current_function: FunctionValue<'a>,
     template_type: PointerType<'a>,
     signals_arg_offset: usize,
 }
@@ -51,9 +51,9 @@ impl<'a> StdTemplateCtx<'a> {
         signals_arg_offset: usize,
     ) -> Self {
         StdTemplateCtx {
+            base: BaseBodyCtx::new(current_function),
             stack: setup_stack(producer, stack_depth),
             subcmps: setup_subcmps(producer, number_subcmps),
-            current_function,
             template_type,
             signals_arg_offset,
         }
@@ -109,12 +109,14 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
         producer: &dyn LLVMIRProducer<'a>,
         index: IntValue<'a>,
     ) -> PointerValue<'a> {
-        let signals = self.current_function.get_nth_param(self.signals_arg_offset as u32).unwrap();
+        let signals =
+            self.base.current_function.get_nth_param(self.signals_arg_offset as u32).unwrap();
         create_gep(producer, signals.into_pointer_value(), &[zero(producer), index])
     }
 
     fn get_signal_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a> {
-        let signals = self.current_function.get_nth_param(self.signals_arg_offset as u32).unwrap();
+        let signals =
+            self.base.current_function.get_nth_param(self.signals_arg_offset as u32).unwrap();
         signals.into_pointer_value()
     }
 }
@@ -131,6 +133,14 @@ impl<'a> BodyCtx<'a> for StdTemplateCtx<'a> {
 
     fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a> {
         self.stack.into()
+    }
+
+    fn get_wrapping_constraint(&self) -> Option<ConstraintKind> {
+        self.base.get_wrapping_constraint()
+    }
+
+    fn set_wrapping_constraint(&self, value: Option<ConstraintKind>) {
+        self.base.set_wrapping_constraint(value)
     }
 }
 
@@ -157,7 +167,7 @@ impl<'a, 'b> LLVMIRProducer<'a> for TemplateLLVMIRProducer<'a, 'b> {
     }
 
     fn current_function(&self) -> FunctionValue<'a> {
-        self.ctx.current_function
+        self.ctx.base.current_function
     }
 
     fn constant_fields(&self) -> &Vec<String> {

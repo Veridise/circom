@@ -2,11 +2,13 @@ pub use either::Either;
 use super::{ir_interface::*, make_ref};
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer, to_enum, run_fn_name};
+use code_producers::llvm_elements::{
+    run_fn_name, to_enum, ConstraintKind, LLVMIRProducer, LLVMInstruction,
+};
 use code_producers::llvm_elements::array_switch::unsized_array_ptr_ty;
 use code_producers::llvm_elements::instructions::{
-    create_array_copy, create_call, create_gep, create_load_with_name, create_store,
-    create_sub_with_name, pointer_cast,
+    create_array_copy, create_call, create_constraint_values_call, create_gep,
+    create_load_with_name, create_pointer_cast, create_store, create_sub_with_name,
 };
 use code_producers::llvm_elements::stdlib::LLVM_DONOTHING_FN_NAME;
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
@@ -104,7 +106,9 @@ impl StoreBucket {
             .expect("We need to produce some kind of instruction!")
             .into_int_value();
 
-        // Use a closure here to avoid creating dead code if this value is not used
+        // Use a closure here to avoid creating dead code if this value is not used.
+        //  The closure also delays code generation so that the value being stored
+        //  is always generated after the destination pointer for the store.
         let mut source: Box<dyn Fn() -> LLVMInstruction<'a>> = Box::new(|| match src {
             Either::Left(s) => s,
             Either::Right(s) => to_enum(s.produce_llvm_ir(producer).unwrap()),
@@ -113,6 +117,7 @@ impl StoreBucket {
         // If we have bounds for an unknown index, we will get the base address and let the function check the bounds
         let store = match &bounded_fn {
             Some(name) => {
+                assert!(producer.body_ctx().get_wrapping_constraint().is_none());
                 assert_eq!(1, context.size, "unhandled array store");
                 if name == LLVM_DONOTHING_FN_NAME {
                     None
@@ -128,7 +133,7 @@ impl StoreBucket {
                             create_gep(producer, subcmp, &[zero(producer)])
                         }
                     };
-                    let arr_ptr = pointer_cast(producer, arr_ptr, unsized_array_ptr_ty(producer));
+                    let arr_ptr = create_pointer_cast(producer, arr_ptr, unsized_array_ptr_ty(producer));
                     Some(create_call(
                         producer,
                         name.as_str(),
@@ -153,11 +158,27 @@ impl StoreBucket {
                             });
                         }
                     }
-                    create_array_copy(producer, source().into_pointer_value(), dest_gep, context.size);
+                    let gen_constraints = producer.body_ctx().get_wrapping_constraint().is_some();
+                    if gen_constraints {
+                        assert_eq!(producer.body_ctx().get_wrapping_constraint().unwrap(), ConstraintKind::Substitution);
+                    }
+                    create_array_copy(
+                        producer,
+                        source().into_pointer_value(),
+                        dest_gep,
+                        context.size,
+                        gen_constraints,
+                    );
                     None
                 } else {
+                    let value = source();
+                    let mut ret = create_store(producer, dest_gep, value);
+                    if producer.body_ctx().get_wrapping_constraint().is_some() {
+                        assert_eq!(producer.body_ctx().get_wrapping_constraint().unwrap(), ConstraintKind::Substitution);
+                        ret = create_constraint_values_call(producer, value, dest_gep);
+                    }
                     // In the scalar case, just produce a store from the source value that was given
-                    Some(create_store(producer, dest_gep, source()))
+                    Some(ret)
                 }
             }
         };
@@ -180,8 +201,8 @@ impl StoreBucket {
             }
         }
 
-        // If the input information is unknown add a check that checks the counter and if its zero call the subcomponent
-        // If its last just call run directly
+        // If the input information is unknown, add a check for the counter to call
+        // the subcomponent if its zero. If its last just call run directly.
         if let AddressType::SubcmpSignal {
             input_information: InputInformation::Input { status },
             cmp_address,
