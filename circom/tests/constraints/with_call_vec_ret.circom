@@ -27,17 +27,25 @@ component main = ComputeFee();
 //CHECK-NEXT: call1:
 //CHECK-NEXT:   %[[FUN_NAME:[0-9a-zA-Z_.]+]]_arena = alloca [2 x i256], align 8
 //CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = bitcast [2 x i256]* %[[FUN_NAME]]_arena to i256*
-//CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i256* @[[FUN_NAME]](i256* %[[T00]])
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
-//CHECK-NEXT:   call void @fr_copy_n(i256* %[[C01]], i256* %[[T02]], i32 2)
-//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = load i256, i256* %[[C01]], align 4
-//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
-//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T05]], align 4
-//CHECK-NEXT:   %constraint_0 = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %[[T04]], i256 %[[T06]], i1* %constraint_0)
-//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = load i256, i256* %[[C01]], align 4
-//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 1
-//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T09]], align 4
-//CHECK-NEXT:   %constraint_1 = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %[[T08]], i256 %[[T10]], i1* %constraint_1)
+//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_.]+]] = call i256* @[[FUN_NAME]](i256* %[[T00]])
+//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
+//
+//CHECK-NEXT:   %[[COPY_SRC_0:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[SRC_PTR]], i32 0
+//CHECK-NEXT:   %[[COPY_DST_0:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[DST_PTR]], i32 0
+//CHECK-NEXT:   %[[COPY_VAL_0:[0-9a-zA-Z_.]+]] = load i256, i256* %[[COPY_SRC_0]], align 4
+//CHECK-NEXT:   store i256 %[[COPY_VAL_0]], i256* %[[COPY_DST_0]], align 4
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = load i256, i256* %[[COPY_SRC_0]], align 4
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = load i256, i256* %[[COPY_DST_0]], align 4
+//CHECK-NEXT:   %[[CONSTRAINT_0:[0-9a-zA-Z_.]+]] = alloca i1, align 1
+//CHECK-NEXT:   call void @__constraint_values(i256 %[[T04]], i256 %[[T06]], i1* %[[CONSTRAINT_0]])
+//
+//CHECK-NEXT:   %[[COPY_SRC_1:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[SRC_PTR]], i32 1
+//CHECK-NEXT:   %[[COPY_DST_1:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[DST_PTR]], i32 1
+//CHECK-NEXT:   %[[COPY_VAL_1:[0-9a-zA-Z_.]+]] = load i256, i256* %[[COPY_SRC_1]], align 4
+//CHECK-NEXT:   store i256 %[[COPY_VAL_1]], i256* %[[COPY_DST_1]], align 4
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = load i256, i256* %[[COPY_SRC_1]], align 4
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = load i256, i256* %[[COPY_DST_1]], align 4
+//CHECK-NEXT:   %[[CONSTRAINT_1:[0-9a-zA-Z_.]+]] = alloca i1, align 1
+//CHECK-NEXT:   call void @__constraint_values(i256 %[[T08]], i256 %[[T10]], i1* %[[CONSTRAINT_1]])
+//
 //CHECK-NEXT:   br label %store2

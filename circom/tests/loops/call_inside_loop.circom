@@ -78,7 +78,14 @@ component main = CallInLoop(2, 3);
 //CHECK-NEXT:   %fun_0_arena = alloca [15 x i256], align 8
 //CHECK-NEXT:   %[[T000:[0-9a-zA-Z_.]+]] = getelementptr [15 x i256], [15 x i256]* %fun_0_arena, i32 0, i32 0
 //CHECK-NEXT:   %[[T001:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
-//CHECK-NEXT:   call void @fr_copy_n(i256* %[[T001]], i256* %[[T000]], i32 2)
+//CHECK-NEXT:   %[[COPY_SRC_0:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[T001]], i32 0
+//CHECK-NEXT:   %[[COPY_DST_0:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[T000]], i32 0
+//CHECK-NEXT:   %[[COPY_VAL_0:[0-9a-zA-Z_.]+]] = load i256, i256* %[[COPY_SRC_0]], align 4
+//CHECK-NEXT:   store i256 %[[COPY_VAL_0]], i256* %[[COPY_DST_0]], align 4
+//CHECK-NEXT:   %[[COPY_SRC_1:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[T001]], i32 1
+//CHECK-NEXT:   %[[COPY_DST_1:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[T000]], i32 1
+//CHECK-NEXT:   %[[COPY_VAL_1:[0-9a-zA-Z_.]+]] = load i256, i256* %[[COPY_SRC_1]], align 4
+//CHECK-NEXT:   store i256 %[[COPY_VAL_1]], i256* %[[COPY_DST_1]], align 4
 //CHECK-NEXT:   %[[T002:[0-9a-zA-Z_.]+]] = getelementptr [15 x i256], [15 x i256]* %fun_0_arena, i32 0, i32 2
 //CHECK-NEXT:   store i256 2, i256* %[[T002]], align 4
 //CHECK-NEXT:   %[[T003:[0-9a-zA-Z_.]+]] = getelementptr [15 x i256], [15 x i256]* %fun_0_arena, i32 0, i32 3

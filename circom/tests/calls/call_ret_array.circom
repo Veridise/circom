@@ -21,9 +21,24 @@ component main = CallRetTest();
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY:
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 4
-//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 0
-//CHECK-NEXT:   call void @fr_copy_n(i256* %[[T04]], i256* %[[T03]], i32 4)
+//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 4
+//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 0
+//CHECK-NEXT:   %copy_src_0 = getelementptr i256, i256* %[[SRC_PTR]], i32 0
+//CHECK-NEXT:   %copy_dst_0 = getelementptr i256, i256* %[[DST_PTR]], i32 0
+//CHECK-NEXT:   %copy_val_0 = load i256, i256* %copy_src_0, align 4
+//CHECK-NEXT:   store i256 %copy_val_0, i256* %copy_dst_0, align 4
+//CHECK-NEXT:   %copy_src_1 = getelementptr i256, i256* %[[SRC_PTR]], i32 1
+//CHECK-NEXT:   %copy_dst_1 = getelementptr i256, i256* %[[DST_PTR]], i32 1
+//CHECK-NEXT:   %copy_val_1 = load i256, i256* %copy_src_1, align 4
+//CHECK-NEXT:   store i256 %copy_val_1, i256* %copy_dst_1, align 4
+//CHECK-NEXT:   %copy_src_2 = getelementptr i256, i256* %[[SRC_PTR]], i32 2
+//CHECK-NEXT:   %copy_dst_2 = getelementptr i256, i256* %[[DST_PTR]], i32 2
+//CHECK-NEXT:   %copy_val_2 = load i256, i256* %copy_src_2, align 4
+//CHECK-NEXT:   store i256 %copy_val_2, i256* %copy_dst_2, align 4
+//CHECK-NEXT:   %copy_src_3 = getelementptr i256, i256* %[[SRC_PTR]], i32 3
+//CHECK-NEXT:   %copy_dst_3 = getelementptr i256, i256* %[[DST_PTR]], i32 3
+//CHECK-NEXT:   %copy_val_3 = load i256, i256* %copy_src_3, align 4
+//CHECK-NEXT:   store i256 %copy_val_3, i256* %copy_dst_3, align 4
 //CHECK-NEXT:   br label %return2
 //CHECK-EMPTY:
 //CHECK-NEXT: return2:
@@ -39,13 +54,43 @@ component main = CallRetTest();
 //CHECK-EMPTY:
 //CHECK-NEXT: call1:
 //CHECK-NEXT:   %sum_0_arena = alloca [8 x i256], align 8
-//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = getelementptr [8 x i256], [8 x i256]* %sum_0_arena, i32 0, i32 0
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 4
-//CHECK-NEXT:   call void @fr_copy_n(i256* %[[T02]], i256* %[[T01]], i32 4)
+//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_.]+]] = getelementptr [8 x i256], [8 x i256]* %sum_0_arena, i32 0, i32 0
+//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 4
+//CHECK-NEXT:   %copy_src_0 = getelementptr i256, i256* %[[SRC_PTR]], i32 0
+//CHECK-NEXT:   %copy_dst_0 = getelementptr i256, i256* %[[DST_PTR]], i32 0
+//CHECK-NEXT:   %copy_val_0 = load i256, i256* %copy_src_0, align 4
+//CHECK-NEXT:   store i256 %copy_val_0, i256* %copy_dst_0, align 4
+//CHECK-NEXT:   %copy_src_1 = getelementptr i256, i256* %[[SRC_PTR]], i32 1
+//CHECK-NEXT:   %copy_dst_1 = getelementptr i256, i256* %[[DST_PTR]], i32 1
+//CHECK-NEXT:   %copy_val_1 = load i256, i256* %copy_src_1, align 4
+//CHECK-NEXT:   store i256 %copy_val_1, i256* %copy_dst_1, align 4
+//CHECK-NEXT:   %copy_src_2 = getelementptr i256, i256* %[[SRC_PTR]], i32 2
+//CHECK-NEXT:   %copy_dst_2 = getelementptr i256, i256* %[[DST_PTR]], i32 2
+//CHECK-NEXT:   %copy_val_2 = load i256, i256* %copy_src_2, align 4
+//CHECK-NEXT:   store i256 %copy_val_2, i256* %copy_dst_2, align 4
+//CHECK-NEXT:   %copy_src_3 = getelementptr i256, i256* %[[SRC_PTR]], i32 3
+//CHECK-NEXT:   %copy_dst_3 = getelementptr i256, i256* %[[DST_PTR]], i32 3
+//CHECK-NEXT:   %copy_val_3 = load i256, i256* %copy_src_3, align 4
+//CHECK-NEXT:   store i256 %copy_val_3, i256* %copy_dst_3, align 4
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = bitcast [8 x i256]* %sum_0_arena to i256*
-//CHECK-NEXT:   %call.sum_0 = call i256* @sum_0(i256* %[[T03]])
-//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
-//CHECK-NEXT:   call void @fr_copy_n(i256* %call.sum_0, i256* %[[T04]], i32 4)
+//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_.]+]] = call i256* @sum_0(i256* %[[T03]])
+//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
+//CHECK-NEXT:   %copy_src_01 = getelementptr i256, i256* %[[SRC_PTR]], i32 0
+//CHECK-NEXT:   %copy_dst_02 = getelementptr i256, i256* %[[DST_PTR]], i32 0
+//CHECK-NEXT:   %copy_val_03 = load i256, i256* %copy_src_01, align 4
+//CHECK-NEXT:   store i256 %copy_val_03, i256* %copy_dst_02, align 4
+//CHECK-NEXT:   %copy_src_14 = getelementptr i256, i256* %[[SRC_PTR]], i32 1
+//CHECK-NEXT:   %copy_dst_15 = getelementptr i256, i256* %[[DST_PTR]], i32 1
+//CHECK-NEXT:   %copy_val_16 = load i256, i256* %copy_src_14, align 4
+//CHECK-NEXT:   store i256 %copy_val_16, i256* %copy_dst_15, align 4
+//CHECK-NEXT:   %copy_src_27 = getelementptr i256, i256* %[[SRC_PTR]], i32 2
+//CHECK-NEXT:   %copy_dst_28 = getelementptr i256, i256* %[[DST_PTR]], i32 2
+//CHECK-NEXT:   %copy_val_29 = load i256, i256* %copy_src_27, align 4
+//CHECK-NEXT:   store i256 %copy_val_29, i256* %copy_dst_28, align 4
+//CHECK-NEXT:   %copy_src_310 = getelementptr i256, i256* %[[SRC_PTR]], i32 3
+//CHECK-NEXT:   %copy_dst_311 = getelementptr i256, i256* %[[DST_PTR]], i32 3
+//CHECK-NEXT:   %copy_val_312 = load i256, i256* %copy_src_310, align 4
+//CHECK-NEXT:   store i256 %copy_val_312, i256* %copy_dst_311, align 4
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY:
 //CHECK-NEXT: prologue:

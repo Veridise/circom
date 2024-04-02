@@ -3,10 +3,9 @@ use inkwell::basic_block::BasicBlock;
 use inkwell::debug_info::AsDIScope;
 use inkwell::types::FunctionType;
 use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
-
-use crate::llvm_elements::{BodyCtx, LLVM, LLVMIRProducer, TemplateCtx};
-use crate::llvm_elements::instructions::create_gep;
-use crate::llvm_elements::values::zero;
+use super::{BaseBodyCtx, BodyCtx, ConstraintKind, LLVM, LLVMIRProducer, TemplateCtx};
+use super::instructions::create_gep;
+use super::values::zero;
 
 pub fn create_function<'a>(
     producer: &dyn LLVMIRProducer<'a>,
@@ -57,15 +56,15 @@ pub fn create_bb<'a>(
     producer.llvm().context().append_basic_block(func, name)
 }
 
-struct FunctionCtx<'a> {
-    current_function: FunctionValue<'a>,
+struct StdFunctionCtx<'a> {
+    base: BaseBodyCtx<'a>,
     arena: PointerValue<'a>,
 }
 
-impl<'a> FunctionCtx<'a> {
+impl<'a> StdFunctionCtx<'a> {
     fn new(current_function: FunctionValue<'a>) -> Self {
-        FunctionCtx {
-            current_function,
+        StdFunctionCtx {
+            base: BaseBodyCtx::new(current_function),
             arena: current_function
                 .get_nth_param(0)
                 .expect("Function needs at least one argument for the arena!")
@@ -74,7 +73,7 @@ impl<'a> FunctionCtx<'a> {
     }
 }
 
-impl<'a> BodyCtx<'a> for FunctionCtx<'a> {
+impl<'a> BodyCtx<'a> for StdFunctionCtx<'a> {
     fn get_lvar_ref(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
@@ -86,11 +85,19 @@ impl<'a> BodyCtx<'a> for FunctionCtx<'a> {
     fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a> {
         self.arena
     }
+
+    fn get_wrapping_constraint(&self) -> Option<ConstraintKind> {
+        self.base.get_wrapping_constraint()
+    }
+
+    fn set_wrapping_constraint(&self, value: Option<ConstraintKind>) {
+        self.base.set_wrapping_constraint(value)
+    }
 }
 
 pub struct FunctionLLVMIRProducer<'ctx: 'prod, 'prod> {
     parent: &'prod dyn LLVMIRProducer<'ctx>,
-    ctx: FunctionCtx<'ctx>,
+    ctx: StdFunctionCtx<'ctx>,
 }
 
 impl<'ctx, 'prod> FunctionLLVMIRProducer<'ctx, 'prod> {
@@ -98,7 +105,7 @@ impl<'ctx, 'prod> FunctionLLVMIRProducer<'ctx, 'prod> {
         producer: &'prod dyn LLVMIRProducer<'ctx>,
         current_function: FunctionValue<'ctx>,
     ) -> Self {
-        FunctionLLVMIRProducer { parent: producer, ctx: FunctionCtx::new(current_function) }
+        FunctionLLVMIRProducer { parent: producer, ctx: StdFunctionCtx::new(current_function) }
     }
 }
 
@@ -120,7 +127,7 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for FunctionLLVMIRProducer<'ctx, 'prod> {
     }
 
     fn current_function(&self) -> FunctionValue<'ctx> {
-        self.ctx.current_function
+        self.ctx.base.current_function
     }
 
     fn constant_fields(&self) -> &Vec<String> {
@@ -137,7 +144,7 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for FunctionLLVMIRProducer<'ctx, 'prod> {
 }
 
 struct ExtractedFunctionCtx<'a> {
-    current_function: FunctionValue<'a>,
+    base: BaseBodyCtx<'a>,
     // NOTE: The 'lvars' [0 x i256]* parameter must always be present (at position 0).
     //  The 'signals' [0 x i256]* parameter (at position 1) is optional (to allow
     //  this to handle the generated array index load functions for the unroller).
@@ -147,7 +154,7 @@ struct ExtractedFunctionCtx<'a> {
 impl<'a> ExtractedFunctionCtx<'a> {
     fn new(current_function: FunctionValue<'a>) -> Self {
         ExtractedFunctionCtx {
-            current_function,
+            base: BaseBodyCtx::new(current_function),
             args: current_function
                 .get_param_iter()
                 .map(|x| x.into_pointer_value())
@@ -165,7 +172,7 @@ impl<'a> ExtractedFunctionCtx<'a> {
 
     fn get_signals_ptr(&self) -> PointerValue<'a> {
         *self.args.get(1).unwrap_or_else(|| {
-            panic!("No signals argument for {:?}!", self.current_function.get_name())
+            panic!("No signals argument for {:?}!", self.base.current_function.get_name())
         })
     }
 
@@ -193,6 +200,14 @@ impl<'a> BodyCtx<'a> for ExtractedFunctionCtx<'a> {
 
     fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a> {
         self.get_lvars_ptr()
+    }
+
+    fn get_wrapping_constraint(&self) -> Option<ConstraintKind> {
+        self.base.get_wrapping_constraint()
+    }
+
+    fn set_wrapping_constraint(&self, value: Option<ConstraintKind>) {
+        self.base.set_wrapping_constraint(value)
     }
 }
 
@@ -288,7 +303,7 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for ExtractedFunctionLLVMIRProducer<'ctx,
     }
 
     fn current_function(&self) -> FunctionValue<'ctx> {
-        self.ctx.current_function
+        self.ctx.base.current_function
     }
 
     fn constant_fields(&self) -> &Vec<String> {

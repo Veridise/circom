@@ -3,7 +3,7 @@ use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::array_switch::unsized_array_ptr_ty;
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use code_producers::llvm_elements::instructions::{create_gep, create_load, create_call, pointer_cast};
+use code_producers::llvm_elements::instructions::{create_gep, create_load, create_call, create_pointer_cast};
 use code_producers::llvm_elements::values::zero;
 use code_producers::wasm_elements::*;
 use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
@@ -104,7 +104,7 @@ impl WriteLLVMIR for LoadBucket {
                             create_gep(producer, subcmp, &[zero(producer)])
                         }
                     };
-                    pointer_cast(producer, arr_ptr, unsized_array_ptr_ty(producer))
+                    create_pointer_cast(producer, arr_ptr, unsized_array_ptr_ty(producer))
                 };
                 create_call(producer, name.as_str(), &[get_ptr().into(), index.into()])
             }

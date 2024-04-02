@@ -1,15 +1,23 @@
 use std::convert::TryFrom;
 use inkwell::basic_block::BasicBlock;
 use inkwell::IntPredicate::{EQ, NE, SLT, SGT, SLE, SGE};
-use inkwell::types::{AnyTypeEnum, PointerType, IntType};
+use inkwell::types::{AnyType, AnyTypeEnum, PointerType, IntType};
 use inkwell::values::{
     AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, FunctionValue, InstructionOpcode,
     InstructionValue, IntMathValue, IntValue, PointerValue,
 };
-use super::{LLVMIRProducer, LLVMInstruction};
+use super::{to_basic_metadata_enum, LLVMIRProducer, LLVMInstruction};
 use super::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
 use super::functions::create_bb;
+use super::stdlib::{CONSTRAINT_VALUES_FN_NAME, CONSTRAINT_VALUE_FN_NAME};
 use super::types::{bigint_type, bool_type, i32_type};
+use super::values::create_literal_u32;
+
+macro_rules! debug_assert_expected_type {
+    ($producer:ident, $expect:ident, $type:expr) => {
+        debug_assert_eq!($expect($producer).as_any_type_enum(), $type, "expected left type");
+    };
+}
 
 // bigint abv;
 // if (rhs < 0)
@@ -135,69 +143,40 @@ pub fn create_pow<'a, T: IntMathValue<'a> + Copy>(
     create_pow_with_name(producer, in_func, lhs, rhs, "")
 }
 
-// for(int i = 0; i < len; i++)
-//   dst[i] = src[i]
-pub fn create_array_copy_with_name<'a, T: IntMathValue<'a>>(
+pub fn create_array_copy_with_name<'a>(
     producer: &dyn LLVMIRProducer<'a>,
-    in_func: FunctionValue<'a>,
     src: PointerValue<'a>,
     dst: PointerValue<'a>,
-    len: T,
-    _name: &str,
+    len: usize,
+    gen_constraints: bool,
+    name: &str,
 ) {
-    let bldr = &producer.llvm().builder;
-    let int_ty = len.as_any_value_enum().get_type().into_int_type();
-
-    //// Loop blocks
-    let bb_lp_cond = create_bb(producer, in_func, "loop.cond.copy");
-    let bb_lp_body = create_bb(producer, in_func, "loop.body.copy");
-    let bb_lp_end = create_bb(producer, in_func, "loop.end.copy");
-
-    //// Pre-loop initialization
-    let ptr_lp_var = bldr.build_alloca(int_ty, "i");
-    bldr.build_store(ptr_lp_var, int_ty.const_int(0, false));
-    create_br(producer, bb_lp_cond);
-
-    //// Loop condition block
-    // if (i < len)
-    producer.set_current_bb(bb_lp_cond);
-    let res_cond = create_lt_with_name(
-        producer,
-        create_load_with_name(producer, ptr_lp_var, "idx_val_for_loop_cond").into_int_value(),
-        len.as_any_value_enum().into_int_value(),
-        "idx_is_less_than_array_len",
-    );
-    // then go to loop, else exit
-    create_conditional_branch(producer, res_cond.into_int_value(), bb_lp_body, bb_lp_end);
-
-    //// Loop body block
-    producer.set_current_bb(bb_lp_body);
-    // i
-    let cur_idx = create_load_with_name(producer, ptr_lp_var, "current_idx").into_int_value();
-    // src[i]
-    let src_ptr = create_gep_with_name(producer, src, &[cur_idx], "src_ptr_at_idx");
-    let src_val = create_load_with_name(producer, src_ptr, "src_val_at_idx");
-    // dst[i]
-    let dst_ptr = create_gep_with_name(producer, dst, &[cur_idx], "dst_ptr_at_idx");
-    // dst[i] = src[i]
-    create_store(producer, dst_ptr, src_val);
-
-    // i = i + 1
-    let res_add = create_add_with_name(producer, cur_idx, int_ty.const_int(1, false), "next_idx");
-    bldr.build_store(ptr_lp_var, res_add.into_int_value());
-    create_br(producer, bb_lp_cond);
-
-    producer.set_current_bb(bb_lp_end);
+    for i in 0..len {
+        let idx = create_literal_u32(producer, i as u64);
+        // src[idx]
+        let var_name = &format!("{}_src_{}", name, i);
+        let src_ptr = create_gep_with_name(producer, src, &[idx], var_name);
+        // dst[idx]
+        let var_name = &format!("{}_dst_{}", name, i);
+        let dst_ptr = create_gep_with_name(producer, dst, &[idx], var_name);
+        // dst[idx] = src[idx]
+        let var_name = &format!("{}_val_{}", name, i);
+        create_store(producer, dst_ptr, create_load_with_name(producer, src_ptr, var_name));
+        if gen_constraints {
+            let value = create_load_with_name(producer, src_ptr, var_name);
+            create_constraint_values_call(producer, value, dst_ptr);
+        }
+    }
 }
 
-pub fn create_array_copy<'a, T: IntMathValue<'a>>(
+pub fn create_array_copy<'a>(
     producer: &dyn LLVMIRProducer<'a>,
-    in_func: FunctionValue<'a>,
     src: PointerValue<'a>,
     dst: PointerValue<'a>,
-    len: T,
+    len: usize,
+    gen_constraints: bool,
 ) {
-    create_array_copy_with_name(producer, in_func, src, dst, len, "")
+    create_array_copy_with_name(producer, src, dst, len, gen_constraints, "copy")
 }
 
 pub fn create_add_with_name<'a, T: IntMathValue<'a>>(
@@ -797,7 +776,7 @@ pub fn create_cast_to_addr<'a, T: IntMathValue<'a>>(
     create_cast_to_addr_with_name(producer, val, "")
 }
 
-pub fn pointer_cast_with_name<'a>(
+pub fn create_pointer_cast_with_name<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     from: PointerValue<'a>,
     to: PointerType<'a>,
@@ -806,7 +785,7 @@ pub fn pointer_cast_with_name<'a>(
     producer.llvm().builder.build_pointer_cast(from, to, name)
 }
 
-pub fn pointer_cast<'a>(
+pub fn create_pointer_cast<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     from: PointerValue<'a>,
     to: PointerType<'a>,
@@ -821,6 +800,73 @@ pub fn create_switch<'a>(
     cases: &[(IntValue<'a>, BasicBlock<'a>)],
 ) -> InstructionValue<'a> {
     producer.llvm().builder.build_switch(value, else_block, cases)
+}
+
+pub fn create_constraint_alloc_with_name<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    name: &str,
+) -> PointerValue<'a> {
+    let ctx = producer.llvm().context();
+    let alloca = create_alloca(producer, bool_type(producer).into(), name);
+    let s = ctx.metadata_string("constraint");
+    let kind = ctx.get_kind_id("constraint");
+    let node = ctx.metadata_node(&[s.into()]);
+    alloca
+        .as_instruction()
+        .unwrap()
+        .set_metadata(node, kind)
+        .expect("Could not setup metadata marker for constraint value");
+    alloca
+}
+
+pub fn create_constraint_value_call_with_name<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    value: LLVMInstruction<'a>,
+    name: &str,
+) -> LLVMInstruction<'a> {
+    debug_assert_expected_type!(producer, bool_type, value.get_type());
+    let alloc = create_constraint_alloc_with_name(producer, name);
+    create_call(
+        producer,
+        CONSTRAINT_VALUE_FN_NAME,
+        &[to_basic_metadata_enum(value), to_basic_metadata_enum(alloc.into())],
+    )
+}
+
+pub fn create_constraint_value_call<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    value: LLVMInstruction<'a>,
+) -> LLVMInstruction<'a> {
+    create_constraint_value_call_with_name(producer, value, "constraint")
+}
+
+pub fn create_constraint_values_call_with_name<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    value: LLVMInstruction<'a>,
+    pointer: PointerValue<'a>,
+    name: &str,
+) -> LLVMInstruction<'a> {
+    debug_assert_expected_type!(producer, bigint_type, value.get_type());
+    let loaded = create_load(producer, pointer);
+    debug_assert_expected_type!(producer, bigint_type, loaded.get_type());
+    let alloc = create_constraint_alloc_with_name(producer, name);
+    create_call(
+        producer,
+        CONSTRAINT_VALUES_FN_NAME,
+        &[
+            to_basic_metadata_enum(value),
+            to_basic_metadata_enum(loaded),
+            to_basic_metadata_enum(alloc.into()),
+        ],
+    )
+}
+
+pub fn create_constraint_values_call<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    value: LLVMInstruction<'a>,
+    pointer: PointerValue<'a>,
+) -> LLVMInstruction<'a> {
+    create_constraint_values_call_with_name(producer, value, pointer, "constraint")
 }
 
 /// Extracts the pointer and the indexes of a gep instruction

@@ -1,18 +1,9 @@
 use inkwell::attributes::{Attribute, AttributeLoc};
 use inkwell::values::FunctionValue;
-
-use crate::llvm_elements::LLVMIRProducer;
-use crate::llvm_elements::functions::{create_bb, create_function};
-use crate::llvm_elements::instructions::{
-    create_add, create_sub, create_mul, create_div, create_mod, create_pow, create_eq, create_neq,
-    create_lt, create_gt, create_le, create_ge, create_gep, create_neg, create_shl, create_shr,
-    create_bit_and, create_bit_or, create_bit_xor, create_logic_and, create_logic_or,
-    create_logic_not, create_return, create_cast_to_addr,
-};
-use crate::llvm_elements::types::{bigint_type, bool_type, i32_type, void_type};
-
-use super::instructions::create_array_copy;
-use super::instructions::{create_inv, create_return_void, pointer_cast};
+use super::LLVMIRProducer;
+use super::functions::{create_bb, create_function};
+use super::instructions::*;
+use super::types::{bigint_type, bool_type, i32_type};
 use super::values::zero;
 
 pub const FR_ADD_FN_NAME: &str = "fr_add";
@@ -39,7 +30,6 @@ pub const FR_LAND_FN_NAME: &str = "fr_logic_and";
 pub const FR_LOR_FN_NAME: &str = "fr_logic_or";
 pub const FR_LNOT_FN_NAME: &str = "fr_logic_not";
 pub const FR_ADDR_CAST_FN_NAME: &str = "fr_cast_to_addr";
-pub const FR_ARRAY_COPY_FN_NAME: &str = "fr_copy_n";
 pub const FR_INDEX_ARR_PTR: &str = "index_arr_ptr";
 pub const FR_IDENTITY_ARR_PTR: &str = "identity_arr_ptr";
 pub const FR_PTR_CAST_I32_I256: &str = "cast_ptr_i32_i256";
@@ -296,34 +286,6 @@ fn addr_cast_fn(producer: &dyn LLVMIRProducer) {
     create_return(producer, res.into_int_value());
 }
 
-fn array_copy_fn(producer: &dyn LLVMIRProducer) {
-    let ptr_ty = bigint_type(producer).ptr_type(Default::default());
-    let args = &[ptr_ty.into(), ptr_ty.into(), i32_type(producer).into()];
-    let func = create_function(
-        producer,
-        &None,
-        0,
-        "",
-        FR_ARRAY_COPY_FN_NAME,
-        void_type(producer).fn_type(args, false),
-    );
-    let main = create_bb(producer, func, FR_ARRAY_COPY_FN_NAME);
-    producer.set_current_bb(main);
-
-    let src = func.get_nth_param(0).unwrap();
-    let dst = func.get_nth_param(1).unwrap();
-    let len = func.get_nth_param(2).unwrap();
-    create_array_copy(
-        producer,
-        func,
-        src.into_pointer_value(),
-        dst.into_pointer_value(),
-        len.into_int_value(),
-    );
-
-    create_return_void(producer);
-}
-
 fn index_arr_ptr_fn(producer: &dyn LLVMIRProducer) {
     let bigint_ty = bigint_type(producer);
     let ret_ty = bigint_ty.ptr_type(Default::default());
@@ -365,7 +327,7 @@ fn ptr_cast_i32_i256_fn(producer: &dyn LLVMIRProducer) {
     let (res, func) = fr_unary_op_base!(FR_PTR_CAST_I32_I256, producer, ty_32, ty_256);
     add_inline_attribute(producer, func);
     // Cast the i32* to i256* and return
-    create_return(producer, pointer_cast(producer, res.into_pointer_value(), ty_256));
+    create_return(producer, create_pointer_cast(producer, res.into_pointer_value(), ty_256));
 }
 
 fn ptr_cast_i256_i32_fn(producer: &dyn LLVMIRProducer) {
@@ -374,7 +336,7 @@ fn ptr_cast_i256_i32_fn(producer: &dyn LLVMIRProducer) {
     let (res, func) = fr_unary_op_base!(FR_PTR_CAST_I256_I32, producer, ty_256, ty_32);
     add_inline_attribute(producer, func);
     // Cast the i256* to i32* and return
-    create_return(producer, pointer_cast(producer, res.into_pointer_value(), ty_32));
+    create_return(producer, create_pointer_cast(producer, res.into_pointer_value(), ty_32));
 }
 
 fn null_i256_arr_ptr_fn(producer: &dyn LLVMIRProducer) {
@@ -417,7 +379,6 @@ pub fn load_fr(producer: &dyn LLVMIRProducer) {
     logic_or_fn(producer);
     logic_not_fn(producer);
     addr_cast_fn(producer);
-    array_copy_fn(producer);
     index_arr_ptr_fn(producer);
     identity_arr_ptr_fn(producer);
     ptr_cast_i32_i256_fn(producer);

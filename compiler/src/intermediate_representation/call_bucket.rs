@@ -2,10 +2,10 @@ use std::convert::TryFrom;
 use either::Either;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{
-    fr::FR_ARRAY_COPY_FN_NAME, to_basic_metadata_enum, LLVMIRProducer, LLVMInstruction,
+    to_basic_metadata_enum, ConstraintKind, LLVMIRProducer, LLVMInstruction,
 };
 use code_producers::llvm_elements::instructions::{
-    create_alloca, create_call, create_gep, create_store, pointer_cast,
+    create_alloca, create_array_copy, create_call, create_gep, create_store, create_pointer_cast,
 };
 use code_producers::llvm_elements::types::bigint_type;
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
@@ -111,13 +111,15 @@ impl WriteLLVMIR for CallBucket {
         // Check arena_size==0 which indicates arguments should not be placed into arena
         let arena_size = self.arena_size;
         if arena_size == 0 {
+            // Only builders::build_call() produces arena_size = 0 and it's not inside a constraint
+            assert!(producer.body_ctx().get_wrapping_constraint().is_none());
             let mut args = vec![];
             for arg in self.arguments.iter() {
                 args.push(to_basic_metadata_enum(
                     arg.produce_llvm_ir(producer).expect("Call arguments must produce a value!"),
                 ));
             }
-            return Some(create_call(producer, self.symbol.as_str(), &args));
+            Some(create_call(producer, self.symbol.as_str(), &args))
         } else {
             // Create array with arena_size size
             let arena_size = u32::try_from(arena_size).expect("overflow");
@@ -146,12 +148,7 @@ impl WriteLLVMIR for CallBucket {
                         }
                         _ => unreachable!(),
                     };
-                    let len_arg = create_literal_u32(producer, arg_ty.size as u64);
-                    create_call(
-                        producer,
-                        FR_ARRAY_COPY_FN_NAME,
-                        &[src_arg.into(), ptr.into(), len_arg.into()],
-                    );
+                    create_array_copy(producer, src_arg, ptr, arg_ty.size, false);
                 } else {
                     let arg_load = arg
                         .produce_llvm_ir(producer)
@@ -160,8 +157,11 @@ impl WriteLLVMIR for CallBucket {
                 }
             }
 
-            let arena =
-                pointer_cast(producer, arena, bigint_type(producer).ptr_type(Default::default()));
+            let arena = create_pointer_cast(
+                producer,
+                arena,
+                bigint_type(producer).ptr_type(Default::default()),
+            );
 
             // Call function, passing the arena array as the argument.
             let call_ret_val = create_call(
@@ -171,15 +171,31 @@ impl WriteLLVMIR for CallBucket {
             );
 
             match &self.return_info {
-                ReturnType::Intermediate { .. } => Some(call_ret_val),
-                ReturnType::Final(data) => StoreBucket::produce_llvm_ir(
-                    producer,
-                    Either::Left(call_ret_val),
-                    &data.dest,
-                    &data.dest_address_type,
-                    data.context,
-                    &None,
-                ),
+                ReturnType::Intermediate { .. } => {
+                    // Only happens with Equality Constraint and the wrapping AssertBucket will fully handle it
+                    assert!(producer
+                        .body_ctx()
+                        .get_wrapping_constraint()
+                        .filter(|t| *t != ConstraintKind::Equality)
+                        .is_none());
+                    Some(call_ret_val)
+                }
+                ReturnType::Final(data) => {
+                    // Only happens with Substitution Constraint and the StoreBucket below will fully handle it
+                    assert!(producer
+                        .body_ctx()
+                        .get_wrapping_constraint()
+                        .filter(|t| *t != ConstraintKind::Substitution)
+                        .is_none());
+                    StoreBucket::produce_llvm_ir(
+                        producer,
+                        Either::Left(call_ret_val),
+                        &data.dest,
+                        &data.dest_address_type,
+                        data.context,
+                        &None,
+                    )
+                }
             }
         }
     }
