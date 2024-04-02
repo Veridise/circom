@@ -93,7 +93,7 @@ impl StoreBucket {
     /// The caller must manage the debug location information before calling this function.
     pub fn produce_llvm_ir<'a>(
         producer: &dyn LLVMIRProducer<'a>,
-        src: Either<AnyValueEnum<'a>, &InstructionPointer>,
+        src: Either<LLVMInstruction<'a>, &InstructionPointer>,
         dest: &LocationRule,
         dest_address_type: &AddressType,
         context: InstrContext,
