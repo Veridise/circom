@@ -70,7 +70,7 @@ pub trait WriteLLVMIR {
             // Set active debug location based on the ObtainMeta location information
             Some((dib, _)) => producer.llvm().builder.set_current_debug_location(
                 dib.create_debug_location(
-                    producer.context(),
+                    producer.llvm().context(),
                     obj.get_line() as u32,
                     0,
                     get_current()

@@ -1,6 +1,5 @@
 use std::default::Default;
 use inkwell::basic_block::BasicBlock;
-use inkwell::context::ContextRef;
 use inkwell::types::{AnyType, BasicType, PointerType};
 use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
 use crate::llvm_elements::{BodyCtx, LLVM, LLVMIRProducer, TemplateCtx};
@@ -29,6 +28,7 @@ fn setup_subcmps<'a>(producer: &dyn LLVMIRProducer<'a>, number_subcmps: usize) -
     let signals_ptr = bigint_type(producer).array_type(0).ptr_type(Default::default());
     let counter_ty = i32_type(producer);
     let subcmp_ty = producer
+        .llvm()
         .context()
         .struct_type(&[signals_ptr.as_basic_type_enum(), counter_ty.as_basic_type_enum()], false);
     let subcmps_ty = subcmp_ty.array_type(number_subcmps as u32);
@@ -142,10 +142,6 @@ pub struct TemplateLLVMIRProducer<'ctx: 'prod, 'prod> {
 impl<'a, 'b> LLVMIRProducer<'a> for TemplateLLVMIRProducer<'a, 'b> {
     fn llvm(&self) -> &LLVM<'a> {
         self.parent.llvm()
-    }
-
-    fn context(&self) -> ContextRef<'a> {
-        self.parent.context()
     }
 
     fn set_current_bb(&self, bb: BasicBlock<'a>) {

@@ -93,7 +93,6 @@ pub trait TemplateCtx<'a> {
 
 pub trait LLVMIRProducer<'a> {
     fn llvm(&self) -> &LLVM<'a>;
-    fn context(&self) -> ContextRef<'a>;
     fn set_current_bb(&self, bb: BasicBlock<'a>);
     fn template_ctx(&self) -> &dyn TemplateCtx<'a>;
     fn body_ctx(&self) -> &dyn BodyCtx<'a>;
@@ -146,10 +145,6 @@ pub struct TopLevelLLVMIRProducer<'a> {
 impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
     fn llvm(&self) -> &LLVM<'a> {
         &self.current_module
-    }
-
-    fn context(&self) -> ContextRef<'a> {
-        self.current_module.module.get_context()
     }
 
     fn set_current_bb(&self, bb: BasicBlock<'a>) {
@@ -217,10 +212,11 @@ pub fn new_constraint_with_name<'a>(
     producer: &dyn LLVMIRProducer<'a>,
     name: &str,
 ) -> AnyValueEnum<'a> {
+    let ctx = producer.llvm().context();
     let alloca = create_alloca(producer, bool_type(producer).into(), name);
-    let s = producer.context().metadata_string("constraint");
-    let kind = producer.context().get_kind_id("constraint");
-    let node = producer.context().metadata_node(&[s.into()]);
+    let s = ctx.metadata_string("constraint");
+    let kind = ctx.get_kind_id("constraint");
+    let node = ctx.metadata_node(&[s.into()]);
     alloca
         .as_instruction()
         .unwrap()
@@ -332,6 +328,10 @@ impl<'a> LLVM<'a> {
             debug_info.insert(pair.0, res);
         }
         LLVM { module: m, builder: context.create_builder(), debug: debug_info }
+    }
+
+    pub fn context(&self) -> ContextRef<'a> {
+        self.module.get_context()
     }
 
     pub fn get_debug_info(&self, file_id: &usize) -> Result<&DebugCtx, String> {

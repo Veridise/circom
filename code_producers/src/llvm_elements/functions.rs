@@ -1,6 +1,5 @@
 use inkwell::attributes::AttributeLoc;
 use inkwell::basic_block::BasicBlock;
-use inkwell::context::ContextRef;
 use inkwell::debug_info::AsDIScope;
 use inkwell::types::FunctionType;
 use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
@@ -46,7 +45,7 @@ pub fn create_function<'a>(
 pub fn add_attribute(producer: &dyn LLVMIRProducer, func: FunctionValue, key: &str, val: &str) {
     func.add_attribute(
         AttributeLoc::Function,
-        producer.context().create_string_attribute(key, val),
+        producer.llvm().context().create_string_attribute(key, val),
     );
 }
 
@@ -55,7 +54,7 @@ pub fn create_bb<'a>(
     func: FunctionValue<'a>,
     name: &str,
 ) -> BasicBlock<'a> {
-    producer.context().append_basic_block(func, name)
+    producer.llvm().context().append_basic_block(func, name)
 }
 
 struct FunctionCtx<'a> {
@@ -106,10 +105,6 @@ impl<'ctx, 'prod> FunctionLLVMIRProducer<'ctx, 'prod> {
 impl<'ctx, 'prod> LLVMIRProducer<'ctx> for FunctionLLVMIRProducer<'ctx, 'prod> {
     fn llvm(&self) -> &LLVM<'ctx> {
         self.parent.llvm()
-    }
-
-    fn context(&self) -> ContextRef<'ctx> {
-        self.parent.context()
     }
 
     fn set_current_bb(&self, bb: BasicBlock<'ctx>) {
@@ -278,10 +273,6 @@ impl<'ctx, 'prod> ExtractedFunctionLLVMIRProducer<'ctx, 'prod> {
 impl<'ctx, 'prod> LLVMIRProducer<'ctx> for ExtractedFunctionLLVMIRProducer<'ctx, 'prod> {
     fn llvm(&self) -> &LLVM<'ctx> {
         self.parent.llvm()
-    }
-
-    fn context(&self) -> ContextRef<'ctx> {
-        self.parent.context()
     }
 
     fn set_current_bb(&self, bb: BasicBlock<'ctx>) {

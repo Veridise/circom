@@ -130,6 +130,7 @@ fn add_inline_attribute(producer: &dyn LLVMIRProducer, func: FunctionValue) {
     func.add_attribute(
         AttributeLoc::Function,
         producer
+            .llvm()
             .context()
             .create_enum_attribute(Attribute::get_named_enum_kind_id("alwaysinline"), 1),
     );

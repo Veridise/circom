@@ -92,7 +92,7 @@ impl WriteLLVMIR for TemplateCodeInfo {
         // Build function
         let bigint_ptr = bigint_type(producer).array_type(0);
         // Set the type of the component memory: signals array + signals counter
-        let component_memory = producer.context().struct_type(&[
+        let component_memory = producer.llvm().context().struct_type(&[
             to_basic_type_enum(bigint_ptr.ptr_type(Default::default())),
             to_basic_type_enum(i32_type(producer))
         ], false);
