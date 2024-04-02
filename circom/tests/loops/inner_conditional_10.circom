@@ -53,16 +53,16 @@ component main = Poseidon();
 //CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T05]], align 4
 //CHECK-NEXT:   store i256 %[[T06]], i256* %[[T09]], align 4
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T09]], align 4
+//CHECK-NEXT:   %[[CN01:constraint[0-9]*]] = alloca i1, align 1
+//CHECK-NEXT:   call void @__constraint_values(i256 %[[T06]], i256 %[[T13]], i1* %[[CN01]])
 //CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 1
-//CHECK-NEXT:   %load.subcmp.counter = load i32, i32* %[[T10]], align 4
-//CHECK-NEXT:   %decrement.counter = sub i32 %load.subcmp.counter, 1
-//CHECK-NEXT:   store i32 %decrement.counter, i32* %[[T10]], align 4
+//CHECK-NEXT:   %[[CR01:.*.counter[0-9]*]] = load i32, i32* %[[T10]], align 4
+//CHECK-NEXT:   %[[CR02:.*.counter[0-9]*]] = sub i32 %[[CR01]], 1
+//CHECK-NEXT:   store i32 %[[CR02]], i32* %[[T10]], align 4
 //CHECK-NEXT:   %[[T11:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
 //CHECK-NEXT:   %[[T12:[0-9a-zA-Z_.]+]] = load [0 x i256]*, [0 x i256]** %[[T11]], align 8
 //CHECK-NEXT:   call void @Sigma_0_run([0 x i256]* %[[T12]])
-//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T09]], align 4
-//CHECK-NEXT:   %constraint = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %[[T06]], i256 %[[T13]], i1* %constraint)
 //CHECK-NEXT:   %[[T14:[0-9a-zA-Z_.]+]] = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   store i256 1, i256* %[[T14]], align 4
 //CHECK-NEXT:   %[[T15:[0-9a-zA-Z_.]+]] = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 0
@@ -77,16 +77,16 @@ component main = Poseidon();
 //CHECK-NEXT:   %[[T18:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT:   %[[T19:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T18]], align 4
 //CHECK-NEXT:   store i256 %[[T19]], i256* %[[T22]], align 4
+//CHECK-NEXT:   %[[T26:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T22]], align 4
+//CHECK-NEXT:   %[[CN02:constraint[0-9]*]] = alloca i1, align 1
+//CHECK-NEXT:   call void @__constraint_values(i256 %[[T19]], i256 %[[T26]], i1* %[[CN02]])
 //CHECK-NEXT:   %[[T23:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 1
-//CHECK-NEXT:   %load.subcmp.counter1 = load i32, i32* %[[T23]], align 4
-//CHECK-NEXT:   %decrement.counter2 = sub i32 %load.subcmp.counter1, 1
-//CHECK-NEXT:   store i32 %decrement.counter2, i32* %[[T23]], align 4
+//CHECK-NEXT:   %[[CR03:.*.counter[0-9]*]] = load i32, i32* %[[T23]], align 4
+//CHECK-NEXT:   %[[CR04:.*.counter[0-9]*]] = sub i32 %[[CR03]], 1
+//CHECK-NEXT:   store i32 %[[CR04]], i32* %[[T23]], align 4
 //CHECK-NEXT:   %[[T24:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
 //CHECK-NEXT:   %[[T25:[0-9a-zA-Z_.]+]] = load [0 x i256]*, [0 x i256]** %[[T24]], align 8
 //CHECK-NEXT:   call void @Sigma_0_run([0 x i256]* %[[T25]])
-//CHECK-NEXT:   %[[T26:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T22]], align 4
-//CHECK-NEXT:   %constraint3 = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %[[T19]], i256 %[[T26]], i1* %constraint3)
 //CHECK-NEXT:   %[[T27:[0-9a-zA-Z_.]+]] = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   store i256 4, i256* %[[T27]], align 4
 //CHECK-NEXT:   br label %prologue
