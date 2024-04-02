@@ -21,16 +21,14 @@ component main = CallRetTest();
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY:
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %1 = getelementptr i256, i256* %0, i32 0
-//CHECK-NEXT:   %2 = load i256, i256* %1, align 4
-//CHECK-NEXT:   %3 = getelementptr i256, i256* %0, i32 4
-//CHECK-NEXT:   %4 = getelementptr i256, i256* %0, i32 0
-//CHECK-NEXT:   call void @fr_copy_n(i256* %4, i256* %3, i32 4)
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 4
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 0
+//CHECK-NEXT:   call void @fr_copy_n(i256* %[[T04]], i256* %[[T03]], i32 4)
 //CHECK-NEXT:   br label %return2
 //CHECK-EMPTY:
 //CHECK-NEXT: return2:
-//CHECK-NEXT:   %5 = getelementptr i256, i256* %0, i32 4
-//CHECK-NEXT:   ret i256* %5
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 4
+//CHECK-NEXT:   ret i256* %[[T05]]
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @CallRetTest_0_run([0 x i256]* %0){{.*}} {
@@ -41,13 +39,13 @@ component main = CallRetTest();
 //CHECK-EMPTY:
 //CHECK-NEXT: call1:
 //CHECK-NEXT:   %sum_0_arena = alloca [8 x i256], align 8
-//CHECK-NEXT:   %1 = getelementptr [8 x i256], [8 x i256]* %sum_0_arena, i32 0, i32 0
-//CHECK-NEXT:   %2 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 4
-//CHECK-NEXT:   call void @fr_copy_n(i256* %2, i256* %1, i32 4)
-//CHECK-NEXT:   %3 = bitcast [8 x i256]* %sum_0_arena to i256*
-//CHECK-NEXT:   %call.sum_0 = call i256* @sum_0(i256* %3)
-//CHECK-NEXT:   %4 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
-//CHECK-NEXT:   call void @fr_copy_n(i256* %call.sum_0, i256* %4, i32 4)
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = getelementptr [8 x i256], [8 x i256]* %sum_0_arena, i32 0, i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 4
+//CHECK-NEXT:   call void @fr_copy_n(i256* %[[T02]], i256* %[[T01]], i32 4)
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = bitcast [8 x i256]* %sum_0_arena to i256*
+//CHECK-NEXT:   %call.sum_0 = call i256* @sum_0(i256* %[[T03]])
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
+//CHECK-NEXT:   call void @fr_copy_n(i256* %call.sum_0, i256* %[[T04]], i32 4)
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY:
 //CHECK-NEXT: prologue:

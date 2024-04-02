@@ -155,9 +155,9 @@ component main = Wrapper();
 //CHECK: call void @MatrixOp_[[$RUN_3]]_run([0 x i256]* %
 //CHECK: call void @MatrixOp_[[$RUN_4]]_run([0 x i256]* %
 //CHECK: store{{[0-9]+}}:{{ +}}; preds = %unrolled_loop{{[0-9]+}}
+//CHECK-NEXT: %[[OUTP_PTR:.*]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT: %[[SUB_PTR:.*]] = getelementptr [4 x { [0 x i256]*, i32 }], [4 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 2, i32 0
 //CHECK-NEXT: %[[SUBCMP:.*]] = load [0 x i256]*, [0 x i256]** %[[SUB_PTR]]
 //CHECK-NEXT: %[[VAL_PTR:.*]] = getelementptr [0 x i256], [0 x i256]* %[[SUBCMP]], i32 0, i32 5
 //CHECK-NEXT: %[[VAL:.*]] = load i256, i256* %[[VAL_PTR]]
-//CHECK-NEXT: %[[OUTP_PTR:.*]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT: store i256 %[[VAL]], i256* %[[OUTP_PTR]]

@@ -51,34 +51,34 @@ component main = InnerConditional8(4);
 //CHECK-NEXT:   br label %store9
 //CHECK-EMPTY: 
 //CHECK-NEXT: if.then:
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X3]], i32 0
 //CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X4]], i32 0
 //CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T05]], align 4
 //CHECK-NEXT:   %[[C06:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T06]], i256 999)
-//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X3]], i32 0
 //CHECK-NEXT:   store i256 %[[C06]], i256* %[[T07]], align 4
 //CHECK-NEXT:   br label %if.merge
 //CHECK-EMPTY: 
 //CHECK-NEXT: if.else:
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X1]], i32 0
 //CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X2]], i32 0
 //CHECK-NEXT:   %[[T09:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T08]], align 4
 //CHECK-NEXT:   %[[C03:[0-9a-zA-Z_.]+]] = call i256 @fr_sub(i256 %[[T09]], i256 111)
-//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %[[C03]], i256* %[[T10]], align 4
 //CHECK-NEXT:   br label %if.merge
 //CHECK-EMPTY: 
 //CHECK-NEXT: if.merge:
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
 //CHECK-NEXT:   %[[T11:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
 //CHECK-NEXT:   %[[T12:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T11]], align 4
 //CHECK-NEXT:   %[[C04:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T12]], i256 1)
-//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
 //CHECK-NEXT:   store i256 %[[C04]], i256* %[[T13]], align 4
 //CHECK-NEXT:   br label %loop.cond
 //CHECK-EMPTY: 
 //CHECK-NEXT: store9:
+//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
 //CHECK-NEXT:   %[[T14:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
 //CHECK-NEXT:   %[[T15:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T14]], align 4
 //CHECK-NEXT:   %[[C05:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T15]], i256 1)
-//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
 //CHECK-NEXT:   store i256 %[[C05]], i256* %[[T16]], align 4
 //CHECK-NEXT:   br label %return10
 //CHECK-EMPTY: 

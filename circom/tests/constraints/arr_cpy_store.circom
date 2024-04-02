@@ -26,21 +26,19 @@ component main = Foo(2);
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY:
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 0
-//CHECK-NEXT:   %1 = load i256, i256* %0, align 4
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %subsig_0, i32 0
-//CHECK-NEXT:   %3 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 0
-//CHECK-NEXT:   call void @fr_copy_n(i256* %3, i256* %2, i32 2)
-//CHECK-NEXT:   %4 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 0
-//CHECK-NEXT:   %5 = load i256, i256* %4, align 4
-//CHECK-NEXT:   %6 = getelementptr i256, i256* %subsig_0, i32 0
-//CHECK-NEXT:   %7 = load i256, i256* %6, align 4
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subsig_0, i32 0
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 0
+//CHECK-NEXT:   call void @fr_copy_n(i256* %[[T03]], i256* %[[T02]], i32 2)
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 0
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T04]], align 4
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subsig_0, i32 0
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T06]], align 4
 //CHECK-NEXT:   %constraint_0 = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %5, i256 %7, i1* %constraint_0)
-//CHECK-NEXT:   %8 = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 1
-//CHECK-NEXT:   %9 = load i256, i256* %8, align 4
-//CHECK-NEXT:   %10 = getelementptr i256, i256* %subsig_0, i32 1
-//CHECK-NEXT:   %11 = load i256, i256* %10, align 4
+//CHECK-NEXT:   call void @__constraint_values(i256 %[[T05]], i256 %[[T07]], i1* %constraint_0)
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 1
+//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T08]], align 4
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subsig_0, i32 1
+//CHECK-NEXT:   %[[T11:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T10]], align 4
 //CHECK-NEXT:   %constraint_1 = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %9, i256 %11, i1* %constraint_1)
+//CHECK-NEXT:   call void @__constraint_values(i256 %[[T09]], i256 %[[T11]], i1* %constraint_1)
 //CHECK-NEXT:   br label %store2
