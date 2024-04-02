@@ -2,13 +2,11 @@ pub use either::Either;
 use super::{ir_interface::*, make_ref};
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{
-    LLVMInstruction, LLVMIRProducer, to_enum, run_fn_name, fr::FR_ARRAY_COPY_FN_NAME,
-};
+use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer, to_enum, run_fn_name};
 use code_producers::llvm_elements::array_switch::unsized_array_ptr_ty;
 use code_producers::llvm_elements::instructions::{
-    create_call, create_gep, create_load_with_name, create_store, create_sub_with_name,
-    pointer_cast,
+    create_array_copy, create_call, create_gep, create_load_with_name, create_store,
+    create_sub_with_name, pointer_cast,
 };
 use code_producers::llvm_elements::stdlib::LLVM_DONOTHING_FN_NAME;
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
@@ -155,15 +153,8 @@ impl StoreBucket {
                             });
                         }
                     }
-                    Some(create_call(
-                        producer,
-                        FR_ARRAY_COPY_FN_NAME,
-                        &[
-                            source().into_pointer_value().into(),
-                            dest_gep.into(),
-                            create_literal_u32(producer, context.size as u64).into(),
-                        ],
-                    ))
+                    create_array_copy(producer, source().into_pointer_value(), dest_gep, context.size);
+                    None
                 } else {
                     // In the scalar case, just produce a store from the source value that was given
                     Some(create_store(producer, dest_gep, source()))

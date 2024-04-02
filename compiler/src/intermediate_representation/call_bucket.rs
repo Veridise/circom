@@ -1,11 +1,9 @@
 use std::convert::TryFrom;
 use either::Either;
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{
-    fr::FR_ARRAY_COPY_FN_NAME, to_basic_metadata_enum, LLVMIRProducer, LLVMInstruction,
-};
+use code_producers::llvm_elements::{to_basic_metadata_enum, LLVMIRProducer, LLVMInstruction};
 use code_producers::llvm_elements::instructions::{
-    create_alloca, create_call, create_gep, create_store, pointer_cast,
+    create_alloca, create_array_copy, create_call, create_gep, create_store, pointer_cast,
 };
 use code_producers::llvm_elements::types::bigint_type;
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
@@ -146,12 +144,7 @@ impl WriteLLVMIR for CallBucket {
                         }
                         _ => unreachable!(),
                     };
-                    let len_arg = create_literal_u32(producer, arg_ty.size as u64);
-                    create_call(
-                        producer,
-                        FR_ARRAY_COPY_FN_NAME,
-                        &[src_arg.into(), ptr.into(), len_arg.into()],
-                    );
+                    create_array_copy(producer, src_arg, ptr, arg_ty.size);
                 } else {
                     let arg_load = arg
                         .produce_llvm_ir(producer)
