@@ -3,7 +3,7 @@ pragma circom 2.0.0;
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
 // %0 (i.e. signal arena)  = [ out[0], out[1], out[2], out[3], in ]
-// %lvars =  [ n, i, j ]
+// %lvars = [ n, i, j ]
 // %subcmps = []
 template Num2Bits(n) {
     signal input in;
@@ -41,17 +41,17 @@ component main = Num2Bits(2);
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
 //CHECK-NEXT: store{{[0-9]+}}:
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 4
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   store i256 %[[T01]], i256* %[[T02]], align 4
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
 //CHECK-NEXT: store{{[0-9]+}}:
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T03]], align 4
 //CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T04]], i256 1)
-//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
 //CHECK-NEXT:   store i256 %[[C01]], i256* %[[T05]], align 4
 //CHECK-NEXT:   br label %return{{[0-9]+}}
 //CHECK-EMPTY: 

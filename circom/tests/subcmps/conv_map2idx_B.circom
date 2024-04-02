@@ -24,12 +24,12 @@ component main = ComputeValue();
 
 //CHECK-LABEL: define{{.*}} void @GetWeight_0_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
-//CHECK-NEXT:   %1 = alloca [3 x i256], align 8
-//CHECK-NEXT:   %2 = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
-//CHECK-NEXT:   store i32 0, i32* %2, align 4
-//CHECK-NEXT:   %3 = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 0
-//CHECK-NEXT:   %4 = bitcast [3 x i256]* %1 to [0 x i256]*
-//CHECK-NEXT:   store [0 x i256]* %4, [0 x i256]** %3, align 8
+//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_.]+]] = alloca [3 x i256], align 8
+//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_.]+]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
+//CHECK-NEXT:   store i32 0, i32* %[[T002]], align 4
+//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_.]+]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 0
+//CHECK-NEXT:   %[[T004:[0-9a-zA-Z_.]+]] = bitcast [3 x i256]* %[[T001]] to [0 x i256]*
+//CHECK-NEXT:   store [0 x i256]* %[[T004]], [0 x i256]** %[[T003]], align 8
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
@@ -40,18 +40,18 @@ component main = ComputeValue();
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %1 = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 0
-//CHECK-NEXT:   store i256 999, i256* %1, align 4
+//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_.]+]] = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 0
+//CHECK-NEXT:   store i256 999, i256* %[[T001]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %2 = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   store i256 0, i256* %2, align 4
+//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_.]+]] = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 1
+//CHECK-NEXT:   store i256 0, i256* %[[T002]], align 4
 //CHECK-NEXT:   br label %store3
 //CHECK-EMPTY: 
 //CHECK-NEXT: store3:
-//CHECK-NEXT:   %3 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 2
-//CHECK-NEXT:   store i256 999, i256* %3, align 4
+//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 2
+//CHECK-NEXT:   store i256 999, i256* %[[T003]], align 4
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:
@@ -65,18 +65,18 @@ component main = ComputeValue();
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %1 = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 0
-//CHECK-NEXT:   store i256 888, i256* %1, align 4
+//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_.]+]] = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 0
+//CHECK-NEXT:   store i256 888, i256* %[[T001]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %2 = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   store i256 1, i256* %2, align 4
+//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_.]+]] = getelementptr [2 x i256], [2 x i256]* %lvars, i32 0, i32 1
+//CHECK-NEXT:   store i256 1, i256* %[[T002]], align 4
 //CHECK-NEXT:   br label %store3
 //CHECK-EMPTY: 
 //CHECK-NEXT: store3:
-//CHECK-NEXT:   %3 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 2
-//CHECK-NEXT:   store i256 888, i256* %3, align 4
+//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 2
+//CHECK-NEXT:   store i256 888, i256* %[[T003]], align 4
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:
@@ -85,12 +85,12 @@ component main = ComputeValue();
 //
 //CHECK-LABEL: define{{.*}} void @ComputeValue_2_build({ [0 x i256]*, i32 }* %0){{.*}} {
 //CHECK-NEXT: main:
-//CHECK-NEXT:   %1 = alloca [2 x i256], align 8
-//CHECK-NEXT:   %2 = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
-//CHECK-NEXT:   store i32 0, i32* %2, align 4
-//CHECK-NEXT:   %3 = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 0
-//CHECK-NEXT:   %4 = bitcast [2 x i256]* %1 to [0 x i256]*
-//CHECK-NEXT:   store [0 x i256]* %4, [0 x i256]** %3, align 8
+//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_.]+]] = alloca [2 x i256], align 8
+//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_.]+]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 1
+//CHECK-NEXT:   store i32 0, i32* %[[T002]], align 4
+//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_.]+]] = getelementptr { [0 x i256]*, i32 }, { [0 x i256]*, i32 }* %0, i32 0, i32 0
+//CHECK-NEXT:   %[[T004:[0-9a-zA-Z_.]+]] = bitcast [2 x i256]* %[[T001]] to [0 x i256]*
+//CHECK-NEXT:   store [0 x i256]* %[[T004]], [0 x i256]** %[[T003]], align 8
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
@@ -101,43 +101,43 @@ component main = ComputeValue();
 //CHECK-NEXT:   br label %create_cmp1
 //CHECK-EMPTY: 
 //CHECK-NEXT: create_cmp1:
-//CHECK-NEXT:   %1 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0
-//CHECK-NEXT:   call void @GetWeight_0_build({ [0 x i256]*, i32 }* %1)
-//CHECK-NEXT:   %2 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
-//CHECK-NEXT:   %3 = load [0 x i256]*, [0 x i256]** %2, align 8
-//CHECK-NEXT:   call void @GetWeight_0_run([0 x i256]* %3)
+//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0
+//CHECK-NEXT:   call void @GetWeight_0_build({ [0 x i256]*, i32 }* %[[T001]])
+//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
+//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_.]+]] = load [0 x i256]*, [0 x i256]** %[[T002]], align 8
+//CHECK-NEXT:   call void @GetWeight_0_run([0 x i256]* %[[T003]])
 //CHECK-NEXT:   br label %create_cmp2
 //CHECK-EMPTY: 
 //CHECK-NEXT: create_cmp2:
-//CHECK-NEXT:   %4 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1
-//CHECK-NEXT:   call void @GetWeight_0_build({ [0 x i256]*, i32 }* %4)
-//CHECK-NEXT:   %5 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
-//CHECK-NEXT:   %6 = load [0 x i256]*, [0 x i256]** %5, align 8
-//CHECK-NEXT:   call void @GetWeight_1_run([0 x i256]* %6)
+//CHECK-NEXT:   %[[T004:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1
+//CHECK-NEXT:   call void @GetWeight_0_build({ [0 x i256]*, i32 }* %[[T004]])
+//CHECK-NEXT:   %[[T005:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
+//CHECK-NEXT:   %[[T006:[0-9a-zA-Z_.]+]] = load [0 x i256]*, [0 x i256]** %[[T005]], align 8
+//CHECK-NEXT:   call void @GetWeight_1_run([0 x i256]* %[[T006]])
 //CHECK-NEXT:   br label %store3
 //CHECK-EMPTY: 
 //CHECK-NEXT: store3:
-//CHECK-NEXT:   %7 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
-//CHECK-NEXT:   %8 = load [0 x i256]*, [0 x i256]** %7, align 8
-//CHECK-NEXT:   %9 = getelementptr [0 x i256], [0 x i256]* %8, i32 0, i32 2
-//CHECK-NEXT:   %10 = load i256, i256* %9, align 4
-//CHECK-NEXT:   %11 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
-//CHECK-NEXT:   store i256 %10, i256* %11, align 4
-//CHECK-NEXT:   %12 = load i256, i256* %11, align 4
+//CHECK-NEXT:   %[[T011:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
+//CHECK-NEXT:   %[[T007:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 0, i32 0
+//CHECK-NEXT:   %[[T008:[0-9a-zA-Z_.]+]] = load [0 x i256]*, [0 x i256]** %[[T007]], align 8
+//CHECK-NEXT:   %[[T009:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T008]], i32 0, i32 2
+//CHECK-NEXT:   %[[T010:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T009]], align 4
+//CHECK-NEXT:   store i256 %[[T010]], i256* %[[T011]], align 4
+//CHECK-NEXT:   %[[T012:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T011]], align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %10, i256 %12, i1* %constraint)
+//CHECK-NEXT:   call void @__constraint_values(i256 %[[T010]], i256 %[[T012]], i1* %constraint)
 //CHECK-NEXT:   br label %store4
 //CHECK-EMPTY: 
 //CHECK-NEXT: store4:
-//CHECK-NEXT:   %13 = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
-//CHECK-NEXT:   %14 = load [0 x i256]*, [0 x i256]** %13, align 8
-//CHECK-NEXT:   %15 = getelementptr [0 x i256], [0 x i256]* %14, i32 0, i32 2
-//CHECK-NEXT:   %16 = load i256, i256* %15, align 4
-//CHECK-NEXT:   %17 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 1
-//CHECK-NEXT:   store i256 %16, i256* %17, align 4
-//CHECK-NEXT:   %18 = load i256, i256* %17, align 4
+//CHECK-NEXT:   %[[T017:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 1
+//CHECK-NEXT:   %[[T013:[0-9a-zA-Z_.]+]] = getelementptr [2 x { [0 x i256]*, i32 }], [2 x { [0 x i256]*, i32 }]* %subcmps, i32 0, i32 1, i32 0
+//CHECK-NEXT:   %[[T014:[0-9a-zA-Z_.]+]] = load [0 x i256]*, [0 x i256]** %[[T013]], align 8
+//CHECK-NEXT:   %[[T015:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T014]], i32 0, i32 2
+//CHECK-NEXT:   %[[T016:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T015]], align 4
+//CHECK-NEXT:   store i256 %[[T016]], i256* %[[T017]], align 4
+//CHECK-NEXT:   %[[T018:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T017]], align 4
 //CHECK-NEXT:   %constraint1 = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %16, i256 %18, i1* %constraint1)
+//CHECK-NEXT:   call void @__constraint_values(i256 %[[T016]], i256 %[[T018]], i1* %constraint1)
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:

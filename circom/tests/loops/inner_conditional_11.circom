@@ -32,25 +32,25 @@ component main = Poseidon();
 //CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true1:
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 0
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %[[T01]], i256* %[[T02]], align 4
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T02]], align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
 //CHECK-NEXT:   call void @__constraint_values(i256 %[[T01]], i256 %[[T03]], i1* %constraint)
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subc_[[X2]], i32 0
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = load i256, i256* %subc_[[X2]], align 4
 //CHECK-NEXT:   %[[C02:[0-9a-zA-Z_.]+]] = call i256 @fr_sub(i256 %[[T04]], i256 1)
-//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subc_[[X2]], i32 0
 //CHECK-NEXT:   store i256 %[[C02]], i256* %[[T05]], align 4
 //CHECK-NEXT:   call void @Sigma_0_run([0 x i256]* %sub_[[X2]])
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T06]], align 4
 //CHECK-NEXT:   %[[C03:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T07]], i256 1)
-//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   store i256 %[[C03]], i256* %[[T08]], align 4
 //CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
@@ -67,10 +67,10 @@ component main = Poseidon();
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
 //CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T01]], i256 1)
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   store i256 %[[C01]], i256* %[[T02]], align 4
 //CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
@@ -84,25 +84,25 @@ component main = Poseidon();
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false1:
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subsig_[[X2]], i32 0
 //CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 0
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subsig_[[X2]], i32 0
 //CHECK-NEXT:   store i256 %[[T01]], i256* %[[T02]], align 4
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T02]], align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
 //CHECK-NEXT:   call void @__constraint_values(i256 %[[T01]], i256 %[[T03]], i1* %constraint)
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subc_[[X2]], i32 0
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = load i256, i256* %subc_[[X2]], align 4
 //CHECK-NEXT:   %[[C04:[0-9a-zA-Z_.]+]] = call i256 @fr_sub(i256 %[[T04]], i256 1)
-//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %subc_[[X2]], i32 0
 //CHECK-NEXT:   store i256 %[[C04]], i256* %[[T05]], align 4
 //CHECK-NEXT:   call void @Sigma_0_run([0 x i256]* %sub_[[X2]])
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T06]], align 4
 //CHECK-NEXT:   %[[C05:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T07]], i256 1)
-//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 0
 //CHECK-NEXT:   store i256 %[[C05]], i256* %[[T08]], align 4
 //CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
