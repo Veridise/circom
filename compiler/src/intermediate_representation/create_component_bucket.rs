@@ -269,18 +269,18 @@ impl WriteC for CreateCmpBucket {
         // if the array is complete traverse all its positions
         if complete_array {
             instructions.push(format!("for (uint i = 0; i < {}; i++) {{", self.number_of_cmp));
-            // update the value of the the paralel status if it is not uniform parallel using the array aux_parallel
+            // update the value of the the parallel status if it is not uniform parallel using the array aux_parallel
             if self.uniform_parallel.is_none(){
                 instructions.push(format!("bool status_parallel = aux_parallel[i];"));
             }
         }
         // generate array with the positions that are actually created if there are empty components
-        // if not only traverse the defined positions, but i gets the value of the indexed accesed position
+        // if not only traverse the defined positions, but i gets the value of the indexed accessed position
         else{
             instructions.push(format!("uint aux_positions [{}]= {};", self.defined_positions.len(), set_list(self.defined_positions.iter().map(|(x, _y)| *x).collect())));
             instructions.push(format!("for (uint i_aux = 0; i_aux < {}; i_aux++) {{",  self.defined_positions.len()));
             instructions.push(format!("uint i = aux_positions[i_aux];"));
-            // update the value of the the paralel status if it is not uniform parallel using the array aux_parallel
+            // update the value of the the parallel status if it is not uniform parallel using the array aux_parallel
             if self.uniform_parallel.is_none(){
                 instructions.push(format!("bool status_parallel = aux_parallel[i_aux];"));
             }

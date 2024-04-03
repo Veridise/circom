@@ -12,6 +12,7 @@ pub fn port_r1cs(list: &ConstraintList, output: &str, custom_gates: bool) -> Res
     log.no_labels = ConstraintList::no_labels(list);
     log.no_wires = ConstraintList::no_wires(list);
     log.no_private_inputs = list.no_private_inputs;
+    log.no_private_inputs_witness = list.no_private_inputs_witness;
     log.no_public_inputs = list.no_public_inputs;
     log.no_public_outputs = list.no_public_outputs;
 
@@ -50,8 +51,9 @@ pub fn port_r1cs(list: &ConstraintList, output: &str, custom_gates: bool) -> Res
         SignalSection::write_signal_usize(&mut signal_section, id)?;
     }
     let r1cs = signal_section.end_section()?;
-
-    if custom_gates {
+    if !custom_gates {
+	R1CSWriter::finish_writing(r1cs)?;
+    } else {
         let mut custom_gates_used_section = R1CSWriter::start_custom_gates_used_section(r1cs)?;
         let (usage_data, occurring_order) = {
             let mut usage_data = vec![];
@@ -114,9 +116,9 @@ pub fn port_r1cs(list: &ConstraintList, output: &str, custom_gates: bool) -> Res
             find_indexes(occurring_order, application_data)
         };
         custom_gates_applied_section.write_custom_gates_applications(application_data)?;
-        let _r1cs = custom_gates_applied_section.end_section()?;
+        let r1cs = custom_gates_applied_section.end_section()?;
+	R1CSWriter::finish_writing(r1cs)?;
     }
-
     Log::print(&log);
     Ok(())
 }
