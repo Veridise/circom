@@ -57,11 +57,11 @@ impl ToString for LoopBucket {
 
 impl ToSExp for LoopBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("LOOP".to_string()),
-            SExp::Atom(format!("line:{}", self.line)),
-            self.continue_condition.to_sexp(),
-            self.body.to_sexp(),
+        SExp::list([
+            SExp::atom("LOOP"),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("cond", self.continue_condition.to_sexp()),
+            SExp::key_val("body", self.body.to_sexp()),
         ])
     }
 }

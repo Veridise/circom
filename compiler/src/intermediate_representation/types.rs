@@ -18,3 +18,9 @@ impl ToString for ValueType {
 pub struct InstrContext {
     pub size: usize,
 }
+
+impl std::fmt::Display for InstrContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self) // use Debug implementation
+    }
+}

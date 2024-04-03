@@ -72,14 +72,12 @@ impl ToString for LogBucket {
 
 impl ToSExp for LogBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("LOG".to_string()),
-            SExp::List(self.argsprint.iter().map(|a| {
-                match a {
-                    LogBucketArg::LogExp(e) => e.to_sexp(),
-                    LogBucketArg::LogStr(s) => SExp::Atom(format!("String_{s}"))
-                }
-            }).collect())
+        SExp::list([
+            SExp::atom("LOG"),
+            SExp::list(self.argsprint.iter().map(|a| match a {
+                LogBucketArg::LogExp(e) => e.to_sexp(),
+                LogBucketArg::LogStr(s) => SExp::atom(format!("String_{s}")),
+            })),
         ])
     }
 }

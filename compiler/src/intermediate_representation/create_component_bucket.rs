@@ -75,11 +75,11 @@ impl ToString for CreateCmpBucket {
 
 impl ToSExp for CreateCmpBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("CREATE_CMP".to_string()),
-            SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("name:{}", self.symbol)),
-            self.sub_cmp_id.to_sexp()
+        SExp::list([
+            SExp::atom("CREATE_CMP"),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("name", SExp::atom(&self.symbol)),
+            SExp::key_val("sub_cmp", self.sub_cmp_id.to_sexp()),
         ])
     }
 }

@@ -29,20 +29,15 @@ impl ToString for LocationRule {
 
 impl ToSExp for LocationRule {
     fn to_sexp(&self) -> SExp {
-        use LocationRule::*;
         match self {
-            Indexed { location, template_header } => SExp::List(vec![
-                SExp::Atom("INDEXED".to_string()),
+            LocationRule::Indexed { location, template_header } => SExp::list([
+                SExp::atom("INDEXED"),
                 location.to_sexp(),
-                SExp::Atom(
-                    template_header.as_ref().map_or("NONE".to_string(), |v| v.clone())
-                )
+                template_header.as_ref().map_or(SExp::atom("NONE"), |v| SExp::atom(v)),
             ]),
-            Mapped { signal_code, indexes } => SExp::List(vec![
-                SExp::Atom("MAPPED".to_string()),
-                SExp::Atom(signal_code.to_string()),
-                indexes.to_sexp(),
-            ])
+            LocationRule::Mapped { signal_code, indexes } => {
+                SExp::list([SExp::atom("MAPPED"), SExp::atom(signal_code), indexes.to_sexp()])
+            }
         }
     }
 }

@@ -69,15 +69,15 @@ impl ToString for StoreBucket {
 
 impl ToSExp for StoreBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("STORE".to_string()),
-            SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("context:{:?}", self.context)),
-            SExp::Atom(format!("dest_is_output:{}", self.dest_is_output)),
-            SExp::Atom(format!("bounded_fn:{:?}", self.bounded_fn)),
-            self.dest_address_type.to_sexp(),
-            self.dest.to_sexp(),
-            self.src.to_sexp()
+        SExp::list([
+            SExp::atom("STORE"),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("context", SExp::atom(self.context)),
+            SExp::key_val("dest_is_output", SExp::atom(self.dest_is_output)),
+            SExp::key_val("bounded_fn", SExp::atom(format!("{:?}", self.bounded_fn))),
+            SExp::key_val("dest_type", self.dest_address_type.to_sexp()),
+            SExp::key_val("dest", self.dest.to_sexp()),
+            SExp::key_val("src", self.src.to_sexp()),
         ])
     }
 }

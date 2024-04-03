@@ -64,17 +64,21 @@ impl ToString for TemplateCodeInfo {
 
 impl ToSExp for TemplateCodeInfo {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("TEMPLATE".to_string()),
-            SExp::Atom(format!("id:{}", self.id)),
-            SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("header:{}", self.header)),
-            SExp::Atom(format!("name:{}", self.name)),
-            SExp::Atom(format!(
-                "signals: {{in:{}, out:{}, mid:{}}}",
-                self.number_of_inputs, self.number_of_outputs, self.number_of_intermediates
-            )),
-            self.body.to_sexp(),
+        SExp::list([
+            SExp::atom("TEMPLATE"),
+            SExp::key_val("id", SExp::atom(self.id)),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("header", SExp::atom(&self.header)),
+            SExp::key_val("name", SExp::atom(&self.name)),
+            SExp::key_val(
+                "signals",
+                SExp::list([
+                    SExp::key_val("in", SExp::atom(self.number_of_inputs)),
+                    SExp::key_val("out", SExp::atom(self.number_of_outputs)),
+                    SExp::key_val("mid", SExp::atom(self.number_of_intermediates)),
+                ]),
+            ),
+            SExp::key_val("body", self.body.to_sexp()),
         ])
     }
 }

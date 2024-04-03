@@ -64,21 +64,36 @@ pub fn make_ref<'a>(
 
 pub enum SExp {
     Atom(String),
+    KeyVal(String, Box<SExp>),
     List(Vec<SExp>),
 }
 
 impl SExp {
+    #[inline]
+    pub fn atom(text: impl ToString) -> Self {
+        Self::Atom(text.to_string())
+    }
+
+    #[inline]
+    pub fn key_val(key: impl ToString, value: SExp) -> Self {
+        Self::KeyVal(key.to_string(), Box::new(value))
+    }
+
+    #[inline]
+    pub fn list(list: impl IntoIterator<Item = SExp>) -> Self {
+        Self::List(list.into_iter().collect())
+    }
+
     /// Return a pretty printed format of self.
     pub fn to_doc(&self) -> RcDoc<()> {
-        match *self {
-            SExp::Atom(ref x) => RcDoc::as_string(x),
-            SExp::List(ref xs) => RcDoc::text("(")
-                .append(
-                    RcDoc::intersperse(xs.into_iter().map(|x| x.to_doc()), Doc::line())
-                        .nest(1)
-                        .group(),
-                )
-                .append(RcDoc::text(")")),
+        match self {
+            SExp::Atom(x) => RcDoc::text(x),
+            SExp::KeyVal(k, v) => RcDoc::concat([RcDoc::text(k), RcDoc::text(":"), v.to_doc()]),
+            SExp::List(xs) => RcDoc::concat([
+                RcDoc::text("("),
+                RcDoc::intersperse(xs.into_iter().map(|x| x.to_doc()), Doc::line()).nest(1).group(),
+                RcDoc::text(")"),
+            ]),
         }
     }
 

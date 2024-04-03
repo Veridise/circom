@@ -42,7 +42,7 @@ impl ToString for NopBucket {
 
 impl ToSExp for NopBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::Atom("NOP".to_string())
+        SExp::atom("NOP")
     }
 }
 

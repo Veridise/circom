@@ -26,7 +26,6 @@ use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
 use code_producers::wasm_elements::*;
 use crate::intermediate_representation::{SExp, ToSExp, UpdateId};
 
-
 pub trait IntoInstruction {
     fn into_instruction(self) -> Instruction;
 }
@@ -40,6 +39,7 @@ pub trait ObtainMeta {
     fn get_message_id(&self) -> usize;
 }
 
+#[derive(Default)]
 pub struct ObtainMetaImpl {
     source_file_id: Option<usize>,
     line: usize,
@@ -92,7 +92,7 @@ pub enum Instruction {
     CreateCmp(CreateCmpBucket),
     Constraint(ConstraintBucket),
     Block(BlockBucket),
-    Nop(NopBucket)
+    Nop(NopBucket),
 }
 
 impl Allocate for Instruction {
@@ -118,7 +118,7 @@ impl ObtainMeta for Instruction {
             Log(v) => v.get_source_file_id(),
             Constraint(v) => v.get_source_file_id(),
             Block(v) => v.get_source_file_id(),
-            Nop(v) => v.get_source_file_id()
+            Nop(v) => v.get_source_file_id(),
         }
     }
 
@@ -138,7 +138,7 @@ impl ObtainMeta for Instruction {
             Log(v) => v.get_line(),
             Constraint(v) => v.get_line(),
             Block(v) => v.get_line(),
-            Nop(v) => v.get_line()
+            Nop(v) => v.get_line(),
         }
     }
 
@@ -158,7 +158,7 @@ impl ObtainMeta for Instruction {
             Log(v) => v.get_message_id(),
             Constraint(v) => v.get_message_id(),
             Block(v) => v.get_message_id(),
-            Nop(v) => v.get_message_id()
+            Nop(v) => v.get_message_id(),
         }
     }
 }
@@ -167,10 +167,9 @@ impl CheckCompute for Instruction {
     fn has_compute_in(&self) -> bool {
         use Instruction::*;
         match self {
-	    Load(_v) => {true
-	    },
-	    Compute(_) => true,
-	    _ => false,
+            Load(_v) => true,
+            Compute(_) => true,
+            _ => false,
         }
     }
 }
@@ -192,14 +191,17 @@ impl WriteWasm for Instruction {
             Log(v) => v.produce_wasm(producer),
             Constraint(v) => v.produce_wasm(producer),
             Block(_) => unreachable!(),
-            Nop(_) => unreachable!()
+            Nop(_) => unreachable!(),
         }
     }
 }
 
 impl WriteLLVMIR for Instruction {
     /// This must always return the final statement in the current BasicBlock or None if empty.
-    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(
+        &self,
+        producer: &dyn LLVMIRProducer<'a>,
+    ) -> Option<LLVMInstruction<'a>> {
         use Instruction::*;
         match self {
             Value(v) => v.produce_llvm_ir(producer),
@@ -215,7 +217,7 @@ impl WriteLLVMIR for Instruction {
             Log(v) => v.produce_llvm_ir(producer),
             Constraint(v) => v.produce_llvm_ir(producer),
             Block(v) => v.produce_llvm_ir(producer),
-            Nop(v) => v.produce_llvm_ir(producer)
+            Nop(v) => v.produce_llvm_ir(producer),
         }
     }
 }
@@ -238,7 +240,7 @@ impl WriteC for Instruction {
             Log(v) => v.produce_c(producer, parallel),
             Constraint(v) => v.produce_c(producer, parallel),
             Block(_) => unreachable!(),
-            Nop(_) => unreachable!()
+            Nop(_) => unreachable!(),
         }
     }
 }
@@ -260,14 +262,14 @@ impl ToString for Instruction {
             Log(v) => v.to_string(),
             Constraint(v) => v.to_string(),
             Block(v) => v.to_string(),
-            Nop(v) => v.to_string()
+            Nop(v) => v.to_string(),
         }
     }
 }
 
 impl ToSExp for InstructionList {
     fn to_sexp(&self) -> SExp {
-        SExp::List(self.iter().map(ToSExp::to_sexp).collect())
+        SExp::list(self.iter().map(ToSExp::to_sexp))
     }
 }
 
