@@ -1388,6 +1388,8 @@ fn indexing_instructions_filter(
         } else{
 
             let to_usize = ComputeBucket {
+                id: new_id(),
+                source_file_id: i.get_source_file_id().clone(),
                 line: i.get_line(),
                 message_id: i.get_message_id(),
                 op_aux_no: 0,
@@ -1508,6 +1510,8 @@ fn convert_to_usize_single(
         _ => {
             // Case variable
             ComputeBucket {
+                id: new_id(),
+                source_file_id: index.get_source_file_id().clone(),
                 line: index.get_line(),
                 message_id: index.get_message_id(),
                 op_aux_no: 0,

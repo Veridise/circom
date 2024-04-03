@@ -296,6 +296,7 @@ mod test {
                                         location: build_u32_value(&ObtainMetaImpl::default(), 1),
                                         template_header: Some("test_0".to_string()),
                                     },
+                                    context: InstrContext { size: 0 },
                                     bounded_fn: None,
                                 }
                                 .allocate(),
@@ -338,6 +339,7 @@ mod test {
                                                 ),
                                                 template_header: Some("test_0".to_string()),
                                             },
+                                            context: InstrContext { size: 0 },
                                             bounded_fn: None,
                                         }
                                         .allocate(),
@@ -382,6 +384,7 @@ mod test {
                                                 ),
                                                 template_header: Some("test_0".to_string()),
                                             },
+                                            context: InstrContext { size: 0 },
                                             bounded_fn: None,
                                         }
                                         .allocate(),

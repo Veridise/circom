@@ -77,6 +77,7 @@ impl ExtractedFunctionLocationUpdater<'_> {
                                     location: build_u32_value(bucket_meta, 0),
                                     template_header: None,
                                 },
+                                context: InstrContext { size: 0 },
                                 bounded_fn: None,
                             }
                             .allocate(),
@@ -113,6 +114,7 @@ impl ExtractedFunctionLocationUpdater<'_> {
                                     location: build_u32_value(bucket_meta, 0),
                                     template_header: None,
                                 },
+                                context: InstrContext { size: 0 },
                                 bounded_fn: None,
                             }
                             .allocate(),

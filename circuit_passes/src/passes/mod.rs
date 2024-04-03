@@ -319,6 +319,7 @@ pub trait CircuitTransformationPass {
             message_id: bucket.message_id,
             address_type: self.transform_address_type(&bucket.address_type)?,
             src: self.transform_location_rule(&bucket.id, &bucket.src)?,
+            context: bucket.context.clone(),
             bounded_fn: self.transform_bounded_fn(&bucket.id, &bucket.bounded_fn),
         }
         .allocate())

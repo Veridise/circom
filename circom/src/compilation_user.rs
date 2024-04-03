@@ -31,9 +31,6 @@ pub struct CompilerConfig {
 }
 
 pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &String) -> Result<(), ()> {
-
-
-    if config.c_flag || config.wat_flag || config.wasm_flag{
         let circuit = compiler_interface::run_compiler(
             config.vcp,
             Config { debug_output: config.debug_output, produce_input_log: config.produce_input_log, wat_flag: config.wat_flag, summary_flag: config.summary_flag },
@@ -98,7 +95,6 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
             }
             (false, false) => {}
         }
-    }
 
     if config.summary_flag {
         generate_summary(config.summary_file.as_str(), config.llvm_folder.as_str(), &circuit)?;
