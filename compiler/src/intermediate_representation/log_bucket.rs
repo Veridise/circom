@@ -36,12 +36,6 @@ impl IntoInstruction for LogBucket {
     }
 }
 
-impl Allocate for LogBucket {
-    fn allocate(self) -> InstructionPointer {
-        InstructionPointer::new(self.into_instruction())
-    }
-}
-
 impl ObtainMeta for LogBucket {
     fn get_source_file_id(&self) -> &Option<usize> {
         &self.source_file_id

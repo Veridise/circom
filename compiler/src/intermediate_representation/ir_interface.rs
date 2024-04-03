@@ -33,6 +33,12 @@ pub trait Allocate {
     fn allocate(self) -> InstructionPointer;
 }
 
+impl<T: IntoInstruction> Allocate for T {
+    fn allocate(self) -> InstructionPointer {
+        self.into_instruction().allocate()
+    }
+}
+
 pub trait ObtainMeta {
     fn get_source_file_id(&self) -> &Option<usize>;
     fn get_line(&self) -> usize;

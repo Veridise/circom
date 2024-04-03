@@ -2,7 +2,7 @@ use code_producers::c_elements::CProducer;
 use code_producers::llvm_elements::{ConstraintKind, LLVMIRProducer, LLVMInstruction};
 use code_producers::wasm_elements::WASMProducer;
 use super::{BucketId, Instruction, InstructionPointer, SExp, ToSExp, UpdateId};
-use super::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
+use super::ir_interface::{IntoInstruction, ObtainMeta};
 use crate::translating_traits::{WriteC, WriteLLVMIR, WriteWasm};
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -34,12 +34,6 @@ impl ConstraintBucket {
 impl IntoInstruction for ConstraintBucket {
     fn into_instruction(self) -> Instruction {
         Instruction::Constraint(self)
-    }
-}
-
-impl Allocate for ConstraintBucket {
-    fn allocate(self) -> InstructionPointer {
-        InstructionPointer::new(self.into_instruction())
     }
 }
 

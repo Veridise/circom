@@ -1,8 +1,8 @@
 use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
 use crate::intermediate_representation::{
-    BucketId, Instruction, InstructionList, InstructionPointer, new_id, SExp, ToSExp, UpdateId,
+    BucketId, Instruction, InstructionList, new_id, SExp, ToSExp, UpdateId,
 };
-use crate::intermediate_representation::ir_interface::{Allocate, IntoInstruction, ObtainMeta};
+use crate::intermediate_representation::ir_interface::{IntoInstruction, ObtainMeta};
 use crate::translating_traits::WriteLLVMIR;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -19,12 +19,6 @@ pub struct BlockBucket {
 impl IntoInstruction for BlockBucket {
     fn into_instruction(self) -> Instruction {
         Instruction::Block(self)
-    }
-}
-
-impl Allocate for BlockBucket {
-    fn allocate(self) -> InstructionPointer {
-        InstructionPointer::new(self.into_instruction())
     }
 }
 

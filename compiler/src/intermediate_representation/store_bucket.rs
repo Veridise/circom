@@ -35,12 +35,6 @@ impl IntoInstruction for StoreBucket {
     }
 }
 
-impl Allocate for StoreBucket {
-    fn allocate(self) -> InstructionPointer {
-        InstructionPointer::new(self.into_instruction())
-    }
-}
-
 impl ObtainMeta for StoreBucket {
     fn get_source_file_id(&self) -> &Option<usize> {
         &self.source_file_id
