@@ -27,11 +27,6 @@ impl IntoInstruction for BranchBucket {
         Instruction::Branch(self)
     }
 }
-impl Allocate for BranchBucket {
-    fn allocate(self) -> InstructionPointer {
-        InstructionPointer::new(self.into_instruction())
-    }
-}
 
 impl ObtainMeta for BranchBucket {
     fn get_source_file_id(&self) -> &Option<usize> {
