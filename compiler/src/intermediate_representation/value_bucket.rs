@@ -58,12 +58,11 @@ impl ToString for ValueBucket {
 
 impl ToSExp for ValueBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("VALUE".to_string()),
-            SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("parse_as:{}", self.parse_as.to_string())),
-            SExp::Atom(format!("op_aux_no:{}", self.op_aux_no)),
-            SExp::Atom(self.value.to_string())
+        SExp::list([
+            SExp::atom("VALUE"),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("op_aux_no", SExp::atom(self.op_aux_no)),
+            SExp::key_val(self.parse_as, SExp::atom(self.value)),
         ])
     }
 }

@@ -170,8 +170,8 @@ impl<'a, 'b> LLVMIRProducer<'a> for TemplateLLVMIRProducer<'a, 'b> {
         self.ctx.base.current_function
     }
 
-    fn constant_fields(&self) -> &Vec<String> {
-        self.parent.constant_fields()
+    fn get_ff_constants(&self) -> &Vec<String> {
+        self.parent.get_ff_constants()
     }
 
     fn get_template_mem_arg(&self, run_fn: FunctionValue<'a>) -> ArrayValue<'a> {

@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
 use std::ops::Range;
 use std::rc::Rc;
@@ -126,17 +126,18 @@ pub trait LLVMIRProducer<'a> {
     fn template_ctx(&self) -> &dyn TemplateCtx<'a>;
     fn body_ctx(&self) -> &dyn BodyCtx<'a>;
     fn current_function(&self) -> FunctionValue<'a>;
-    fn constant_fields(&self) -> &Vec<String>;
+    fn get_ff_constants(&self) -> &Vec<String>;
     fn get_template_mem_arg(&self, run_fn: FunctionValue<'a>) -> ArrayValue<'a>;
     fn get_main_template_header(&self) -> &String;
 }
 
-pub type IndexMapping = HashMap<usize, Range<usize>>;
+// Uses BTreeMap so the maximum key (i.e. local index) can be obtained easily
+pub type IndexMapping = BTreeMap<usize, Range<usize>>;
 
 #[derive(Default, Eq, PartialEq, Debug)]
 pub struct LLVMCircuitData {
     pub main_header: String,
-    pub field_tracking: Vec<String>,
+    pub ff_constants: Vec<String>,
     pub io_map: TemplateInstanceIOMap,
     pub signal_index_mapping: HashMap<String, IndexMapping>,
     pub variable_index_mapping: HashMap<String, IndexMapping>,
@@ -148,16 +149,17 @@ pub struct LLVMCircuitData {
 impl LLVMCircuitData {
     pub fn clone_with_updates(
         &self,
-        field_tracking: Vec<String>,
+        ff_constants: Vec<String>,
+        variable_index_mapping: HashMap<String, IndexMapping>,
         array_loads: HashSet<Range<usize>>,
         array_stores: HashSet<Range<usize>>,
     ) -> Self {
         LLVMCircuitData {
             main_header: self.main_header.clone(),
-            field_tracking,
+            ff_constants,
             io_map: self.io_map.clone(),
             signal_index_mapping: self.signal_index_mapping.clone(),
-            variable_index_mapping: self.variable_index_mapping.clone(),
+            variable_index_mapping,
             component_index_mapping: self.component_index_mapping.clone(),
             bounded_array_loads: array_loads,
             bounded_array_stores: array_stores,
@@ -167,7 +169,7 @@ impl LLVMCircuitData {
 
 pub struct TopLevelLLVMIRProducer<'a> {
     current_module: LLVM<'a>,
-    field_tracking: Vec<String>,
+    ff_constants: Vec<String>,
     main_template_header: String,
 }
 
@@ -192,8 +194,8 @@ impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
         panic!("The top level llvm producer does not have a current function");
     }
 
-    fn constant_fields(&self) -> &Vec<String> {
-        &self.field_tracking
+    fn get_ff_constants(&self) -> &Vec<String> {
+        &self.ff_constants
     }
 
     fn get_template_mem_arg(&self, _run_fn: FunctionValue<'a>) -> ArrayValue<'a> {
@@ -223,12 +225,12 @@ impl<'a> TopLevelLLVMIRProducer<'a> {
         context: &'a Context,
         program_archive: &ProgramArchive,
         llvm_path: &str,
-        field_tracking: Vec<String>,
+        ff_constants: Vec<String>,
         main_template_header: String,
     ) -> Self {
         TopLevelLLVMIRProducer {
             current_module: LLVM::from_context(context, program_archive, llvm_path),
-            field_tracking,
+            ff_constants,
             main_template_header,
         }
     }

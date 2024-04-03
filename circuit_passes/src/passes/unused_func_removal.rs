@@ -54,10 +54,6 @@ impl CircuitTransformationPass for UnusedFuncRemovalPass<'_> {
         unreachable!()
     }
 
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        unreachable!()
-    }
-
     fn transform_circuit(&self, circuit: &Circuit) -> Result<Circuit, BadInterp> {
         //Build a structure to implement LibraryAccess
         struct LibsImpl {
@@ -109,7 +105,8 @@ impl CircuitTransformationPass for UnusedFuncRemovalPass<'_> {
             c_producer: circuit.c_producer.clone(),
             summary_producer: circuit.summary_producer.clone(),
             llvm_data: circuit.llvm_data.clone_with_updates(
-                circuit.llvm_data.field_tracking.clone(),
+                circuit.llvm_data.ff_constants.clone(),
+                circuit.llvm_data.variable_index_mapping.clone(),
                 self.get_updated_bounded_array_loads(&circuit.llvm_data.bounded_array_loads),
                 self.get_updated_bounded_array_stores(&circuit.llvm_data.bounded_array_stores),
             ),

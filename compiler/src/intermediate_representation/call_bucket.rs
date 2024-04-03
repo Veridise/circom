@@ -80,11 +80,11 @@ impl ToString for CallBucket {
 
 impl ToSExp for CallBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("CALL".to_string()),
-            SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(self.symbol.clone()),
-            self.arguments.to_sexp(),
+        SExp::list([
+            SExp::atom("CALL"),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("symbol", SExp::atom(&self.symbol)),
+            SExp::key_val("args", self.arguments.to_sexp()),
         ])
     }
 }

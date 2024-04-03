@@ -80,16 +80,7 @@ impl ExtractedFunctionLocationUpdater<'_> {
                                 bounded_fn: None,
                             }
                             .allocate(),
-                            ValueBucket {
-                                id: new_id(),
-                                source_file_id: bucket_meta.get_source_file_id().clone(),
-                                line: bucket_meta.get_line(),
-                                message_id: bucket_meta.get_message_id(),
-                                parse_as: ValueType::U32,
-                                op_aux_no: 0,
-                                value: 1,
-                            }
-                            .allocate(),
+                            build_u32_value(bucket_meta, 1),
                         ],
                     }
                     .allocate(),
@@ -125,16 +116,7 @@ impl ExtractedFunctionLocationUpdater<'_> {
                                 bounded_fn: None,
                             }
                             .allocate(),
-                            ValueBucket {
-                                id: new_id(),
-                                source_file_id: bucket_meta.get_source_file_id().clone(),
-                                line: bucket_meta.get_line(),
-                                message_id: bucket_meta.get_message_id(),
-                                parse_as: ValueType::U32,
-                                op_aux_no: 0,
-                                value: 0,
-                            }
-                            .allocate(),
+                            build_u32_value(bucket_meta, 0),
                         ],
                     }
                     .allocate(),

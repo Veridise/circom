@@ -2,9 +2,10 @@ use std::vec;
 use code_producers::llvm_elements::fr::*;
 use compiler::intermediate_representation::{InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
+use crate::bucket_interpreter::memory::PassMemory;
 use super::loop_unroll::body_extractor::AddressOffset;
 
-pub fn build_u32_value(meta: &dyn ObtainMeta, val: usize) -> InstructionPointer {
+pub fn build_u32_value_bucket(meta: &dyn ObtainMeta, val: usize) -> ValueBucket {
     ValueBucket {
         id: new_id(),
         source_file_id: meta.get_source_file_id().clone(),
@@ -14,7 +15,34 @@ pub fn build_u32_value(meta: &dyn ObtainMeta, val: usize) -> InstructionPointer 
         op_aux_no: 0,
         value: val,
     }
-    .allocate()
+}
+
+pub fn build_u32_value(meta: &dyn ObtainMeta, val: usize) -> InstructionPointer {
+    build_u32_value_bucket(meta, val).allocate()
+}
+
+pub fn build_bigint_value_bucket(
+    meta: &dyn ObtainMeta,
+    mem: &PassMemory,
+    val: &dyn ToString,
+) -> ValueBucket {
+    ValueBucket {
+        id: new_id(),
+        source_file_id: meta.get_source_file_id().clone(),
+        line: meta.get_line(),
+        message_id: meta.get_message_id(),
+        parse_as: ValueType::BigInt,
+        op_aux_no: 0,
+        value: mem.add_field_constant(val.to_string()),
+    }
+}
+
+pub fn build_bigint_value(
+    bucket: &dyn ObtainMeta,
+    mem: &PassMemory,
+    val: &dyn ToString,
+) -> InstructionPointer {
+    build_bigint_value_bucket(bucket, mem, val).allocate()
 }
 
 pub fn build_call(

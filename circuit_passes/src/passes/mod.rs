@@ -5,12 +5,10 @@ use compiler::circuit_design::function::{FunctionCode, FunctionCodeInfo};
 use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{
-    Instruction, InstructionList, InstructionPointer, new_id, BucketId,
+    ir_interface::*, Instruction, InstructionList, InstructionPointer, new_id, BucketId,
 };
-use compiler::intermediate_representation::ir_interface::*;
-use crate::bucket_interpreter::error::BadInterp;
-use crate::bucket_interpreter::memory::PassMemory;
-use crate::passes::{
+use crate::bucket_interpreter::{error::BadInterp, memory::PassMemory};
+use self::{
     checks::assert_unique_ids_in_circuit, conditional_flattening::ConditionalFlatteningPass,
     const_arg_deduplication::ConstArgDeduplicationPass,
     deterministic_subcomponent_invocation::DeterministicSubCmpInvokePass,
@@ -18,19 +16,18 @@ use crate::passes::{
     simplification::SimplificationPass, unknown_index_sanitization::UnknownIndexSanitizationPass,
     unused_func_removal::UnusedFuncRemovalPass,
 };
-
 use self::loop_unroll::body_extractor::{UnrolledIterLvars, ToOriginalLocation, FuncArgIdx};
 
-mod const_arg_deduplication;
-mod conditional_flattening;
-mod simplification;
-mod deterministic_subcomponent_invocation;
-mod unused_func_removal;
-mod mapped_to_indexed;
-mod unknown_index_sanitization;
 mod checks;
-pub mod loop_unroll;
+mod conditional_flattening;
+mod const_arg_deduplication;
+mod deterministic_subcomponent_invocation;
+mod mapped_to_indexed;
+mod simplification;
+mod unused_func_removal;
+mod unknown_index_sanitization;
 pub mod builders;
+pub mod loop_unroll;
 
 macro_rules! pre_hook {
     ($name: ident, $bucket_ty: ty) => {
@@ -70,10 +67,6 @@ pub trait CircuitTransformationPass {
     fn get_mem(&self) -> &PassMemory;
     fn run_template(&self, template: &TemplateCode) -> Result<(), BadInterp>;
 
-    fn get_updated_field_constants(&self) -> Vec<String> {
-        self.get_mem().get_field_constants_clone()
-    }
-
     fn get_updated_bounded_array_loads(
         &self,
         old_array_loads: &HashSet<Range<usize>>,
@@ -100,7 +93,6 @@ pub trait CircuitTransformationPass {
             .iter()
             .map(|f| self.transform_function(f))
             .collect::<Result<_, _>>()?;
-        let field_tracking = self.get_updated_field_constants();
         let array_loads =
             self.get_updated_bounded_array_loads(&circuit.llvm_data.bounded_array_loads);
         let array_stores =
@@ -110,7 +102,8 @@ pub trait CircuitTransformationPass {
             c_producer: circuit.c_producer.clone(),
             summary_producer: circuit.summary_producer.clone(),
             llvm_data: circuit.llvm_data.clone_with_updates(
-                field_tracking,
+                self.get_mem().get_ff_constants_clone(),
+                self.get_mem().get_variable_index_mapping_clone(),
                 array_loads,
                 array_stores,
             ),
@@ -123,7 +116,7 @@ pub trait CircuitTransformationPass {
 
     fn transform_template(&self, template: &TemplateCode) -> Result<TemplateCode, BadInterp> {
         self.pre_hook_template(template)?;
-        Ok(Box::new(TemplateCodeInfo {
+        let mut new_template = TemplateCodeInfo {
             id: template.id,
             source_file_id: template.source_file_id,
             line: template.line.clone(),
@@ -141,12 +134,14 @@ pub trait CircuitTransformationPass {
             expression_stack_depth: template.expression_stack_depth,
             signal_stack_depth: template.signal_stack_depth,
             number_of_components: template.number_of_components,
-        }))
+        };
+        self.post_hook_template(&mut new_template)?;
+        Ok(Box::new(new_template))
     }
 
     fn transform_function(&self, function: &FunctionCode) -> Result<FunctionCode, BadInterp> {
         self.pre_hook_function(function)?;
-        Ok(Box::new(FunctionCodeInfo {
+        let mut new_function = FunctionCodeInfo {
             source_file_id: function.source_file_id,
             line: function.line.clone(),
             header: function.header.clone(),
@@ -156,7 +151,9 @@ pub trait CircuitTransformationPass {
             body: self.transform_body(&function.header, &function.body)?,
             max_number_of_vars: function.max_number_of_vars,
             max_number_of_ops_in_expression: function.max_number_of_ops_in_expression,
-        }))
+        };
+        self.post_hook_function(&mut new_function)?;
+        Ok(Box::new(new_function))
     }
 
     fn transform_body(
@@ -697,8 +694,16 @@ pub trait CircuitTransformationPass {
         self.run_template(template)
     }
 
+    fn post_hook_template(&self, _: &mut TemplateCodeInfo) -> Result<(), BadInterp> {
+        Ok(())
+    }
+
     fn pre_hook_function(&self, function: &FunctionCode) -> Result<(), BadInterp> {
         self.get_mem().set_source_name(&function.name);
+        Ok(())
+    }
+
+    fn post_hook_function(&self, _: &mut FunctionCodeInfo) -> Result<(), BadInterp> {
         Ok(())
     }
 

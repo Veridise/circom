@@ -67,12 +67,12 @@ impl ToString for BranchBucket {
 
 impl ToSExp for BranchBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("IF".to_string()),
-            SExp::Atom(format!("line:{}", self.line)),
-            self.cond.to_sexp(),
-            self.if_branch.to_sexp(),
-            self.else_branch.to_sexp(),
+        SExp::list([
+            SExp::atom("IF"),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("cond", self.cond.to_sexp()),
+            SExp::key_val("if_branch", self.if_branch.to_sexp()),
+            SExp::key_val("el_branch", self.else_branch.to_sexp()),
         ])
     }
 }

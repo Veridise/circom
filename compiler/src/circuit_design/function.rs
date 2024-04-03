@@ -49,14 +49,14 @@ impl ToString for FunctionCodeInfo {
 
 impl ToSExp for FunctionCodeInfo {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("FUNCTION".to_string()),
-            SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("header:{}", self.header)),
-            SExp::Atom(format!("name:{}", self.name)),
-            SExp::Atom(format!("params:{:?}", self.params)),
-            SExp::Atom(format!("returns:{:?}", self.returns)),
-            self.body.to_sexp(),
+        SExp::list([
+            SExp::atom("FUNCTION"),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("header", SExp::atom(&self.header)),
+            SExp::key_val("name", SExp::atom(&self.name)),
+            SExp::key_val("params", SExp::atom(format!("{:?}", self.params))),
+            SExp::key_val("returns", SExp::atom(format!("{:?}", self.returns))),
+            SExp::key_val("body", self.body.to_sexp()),
         ])
     }
 }

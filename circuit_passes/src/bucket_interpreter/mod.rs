@@ -496,7 +496,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         Ok(Some(match bucket.parse_as {
             ValueType::U32 => KnownU32(bucket.value),
             ValueType::BigInt => {
-                let constant = &self.mem.get_field_constant(bucket.value);
+                let constant = &self.mem.get_ff_constant(bucket.value);
                 KnownBigInt(error::add_loc_if_err(to_bigint(constant), bucket)?)
             }
         }))

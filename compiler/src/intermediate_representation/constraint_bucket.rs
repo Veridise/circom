@@ -63,7 +63,7 @@ impl ToString for ConstraintBucket {
 
 impl ToSExp for ConstraintBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![SExp::Atom("CONSTRAINT".to_string()), self.unwrap().to_sexp()])
+        SExp::list([SExp::atom("CONSTRAINT"), self.unwrap().to_sexp()])
     }
 }
 

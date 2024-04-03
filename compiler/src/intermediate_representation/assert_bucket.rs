@@ -1,4 +1,5 @@
 use super::ir_interface::*;
+use super::{BucketId, new_id, SExp, ToSExp, UpdateId};
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{ConstraintKind, LLVMIRProducer, LLVMInstruction};
@@ -6,8 +7,6 @@ use code_producers::llvm_elements::instructions::{create_call, create_constraint
 use code_producers::llvm_elements::stdlib::ASSERT_FN_NAME;
 use code_producers::llvm_elements::types::bool_type;
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
-
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct AssertBucket {
@@ -53,10 +52,10 @@ impl ToString for AssertBucket {
 
 impl ToSExp for AssertBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("ASSERT".to_string()),
-            SExp::Atom(format!("line:{}", self.line)),
-            self.evaluate.to_sexp()
+        SExp::list([
+            SExp::atom("ASSERT"),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("cond", self.evaluate.to_sexp()),
         ])
     }
 }

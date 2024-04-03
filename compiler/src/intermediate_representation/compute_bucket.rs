@@ -152,12 +152,11 @@ impl ToString for ComputeBucket {
 
 impl ToSExp for ComputeBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("COMPUTE".to_string()),
-            SExp::Atom(format!("line:{}", self.line)),
-            SExp::Atom(format!("op_aux_no:{}", self.op_aux_no)),
-            SExp::Atom(self.op.to_string()),
-            self.stack.to_sexp(),
+        SExp::list([
+            SExp::atom("COMPUTE"),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("op", SExp::atom(self.op)),
+            SExp::key_val("stack", self.stack.to_sexp()),
         ])
     }
 }

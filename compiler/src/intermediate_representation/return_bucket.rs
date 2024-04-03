@@ -51,10 +51,10 @@ impl ToString for ReturnBucket {
 
 impl ToSExp for ReturnBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::List(vec![
-            SExp::Atom("RETURN".to_string()),
-            SExp::Atom(format!("line:{}", self.line)),
-            self.value.to_sexp()
+        SExp::list([
+            SExp::atom("RETURN"),
+            SExp::key_val("line", SExp::atom(self.line)),
+            SExp::key_val("value", self.value.to_sexp()),
         ])
     }
 }

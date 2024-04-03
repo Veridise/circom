@@ -130,8 +130,8 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for FunctionLLVMIRProducer<'ctx, 'prod> {
         self.ctx.base.current_function
     }
 
-    fn constant_fields(&self) -> &Vec<String> {
-        self.parent.constant_fields()
+    fn get_ff_constants(&self) -> &Vec<String> {
+        self.parent.get_ff_constants()
     }
 
     fn get_template_mem_arg(&self, _run_fn: FunctionValue<'ctx>) -> ArrayValue<'ctx> {
@@ -306,8 +306,8 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for ExtractedFunctionLLVMIRProducer<'ctx,
         self.ctx.base.current_function
     }
 
-    fn constant_fields(&self) -> &Vec<String> {
-        self.parent.constant_fields()
+    fn get_ff_constants(&self) -> &Vec<String> {
+        self.parent.get_ff_constants()
     }
 
     fn get_template_mem_arg(&self, _run_fn: FunctionValue<'ctx>) -> ArrayValue<'ctx> {

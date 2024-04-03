@@ -46,13 +46,11 @@ impl ToSExp for AddressType {
     fn to_sexp(&self) -> SExp {
         use AddressType::*;
         match self {
-            Variable => SExp::Atom("VARIABLE".to_string()),
-            Signal => SExp::Atom("SIGNAL".to_string()),
-            SubcmpSignal { cmp_address, counter_override, .. } => SExp::List(vec![
-                SExp::Atom(
-                    if *counter_override { "SUBCOMP_COUNTER" } else { "SUBCOMPONENT" }.to_string(),
-                ),
-                cmp_address.to_sexp(),
+            Variable => SExp::atom("VARIABLE"),
+            Signal => SExp::atom("SIGNAL"),
+            SubcmpSignal { cmp_address, counter_override, .. } => SExp::list([
+                SExp::atom(if *counter_override { "SUBCOMP_COUNTER" } else { "SUBCOMPONENT" }),
+                SExp::key_val("address", cmp_address.to_sexp()),
             ]),
         }
     }

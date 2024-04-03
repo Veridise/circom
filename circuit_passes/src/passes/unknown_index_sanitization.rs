@@ -16,20 +16,20 @@ use crate::{default__name, default__get_mem, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 struct ZeroingInterpreter<'a> {
-    pub constant_fields: &'a Vec<String>,
+    pub ff_constants: &'a Vec<String>,
     mem: &'a PassMemory,
 }
 
 impl<'a> ZeroingInterpreter<'a> {
-    pub fn init(mem: &'a PassMemory, constant_fields: &'a Vec<String>) -> Self {
-        ZeroingInterpreter { constant_fields, mem }
+    pub fn init(mem: &'a PassMemory, ff_constants: &'a Vec<String>) -> Self {
+        ZeroingInterpreter { ff_constants, mem }
     }
 
     pub fn compute_value_bucket(&self, bucket: &ValueBucket, _env: &Env) -> RC {
         Ok(Some(match bucket.parse_as {
             ValueType::U32 => KnownU32(bucket.value),
             ValueType::BigInt => {
-                let constant = &self.constant_fields[bucket.value];
+                let constant = &self.ff_constants[bucket.value];
                 KnownBigInt(add_loc_if_err(to_bigint(constant), bucket)?)
             }
         }))
@@ -104,8 +104,8 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
             LocationRule::Mapped { .. } => unreachable!(),
             LocationRule::Indexed { location, .. } => {
                 let mem = &self.memory;
-                let constant_fields = mem.get_field_constants_clone();
-                let interpreter = ZeroingInterpreter::init(mem, &constant_fields);
+                let ff_constants = mem.get_ff_constants_clone();
+                let interpreter = ZeroingInterpreter::init(mem, &ff_constants);
                 let res = interpreter.compute_instruction(location, env)?;
 
                 let offset = match res {
