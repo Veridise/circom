@@ -187,8 +187,9 @@ mod test {
     use compiler::intermediate_representation::{Instruction, new_id};
     use compiler::intermediate_representation::ir_interface::{
         AddressType, Allocate, ComputeBucket, InstrContext, LoadBucket, LocationRule, LoopBucket,
-        OperatorType, StoreBucket, ValueBucket, ValueType,
+        ObtainMetaImpl, OperatorType, StoreBucket,
     };
+    use crate::passes::builders::build_u32_value;
     use crate::passes::{CircuitTransformationPass, GlobalPassData};
     use crate::passes::loop_unroll::{LoopUnrollPass, LOOP_BODY_FN_PREFIX};
 
@@ -247,28 +248,10 @@ mod test {
                         dest_is_output: false,
                         dest_address_type: AddressType::Variable,
                         dest: LocationRule::Indexed {
-                            location: ValueBucket {
-                                id: new_id(),
-                                source_file_id: None,
-                                line: 0,
-                                message_id: 0,
-                                parse_as: ValueType::U32,
-                                op_aux_no: 0,
-                                value: 0,
-                            }
-                            .allocate(),
+                            location: build_u32_value(&ObtainMetaImpl::default(), 0),
                             template_header: Some("test_0".to_string()),
                         },
-                        src: ValueBucket {
-                            id: new_id(),
-                            source_file_id: None,
-                            line: 0,
-                            message_id: 0,
-                            parse_as: ValueType::U32,
-                            op_aux_no: 0,
-                            value: 0,
-                        }
-                        .allocate(),
+                        src: build_u32_value(&ObtainMetaImpl::default(), 0),
                         bounded_fn: None,
                     }
                     .allocate(),
@@ -282,28 +265,10 @@ mod test {
                         dest_is_output: false,
                         dest_address_type: AddressType::Variable,
                         dest: LocationRule::Indexed {
-                            location: ValueBucket {
-                                id: new_id(),
-                                source_file_id: None,
-                                line: 0,
-                                message_id: 0,
-                                parse_as: ValueType::U32,
-                                op_aux_no: 0,
-                                value: 1,
-                            }
-                            .allocate(),
+                            location: build_u32_value(&ObtainMetaImpl::default(), 1),
                             template_header: Some("test_0".to_string()),
                         },
-                        src: ValueBucket {
-                            id: new_id(),
-                            source_file_id: None,
-                            line: 0,
-                            message_id: 0,
-                            parse_as: ValueType::U32,
-                            op_aux_no: 0,
-                            value: 0,
-                        }
-                        .allocate(),
+                        src: build_u32_value(&ObtainMetaImpl::default(), 0),
                         bounded_fn: None,
                     }
                     .allocate(),
@@ -328,31 +293,13 @@ mod test {
                                     message_id: 0,
                                     address_type: AddressType::Variable,
                                     src: LocationRule::Indexed {
-                                        location: ValueBucket {
-                                            id: new_id(),
-                                            source_file_id: None,
-                                            line: 0,
-                                            message_id: 0,
-                                            parse_as: ValueType::U32,
-                                            op_aux_no: 0,
-                                            value: 1,
-                                        }
-                                        .allocate(),
+                                        location: build_u32_value(&ObtainMetaImpl::default(), 1),
                                         template_header: Some("test_0".to_string()),
                                     },
                                     bounded_fn: None,
                                 }
                                 .allocate(),
-                                ValueBucket {
-                                    id: new_id(),
-                                    source_file_id: None,
-                                    line: 0,
-                                    message_id: 0,
-                                    parse_as: ValueType::U32,
-                                    op_aux_no: 0,
-                                    value: 5,
-                                }
-                                .allocate(),
+                                build_u32_value(&ObtainMetaImpl::default(), 5),
                             ],
                         }
                         .allocate(),
@@ -367,16 +314,7 @@ mod test {
                                 dest_is_output: false,
                                 dest_address_type: AddressType::Variable,
                                 dest: LocationRule::Indexed {
-                                    location: ValueBucket {
-                                        id: new_id(),
-                                        source_file_id: None,
-                                        line: 0,
-                                        message_id: 0,
-                                        parse_as: ValueType::U32,
-                                        op_aux_no: 0,
-                                        value: 0,
-                                    }
-                                    .allocate(),
+                                    location: build_u32_value(&ObtainMetaImpl::default(), 0),
                                     template_header: None,
                                 },
                                 src: ComputeBucket {
@@ -394,31 +332,16 @@ mod test {
                                             message_id: 0,
                                             address_type: AddressType::Variable,
                                             src: LocationRule::Indexed {
-                                                location: ValueBucket {
-                                                    id: new_id(),
-                                                    source_file_id: None,
-                                                    line: 0,
-                                                    message_id: 0,
-                                                    parse_as: ValueType::U32,
-                                                    op_aux_no: 0,
-                                                    value: 0,
-                                                }
-                                                .allocate(),
+                                                location: build_u32_value(
+                                                    &ObtainMetaImpl::default(),
+                                                    0,
+                                                ),
                                                 template_header: Some("test_0".to_string()),
                                             },
                                             bounded_fn: None,
                                         }
                                         .allocate(),
-                                        ValueBucket {
-                                            id: new_id(),
-                                            source_file_id: None,
-                                            line: 0,
-                                            message_id: 0,
-                                            parse_as: ValueType::U32,
-                                            op_aux_no: 0,
-                                            value: 2,
-                                        }
-                                        .allocate(),
+                                        build_u32_value(&ObtainMetaImpl::default(), 2),
                                     ],
                                 }
                                 .allocate(),
@@ -435,16 +358,7 @@ mod test {
                                 dest_is_output: false,
                                 dest_address_type: AddressType::Variable,
                                 dest: LocationRule::Indexed {
-                                    location: ValueBucket {
-                                        id: new_id(),
-                                        source_file_id: None,
-                                        line: 0,
-                                        message_id: 0,
-                                        parse_as: ValueType::U32,
-                                        op_aux_no: 0,
-                                        value: 1,
-                                    }
-                                    .allocate(),
+                                    location: build_u32_value(&ObtainMetaImpl::default(), 1),
                                     template_header: None,
                                 },
                                 src: ComputeBucket {
@@ -462,31 +376,16 @@ mod test {
                                             message_id: 0,
                                             address_type: AddressType::Variable,
                                             src: LocationRule::Indexed {
-                                                location: ValueBucket {
-                                                    id: new_id(),
-                                                    source_file_id: None,
-                                                    line: 0,
-                                                    message_id: 0,
-                                                    parse_as: ValueType::U32,
-                                                    op_aux_no: 0,
-                                                    value: 1,
-                                                }
-                                                .allocate(),
+                                                location: build_u32_value(
+                                                    &ObtainMetaImpl::default(),
+                                                    1,
+                                                ),
                                                 template_header: Some("test_0".to_string()),
                                             },
                                             bounded_fn: None,
                                         }
                                         .allocate(),
-                                        ValueBucket {
-                                            id: new_id(),
-                                            source_file_id: None,
-                                            line: 0,
-                                            message_id: 0,
-                                            parse_as: ValueType::U32,
-                                            op_aux_no: 0,
-                                            value: 1,
-                                        }
-                                        .allocate(),
+                                        build_u32_value(&ObtainMetaImpl::default(), 1),
                                     ],
                                 }
                                 .allocate(),

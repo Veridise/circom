@@ -1,14 +1,14 @@
 use std::fmt::{Debug, Display, Formatter};
-use compiler::intermediate_representation::ir_interface::{ValueBucket, ValueType};
+use compiler::intermediate_representation::ir_interface::{ObtainMetaImpl, ValueBucket};
 use compiler::num_bigint::BigInt;
 use compiler::num_traits::ToPrimitive;
-use compiler::intermediate_representation::new_id;
 use circom_algebra::modular_arithmetic;
 use program_structure::error_code::ReportCode;
-use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::value::Value::{KnownBigInt, KnownU32, Unknown};
-use super::error::{BadInterp, self};
+use crate::passes::builders::{build_bigint_value_bucket, build_u32_value_bucket};
 use super::into_result;
+use super::error::{BadInterp, self};
+use super::memory::PassMemory;
+use super::value::Value::{KnownBigInt, KnownU32, Unknown};
 
 /// Poor man's lattice that gives up the moment values are not equal
 /// It's a join semi lattice with a top (Unknown)
@@ -94,24 +94,8 @@ impl Value {
             Unknown => {
                 error::new_compute_err_result("Can't create a ValueBucket from an Unknown value!")
             }
-            KnownU32(n) => Ok(ValueBucket {
-                id: new_id(),
-                source_file_id: None,
-                line: 0,
-                message_id: 0,
-                parse_as: ValueType::U32,
-                op_aux_no: 0,
-                value: *n,
-            }),
-            KnownBigInt(n) => Ok(ValueBucket {
-                id: new_id(),
-                source_file_id: None,
-                line: 0,
-                message_id: 0,
-                parse_as: ValueType::BigInt,
-                op_aux_no: 0,
-                value: mem.add_field_constant(n.to_string()),
-            }),
+            KnownU32(n) => Ok(build_u32_value_bucket(&ObtainMetaImpl::default(), *n)),
+            KnownBigInt(n) => Ok(build_bigint_value_bucket(&ObtainMetaImpl::default(), mem, n)),
         }
     }
 

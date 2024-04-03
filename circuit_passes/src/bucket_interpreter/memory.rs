@@ -21,9 +21,9 @@ pub struct PassMemory {
     //  wrapped separately and the template/function library values themselves are wrapped separately.
     templates_library: RefCell<HashMap<String, TemplateCode>>,
     functions_library: RefCell<HashMap<String, FunctionCode>>,
-    /// Mirrors `LLVMCircuitData::field_tracking`.
+    /// Mirrors `LLVMCircuitData::ff_constants`.
     /// When ValueBucket is parsed as a bigint, its value is the index into this map.
-    constant_fields: RefCell<Vec<String>>,
+    ff_constants: RefCell<Vec<String>>,
     /// Current template header
     current_scope: RefCell<String>,
     /// Current template or function source name
@@ -47,7 +47,7 @@ impl PassMemory {
             io_map: RefCell::new(io_map),
             current_scope: Default::default(),
             current_source_name: Default::default(),
-            constant_fields: Default::default(),
+            ff_constants: Default::default(),
             templates_library: Default::default(),
             functions_library: Default::default(),
             signal_index_mapping: Default::default(),
@@ -131,7 +131,7 @@ impl PassMemory {
         for function in &circuit.functions {
             self.add_function(function);
         }
-        self.constant_fields.replace(circuit.llvm_data.field_tracking.clone());
+        self.ff_constants.replace(circuit.llvm_data.ff_constants.clone());
         self.io_map.replace(circuit.llvm_data.io_map.clone());
         self.variable_index_mapping.replace(circuit.llvm_data.variable_index_mapping.clone());
         self.signal_index_mapping.replace(circuit.llvm_data.signal_index_mapping.clone());
@@ -147,17 +147,17 @@ impl PassMemory {
         self.current_source_name.borrow()
     }
 
-    pub fn get_field_constant(&self, index: usize) -> String {
-        self.constant_fields.borrow()[index].clone()
+    pub fn get_ff_constant(&self, index: usize) -> String {
+        self.ff_constants.borrow()[index].clone()
     }
 
-    pub fn get_field_constants_clone(&self) -> Vec<String> {
-        self.constant_fields.borrow().clone()
+    pub fn get_ff_constants_clone(&self) -> Vec<String> {
+        self.ff_constants.borrow().clone()
     }
 
     /// Stores a new constant and returns its index
     pub fn add_field_constant(&self, new_value: String) -> usize {
-        let mut temp = self.constant_fields.borrow_mut();
+        let mut temp = self.ff_constants.borrow_mut();
         let idx = temp.len();
         temp.push(new_value);
         idx
@@ -181,6 +181,28 @@ impl PassMemory {
 
     pub fn get_current_scope_variables_index_mapping(&self, index: &usize) -> Range<usize> {
         self.get_variables_index_mapping(&self.current_scope.borrow(), index)
+    }
+
+    pub fn new_variable_index_mapping(&self, scope: &String, size: &usize) -> usize {
+        let mut base = self.variable_index_mapping.borrow_mut();
+        let scope_map = base.entry(scope.clone()).or_default();
+        let new_idx = match scope_map.last_key_value() {
+            Some((k, _)) => *k + 1,
+            None => 0,
+        };
+        let range = (new_idx)..(new_idx + size);
+        for i in range.clone() {
+            scope_map.insert(i, range.clone());
+        }
+        new_idx
+    }
+
+    pub fn new_current_scope_variable_index_mapping(&self, size: &usize) -> usize {
+        self.new_variable_index_mapping(&self.current_scope.borrow(), size)
+    }
+
+    pub fn get_variable_index_mapping_clone(&self) -> HashMap<String, IndexMapping> {
+        self.variable_index_mapping.borrow().clone()
     }
 
     pub fn get_component_addr_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {

@@ -12,7 +12,7 @@ pub fn zero<'a>(producer: &dyn LLVMIRProducer<'a>) -> IntValue<'a> {
 }
 
 pub fn get_const<'a>(producer: &dyn LLVMIRProducer<'a>, value: usize) -> AnyValueEnum<'a> {
-    let f = &producer.constant_fields()[value];
+    let f = &producer.get_ff_constants()[value];
     bigint_type(producer)
         .const_int_from_string(f, StringRadix::Decimal)
         .unwrap()
