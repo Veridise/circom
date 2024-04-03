@@ -1144,7 +1144,7 @@ impl<C: Default + Clone + Display + Hash + Eq> Constraint<C> {
         raw_substitution(&mut constraint.a, substitution, field);
         raw_substitution(&mut constraint.b, substitution, field);
         raw_substitution(&mut constraint.c, substitution, field);
-        //Constraint::fix_constraint(constraint, field);
+        Constraint::fix_constraint(constraint, field);
     }
 
     pub fn remove_zero_value_coefficients(constraint: &mut Constraint<C>) {
@@ -1451,7 +1451,6 @@ mod test {
     }
 
     #[test]
-    #[ignore = "failing in upstream"]
     fn algebra_constraint_apply_substitution() {
         let field = BigInt::parse_bytes(FIELD.as_bytes(), 10)
             .expect("generating the big int was not possible");
