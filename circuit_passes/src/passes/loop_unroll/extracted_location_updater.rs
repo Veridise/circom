@@ -180,7 +180,7 @@ impl ExtractedFunctionLocationUpdater<'_> {
         // Check the source/RHS of the store in either case
         self._check_instruction(&mut bucket.src, to_insert_after);
         //
-        if let Some(ai) = self.bucket_arg_order.remove(&bucket.id) {
+        if let Some(ai) = self.bucket_arg_order.shift_remove(&bucket.id) {
             let (at, lr) = self.handle_any_store(&ai, &bucket.dest, bucket, to_insert_after);
             bucket.dest_address_type = at;
             bucket.dest = lr;
@@ -196,7 +196,7 @@ impl ExtractedFunctionLocationUpdater<'_> {
         bucket: &mut LoadBucket,
         to_insert_after: &mut InstructionList,
     ) {
-        if let Some(ai) = self.bucket_arg_order.remove(&bucket.id) {
+        if let Some(ai) = self.bucket_arg_order.shift_remove(&bucket.id) {
             // Update the location information to reference the argument
             bucket.address_type = AddressType::SubcmpSignal {
                 cmp_address: build_u32_value(bucket, ai.get_signal_idx()),
@@ -226,7 +226,7 @@ impl ExtractedFunctionLocationUpdater<'_> {
         // A store can be implicit within a CallBucket 'return_info'
         let bucket_meta = ObtainMetaImpl::from(bucket); //avoid borrow issues
         if let ReturnType::Final(fd) = &mut bucket.return_info {
-            if let Some(ai) = self.bucket_arg_order.remove(&bucket.id) {
+            if let Some(ai) = self.bucket_arg_order.shift_remove(&bucket.id) {
                 let (at, lr) = self.handle_any_store(&ai, &fd.dest, &bucket_meta, to_insert_after);
                 fd.dest_address_type = at;
                 fd.dest = lr;

@@ -4,7 +4,7 @@ use program_structure::error_definition::Report;
 use program_structure::expression_builders::{build_call, build_tuple, build_parallel_op};
 use program_structure::file_definition::FileLibrary;
 use program_structure::program_archive::ProgramArchive;
-use program_structure::statement_builders::{build_declaration, build_log_call, build_assert, build_return, build_constraint_equality, build_initialization_block};
+use program_structure::statement_builders::{build_declaration, build_log_call, build_initialization_block};
 use program_structure::template_data::TemplateData;
 use std::collections::{HashMap, BTreeMap};
 use num_bigint::BigInt;
