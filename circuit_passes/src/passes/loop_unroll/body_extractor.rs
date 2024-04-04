@@ -156,7 +156,7 @@ impl LoopBodyExtractor {
         assert!(bucket.body.len() > 1);
         let extra_arg_info = Self::compute_extra_args(&recorder)?;
         let name = self.build_new_body(
-            &recorder.get_current_source_name(),
+            &recorder.get_current_scope_name(),
             bucket,
             extra_arg_info.bucket_to_args.clone(),
             extra_arg_info.num_args,

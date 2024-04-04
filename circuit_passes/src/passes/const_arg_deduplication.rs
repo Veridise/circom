@@ -179,7 +179,7 @@ impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
                             self.get_or_create_function_for(
                                 idx_val_pairs,
                                 meta_info,
-                                &self.memory.get_current_source_name(),
+                                &self.memory.get_current_scope_name(),
                                 const_stores,
                             ),
                             vec![builders::build_storage_ptr_ref(meta_info, AddressType::Variable)],
