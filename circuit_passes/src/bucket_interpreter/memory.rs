@@ -233,10 +233,14 @@ impl PassMemory {
 
 impl LibraryAccess for PassMemory {
     fn get_function(&self, name: &String) -> Ref<FunctionCode> {
-        Ref::map(self.functions_library.borrow(), |map| &map[name])
+        Ref::map(self.functions_library.borrow(), |map| {
+            map.get(name).unwrap_or_else(|| panic!("No function with name '{name}'"))
+        })
     }
 
     fn get_template(&self, name: &String) -> Ref<TemplateCode> {
-        Ref::map(self.templates_library.borrow(), |map| &map[name])
+        Ref::map(self.templates_library.borrow(), |map| {
+            map.get(name).unwrap_or_else(|| panic!("No template with name '{name}'"))
+        })
     }
 }
