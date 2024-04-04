@@ -16,7 +16,7 @@ fn main() {
         eprintln!("{}", Colour::Red.paint("previous errors were found"));
         std::process::exit(1);
     } else {
-        println!("{}", Colour::Green.paint("Everything went okay, circom safe"));
+        println!("{}", Colour::Green.paint("Everything went okay"));
         //std::process::exit(0);
     }
 }
@@ -43,7 +43,8 @@ fn start() -> Result<(), ()> {
         sym: user_input.sym_file().to_string(),
         r1cs: user_input.r1cs_file().to_string(),
         json_constraints: user_input.json_constraints_file().to_string(),
-        prime: user_input.prime(),
+        json_substitutions: user_input.json_substitutions_file().to_string(),
+        prime: user_input.prime(),        
     };
     let circuit = execution_user::execute_project(program_archive.clone(), config)?;
     let compilation_config = CompilerConfig {

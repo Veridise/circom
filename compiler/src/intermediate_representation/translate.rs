@@ -650,7 +650,6 @@ fn translate_while(stmt: Statement, state: &mut State, context: &Context) {
 
 fn translate_substitution(stmt: Statement, state: &mut State, context: &Context) {
     use Statement::Substitution;
-    let subst_stmt = stmt.clone();
     if let Substitution { meta, var, access, op, rhe,  } = stmt {
         debug_assert!(!meta.get_type_knowledge().is_component());
         let def = SymbolDef { meta: meta.clone(), symbol: var, acc: access };
@@ -659,7 +658,7 @@ fn translate_substitution(stmt: Statement, state: &mut State, context: &Context)
         let store_instruction = if str_info.src.is_call() {
             translate_call_case(str_info, state, context)
         } else {
-            translate_standard_case(str_info, state, context, &subst_stmt)
+            translate_standard_case(str_info, state, context)
         };
         if op == AssignOp::AssignConstraintSignal {
             let wrapper = ConstraintBucket::Substitution(store_instruction);
@@ -683,10 +682,9 @@ fn translate_call_case(
     context: &Context,
 ) -> InstructionPointer {
     use Expression::Call;
-    let call_expr = info.src.clone();
     if let Call { id, args, .. } = info.src {
         let args_instr = translate_call_arguments(args, state, context);
-        info.prc_symbol.into_call_assign(id, args_instr, &state, &call_expr)
+        info.prc_symbol.into_call_assign(id, args_instr, &state)
     } else {
         unreachable!()
     }
@@ -696,10 +694,9 @@ fn translate_standard_case(
     info: StoreInfo,
     state: &mut State,
     context: &Context,
-    stmt: &Statement,
 ) -> InstructionPointer {
     let src = translate_expression(info.src, state, context);
-    info.prc_symbol.into_store(src, state, stmt)
+    info.prc_symbol.into_store(src, state)
 }
 
 // End of substitution utils
@@ -981,14 +978,13 @@ fn translate_variable(
     context: &Context,
 ) -> InstructionPointer {
     use Expression::Variable;
-    let var_expr = expression.clone();
     if let Variable { meta, name, access, .. } = expression {
         let tag_access = check_tag_access(&name, &access, state);
         if tag_access.is_some(){
             translate_number( Expression::Number(meta.clone(), tag_access.unwrap()), state, context)
         } else{
             let def = SymbolDef { meta, symbol: name, acc: access };
-            ProcessedSymbol::new(def, state, context).into_load(state, &var_expr)
+            ProcessedSymbol::new(def, state, context).into_load(state)
         }
     } else {
         unreachable!()
@@ -1066,7 +1062,6 @@ fn build_signal_location(
     indexes: Vec<InstructionPointer>,
     context: &Context,
     state: &State,
-    meta: &Meta,
 ) -> LocationRule {
     use ClusterType::*;
     let database = &context.tmp_database;
@@ -1080,7 +1075,7 @@ fn build_signal_location(
         Uniform { instance_id, header, .. } => {
             let env = TemplateDB::get_instance_addresses(database, *instance_id);
             let location = env.get_variable(signal).unwrap().clone();
-            let full_address = compute_full_address(state, location, indexes, meta);
+            let full_address = compute_full_address(state, location, indexes);
             LocationRule::Indexed { location: full_address, template_header: Some(header.clone()) }
         }
     }
@@ -1168,7 +1163,6 @@ impl ProcessedSymbol {
                 af_index,
                 context,
                 state,
-                &meta
             )
         });
         ProcessedSymbol {
@@ -1191,11 +1185,10 @@ impl ProcessedSymbol {
         id: String,
         args: ArgData,
         state: &State,
-        expr: &Expression,
     ) -> InstructionPointer {
         let data = if let Option::Some(signal) = self.signal {
             let dest_type = AddressType::SubcmpSignal {
-                cmp_address: compute_full_address(state, self.symbol, self.before_signal, expr.get_meta()),
+                cmp_address: compute_full_address(state, self.symbol, self.before_signal),
                 is_output: self.signal_type.unwrap() == SignalType::Output,
                 uniform_parallel_value: state.component_to_parallel.get(&self.name).unwrap().uniform_parallel_value,
                 input_information: match self.signal_type.unwrap() {
@@ -1211,7 +1204,7 @@ impl ProcessedSymbol {
                 dest: signal,
             }
         } else {
-            let address = compute_full_address(state, self.symbol, self.before_signal, expr.get_meta());
+            let address = compute_full_address(state, self.symbol, self.before_signal);
             let xtype = match self.xtype {
                 TypeReduction::Variable => AddressType::Variable,
                 _ => AddressType::Signal,
@@ -1237,10 +1230,10 @@ impl ProcessedSymbol {
         .allocate()
     }
 
-    fn into_store(self, src: InstructionPointer, state: &State, stmt: &Statement) -> InstructionPointer {
+    fn into_store(self, src: InstructionPointer, state: &State) -> InstructionPointer {
         if let Option::Some(signal) = self.signal {
             let dest_type = AddressType::SubcmpSignal {
-                cmp_address: compute_full_address(state, self.symbol, self.before_signal, stmt.get_meta()),
+                cmp_address: compute_full_address(state, self.symbol, self.before_signal),
                 uniform_parallel_value: state.component_to_parallel.get(&self.name).unwrap().uniform_parallel_value,
                 is_output: self.signal_type.unwrap() == SignalType::Output,
                 input_information: match self.signal_type.unwrap() {
@@ -1263,7 +1256,7 @@ impl ProcessedSymbol {
             }
             .allocate()
         } else {
-            let address = compute_full_address(state, self.symbol, self.before_signal, stmt.get_meta());
+            let address = compute_full_address(state, self.symbol, self.before_signal);
             let xtype = match self.xtype {
                 TypeReduction::Variable => AddressType::Variable,
                 _ => AddressType::Signal,
@@ -1284,10 +1277,10 @@ impl ProcessedSymbol {
         }
     }
 
-    fn into_load(self, state: &State, expr: &Expression) -> InstructionPointer {
+    fn into_load(self, state: &State) -> InstructionPointer {
         if let Option::Some(signal) = self.signal {
             let dest_type = AddressType::SubcmpSignal {
-                cmp_address: compute_full_address(state, self.symbol, self.before_signal, expr.get_meta()),
+                cmp_address: compute_full_address(state, self.symbol, self.before_signal),
                 uniform_parallel_value: state.component_to_parallel.get(&self.name).unwrap().uniform_parallel_value,
                 is_output: self.signal_type.unwrap() == SignalType::Output,
                 input_information: match self.signal_type.unwrap() {
@@ -1303,11 +1296,12 @@ impl ProcessedSymbol {
                 message_id: self.message_id,
                 src: signal,
                 address_type: dest_type,
+                context: InstrContext { size: self.length },
                 bounded_fn: None,
             }
             .allocate()
         } else {
-            let address = compute_full_address(state, self.symbol, self.before_signal, expr.get_meta());
+            let address = compute_full_address(state, self.symbol, self.before_signal);
             let xtype = match self.xtype {
                 TypeReduction::Variable => AddressType::Variable,
                 _ => AddressType::Signal,
@@ -1319,6 +1313,7 @@ impl ProcessedSymbol {
                 address_type: xtype,
                 message_id: self.message_id,
                 src: LocationRule::Indexed { location: address, template_header: None },
+                context: InstrContext { size: self.length },
                 bounded_fn: None,
             }
             .allocate()
@@ -1330,7 +1325,6 @@ fn compute_full_address(
     state: &State,
     symbol: SymbolInfo,
     indexed_with: Vec<InstructionPointer>,
-    meta: &Meta
 ) -> InstructionPointer {
     if symbol.dimensions.is_empty() {
         symbol.access_instruction
@@ -1367,88 +1361,178 @@ fn compute_full_address(
             stack.push(jump);
         }
         stack.push(at);
-        fold(OperatorType::AddAddress, stack, state, meta)
+        fold(OperatorType::AddAddress, stack, state)
     }
 }
 
 fn indexing_instructions_filter(
     indexing: Vec<InstructionPointer>,
     state: &State,
-) -> Vec<InstructionPointer> {
-    use Instruction::{Value, Compute};
+ ) -> Vec<InstructionPointer>{
     let mut index_stack = vec![];
     for i in indexing {
-        match *i {
-            Value(v) if v.parse_as == ValueType::U32 => {
-                index_stack.push(v.allocate());
-            }
-            Value(mut v) if v.parse_as == ValueType::BigInt => {
-                v.parse_as = ValueType::U32;
-                let field = state.field_tracker.get_constant(v.value).unwrap();
-                v.value = usize::from_str_radix(field, 10).unwrap_or_else(|_| usize::MAX);
-                index_stack.push(v.allocate());
-            }
-            Compute(mut v) if v.op == OperatorType::Add => {
-                v.stack = indexing_instructions_filter(v.stack, state);
-                v.op = OperatorType::AddAddress;
-                index_stack.push(v.into_instruction().allocate());
-            }
-            Compute(mut v) if v.op == OperatorType::Mul => {
-                v.stack = indexing_instructions_filter(v.stack, state);
-                v.op = OperatorType::MulAddress;
-                index_stack.push(v.into_instruction().allocate());
-            }
-            op => {
-                let to_address = ComputeBucket {
-                    id: new_id(),
-                    source_file_id: op.get_source_file_id().clone(),
-                    line: op.get_line(),
-                    message_id: op.get_message_id(),
-                    op_aux_no: 0,
-                    op: OperatorType::ToAddress,
-                    stack: vec![op.clone().allocate()],
-                };
-                index_stack.push(to_address.allocate());
-            }
+
+        let (possible_to_usize, _) = check_if_possible_to_usize_single(&i, state);
+
+        if possible_to_usize{
+            let new_index = convert_to_usize_single(i, state);
+            index_stack.push(new_index);
+        } else{
+
+            let to_usize = ComputeBucket {
+                id: new_id(),
+                source_file_id: i.get_source_file_id().clone(),
+                line: i.get_line(),
+                message_id: i.get_message_id(),
+                op_aux_no: 0,
+                op: OperatorType::ToAddress,
+                stack: vec![i.allocate()],
+            }.allocate();
+            index_stack.push(to_usize);
+
         }
     }
     index_stack
 }
 
-fn _op_to_opcode(op: OperatorType) -> ExpressionInfixOpcode {
-    match op {
-        OperatorType::Mul => ExpressionInfixOpcode::Mul,
-        OperatorType::Div => ExpressionInfixOpcode::Div,
-        OperatorType::Add => ExpressionInfixOpcode::Add,
-        OperatorType::Sub => ExpressionInfixOpcode::Sub,
-        OperatorType::Pow => ExpressionInfixOpcode::Pow,
-        OperatorType::IntDiv => ExpressionInfixOpcode::IntDiv,
-        OperatorType::Mod => ExpressionInfixOpcode::Mod,
-        OperatorType::ShiftL => ExpressionInfixOpcode::ShiftL,
-        OperatorType::ShiftR => ExpressionInfixOpcode::ShiftR,
-        OperatorType::LesserEq => ExpressionInfixOpcode::LesserEq,
-        OperatorType::GreaterEq => ExpressionInfixOpcode::GreaterEq,
-        OperatorType::Lesser => ExpressionInfixOpcode::Lesser,
-        OperatorType::Greater => ExpressionInfixOpcode::Greater,
-        OperatorType::Eq(_) => ExpressionInfixOpcode::Eq,
-        OperatorType::NotEq => ExpressionInfixOpcode::NotEq,
-        OperatorType::BoolOr => ExpressionInfixOpcode::BoolOr,
-        OperatorType::BoolAnd => ExpressionInfixOpcode::BoolAnd,
-        OperatorType::BitOr => ExpressionInfixOpcode::BitOr,
-        OperatorType::BitAnd => ExpressionInfixOpcode::BitAnd,
-        OperatorType::BitXor => ExpressionInfixOpcode::BitXor,
-        OperatorType::MulAddress => ExpressionInfixOpcode::Mul,
-        OperatorType::AddAddress => ExpressionInfixOpcode::Add,
-        _ => unreachable!()
+fn check_if_possible_to_usize_single( // returns if it is possible to convert to usize and if it is a small usize
+                                      // we consider that a usize is small if it is a number < 100
+                                      // we consider that a multiplication is usize if at least one of its operands is usize 
+                                      // and the other is usize
+    index: &InstructionPointer,
+    state: &State,
+)-> (bool, bool){
+
+    use Instruction::{Value, Compute};
+
+    match &**index {
+        Value(v) if v.parse_as == ValueType::U32 => {
+            (true, v.value < 100)
+        }
+        Value(v) if v.parse_as == ValueType::BigInt => {
+            let field = state.field_tracker.get_constant(v.value).unwrap();
+            let new_value  = usize::from_str_radix(field, 10);
+
+            match new_value{
+                Ok(_) =>{
+                    (true, new_value.unwrap() < 100)
+                }
+                _ =>{
+                    (false, false)
+                }
+            }
+
+        }
+        Compute(v) if v.op == OperatorType::Add => {
+            let (are_usize, _) = check_if_possible_to_usize_multiple(&v.stack, state);
+            (are_usize, false)
+        } 
+        Compute(v) if v.op == OperatorType::Mul => {
+            let (are_usize, are_small) = check_if_possible_to_usize_multiple(&v.stack, state);
+            (are_usize && are_small, false)
+        }
+        Compute(_) =>{
+            (false, false)
+        }
+        _ => {
+            // Case variable
+            (true, false)
+        }
     }
 }
 
-fn fold(using: OperatorType, mut stack: Vec<InstructionPointer>, state: &State, meta: &Meta) -> InstructionPointer {
+fn check_if_possible_to_usize_multiple( // returns if all of them are usize and if the number of non small usizes is at most one
+    indexing: &Vec<InstructionPointer>,
+    state: &State,
+) -> (bool, bool) { 
+    let mut is_usize = true;
+    let mut number_non_small = 0;
+    for i in indexing {
+        let (is_usize_i, is_small_i) = check_if_possible_to_usize_single(i, state);
+        is_usize &= is_usize_i;
+        if !is_small_i{
+            number_non_small += 1;
+        }
+    }
+    (is_usize, number_non_small <= 1)
+}
+
+
+
+fn convert_to_usize_single(
+    index: InstructionPointer,
+    state: &State,
+)-> InstructionPointer{
+
+    use Instruction::{Value, Compute};
+
+    match *index {
+        Value(v) if v.parse_as == ValueType::U32 => {
+            v.allocate()
+        }
+        Value(mut v) if v.parse_as == ValueType::BigInt => {
+            let field = state.field_tracker.get_constant(v.value).unwrap();
+            let new_value  = usize::from_str_radix(field, 10);
+
+            match new_value{
+                Ok(value) =>{
+                    v.parse_as = ValueType::U32;
+                    v.value = value;
+                    v.allocate()
+                }
+                _ =>{
+                    unreachable!()
+                }
+            }
+
+        }
+        Compute(mut v) if v.op == OperatorType::Add => {
+            v.stack = convert_to_usize_multiple(v.stack, state);
+            v.op = OperatorType::AddAddress;
+            v.into_instruction().allocate()
+        }
+        Compute(mut v) if v.op == OperatorType::Mul => {
+            v.stack = convert_to_usize_multiple(v.stack, state);
+            v.op = OperatorType::MulAddress;
+            v.into_instruction().allocate()
+        }
+        Compute(_) =>{
+            unreachable!()
+        }
+        _ => {
+            // Case variable
+            ComputeBucket {
+                id: new_id(),
+                source_file_id: index.get_source_file_id().clone(),
+                line: index.get_line(),
+                message_id: index.get_message_id(),
+                op_aux_no: 0,
+                op: OperatorType::ToAddress,
+                stack: vec![index.allocate()],
+            }.allocate()
+        }
+
+    }
+}
+
+fn convert_to_usize_multiple(
+    indexing: Vec<InstructionPointer>,
+    state: &State,
+) ->  Vec<InstructionPointer> { 
+    let mut index_stack = vec![];
+    for i in indexing {
+        let new_index = convert_to_usize_single(i, state);
+        index_stack.push(new_index);
+    }
+    index_stack
+}
+
+fn fold(using: OperatorType, mut stack: Vec<InstructionPointer>, state: &State) -> InstructionPointer {
     let instruction = stack.pop().unwrap();
     if stack.len() == 0 {
         instruction
     } else {
-        let inner_fold = fold(using, stack, state, meta);
+        let inner_fold = fold(using, stack, state);
         ComputeBucket {
             id: new_id(),
             source_file_id: instruction.get_source_file_id().clone(),

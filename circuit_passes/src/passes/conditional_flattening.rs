@@ -123,7 +123,7 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
         // The Some keys in the 'evaluated_conditions' map are for the cases that are inside
         //  the loopbody functions when executed from the CallBucket.id used as the key.
         // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
-        let ec = { self.evaluated_conditions.borrow_mut().remove(&call_bucket_id) };
+        let ec = { self.evaluated_conditions.borrow_mut().shift_remove(&call_bucket_id) };
         if let Some(cond_vals) = ec {
             // If there are any conditions that evaluated to a known value, replace the
             //  CallBucket target function with a simplified version of that function.

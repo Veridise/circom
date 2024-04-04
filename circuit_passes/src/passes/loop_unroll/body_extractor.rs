@@ -448,7 +448,7 @@ impl LoopBodyExtractor {
             if let Some(s) = move_to_subset {
                 assert_ne!(s, key1);
                 // Remove 'key1' from 'grouped' and add it's value(s) to 'grouped[key2]' (i.e. 's')
-                let temp = grouped.remove(key1).unwrap();
+                let temp = grouped.shift_remove(key1).unwrap();
                 grouped.get_mut(s).unwrap().extend(temp);
             }
         }
@@ -493,7 +493,7 @@ impl LoopBodyExtractor {
         for id in all_loadstore_buckets.iter() {
             let column = bucket_to_itr_to_ref.entry(*id).or_default();
             for iter_num in 0..recorder.get_iter() {
-                column.push(match vpi.get_mut(&iter_num).unwrap().remove(id) {
+                column.push(match vpi.get_mut(&iter_num).unwrap().shift_remove(id) {
                     None => None,
                     Some((a, v)) => {
                         // ASSERT: index values are known in every available iteration

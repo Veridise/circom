@@ -4,6 +4,7 @@ pub struct Input {
     pub input_program: PathBuf,
     pub out_r1cs: PathBuf,
     pub out_json_constraints: PathBuf,
+    pub out_json_substitutions: PathBuf,
     pub out_wat_code: PathBuf,
     pub out_wasm_code: PathBuf,
     pub out_wasm_name: String,
@@ -53,11 +54,19 @@ const LLVM_IR: &'static str = "ll";
 
 impl Input {
     pub fn new() -> Result<Input, ()> {
+        use ansi_term::Colour;
         use input_processing::SimplificationStyle;
         let matches = input_processing::view();
         let input = input_processing::get_input(&matches)?;
-        let file_name = input.file_stem().unwrap().to_str().unwrap().to_string();
+        let mut file_name = input.file_stem().unwrap().to_str().unwrap().to_string();
         let output_path = input_processing::get_output_path(&matches)?;
+
+        let c_flag = input_processing::get_c(&matches);
+
+        if c_flag && (file_name == "main" || file_name == "fr" || file_name == "calcwit"){
+            println!("{}", Colour::Yellow.paint(format!("The name {} is reserved in Circom when using de --c flag. The files generated for your circuit will use the name {}_c instead of {}.", file_name, file_name, file_name)));
+            file_name = format!("{}_c", file_name)
+        };
         let output_c_path = Input::build_folder(&output_path, &file_name, CPP);
         let output_js_path = Input::build_folder(&output_path, &file_name, JS);
         let output_llvm_path = Input::build_folder(&output_path, &file_name, LLVM_IR);
@@ -84,11 +93,16 @@ impl Input {
                 &format!("{}_constraints", file_name),
                 JSON,
             ),
+            out_json_substitutions: Input::build_output(
+                &output_path,
+                &format!("{}_substitutions", file_name),
+                JSON,
+            ),
             wat_flag:input_processing::get_wat(&matches),
             wasm_flag: input_processing::get_wasm(&matches),
             llvm_flag: input_processing::get_llvm(&matches),
             summary_flag: input_processing::get_summary(&matches),
-            c_flag: input_processing::get_c(&matches),
+            c_flag: c_flag,
             r1cs_flag: input_processing::get_r1cs(&matches),
             sym_flag: input_processing::get_sym(&matches),
             main_inputs_flag: input_processing::get_main_inputs_log(&matches),
@@ -171,6 +185,9 @@ impl Input {
     pub fn json_constraints_file(&self) -> &str {
         self.out_json_constraints.to_str().unwrap()
     }
+    pub fn json_substitutions_file(&self) -> &str {
+        self.out_json_substitutions.to_str().unwrap()
+    }
     pub fn wasm_flag(&self) -> bool {
         self.wasm_flag
     }
@@ -240,7 +257,8 @@ mod input_processing {
         if route.is_file() {
             Result::Ok(route)
         } else {
-            Result::Err(eprintln!("{}", Colour::Red.paint("invalid input file")))
+            let route = if route.to_str().is_some() { ": ".to_owned() + route.to_str().unwrap()} else { "".to_owned() };
+            Result::Err(eprintln!("{}", Colour::Red.paint("Input file does not exist".to_owned() + &route)))
         }
     }
 
@@ -344,7 +362,12 @@ mod input_processing {
                    let prime_value = matches.value_of("prime").unwrap();
                    if prime_value == "bn128"
                       || prime_value == "bls12381"
-                      || prime_value == "goldilocks"{
+                      || prime_value == "goldilocks"
+                      || prime_value == "grumpkin"
+                      || prime_value == "pallas"
+                      || prime_value == "vesta"
+                      || prime_value == "secq256r1"
+                      {
                         Ok(String::from(matches.value_of("prime").unwrap()))
                     }
                     else{
@@ -380,7 +403,7 @@ mod input_processing {
                     .long("O1")
                     .hidden(false)
                     .takes_value(false)
-                    .help("Only applies var to var and var to constant simplification")
+                    .help("Only applies signal to signal and signal to constant simplification")
                     .display_order(460)
             )
             .arg(
@@ -432,11 +455,10 @@ mod input_processing {
             )
             .arg(
                 Arg::with_name("print_json_sub")
-                    .long("jsons")
+                    .long("simplification_substitution")
                     .takes_value(false)
-                    .hidden(true)
-                    .display_order(100)
-                    .help("Outputs the substitution in json format"),
+                    .display_order(980)
+                    .help("Outputs the substitution applied in the simplification phase in json format"),
             )
             .arg(
                 Arg::with_name("print_sym")
@@ -534,7 +556,7 @@ mod input_processing {
                     .takes_value(true)
                     .default_value("bn128")
                     .display_order(300)
-                    .help("To choose the prime number to use to generate the circuit. Receives the name of the curve (bn128, bls12381, goldilocks)"),
+                    .help("To choose the prime number to use to generate the circuit. Receives the name of the curve (bn128, bls12381, goldilocks, grumpkin, pallas, vesta, secq256r1)"),
             )
             .get_matches()
     }

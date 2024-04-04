@@ -78,6 +78,7 @@ pub fn build_custom_fn_load_bucket(
         address_type: addr_type,
         src: LocationRule::Indexed { location, template_header: None },
         bounded_fn: Some(String::from(load_fun)),
+        context: InstrContext { size: 0 },
     }
     .allocate()
 }
