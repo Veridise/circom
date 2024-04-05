@@ -75,8 +75,8 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         })
     }
 
-    pub fn get_current_source_name(&self) -> Ref<String> {
-        self.mem.get_current_source_name()
+    pub fn get_current_scope_name(&self) -> Ref<String> {
+        self.mem.get_current_scope_name()
     }
 
     pub fn take_loadstore_to_index_map(

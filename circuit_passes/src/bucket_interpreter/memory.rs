@@ -15,6 +15,26 @@ use crate::passes::GlobalPassData;
 use super::InterpreterFlags;
 use super::error::BadInterp;
 
+#[derive(Debug, Default)]
+pub struct Scope {
+    /// Circom source name from which the template/function was generated
+    pub name: String,
+    ///  Unique name of the generated template/function (i.e. 'name' with unique suffix)
+    pub header: String,
+}
+
+impl From<&TemplateCode> for Scope {
+    fn from(t: &TemplateCode) -> Self {
+        Scope { name: t.name.clone(), header: t.header.clone() }
+    }
+}
+
+impl From<&FunctionCode> for Scope {
+    fn from(f: &FunctionCode) -> Self {
+        Scope { name: f.name.clone(), header: f.header.clone() }
+    }
+}
+
 pub struct PassMemory {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need
     //  mutability. In some cases, very fine-grained mutability which is why everything here is
@@ -24,10 +44,8 @@ pub struct PassMemory {
     /// Mirrors `LLVMCircuitData::ff_constants`.
     /// When ValueBucket is parsed as a bigint, its value is the index into this map.
     ff_constants: RefCell<Vec<String>>,
-    /// Current template header
-    current_scope: RefCell<String>,
-    /// Current template or function source name
-    current_source_name: RefCell<String>,
+    /// Identifies the current template/function under analysis
+    current_scope: RefCell<Scope>,
     ///
     io_map: RefCell<TemplateInstanceIOMap>,
     ///
@@ -46,7 +64,6 @@ impl PassMemory {
             prime: UsefulConstants::new(&prime).get_p().clone(),
             io_map: RefCell::new(io_map),
             current_scope: Default::default(),
-            current_source_name: Default::default(),
             ff_constants: Default::default(),
             templates_library: Default::default(),
             functions_library: Default::default(),
@@ -65,7 +82,7 @@ impl PassMemory {
             global_data,
             observer,
             InterpreterFlags::default(),
-            self.current_scope.borrow().to_string(),
+            self.get_current_scope_header().clone(),
         )
     }
     pub fn build_interpreter_with_flags<'a, 'd: 'a>(
@@ -78,7 +95,7 @@ impl PassMemory {
             global_data,
             observer,
             flags,
-            self.current_scope.borrow().to_string(),
+            self.get_current_scope_header().clone(),
         )
     }
 
@@ -92,23 +109,15 @@ impl PassMemory {
         BucketInterpreter::init(global_data, observer, flags, self, scope)
     }
 
-    pub fn set_scope(&self, template: &TemplateCode) {
-        self.current_scope.replace(template.header.clone());
-    }
-
-    pub fn set_source_name(&self, name: &String) {
-        self.current_source_name.replace(name.clone());
-    }
-
     pub fn run_template<'d>(
         &self,
         global_data: &'d RefCell<GlobalPassData>,
         observer: &dyn for<'e> Observer<Env<'e>>,
         template: &TemplateCode,
     ) -> Result<(), BadInterp> {
-        assert!(!self.current_scope.borrow().is_empty());
+        assert!(!self.get_current_scope_header().is_empty());
         if cfg!(debug_assertions) {
-            println!("Running template {}", self.current_scope.borrow());
+            println!("Running template {}", self.get_current_scope_header());
         }
         let interpreter = self.build_interpreter(global_data, observer);
         let env = Env::new_standard_env(self);
@@ -139,12 +148,20 @@ impl PassMemory {
             .replace(circuit.llvm_data.component_index_mapping.clone());
     }
 
-    pub fn get_prime(&self) -> &BigInt {
-        &self.prime
+    pub fn set_scope(&self, s: Scope) {
+        self.current_scope.replace(s);
     }
 
-    pub fn get_current_source_name(&self) -> Ref<String> {
-        self.current_source_name.borrow()
+    pub fn get_current_scope_name(&self) -> Ref<String> {
+        Ref::map(self.current_scope.borrow(), |s| &s.name)
+    }
+
+    pub fn get_current_scope_header(&self) -> Ref<String> {
+        Ref::map(self.current_scope.borrow(), |s| &s.header)
+    }
+
+    pub fn get_prime(&self) -> &BigInt {
+        &self.prime
     }
 
     pub fn get_ff_constant(&self, index: usize) -> String {
@@ -172,7 +189,7 @@ impl PassMemory {
     }
 
     pub fn get_current_scope_signal_index_mapping(&self, index: &usize) -> Range<usize> {
-        self.get_signal_index_mapping(&self.current_scope.borrow(), index)
+        self.get_signal_index_mapping(&self.get_current_scope_header(), index)
     }
 
     pub fn get_variables_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
@@ -180,7 +197,7 @@ impl PassMemory {
     }
 
     pub fn get_current_scope_variables_index_mapping(&self, index: &usize) -> Range<usize> {
-        self.get_variables_index_mapping(&self.current_scope.borrow(), index)
+        self.get_variables_index_mapping(&self.get_current_scope_header(), index)
     }
 
     pub fn new_variable_index_mapping(&self, scope: &String, size: &usize) -> usize {
@@ -198,7 +215,7 @@ impl PassMemory {
     }
 
     pub fn new_current_scope_variable_index_mapping(&self, size: &usize) -> usize {
-        self.new_variable_index_mapping(&self.current_scope.borrow(), size)
+        self.new_variable_index_mapping(&self.get_current_scope_header(), size)
     }
 
     pub fn get_variable_index_mapping_clone(&self) -> HashMap<String, IndexMapping> {
@@ -210,16 +227,20 @@ impl PassMemory {
     }
 
     pub fn get_current_scope_component_addr_index_mapping(&self, index: &usize) -> Range<usize> {
-        self.get_component_addr_index_mapping(&self.current_scope.borrow(), index)
+        self.get_component_addr_index_mapping(&self.get_current_scope_header(), index)
     }
 }
 
 impl LibraryAccess for PassMemory {
     fn get_function(&self, name: &String) -> Ref<FunctionCode> {
-        Ref::map(self.functions_library.borrow(), |map| &map[name])
+        Ref::map(self.functions_library.borrow(), |map| {
+            map.get(name).unwrap_or_else(|| panic!("No function with name '{name}'"))
+        })
     }
 
     fn get_template(&self, name: &String) -> Ref<TemplateCode> {
-        Ref::map(self.templates_library.borrow(), |map| &map[name])
+        Ref::map(self.templates_library.borrow(), |map| {
+            map.get(name).unwrap_or_else(|| panic!("No template with name '{name}'"))
+        })
     }
 }
