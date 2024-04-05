@@ -3,7 +3,7 @@ mod extracted_location_updater;
 pub mod body_extractor;
 
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::vec;
 use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::circuit_design::template::TemplateCode;
@@ -17,9 +17,8 @@ use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::{default__name, default__get_mem, default__run_template};
-use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 use super::{CircuitTransformationPass, GlobalPassData};
-use self::body_extractor::LoopBodyExtractor;
+use self::{body_extractor::LoopBodyExtractor, loop_env_recorder::EnvRecorder};
 
 const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = true;
 
@@ -32,7 +31,7 @@ pub struct LoopUnrollPass<'d> {
     memory: PassMemory,
     extractor: LoopBodyExtractor,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    replacements: RefCell<BTreeMap<BucketId, InstructionPointer>>,
+    replacements: RefCell<HashMap<BucketId, InstructionPointer>>,
 }
 
 impl<'d> LoopUnrollPass<'d> {
@@ -167,14 +166,19 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
         for f in self.extractor.get_new_functions().iter() {
             cir.functions.push(self.transform_function(&f)?);
         }
+        //ASSERT: All unrolled replacements were applied
+        assert!(self.replacements.borrow().is_empty());
         Ok(())
     }
 
     fn transform_loop_bucket(&self, bucket: &LoopBucket) -> Result<InstructionPointer, BadInterp> {
-        if let Some(unrolled_loop) = self.replacements.borrow().get(&bucket.id) {
-            return self.transform_instruction(unrolled_loop);
+        //NOTE: The bracket and assignment are needed here so the mutable borrow goes out of scope before the
+        // transform* function is called within the match expression to avoid "already borrowed: BorrowMutError"
+        let rep = { self.replacements.borrow_mut().remove(&bucket.id) };
+        match rep {
+            Some(unrolled_loop) => self.transform_instruction(&unrolled_loop),
+            None => self.transform_loop_bucket_default(bucket),
         }
-        self.transform_loop_bucket_default(bucket)
     }
 }
 
