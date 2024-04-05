@@ -99,6 +99,13 @@ impl SubcmpEnv {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum EnvContextKind {
+    Template,
+    SourceFunction,
+    ExtractedFunction,
+}
+
 // An immutable environment whose modification methods return a new object
 #[derive(Clone)]
 pub enum Env<'a> {
@@ -146,8 +153,8 @@ impl LibraryAccess for Env<'_> {
 }
 
 impl<'a> Env<'a> {
-    pub fn new_standard_env(in_function: bool, libs: &'a dyn LibraryAccess) -> Self {
-        Env::Standard(StandardEnvData::new(in_function, libs))
+    pub fn new_standard_env(context_kind: EnvContextKind, libs: &'a dyn LibraryAccess) -> Self {
+        Env::Standard(StandardEnvData::new(context_kind, libs))
     }
 
     pub fn new_unroll_block_env(inner: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {
@@ -179,11 +186,11 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn is_in_function(&self) -> bool {
+    pub fn get_context_kind(&self) -> EnvContextKind {
         match self {
-            Env::Standard(d) => d.is_in_function(),
-            Env::UnrolledBlock(d) => d.is_in_function(),
-            Env::ExtractedFunction(d) => d.is_in_function(),
+            Env::Standard(d) => d.get_context_kind(),
+            Env::UnrolledBlock(d) => d.get_context_kind(),
+            Env::ExtractedFunction(d) => d.get_context_kind(),
         }
     }
 

@@ -21,7 +21,7 @@ use observer::Observer;
 use program_structure::error_code::ReportCode;
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::GlobalPassData;
-use self::env::{Env, LibraryAccess};
+use self::env::{Env, EnvContextKind, LibraryAccess};
 use self::error::BadInterp;
 use self::memory::PassMemory;
 use self::operations::compute_offset;
@@ -844,7 +844,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         if cfg!(debug_assertions) {
             println!("Running function {}", name);
         }
-        let mut new_env = Env::new_standard_env(true, self.mem);
+        let mut new_env = Env::new_standard_env(EnvContextKind::SourceFunction, self.mem);
         let mut args_copy = args;
         for (id, arg) in args_copy.drain(..).enumerate() {
             new_env = new_env.set_var(id, arg);

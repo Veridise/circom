@@ -9,7 +9,7 @@ use compiler::compiler_interface::Circuit;
 use compiler::num_bigint::BigInt;
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::BucketInterpreter;
-use crate::bucket_interpreter::env::{Env, LibraryAccess};
+use crate::bucket_interpreter::env::{Env, EnvContextKind, LibraryAccess};
 use crate::bucket_interpreter::observer::Observer;
 use crate::passes::GlobalPassData;
 use super::InterpreterFlags;
@@ -120,7 +120,7 @@ impl PassMemory {
             println!("Running template {}", self.get_current_scope_header());
         }
         let interpreter = self.build_interpreter(global_data, observer);
-        let env = Env::new_standard_env(false, self);
+        let env = Env::new_standard_env(EnvContextKind::Template, self);
         interpreter.execute_instructions(&template.body, env, true)?;
         Ok(())
     }
