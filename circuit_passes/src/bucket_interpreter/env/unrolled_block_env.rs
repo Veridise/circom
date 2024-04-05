@@ -62,6 +62,10 @@ impl<'a> UnrolledBlockEnvData<'a> {
         None
     }
 
+    pub fn is_in_function(&self) -> bool {
+        self.base.is_in_function()
+    }
+
     pub fn get_var(&self, idx: usize) -> Value {
         self.base.get_var(idx)
     }

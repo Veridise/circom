@@ -793,7 +793,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         self._impl_compute_bucket(bucket, env, observe, Self::_execute_instruction)
     }
 
-    fn run_function_extracted<'env>(
+    fn _execute_function_extracted<'env>(
         &self,
         bucket: &'env CallBucket,
         env: Env<'env>,
@@ -835,7 +835,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         Ok((res.0, res.1.peel_extracted_func()))
     }
 
-    fn run_function_basic<'env>(
+    fn _execute_function_basic<'env>(
         &self,
         name: &String,
         args: Vec<Value>,
@@ -844,7 +844,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         if cfg!(debug_assertions) {
             println!("Running function {}", name);
         }
-        let mut new_env = Env::new_standard_env(self.mem);
+        let mut new_env = Env::new_standard_env(true, self.mem);
         let mut args_copy = args;
         for (id, arg) in args_copy.drain(..).enumerate() {
             new_env = new_env.set_var(id, arg);
@@ -890,7 +890,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             // The extracted loop body and array parameter functions can change any values in
             //  the environment via the parameters passed to it. So interpret the function and
             //  keep the resulting Env (as if the function had executed inline).
-            self.run_function_extracted(&bucket, env, observe)?
+            self._execute_function_extracted(&bucket, env, observe)?
         } else {
             let mut args = vec![];
             for i in &bucket.arguments {
@@ -901,7 +901,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             let v = if args.iter().any(|v| v.is_unknown()) {
                 Unknown
             } else {
-                self.run_function_basic(&bucket.symbol, args, observe)?
+                self._execute_function_basic(&bucket.symbol, args, observe)?
             };
             (Some(v), env)
         };

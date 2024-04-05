@@ -61,12 +61,16 @@ impl<'a> ExtractedFuncEnvData<'a> {
         ExtractedFuncEnvData { base: Box::new(inner), caller: caller.clone(), remap, arenas }
     }
 
+    pub fn get_base(self) -> Env<'a> {
+        *self.base
+    }
+
     pub fn extracted_func_caller(&self) -> Option<&BucketId> {
         Some(&self.caller)
     }
 
-    pub fn get_base(self) -> Env<'a> {
-        *self.base
+    pub fn is_in_function(&self) -> bool {
+        false
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
@@ -189,7 +193,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
     }
 
     pub fn subcmp_counter_is_zero(&self, subcmp_idx: usize) -> bool {
-        let res = match self.remap.get(&subcmp_idx).cloned() {
+        match self.remap.get(&subcmp_idx).cloned() {
             None => {
                 //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
                 assert!(self.arenas.contains(&subcmp_idx));
@@ -216,8 +220,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                     _ => false, // no counter for Variable/Signal types
                 }
             }
-        };
-        res
+        }
     }
 
     pub fn subcmp_counter_equal_to(&self, subcmp_idx: usize, value: usize) -> bool {

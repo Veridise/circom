@@ -44,7 +44,7 @@ pub struct PassMemory {
     /// Mirrors `LLVMCircuitData::ff_constants`.
     /// When ValueBucket is parsed as a bigint, its value is the index into this map.
     ff_constants: RefCell<Vec<String>>,
-    /// Identifies the current template/function under analysis
+    /// Identifies the current template/function scope of the [CircuitTransformationPass](crate::passes::CircuitTransformationPass)
     current_scope: RefCell<Scope>,
     ///
     io_map: RefCell<TemplateInstanceIOMap>,
@@ -120,7 +120,7 @@ impl PassMemory {
             println!("Running template {}", self.get_current_scope_header());
         }
         let interpreter = self.build_interpreter(global_data, observer);
-        let env = Env::new_standard_env(self);
+        let env = Env::new_standard_env(false, self);
         interpreter.execute_instructions(&template.body, env, true)?;
         Ok(())
     }

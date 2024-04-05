@@ -12,6 +12,7 @@ use super::{SubcmpEnv, LibraryAccess};
 
 #[derive(Clone)]
 pub struct StandardEnvData<'a> {
+    in_function: bool,
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
     subcmps: HashMap<usize, SubcmpEnv>,
@@ -51,8 +52,9 @@ impl LibraryAccess for StandardEnvData<'_> {
 }
 
 impl<'a> StandardEnvData<'a> {
-    pub fn new(libs: &'a dyn LibraryAccess) -> Self {
+    pub fn new(in_function: bool, libs: &'a dyn LibraryAccess) -> Self {
         StandardEnvData {
+            in_function,
             vars: Default::default(),
             signals: Default::default(),
             subcmps: Default::default(),
@@ -64,6 +66,10 @@ impl<'a> StandardEnvData<'a> {
     // READ OPERATIONS
     pub fn extracted_func_caller(&self) -> Option<&BucketId> {
         None
+    }
+
+    pub fn is_in_function(&self) -> bool {
+        self.in_function
     }
 
     pub fn get_var(&self, idx: usize) -> Value {

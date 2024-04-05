@@ -146,16 +146,8 @@ impl LibraryAccess for Env<'_> {
 }
 
 impl<'a> Env<'a> {
-    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
-        match self {
-            Env::Standard(e) => e.extracted_func_caller(),
-            Env::UnrolledBlock(e) => e.extracted_func_caller(),
-            Env::ExtractedFunction(e) => e.extracted_func_caller(),
-        }
-    }
-
-    pub fn new_standard_env(libs: &'a dyn LibraryAccess) -> Self {
-        Env::Standard(StandardEnvData::new(libs))
+    pub fn new_standard_env(in_function: bool, libs: &'a dyn LibraryAccess) -> Self {
+        Env::Standard(StandardEnvData::new(in_function, libs))
     }
 
     pub fn new_unroll_block_env(inner: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {
@@ -171,6 +163,7 @@ impl<'a> Env<'a> {
         Env::ExtractedFunction(ExtractedFuncEnvData::new(inner, caller, remap, arenas))
     }
 
+    // READ OPERATIONS
     pub fn peel_extracted_func(self) -> Self {
         match self {
             Env::ExtractedFunction(d) => d.get_base(),
@@ -178,7 +171,22 @@ impl<'a> Env<'a> {
         }
     }
 
-    // READ OPERATIONS
+    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
+        match self {
+            Env::Standard(e) => e.extracted_func_caller(),
+            Env::UnrolledBlock(e) => e.extracted_func_caller(),
+            Env::ExtractedFunction(e) => e.extracted_func_caller(),
+        }
+    }
+
+    pub fn is_in_function(&self) -> bool {
+        match self {
+            Env::Standard(d) => d.is_in_function(),
+            Env::UnrolledBlock(d) => d.is_in_function(),
+            Env::ExtractedFunction(d) => d.is_in_function(),
+        }
+    }
+
     pub fn get_var(&self, idx: usize) -> Value {
         match self {
             Env::Standard(d) => d.get_var(idx),
