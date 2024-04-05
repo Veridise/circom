@@ -8,6 +8,11 @@ template InnerConditional9(N) {
 
     var a[N];
     for (var i = 0; i < N; i++) {
+        // Values of 'a' at the header per iteration:
+        // i=0: [0, 0, 0, 0]
+        // i=1: [3996, 0, 0, 0]
+        // i=2: [3996, 3996, 0, 0]
+        // i=3: [3996, 3996, 3552, 0]
         if (i < 2) {
             // runs when i∈{0,1}
             for (var j = 0; j < N; j++) {
@@ -20,7 +25,7 @@ template InnerConditional9(N) {
             }
         }
     }
-
+    // At this point, 'a = [3996, 3996, 3552, 3552]', so 'out = 7992'
     out <-- a[0] + a[1];
 }
 

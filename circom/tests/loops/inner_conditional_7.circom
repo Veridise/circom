@@ -6,14 +6,19 @@ template InnerConditional7(N) {
     signal output out;
 
     var a[N];
+    // NOTE: When processing the outer loop, the statements indexed with 'j' are determined
+    //  NOT safe to move into a new function since 'j' is unknown. That results in the outer
+    //  loop unrolling without extrating the body to a new function. Then the three copies
+    //  of the inner loop are processed and their bodies are extracted to new functions and
+    //  replaced with calls to those functions before unrolling. So it ends up creating
+    //  three slightly different functions for this innermost body, one for each iteration
+    //  of the outer loop. Within each of those functions, 'i' is a known fixed value.
     for (var i = 0; i < N; i++) {
-        // NOTE: When processing the outer loop, the statements indexed with 'j' are determined
-        //  NOT safe to move into a new function since 'j' is unknown. That results in the outer
-        //  loop unrolling without extrating the body to a new function. Then the three copies
-        //  of the inner loop are processed and their bodies are extracted to new functions and
-        //  replaced with calls to those functions before unrolling. So it ends up creating
-        //  three slightly different functions for this innermost body, one for each iteration
-        //  of the outer loop. Within each of those functions, 'i' is a known fixed value.
+        // Values of 'a' at the header per iteration:
+        // i=0: [0, 0, 0, 0]
+        // i=1: [-111, -111, -111]
+        // i=2: [-222, -222, -222]
+        // NOTE: Technically there are no negative values, it's instead wrapped modulo the field prime
         for (var j = 0; j < N; j++) {
             if (i > 1) {
                 a[j] += 999;
@@ -22,7 +27,7 @@ template InnerConditional7(N) {
             }
         }
     }
-    // At this point, `a[x] = 777` for all `x`, so `out = 1554`
+    // At this point, 'a[x] = 777' for all 'x', so 'out = 1554'
     out <-- a[0] + a[1];
 }
 
