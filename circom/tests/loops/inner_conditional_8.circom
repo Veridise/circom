@@ -2,7 +2,7 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
-// like inner_conditional_7 but with 'i' and 'j' uses swapped
+// like inner_conditional_7 but with 'i' and 'j' uses swapped (and a larger constant)
 template InnerConditional8(N) {
     signal output out;
 
@@ -16,7 +16,7 @@ template InnerConditional8(N) {
             }
         }
     }
-
+    // At this point, `a[x] = 1776` for all `x`, so `out = 3552`
     out <-- a[0] + a[1];
 }
 

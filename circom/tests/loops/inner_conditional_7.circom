@@ -22,7 +22,7 @@ template InnerConditional7(N) {
             }
         }
     }
-
+    // At this point, `a[x] = 777` for all `x`, so `out = 1554`
     out <-- a[0] + a[1];
 }
 

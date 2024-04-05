@@ -2,12 +2,13 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
+// lvars = [ N, a[0], a[1], a[2], a[3], i, j ]
 template InnerConditional9(N) {
     signal output out;
 
     var a[N];
     for (var i = 0; i < N; i++) {
-        if (i > 1) {
+        if (i < 2) {
             // runs when i∈{0,1}
             for (var j = 0; j < N; j++) {
                 a[i] += 999;
@@ -15,7 +16,7 @@ template InnerConditional9(N) {
         } else {
             // runs when i∈{2,3}
             for (var j = 0; j < N; j++) {
-                a[i] -= 999;
+                a[i] += 888;
             }
         }
     }
@@ -25,12 +26,12 @@ template InnerConditional9(N) {
 
 component main = InnerConditional9(4);
 
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.F([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.T([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME:  i256* %var_[[X1:[0-9]+]], i256* %var_[[X2:[0-9]+]], i256* %var_[[X3:[0-9]+]], i256* %var_[[X4:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.F]]:
-//CHECK-NEXT:   br label %fold_false1
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.T]]:
+//CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
-//CHECK-NEXT: fold_false1:
+//CHECK-NEXT: fold_true1:
 //CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
 //CHECK-NEXT:   store i256 0, i256* %[[T00]], align 4
 //CHECK-NEXT:   br label %loop.cond
@@ -45,7 +46,7 @@ component main = InnerConditional9(4);
 //CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X1]], i32 0
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X2]], i32 0
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T03]], align 4
-//CHECK-NEXT:   %[[C02:[0-9a-zA-Z_.]+]] = call i256 @fr_sub(i256 %[[T04]], i256 999)
+//CHECK-NEXT:   %[[C02:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T04]], i256 999)
 //CHECK-NEXT:   store i256 %[[C02]], i256* %[[T05]], align 4
 //CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
 //CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
@@ -69,12 +70,12 @@ component main = InnerConditional9(4);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.T([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.F([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME:  i256* %var_[[X1:[0-9]+]], i256* %var_[[X2:[0-9]+]], i256* %var_[[X3:[0-9]+]], i256* %var_[[X4:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.T]]:
-//CHECK-NEXT:   br label %fold_true1
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.F]]:
+//CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
-//CHECK-NEXT: fold_true1:
+//CHECK-NEXT: fold_false1:
 //CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
 //CHECK-NEXT:   store i256 0, i256* %[[T00]], align 4
 //CHECK-NEXT:   br label %loop.cond
@@ -89,7 +90,7 @@ component main = InnerConditional9(4);
 //CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X3]], i32 0
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_[[X4]], i32 0
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T03]], align 4
-//CHECK-NEXT:   %[[C02:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T04]], i256 999)
+//CHECK-NEXT:   %[[C02:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T04]], i256 888)
 //CHECK-NEXT:   store i256 %[[C02]], i256* %[[T05]], align 4
 //CHECK-NEXT:   %[[T08:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
 //CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
@@ -178,7 +179,7 @@ component main = InnerConditional9(4);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store8:
 //CHECK-NEXT:   %[[T27:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
-//CHECK-NEXT:   store i256 21888242871839275222246405745257275088548364400416034343698204186575808487625, i256* %[[T27]], align 4
+//CHECK-NEXT:   store i256 7992, i256* %[[T27]], align 4
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:
