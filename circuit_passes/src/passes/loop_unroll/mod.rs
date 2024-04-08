@@ -31,7 +31,7 @@ pub struct LoopUnrollPass<'d> {
     memory: PassMemory,
     extractor: LoopBodyExtractor,
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    replacements: RefCell<HashMap<BucketId, InstructionPointer>>,
+    replacements: RefCell<HashMap<BucketId, BlockBucket>>,
 }
 
 impl<'d> LoopUnrollPass<'d> {
@@ -138,7 +138,7 @@ impl Observer<Env<'_>> for LoopUnrollPass<'_> {
                 label: String::from("unrolled_loop"),
             };
             self.continue_inside(&block, env)?;
-            self.replacements.borrow_mut().insert(bucket.id, block.allocate());
+            self.replacements.borrow_mut().insert(bucket.id, block);
         }
         Ok(false)
     }
@@ -176,7 +176,7 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
         // transform* function is called within the match expression to avoid "already borrowed: BorrowMutError"
         let rep = { self.replacements.borrow_mut().remove(&bucket.id) };
         match rep {
-            Some(unrolled_loop) => self.transform_instruction(&unrolled_loop),
+            Some(unrolled_loop) => self.transform_block_bucket(&unrolled_loop),
             None => self.transform_loop_bucket_default(bucket),
         }
     }
