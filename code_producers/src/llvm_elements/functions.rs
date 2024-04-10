@@ -16,8 +16,8 @@ pub fn create_function<'a>(
     ty: FunctionType<'a>,
 ) -> FunctionValue<'a> {
     let llvm = producer.llvm();
-    let f = llvm.module.add_function(name, ty, None);
-    f.set_linkage(inkwell::module::Linkage::Internal); //default to Internal, allows removal if unused
+    //default to Internal linkage, allows removal if unused
+    let f = llvm.module.add_function(name, ty, Some(inkwell::module::Linkage::Internal));
     if let Some(file_id) = source_file_id {
         match llvm.get_debug_info(file_id) {
             Err(msg) => panic!("{}", msg),

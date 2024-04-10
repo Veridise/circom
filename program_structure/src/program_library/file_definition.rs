@@ -28,10 +28,10 @@ impl FileLibrary {
         self.get_mut_files().add(file_name, file_source)
     }
     pub fn get_line(&self, start: usize, file_id: FileID) -> Option<usize> {
-        self.files.location(file_id, start).and_then(|loc| Some(loc.line_number))
+        self.files.location(file_id, start).map(|loc| loc.line_number)
     }
     pub fn get_column(&self, start: usize, file_id: FileID) -> Option<usize> {
-        self.files.location(file_id, start).and_then(|loc| Some(loc.column_number))
+        self.files.location(file_id, start).map(|loc| loc.column_number)
     }
     pub fn get_file(&self, file_id: &FileID) -> Option<&SimpleFile<FilePath, FileSource>> {
         self.files.get(*file_id)
