@@ -132,7 +132,7 @@ impl<'a> BodyCtx<'a> for StdTemplateCtx<'a> {
     }
 
     fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a> {
-        self.stack.into()
+        self.stack
     }
 
     fn get_wrapping_constraint(&self) -> Option<ConstraintKind> {

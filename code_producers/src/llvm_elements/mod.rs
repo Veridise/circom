@@ -70,7 +70,7 @@ impl<'a> BaseBodyCtx<'a> {
     }
 
     fn get_wrapping_constraint(&self) -> Option<ConstraintKind> {
-        self.inside_constraint.borrow().clone()
+        *self.inside_constraint.borrow()
     }
 
     fn set_wrapping_constraint(&self, value: Option<ConstraintKind>) {
