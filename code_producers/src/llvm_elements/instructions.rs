@@ -1,11 +1,11 @@
-use std::convert::TryFrom;
 use inkwell::basic_block::BasicBlock;
 use inkwell::IntPredicate::{EQ, NE, SLT, SGT, SLE, SGE};
 use inkwell::types::{AnyType, AnyTypeEnum, PointerType, IntType};
 use inkwell::values::{
-    AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, FunctionValue, InstructionOpcode,
-    InstructionValue, IntMathValue, IntValue, PointerValue,
+    AnyValue, AnyValueEnum, AsValueRef, BasicMetadataValueEnum, BasicValue, FunctionValue,
+    InstructionOpcode, InstructionValue, IntMathValue, IntValue, PointerValue,
 };
+use llvm_sys::core::LLVMIsATerminatorInst;
 use super::{to_basic_metadata_enum, LLVMIRProducer, LLVMInstruction};
 use super::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
 use super::functions::create_bb;
@@ -748,15 +748,6 @@ pub fn create_gep<'a>(
     create_gep_with_name(producer, ptr, indices, "")
 }
 
-pub fn get_instruction_arg(inst: InstructionValue, idx: u32) -> LLVMInstruction {
-    let r = inst.get_operand(idx).unwrap();
-    if r.is_left() {
-        r.unwrap_left().as_any_value_enum()
-    } else {
-        r.unwrap_right().get_last_instruction().unwrap().as_any_value_enum()
-    }
-}
-
 pub fn create_cast_to_addr_with_name<'a, T: IntMathValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: T,
@@ -869,42 +860,7 @@ pub fn create_constraint_values_call<'a>(
     create_constraint_values_call_with_name(producer, value, pointer, "constraint")
 }
 
-/// Extracts the pointer and the indexes of a gep instruction
-/// getelementptr %ptr, 0, %idx ---> (%ptr, [0, %idx])
-pub fn get_data_from_gep(gep: PointerValue) -> (PointerValue, Vec<u64>) {
-    let inst = gep.as_instruction().expect("expected an instruction!");
-    match inst.get_opcode() {
-        InstructionOpcode::Call => {
-            let base_ptr = inst
-                .get_first_use()
-                .expect("Unable to find use of returned value in caller")
-                .get_used_value()
-                .expect_left("Pointer value must be a basic value!")
-                .into_pointer_value();
-            (base_ptr, vec![])
-        }
-        InstructionOpcode::GetElementPtr => {
-            let base_ptr = inst
-                .get_operand(0)
-                .expect("Base pointer is missing in GEP")
-                .expect_left("Pointer value must be a basic value!")
-                .into_pointer_value();
-            let count = inst.get_num_operands();
-            let mut ret = Vec::with_capacity(count as usize);
-            for i in 1..count {
-                let idx = inst
-                    .get_operand(i)
-                    .unwrap_or_else(|| panic!("Missing operand {} in GEP", i))
-                    .left_or_else(|_| panic!("Operand {} is not a basic value", i))
-                    .into_int_value()
-                    .get_sign_extended_constant()
-                    .unwrap_or_else(|| panic!("Operand {} is not a constant int value", i));
-                let idx = u64::try_from(idx)
-                    .unwrap_or_else(|_| panic!("Value of operand {} is too large: {}", i, idx));
-                ret.push(idx);
-            }
-            (base_ptr, ret)
-        }
-        _ => unreachable!("Did not expect {:?}", inst.get_opcode()),
-    }
+// inkwell::values::instruction_value::InstructionValue should include this but doesn't.
+pub fn is_terminator(inst: InstructionValue) -> bool {
+    !unsafe { LLVMIsATerminatorInst(inst.as_value_ref()) }.is_null()
 }

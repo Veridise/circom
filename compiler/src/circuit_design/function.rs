@@ -78,6 +78,7 @@ impl WriteLLVMIR for FunctionCodeInfo {
             producer.set_current_bb(bb);
             last = t.produce_llvm_ir(producer);
         }
+        code_producers::llvm_elements::functions::cleanup_function(function);
 
         last
     }

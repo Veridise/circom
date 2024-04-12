@@ -4,7 +4,7 @@ use inkwell::debug_info::AsDIScope;
 use inkwell::types::FunctionType;
 use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
 use super::{BaseBodyCtx, BodyCtx, ConstraintKind, LLVM, LLVMIRProducer, TemplateCtx};
-use super::instructions::create_gep;
+use super::instructions::{create_gep, is_terminator};
 use super::values::zero;
 
 pub fn create_function<'a>(
@@ -39,6 +39,22 @@ pub fn create_function<'a>(
         }
     };
     f
+}
+
+/// Remove any instructions that appear after a terminator because the LLVM verifier will flag it.
+pub fn cleanup_function(func: FunctionValue) {
+    for bb in func.get_basic_blocks() {
+        let mut found_terminator = false;
+        let mut next = bb.get_first_instruction();
+        while let Some(i) = next {
+            next = i.get_next_instruction();
+            if found_terminator {
+                i.erase_from_basic_block();
+            } else {
+                found_terminator = is_terminator(i);
+            }
+        }
+    }
 }
 
 pub fn add_attribute(producer: &dyn LLVMIRProducer, func: FunctionValue, key: &str, val: &str) {
