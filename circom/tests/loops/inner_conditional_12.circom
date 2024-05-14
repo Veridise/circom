@@ -27,3 +27,6 @@ template InnerConditional12(N) {
 }
 
 component main = InnerConditional12(4);
+
+//CHECK: InnerConditional12
+//TODO

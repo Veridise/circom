@@ -19,3 +19,6 @@ template InnerLoops(N) {
 }
 
 component main = InnerLoops(2);
+
+//CHECK: InnerLoops
+//TODO
