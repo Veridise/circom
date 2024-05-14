@@ -7,7 +7,7 @@ use program_structure::{
 
 const NOT_COMPUTE: &str = "Compute does not support Env modification. Use execute instead.";
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BadInterp {
     is_error: bool,
     message: String,
