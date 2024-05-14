@@ -41,7 +41,7 @@ impl<'a, S> ObservedVisitor<'a, S> {
         observe: bool,
     ) -> Result<(), BadInterp> {
         let keep_observing =
-            observe!(self, on_location_rule, location, state, observe, location_owner);
+            observe!(self, on_location_rule, location, state, observe, location_owner)?;
         match location {
             LocationRule::Indexed { location, .. } => {
                 self.visit_instruction(location, state, keep_observing)?;
@@ -237,7 +237,7 @@ impl<'a, S> ObservedVisitor<'a, S> {
         state: &S,
         observe: bool,
     ) -> Result<(), BadInterp> {
-        let keep_observing = observe!(self, on_instruction, inst, state, observe);
+        let keep_observing = observe!(self, on_instruction, inst, state, observe)?;
         match inst.as_ref() {
             Instruction::Value(b) => self.visit_value_bucket(b, state, keep_observing),
             Instruction::Load(b) => self.visit_load_bucket(b, state, keep_observing),

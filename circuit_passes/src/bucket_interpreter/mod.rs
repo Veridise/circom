@@ -335,7 +335,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         label: S,
     ) -> Result<Value, BadInterp> {
         let continue_observing =
-            observe!(self, on_location_rule, location, env, observe, location_owner);
+            observe!(self, on_location_rule, location, env, observe, location_owner)?;
         match location {
             LocationRule::Indexed { location, .. } => {
                 let res = self._compute_instruction(location, env, continue_observing);
@@ -555,7 +555,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 let addr = Value::into_u32_result(addr, "load source subcomponent")?;
                 //NOTE: The 'continue_observing' flag only applies to what is inside the LocationRule.
                 let continue_observing =
-                    observe!(self, on_location_rule, &bucket.src, env, observe, &bucket.id);
+                    observe!(self, on_location_rule, &bucket.src, env, observe, &bucket.id)?;
                 let idx = match &bucket.src {
                     LocationRule::Indexed { location, .. } => {
                         let i = self._compute_instruction(location, env, continue_observing)?;
@@ -650,7 +650,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 let addr = Value::into_u32_result(addr, "store destination subcomponent")?;
                 //NOTE: The 'continue_observing' flag only applies to what is inside the LocationRule.
                 let continue_observing =
-                    observe!(self, on_location_rule, location, env, observe, location_owner);
+                    observe!(self, on_location_rule, location, env, observe, location_owner)?;
                 let (idx, env, sub_cmp_name) = match location {
                     LocationRule::Indexed { location, template_header } => {
                         let (i, e) =
@@ -1280,7 +1280,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
     }
 
     fn _compute_instruction(&self, inst: &InstructionPointer, env: &Env, observe: bool) -> RC {
-        let continue_observing = observe!(self, on_instruction, inst, env, observe);
+        let continue_observing = observe!(self, on_instruction, inst, env, observe)?;
         match inst.as_ref() {
             Instruction::Value(b) => self._compute_value_bucket(b, env, continue_observing),
             Instruction::Load(b) => self._compute_load_bucket(b, env, continue_observing),
@@ -1329,7 +1329,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> RE<'env> {
-        let continue_observing = observe!(self, on_instruction, inst, env, observe);
+        let continue_observing = observe!(self, on_instruction, inst, env, observe)?;
         match inst.as_ref() {
             Instruction::Value(b) => self._execute_value_bucket(b, env, continue_observing),
             Instruction::Load(b) => self._execute_load_bucket(b, env, continue_observing),
