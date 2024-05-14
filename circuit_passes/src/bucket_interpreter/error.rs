@@ -16,14 +16,17 @@ pub struct BadInterp {
 }
 
 impl BadInterp {
+    #[must_use]
     fn new(is_error: bool, message: String, code: ReportCode) -> BadInterp {
         BadInterp { is_error, message, code, file_to_lines: Default::default() }
     }
 
+    #[must_use]
     pub fn error(error_message: String, code: ReportCode) -> BadInterp {
         BadInterp::new(true, error_message, code)
     }
 
+    #[must_use]
     pub fn warning(error_message: String, code: ReportCode) -> BadInterp {
         BadInterp::new(false, error_message, code)
     }
@@ -40,6 +43,7 @@ impl BadInterp {
         self
     }
 
+    #[must_use]
     pub fn to_report(self, file_library: &FileLibrary) -> Report {
         let mut res = if self.is_error {
             Report::error(self.message, self.code)
@@ -83,45 +87,53 @@ impl BadInterp {
 }
 
 #[inline]
+#[must_use]
 pub fn new_inconsistency_err<S: ToString>(msg: S) -> BadInterp {
     BadInterp::error(msg.to_string(), ReportCode::InconsistentStaticInformation)
 }
 
 #[inline]
+#[must_use]
 pub fn new_inconsistency_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
     Err(new_inconsistency_err(msg))
 }
 
 #[inline]
+#[must_use]
 pub fn new_compute_err<S: ToString>(msg: S) -> BadInterp {
     BadInterp::error(msg.to_string(), ReportCode::NonComputableExpression)
 }
 
 #[inline]
+#[must_use]
 pub fn new_compute_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
     Err(new_compute_err(msg))
 }
 
 #[inline]
+#[must_use]
 pub fn modifies_env_err() -> BadInterp {
     BadInterp::error(NOT_COMPUTE.to_string(), ReportCode::NonComputableExpression)
 }
 
 #[inline]
+#[must_use]
 pub fn modifies_env_err_result<R>() -> Result<R, BadInterp> {
     Err(modifies_env_err())
 }
 
 #[inline]
+#[must_use]
 pub fn is_modifies_env_err(e: &BadInterp) -> bool {
     e.is_error && e.message.eq(NOT_COMPUTE)
 }
 
 #[inline]
+#[must_use]
 pub fn is_modifies_env_err_result<R>(e: &Result<R, BadInterp>) -> bool {
     match e {
         Err(e) => is_modifies_env_err(e),
-        Ok(_) => false,
+        _ => false,
     }
 }
 
