@@ -66,14 +66,14 @@ impl WriteLLVMIR for ReturnBucket {
         producer: &dyn LLVMIRProducer<'a>,
     ) -> Option<LLVMInstruction<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
-        match self.with_size {
-            0 => Some(create_return_void(producer)),
-            1 => Some(create_return_from_any_value(
+        let res = match self.with_size {
+            0 => create_return_void(producer),
+            1 => create_return_from_any_value(
                 producer,
                 self.value
                     .produce_llvm_ir(producer)
                     .expect("Return instruction must produce a value to return"),
-            )),
+            ),
             _ => match self.value.as_ref() {
                 Instruction::Load(i) => {
                     let index = i
@@ -81,11 +81,12 @@ impl WriteLLVMIR for ReturnBucket {
                         .produce_llvm_ir(producer)
                         .expect("We need to produce some kind of instruction!")
                         .into_int_value();
-                    Some(create_return(producer, make_ref(producer, &i.address_type, index, false)))
+                    create_return(producer, make_ref(producer, &i.address_type, index, false))
                 }
                 _ => unreachable!("Expected a load instruction. Found {:?}", self.value),
             },
-        }
+        };
+        Some(res)
     }
 }
 
