@@ -324,7 +324,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             // ASSERT: always 0 from 'get_reverse_passing_refs_for_itr' in 'body_extractor.rs'
                             assert_eq!(idx, 0);
                             // NOTE: If unwrapping to u32 directly causes a panic, then need to allow Value as the parameter.
-                            self.base.set_subcmp_counter(subcmp, new_value.get_u32()?)?
+                            self.base.set_subcmp_counter(subcmp, new_value.as_u32()?)?
                         } else {
                             self.base.set_subcmp_signal(subcmp, idx, new_value)?
                         }

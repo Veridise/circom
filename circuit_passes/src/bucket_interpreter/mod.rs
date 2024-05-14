@@ -388,7 +388,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 false,
                 "store destination index",
             ),
-            |v| v.get_u32(),
+            |v| v.as_u32(),
         )?;
         match bucket.dest_address_type {
             AddressType::Variable => {
@@ -531,7 +531,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 if idx.is_unknown() {
                     return Ok(Some(Unknown));
                 } else {
-                    return Ok(Some(env.get_var(idx.get_u32()?)));
+                    return Ok(Some(env.get_var(idx.as_u32()?)));
                 }
             }
             AddressType::Signal => {
@@ -547,7 +547,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 if self.flags.all_signals_unknown || idx.is_unknown() {
                     return Ok(Some(Unknown));
                 } else {
-                    return Ok(Some(env.get_signal(idx.get_u32()?)));
+                    return Ok(Some(env.get_signal(idx.as_u32()?)));
                 }
             }
             AddressType::SubcmpSignal { cmp_address, .. } => {
@@ -623,7 +623,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                     // All variables in the range must be marked as unknown if the index is unknown
                     return Ok(env.set_vars_to_unk(possible_range));
                 } else {
-                    let idx = idx.get_u32()?;
+                    let idx = idx.as_u32()?;
                     assert!(possible_range.is_none() || possible_range.unwrap().contains(&idx));
                     return Ok(env.set_var(idx, value));
                 }
@@ -640,7 +640,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                     // All signals in the range must be marked as unknown if the index is unknown
                     return Ok(env.set_signals_to_unk(possible_range));
                 } else {
-                    let idx = idx.get_u32()?;
+                    let idx = idx.as_u32()?;
                     assert!(possible_range.is_none() || possible_range.unwrap().contains(&idx));
                     return Ok(env.set_signal(idx, value));
                 }

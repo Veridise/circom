@@ -45,7 +45,7 @@ impl<'d> DeterministicSubCmpInvokePass<'d> {
             let addr = interpreter.compute_instruction(cmp_address, env, false)?;
             let addr = addr
                 .expect("cmp_address instruction in SubcmpSignal must produce a value!")
-                .get_u32()?;
+                .as_u32()?;
             let new_status = if env.subcmp_counter_equal_to(addr, 1) { Last } else { NoLast };
             self.replacements.borrow_mut().insert(address_type.clone(), new_status);
         }
