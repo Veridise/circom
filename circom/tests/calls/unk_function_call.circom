@@ -1,7 +1,6 @@
 pragma circom 2.0.0;
-
 // REQUIRES: circom
-// RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s
+// RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
 function SplitFn(in, n, m) {
     return [in % (1 << n), (in \ (1 << n)) % (1 << m)];
@@ -317,3 +316,5 @@ template BigModInv51() {
 }
 
 component main = BigModInv51();
+
+//CHECK-LABEL: define{{.*}} void @BigModInv51_{{[0-9]+}}_run

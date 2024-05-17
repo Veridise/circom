@@ -4,6 +4,7 @@ use compiler::intermediate_representation::ir_interface::ObtainMeta;
 use program_structure::{
     error_code::ReportCode, error_definition::Report, file_definition::FileLibrary,
 };
+use super::InterpRes;
 
 const MUST_EXECUTE: &str = "Compute does not support Env modification. Use execute instead.";
 
@@ -94,32 +95,26 @@ pub fn new_inconsistency_err<S: ToString>(msg: S) -> BadInterp {
 
 #[inline]
 #[must_use]
-pub fn new_inconsistency_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
-    Err(new_inconsistency_err(msg))
-}
-
-#[inline]
-#[must_use]
 pub fn new_compute_err<S: ToString>(msg: S) -> BadInterp {
     BadInterp::error(msg.to_string(), ReportCode::NonComputableExpression)
 }
 
 #[inline]
 #[must_use]
-pub fn new_compute_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
-    Err(new_compute_err(msg))
+pub fn new_compute_err_result<S: ToString, R>(msg: S) -> InterpRes<R> {
+    InterpRes::Err(new_compute_err(msg))
 }
 
 #[inline]
 #[must_use]
-pub fn modifies_env_err() -> BadInterp {
+pub fn new_modifies_env_err() -> BadInterp {
     BadInterp::error(MUST_EXECUTE.to_string(), ReportCode::NonComputableExpression)
 }
 
 #[inline]
 #[must_use]
-pub fn modifies_env_err_result<R>() -> Result<R, BadInterp> {
-    Err(modifies_env_err())
+pub fn new_modifies_env_err_result<R>() -> InterpRes<R> {
+    InterpRes::Err(new_modifies_env_err())
 }
 
 #[inline]
@@ -130,32 +125,9 @@ pub fn is_modifies_env_err(e: &BadInterp) -> bool {
 
 #[inline]
 #[must_use]
-pub fn is_modifies_env_err_result<R>(e: &Result<R, BadInterp>) -> bool {
+pub fn is_modifies_env_err_result<R>(e: &InterpRes<R>) -> bool {
     match e {
-        Err(e) => is_modifies_env_err(e),
+        InterpRes::Err(e) => is_modifies_env_err(e),
         _ => false,
-    }
-}
-
-#[inline]
-pub fn add_loc_if_err<R, B: ObtainMeta>(
-    report: Result<R, BadInterp>,
-    loc: &B,
-) -> Result<R, BadInterp> {
-    report.map_err(|r| {
-        let mut new_r = r;
-        new_r.add_location(loc);
-        new_r
-    })
-}
-
-#[inline]
-pub fn map_ok<A, B, F>(r: Result<A, BadInterp>, f: F) -> Result<B, BadInterp>
-where
-    F: Fn(A) -> Result<B, BadInterp>,
-{
-    match r {
-        Ok(a) => f(a),
-        Err(e) => Err(e),
     }
 }

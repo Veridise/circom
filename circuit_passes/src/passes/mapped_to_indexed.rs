@@ -8,7 +8,8 @@ use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::operations::compute_offset;
-use crate::bucket_interpreter::value::Value::{KnownU32, self};
+use crate::bucket_interpreter::result_types::opt_as_result_u32;
+use crate::bucket_interpreter::value::Value::KnownU32;
 use crate::{default__get_mem, default__name, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
@@ -42,7 +43,7 @@ impl<'d> MappedToIndexedPass<'d> {
         let interpreter = self.memory.build_interpreter(self.global_data, self);
         let resolved_addr = interpreter
             .compute_instruction(cmp_address, env, false)
-            .and_then(|v| Value::into_u32_result(v, "subcomponent address"))?;
+            .and_then(|v| opt_as_result_u32(v, "subcomponent address"))?;
         let name = env.get_subcmp_name(resolved_addr).clone();
         let io_def =
             self.memory.get_iodef(&env.get_subcmp_template_id(resolved_addr), &signal_code);
@@ -51,7 +52,7 @@ impl<'d> MappedToIndexedPass<'d> {
             for i in indexes {
                 let val = interpreter
                     .compute_instruction(i, env, false)
-                    .and_then(|v| Value::into_u32_result(v, "subcomponent mapped signal"))?;
+                    .and_then(|v| opt_as_result_u32(v, "subcomponent mapped signal"))?;
                 indexes_values.push(val);
             }
             io_def.offset + compute_offset(&indexes_values, &io_def.lengths)?

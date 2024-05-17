@@ -5,14 +5,14 @@ use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::{Instruction, InstructionPointer, BucketId};
 use compiler::intermediate_representation::ir_interface::*;
 use code_producers::llvm_elements::array_switch::{get_array_load_name, get_array_store_name};
+use crate::bucket_interpreter::{to_bigint, operations};
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::error::{BadInterp, add_loc_if_err};
+use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
-use crate::bucket_interpreter::operations;
-use crate::bucket_interpreter::{RC, to_bigint, into_result};
-use crate::bucket_interpreter::value::Value::{KnownU32, KnownBigInt};
-use crate::{default__name, default__get_mem, default__run_template};
+use crate::bucket_interpreter::result_types::{InterpRes, RCI};
+use crate::bucket_interpreter::value::Value::{self, KnownBigInt, KnownU32};
+use crate::{check_res, default__get_mem, default__name, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 struct ZeroingInterpreter<'a> {
@@ -25,34 +25,39 @@ impl<'a> ZeroingInterpreter<'a> {
         ZeroingInterpreter { ff_constants, mem }
     }
 
-    pub fn compute_value_bucket(&self, bucket: &ValueBucket, _env: &Env) -> RC {
-        Ok(Some(match bucket.parse_as {
-            ValueType::U32 => KnownU32(bucket.value),
+    pub fn compute_value_bucket(&self, bucket: &ValueBucket, _env: &Env) -> RCI {
+        match bucket.parse_as {
+            ValueType::U32 => InterpRes::Continue(Some(KnownU32(bucket.value))),
             ValueType::BigInt => {
                 let constant = &self.ff_constants[bucket.value];
-                KnownBigInt(add_loc_if_err(to_bigint(constant), bucket)?)
+                to_bigint(constant).add_loc_if_err(bucket).map(|r| Some(KnownBigInt(r)))
             }
-        }))
+        }
     }
 
-    pub fn compute_load_bucket(&self, _bucket: &LoadBucket, _env: &Env) -> RC {
-        Ok(Some(KnownU32(0)))
+    pub fn compute_load_bucket(&self, _bucket: &LoadBucket, _env: &Env) -> RCI {
+        InterpRes::Continue(Some(KnownU32(0)))
     }
 
-    pub fn compute_compute_bucket(&self, bucket: &ComputeBucket, env: &Env) -> RC {
-        let mut stack = vec![];
+    pub fn compute_compute_bucket(&self, bucket: &ComputeBucket, env: &Env) -> RCI {
+        let mut stack: Vec<Value> = vec![];
         for i in &bucket.stack {
-            let value = self.compute_instruction(i, env)?;
-            stack.push(into_result(value, "operand")?);
+            let value = check_res!(self.compute_instruction(i, env).expect_some("operand"));
+            stack.push(value.unwrap());
         }
         // If any value of the stack is unknown we just return 0
         if stack.iter().any(|v| v.is_unknown()) {
-            return Ok(Some(KnownU32(0)));
+            InterpRes::Continue(Some(KnownU32(0)))
+        } else {
+            InterpRes::try_continue(operations::compute_operation(
+                bucket,
+                &stack,
+                self.mem.get_prime(),
+            ))
         }
-        operations::compute_operation(bucket, &stack, self.mem.get_prime())
     }
 
-    pub fn compute_instruction(&self, inst: &InstructionPointer, env: &Env) -> RC {
+    pub fn compute_instruction(&self, inst: &InstructionPointer, env: &Env) -> RCI {
         match inst.as_ref() {
             Instruction::Value(b) => self.compute_value_bucket(b, env),
             Instruction::Load(b) => self.compute_load_bucket(b, env),
@@ -106,14 +111,13 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
                 let mem = &self.memory;
                 let ff_constants = mem.get_ff_constants_clone();
                 let interpreter = ZeroingInterpreter::init(mem, &ff_constants);
-                let res = interpreter.compute_instruction(location, env)?;
-
+                let res = Result::from(interpreter.compute_instruction(location, env))?;
                 let offset = match res {
                     Some(KnownU32(base)) => base,
                     _ => unreachable!(),
                 };
                 Ok(match address {
-                    AddressType::Variable => mem.get_current_scope_variables_index_mapping(&offset),
+                    AddressType::Variable => mem.get_current_scope_variable_index_mapping(&offset),
                     AddressType::Signal => mem.get_current_scope_signal_index_mapping(&offset),
                     AddressType::SubcmpSignal { .. } => {
                         mem.get_current_scope_component_addr_index_mapping(&offset)

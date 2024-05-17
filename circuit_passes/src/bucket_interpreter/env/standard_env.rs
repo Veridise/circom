@@ -4,11 +4,10 @@ use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
-use crate::bucket_interpreter::env::{PRINT_ENV_SORTED, sort};
-use crate::bucket_interpreter::error::{BadInterp, new_inconsistency_err_result};
+use crate::bucket_interpreter::error::{new_inconsistency_err, BadInterp};
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use super::{EnvContextKind, LibraryAccess, SubcmpEnv};
+use super::{EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED, sort};
 
 #[derive(Clone)]
 pub struct StandardEnvData<'a> {
@@ -194,9 +193,10 @@ impl<'a> StandardEnvData<'a> {
                 f(entry.get_mut());
                 Ok(copy)
             }
-            Entry::Vacant(_) => {
-                new_inconsistency_err_result(format!("Can't find subcomponent {}", subcmp_idx))
-            }
+            Entry::Vacant(_) => Result::Err(new_inconsistency_err(format!(
+                "Can't find subcomponent {}",
+                subcmp_idx
+            ))),
         }
     }
 

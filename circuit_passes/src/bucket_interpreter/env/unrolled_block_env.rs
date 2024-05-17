@@ -153,7 +153,7 @@ impl<'a> UnrolledBlockEnvData<'a> {
 
     pub fn create_subcmp(
         self,
-        name: &'a String,
+        name: &String,
         base_index: usize,
         count: usize,
         template_id: usize,

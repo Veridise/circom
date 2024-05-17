@@ -5,7 +5,7 @@ use compiler::num_traits::ToPrimitive;
 use circom_algebra::modular_arithmetic;
 use program_structure::error_code::ReportCode;
 use crate::passes::builders::{build_bigint_value_bucket, build_u32_value_bucket};
-use super::error::{new_compute_err, new_compute_err_result, BadInterp};
+use super::error::{new_compute_err, BadInterp};
 use super::memory::PassMemory;
 use super::value::Value::{KnownBigInt, KnownU32, Unknown};
 
@@ -121,15 +121,12 @@ impl Value {
             KnownBigInt(n) => Ok(build_bigint_value_bucket(&ObtainMetaImpl::default(), mem, n)),
         }
     }
+}
 
-    #[inline]
-    #[must_use]
-    pub fn into_u32_result<S: std::fmt::Display>(
-        v: Option<Value>,
-        label: S,
-    ) -> Result<usize, BadInterp> {
-        super::into_result(v, label)?.as_u32()
-    }
+#[inline]
+#[must_use]
+fn new_compute_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
+    Result::Err(new_compute_err(msg))
 }
 
 #[must_use]

@@ -66,7 +66,7 @@ impl<'d> LoopUnrollPass<'d> {
             let mut inner_env = env.clone();
             loop {
                 recorder.record_header_env(&inner_env);
-                let (_, cond, new_env) =
+                let (cond, new_env) =
                     interpreter.execute_loop_bucket_once(bucket, inner_env, true)?;
                 match cond {
                     // If the conditional becomes unknown just give up.

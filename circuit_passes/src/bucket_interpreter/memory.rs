@@ -180,27 +180,7 @@ impl PassMemory {
         idx
     }
 
-    pub fn get_iodef(&self, template_id: &usize, signal_code: &usize) -> IODef {
-        self.io_map.borrow()[template_id][*signal_code].clone()
-    }
-
-    pub fn get_signal_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
-        self.signal_index_mapping.borrow()[scope][index].clone()
-    }
-
-    pub fn get_current_scope_signal_index_mapping(&self, index: &usize) -> Range<usize> {
-        self.get_signal_index_mapping(&self.get_current_scope_header(), index)
-    }
-
-    pub fn get_variables_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
-        self.variable_index_mapping.borrow()[scope][index].clone()
-    }
-
-    pub fn get_current_scope_variables_index_mapping(&self, index: &usize) -> Range<usize> {
-        self.get_variables_index_mapping(&self.get_current_scope_header(), index)
-    }
-
-    pub fn new_variable_index_mapping(&self, scope: &String, size: &usize) -> usize {
+    pub fn new_variable_index_mapping(&self, scope: &String, size: usize) -> usize {
         let mut base = self.variable_index_mapping.borrow_mut();
         let scope_map = base.entry(scope.clone()).or_default();
         let new_idx = match scope_map.last_key_value() {
@@ -214,8 +194,48 @@ impl PassMemory {
         new_idx
     }
 
-    pub fn new_current_scope_variable_index_mapping(&self, size: &usize) -> usize {
+    pub fn new_current_scope_variable_index_mapping(&self, size: usize) -> usize {
         self.new_variable_index_mapping(&self.get_current_scope_header(), size)
+    }
+
+    #[cfg(test)]
+    pub fn new_signal_index_mapping(&self, scope: &String, size: usize) -> usize {
+        let mut base = self.signal_index_mapping.borrow_mut();
+        let scope_map = base.entry(scope.clone()).or_default();
+        let new_idx = match scope_map.last_key_value() {
+            Some((k, _)) => *k + 1,
+            None => 0,
+        };
+        let range = (new_idx)..(new_idx + size);
+        for i in range.clone() {
+            scope_map.insert(i, range.clone());
+        }
+        new_idx
+    }
+
+    #[cfg(test)]
+    pub fn new_current_scope_signal_index_mapping(&self, size: usize) -> usize {
+        self.new_signal_index_mapping(&self.get_current_scope_header(), size)
+    }
+
+    pub fn get_iodef(&self, template_id: &usize, signal_code: &usize) -> IODef {
+        self.io_map.borrow()[template_id][*signal_code].clone()
+    }
+
+    pub fn get_signal_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
+        self.signal_index_mapping.borrow()[scope][index].clone()
+    }
+
+    pub fn get_current_scope_signal_index_mapping(&self, index: &usize) -> Range<usize> {
+        self.get_signal_index_mapping(&self.get_current_scope_header(), index)
+    }
+
+    pub fn get_variable_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
+        self.variable_index_mapping.borrow()[scope][index].clone()
+    }
+
+    pub fn get_current_scope_variable_index_mapping(&self, index: &usize) -> Range<usize> {
+        self.get_variable_index_mapping(&self.get_current_scope_header(), index)
     }
 
     pub fn get_variable_index_mapping_clone(&self) -> HashMap<String, IndexMapping> {

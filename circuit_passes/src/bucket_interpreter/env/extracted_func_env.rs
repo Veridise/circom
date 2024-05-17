@@ -355,7 +355,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn create_subcmp(
         self,
-        _name: &'a String,
+        _name: &String,
         _base_index: usize,
         _count: usize,
         _template_id: usize,
