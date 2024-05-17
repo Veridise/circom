@@ -48,11 +48,11 @@ pub struct PassMemory {
     current_scope: RefCell<Scope>,
     ///
     io_map: RefCell<TemplateInstanceIOMap>,
-    ///
+    /// Map template/function header to signal index, to the total range of signal memory occupied by it
     signal_index_mapping: RefCell<HashMap<String, IndexMapping>>,
-    ///
+    /// Map template/function header to variable index, to the total range of variable memory occupied by it
     variable_index_mapping: RefCell<HashMap<String, IndexMapping>>,
-    ///
+    /// Map template/function header to component index, to the total range of component memory occupied by it
     component_addr_index_mapping: RefCell<HashMap<String, IndexMapping>>,
     ///
     prime: BigInt,

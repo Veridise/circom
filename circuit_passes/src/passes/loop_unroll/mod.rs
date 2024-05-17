@@ -183,7 +183,7 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::cell::RefCell;
     use code_producers::llvm_elements::IndexMapping;
     use compiler::circuit_design::template::TemplateCodeInfo;
@@ -253,7 +253,7 @@ mod test {
                         dest_address_type: AddressType::Variable,
                         dest: LocationRule::Indexed {
                             location: build_u32_value(&ObtainMetaImpl::default(), 0),
-                            template_header: Some("test_0".to_string()),
+                            template_header: None,
                         },
                         src: build_u32_value(&ObtainMetaImpl::default(), 0),
                         bounded_fn: None,
@@ -270,7 +270,7 @@ mod test {
                         dest_address_type: AddressType::Variable,
                         dest: LocationRule::Indexed {
                             location: build_u32_value(&ObtainMetaImpl::default(), 1),
-                            template_header: Some("test_0".to_string()),
+                            template_header: None,
                         },
                         src: build_u32_value(&ObtainMetaImpl::default(), 0),
                         bounded_fn: None,
@@ -298,7 +298,7 @@ mod test {
                                     address_type: AddressType::Variable,
                                     src: LocationRule::Indexed {
                                         location: build_u32_value(&ObtainMetaImpl::default(), 1),
-                                        template_header: Some("test_0".to_string()),
+                                        template_header: None,
                                     },
                                     context: InstrContext { size: 0 },
                                     bounded_fn: None,
@@ -341,7 +341,7 @@ mod test {
                                                     &ObtainMetaImpl::default(),
                                                     0,
                                                 ),
-                                                template_header: Some("test_0".to_string()),
+                                                template_header: None,
                                             },
                                             context: InstrContext { size: 0 },
                                             bounded_fn: None,
@@ -386,7 +386,7 @@ mod test {
                                                     &ObtainMetaImpl::default(),
                                                     1,
                                                 ),
-                                                template_header: Some("test_0".to_string()),
+                                                template_header: None,
                                             },
                                             context: InstrContext { size: 0 },
                                             bounded_fn: None,

@@ -27,3 +27,4 @@ component main = UnknownIndexOverwriteKnown();
 
 //CHECK-LABEL: define{{.*}} void @UnknownIndexOverwriteKnown_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK-NOT: @__assert(i1 true)
+//CHECK-NOT: @__assert(i1 false)

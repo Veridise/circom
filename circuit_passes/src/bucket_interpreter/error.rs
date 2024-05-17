@@ -5,7 +5,7 @@ use program_structure::{
     error_code::ReportCode, error_definition::Report, file_definition::FileLibrary,
 };
 
-const NOT_COMPUTE: &str = "Compute does not support Env modification. Use execute instead.";
+const MUST_EXECUTE: &str = "Compute does not support Env modification. Use execute instead.";
 
 #[derive(Clone, Debug)]
 pub struct BadInterp {
@@ -113,7 +113,7 @@ pub fn new_compute_err_result<S: ToString, R>(msg: S) -> Result<R, BadInterp> {
 #[inline]
 #[must_use]
 pub fn modifies_env_err() -> BadInterp {
-    BadInterp::error(NOT_COMPUTE.to_string(), ReportCode::NonComputableExpression)
+    BadInterp::error(MUST_EXECUTE.to_string(), ReportCode::NonComputableExpression)
 }
 
 #[inline]
@@ -125,7 +125,7 @@ pub fn modifies_env_err_result<R>() -> Result<R, BadInterp> {
 #[inline]
 #[must_use]
 pub fn is_modifies_env_err(e: &BadInterp) -> bool {
-    e.is_error && e.message.eq(NOT_COMPUTE)
+    e.is_error && e.message.eq(MUST_EXECUTE)
 }
 
 #[inline]

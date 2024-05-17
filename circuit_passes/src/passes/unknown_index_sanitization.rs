@@ -130,14 +130,9 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
         env: &Env,
     ) -> Result<bool, BadInterp> {
         let interpreter = self.memory.build_interpreter(self.global_data, self);
-        let idx = interpreter.compute_location_index(
-            location,
-            location_owner,
-            env,
-            false,
-            "indexed location",
-        )?;
-        Ok(idx.is_unknown())
+        interpreter
+            .compute_location_index(location, location_owner, env, false, "indexed location")
+            .map(|v| v.is_unknown())
     }
 }
 
