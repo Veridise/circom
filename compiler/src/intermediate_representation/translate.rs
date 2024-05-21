@@ -1,6 +1,8 @@
 use super::ir_interface::*;
 use crate::hir::very_concrete_program::*;
 use crate::intermediate_representation::log_bucket::LogBucketArg;
+use crate::intermediate_representation::constraint_bucket::ConstraintBucket;
+use crate::intermediate_representation::{new_id, BucketId};
 use constant_tracking::ConstantTracker;
 use num_bigint_dig::BigInt;
 use program_structure::ast::*;
@@ -9,10 +11,6 @@ use program_structure::utils::environment::VarEnvironment;
 use std::collections::{HashMap, BTreeMap, HashSet};
 use code_producers::llvm_elements::IndexMapping;
 use program_structure::ast::AssignOp;
-
-use crate::intermediate_representation::constraint_bucket::ConstraintBucket;
-use crate::intermediate_representation::{new_id, BucketId};
-
 
 type Length = usize;
 pub type E = VarEnvironment<SymbolInfo>;

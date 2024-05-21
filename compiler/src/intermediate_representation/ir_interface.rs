@@ -21,10 +21,10 @@ pub use super::block_bucket::BlockBucket;
 pub use super::nop_bucket::NopBucket;
 
 use crate::translating_traits::*;
+use super::{SExp, ToSExp, UpdateId};
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
+use code_producers::llvm_elements::*;
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::{SExp, ToSExp, UpdateId};
 
 pub trait IntoInstruction {
     fn into_instruction(self) -> Instruction;
@@ -203,11 +203,8 @@ impl WriteWasm for Instruction {
 }
 
 impl WriteLLVMIR for Instruction {
-    /// This must always return the final statement in the current BasicBlock or None if empty.
-    fn produce_llvm_ir<'a>(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-    ) -> Option<LLVMInstruction<'a>> {
+    /// This should return the value produced or None for instruction-like nodes that produce no value
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         use Instruction::*;
         match self {
             Value(v) => v.produce_llvm_ir(producer),

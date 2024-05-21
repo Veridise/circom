@@ -8,6 +8,7 @@ use compiler::intermediate_representation::{
     ir_interface::*, Instruction, InstructionList, InstructionPointer, new_id, BucketId,
 };
 use crate::bucket_interpreter::{error::BadInterp, memory::PassMemory};
+use self::unreachable_code_removal::UnreachableRemovalPass;
 use self::{
     checks::assert_unique_ids_in_circuit, conditional_flattening::ConditionalFlatteningPass,
     const_arg_deduplication::ConstArgDeduplicationPass,
@@ -24,8 +25,9 @@ mod const_arg_deduplication;
 mod deterministic_subcomponent_invocation;
 mod mapped_to_indexed;
 mod simplification;
-mod unused_func_removal;
 mod unknown_index_sanitization;
+mod unreachable_code_removal;
+mod unused_func_removal;
 pub mod builders;
 pub mod loop_unroll;
 
@@ -745,6 +747,7 @@ pub trait CircuitTransformationPass {
 
 pub enum PassKind {
     ConstArgDeduplication,
+    UnreachableCodeRemoval,
     LoopUnroll,
     Simplification,
     ConditionalFlattening,
@@ -800,6 +803,11 @@ impl PassManager {
         self
     }
 
+    pub fn schedule_unreachable_code_removal(&self) -> &Self {
+        self.passes.borrow_mut().push(PassKind::UnreachableCodeRemoval);
+        self
+    }
+
     pub fn schedule_loop_unroll_pass(&self) -> &Self {
         self.passes.borrow_mut().push(PassKind::LoopUnroll);
         self
@@ -843,6 +851,9 @@ impl PassManager {
         match kind {
             PassKind::ConstArgDeduplication => {
                 Box::new(ConstArgDeduplicationPass::new(prime.clone(), global_data))
+            }
+            PassKind::UnreachableCodeRemoval => {
+                Box::new(UnreachableRemovalPass::new(prime.clone(), global_data))
             }
             PassKind::LoopUnroll => Box::new(LoopUnrollPass::new(prime.clone(), global_data)),
             PassKind::Simplification => {

@@ -109,20 +109,30 @@ impl PassMemory {
         BucketInterpreter::init(global_data, observer, flags, self, scope)
     }
 
+    pub fn run_template_with_flags<'d>(
+        &self,
+        global_data: &'d RefCell<GlobalPassData>,
+        observer: &dyn for<'e> Observer<Env<'e>>,
+        template: &TemplateCode,
+        flags: InterpreterFlags,
+    ) -> Result<(), BadInterp> {
+        assert!(!self.get_current_scope_header().is_empty());
+        if cfg!(debug_assertions) {
+            println!("Running template {}", self.get_current_scope_header());
+        }
+        let interpreter = self.build_interpreter_with_flags(global_data, observer, flags);
+        let env = Env::new_standard_env(EnvContextKind::Template, self);
+        interpreter.execute_instructions(&template.body, env, true)?;
+        Ok(())
+    }
+
     pub fn run_template<'d>(
         &self,
         global_data: &'d RefCell<GlobalPassData>,
         observer: &dyn for<'e> Observer<Env<'e>>,
         template: &TemplateCode,
     ) -> Result<(), BadInterp> {
-        assert!(!self.get_current_scope_header().is_empty());
-        if cfg!(debug_assertions) {
-            println!("Running template {}", self.get_current_scope_header());
-        }
-        let interpreter = self.build_interpreter(global_data, observer);
-        let env = Env::new_standard_env(EnvContextKind::Template, self);
-        interpreter.execute_instructions(&template.body, env, true)?;
-        Ok(())
+        self.run_template_with_flags(global_data, observer, template, InterpreterFlags::default())
     }
 
     pub fn add_template(&self, template: &TemplateCode) {

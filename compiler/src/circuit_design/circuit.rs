@@ -52,7 +52,7 @@ impl WriteLLVMIR for Circuit {
     fn produce_llvm_ir<'a>(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
-    ) -> Option<LLVMInstruction<'a>> {
+    ) -> Option<LLVMValue<'a>> {
         // Code for prelude
 
         // Code for standard library?
@@ -201,7 +201,8 @@ impl WriteLLVMIR for Circuit {
                                 &[signals.into()]);
             create_return_void(producer);
         }
-        None // No need to return at this level
+
+        None // We don't return a Value from the entire circuit
     }
 }
 

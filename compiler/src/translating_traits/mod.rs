@@ -32,9 +32,9 @@ pub trait WriteWasm {
 }
 
 pub trait WriteLLVMIR {
-    /// This must always return the final statement in the current BasicBlock or None if empty.
+    /// This should return the value produced or None for instruction-like nodes that produce no value
     fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>)
-        -> Option<LLVMInstruction<'a>>;
+        -> Option<LLVMValue<'a>>;
 
     fn write_llvm_ir(
         &self,

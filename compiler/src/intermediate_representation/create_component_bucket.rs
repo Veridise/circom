@@ -1,12 +1,13 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{build_fn_name, LLVMInstruction, LLVMIRProducer, run_fn_name, to_basic_metadata_enum, to_enum};
+use code_producers::llvm_elements::{
+    build_fn_name, run_fn_name, to_basic_metadata_enum, to_enum, LLVMIRProducer, LLVMValue,
+};
 use code_producers::llvm_elements::instructions::{create_add, create_call};
 use code_producers::llvm_elements::values::create_literal_u32;
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
-
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct CreateCmpBucket {
@@ -32,7 +33,7 @@ pub struct CreateCmpBucket {
     pub signal_offset_jump: usize,
     // component number offset with respect to the father's component id
     pub component_offset: usize,
-    pub component_offset_jump:usize, 
+    pub component_offset_jump: usize,
     pub number_of_cmp: usize,
     pub has_inputs: bool,
 }
@@ -86,23 +87,34 @@ impl UpdateId for CreateCmpBucket {
 }
 
 impl WriteLLVMIR for CreateCmpBucket {
-    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
-        let id = self.sub_cmp_id.produce_llvm_ir(producer).expect("sub_cmp_id must produce a value!");
+        let id =
+            self.sub_cmp_id.produce_llvm_ir(producer).expect("sub_cmp_id must produce a value!");
         let ctx = producer.template_ctx();
 
         for cmp_n in 0..self.number_of_cmp {
-            let add = create_add(producer, id.into_int_value(), create_literal_u32(producer, cmp_n as u64));
-            let sub_cmp_addr = ctx.load_subcmp(producer, add);
-            create_call(producer, build_fn_name(self.symbol.clone()).as_str(), &[sub_cmp_addr.into()]);
+            let add = create_add(
+                producer,
+                id.into_int_value(),
+                create_literal_u32(producer, cmp_n as u64),
+            )
+            .into_int_value();
+            let sub_cmp_addr = ctx.load_subcmp(producer, add.into());
+            create_call(
+                producer,
+                build_fn_name(self.symbol.clone()).as_str(),
+                &[sub_cmp_addr.into()],
+            );
             // If it has 0 inputs run directly
             if !self.has_inputs {
-                let sub_cmp_signal_addr = ctx.load_subcmp_addr(producer, add);
+                let sub_cmp_signal_addr = ctx.load_subcmp_addr(producer, add.into());
                 let sub_cmp = to_basic_metadata_enum(to_enum(sub_cmp_signal_addr));
                 create_call(producer, run_fn_name(self.symbol.clone()).as_str(), &[sub_cmp]);
             }
         }
+
         None // We don't return a Value from this bucket
     }
 }

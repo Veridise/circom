@@ -1,18 +1,19 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
-use code_producers::llvm_elements::{LLVMInstruction, to_basic_metadata_enum, LLVMIRProducer};
-use code_producers::llvm_elements::fr::{
-    FR_ADD_FN_NAME, FR_SUB_FN_NAME, FR_MUL_FN_NAME, FR_DIV_FN_NAME, FR_INTDIV_FN_NAME, FR_MOD_FN_NAME, FR_POW_FN_NAME,
-    FR_EQ_FN_NAME, FR_NEQ_FN_NAME, FR_LT_FN_NAME, FR_GT_FN_NAME, FR_LE_FN_NAME, FR_GE_FN_NAME,
-    FR_NEG_FN_NAME, FR_SHL_FN_NAME, FR_SHR_FN_NAME,
-    FR_BITAND_FN_NAME, FR_BITOR_FN_NAME, FR_BITXOR_FN_NAME, FR_BITFLIP_FN_NAME,
-    FR_LAND_FN_NAME, FR_LOR_FN_NAME, FR_LNOT_FN_NAME, FR_ADDR_CAST_FN_NAME
-};
-use code_producers::llvm_elements::instructions::{create_add_with_name, create_call, create_mul_with_name};
-use code_producers::wasm_elements::*;
 use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
-
+use code_producers::c_elements::*;
+use code_producers::llvm_elements::{to_basic_metadata_enum, LLVMIRProducer, LLVMValue};
+use code_producers::llvm_elements::fr::{
+    FR_ADD_FN_NAME, FR_SUB_FN_NAME, FR_MUL_FN_NAME, FR_DIV_FN_NAME, FR_INTDIV_FN_NAME,
+    FR_MOD_FN_NAME, FR_POW_FN_NAME, FR_EQ_FN_NAME, FR_NEQ_FN_NAME, FR_LT_FN_NAME, FR_GT_FN_NAME,
+    FR_LE_FN_NAME, FR_GE_FN_NAME, FR_NEG_FN_NAME, FR_SHL_FN_NAME, FR_SHR_FN_NAME,
+    FR_BITAND_FN_NAME, FR_BITOR_FN_NAME, FR_BITXOR_FN_NAME, FR_BITFLIP_FN_NAME, FR_LAND_FN_NAME,
+    FR_LOR_FN_NAME, FR_LNOT_FN_NAME, FR_ADDR_CAST_FN_NAME,
+};
+use code_producers::llvm_elements::instructions::{
+    create_add_with_name, create_call, create_mul_with_name,
+};
+use code_producers::wasm_elements::*;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Ord, PartialOrd)]
 pub enum OperatorType {
@@ -165,93 +166,44 @@ impl UpdateId for ComputeBucket {
 }
 
 impl WriteLLVMIR for ComputeBucket {
-    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
         let mut stack = vec![];
         for i in &self.stack {
             let inst = i.produce_llvm_ir(producer);
             // Do not use as argument instructions that do not generate an instruction
-            if let Some(inst) = inst {
-                stack.push(inst);
+            // TODO: Should a stack argument ever NOT produce a value?
+            if let Some(v) = inst {
+                stack.push(v);
             }
         }
-        let args: Vec<_> = stack.into_iter().map(|i| {
-            to_basic_metadata_enum(i)
-        }).collect();
+        let args: Vec<_> = stack.into_iter().collect();
         let i = match &self.op {
-            OperatorType::Mul => {
-                create_call(producer,FR_MUL_FN_NAME, &args)
-            }
-            OperatorType::Div => {
-                create_call(producer,FR_DIV_FN_NAME, &args)
-            }
-            OperatorType::Add => {
-                create_call(producer,FR_ADD_FN_NAME, &args)
-            }
-            OperatorType::Sub => {
-                create_call(producer,FR_SUB_FN_NAME, &args)
-            }
-            OperatorType::Pow => {
-                create_call(producer,FR_POW_FN_NAME, &args)
-            }
-            OperatorType::IntDiv => {
-                create_call(producer,FR_INTDIV_FN_NAME, &args)
-            }
-            OperatorType::Mod => {
-                create_call(producer,FR_MOD_FN_NAME, &args)
-            }
-            OperatorType::ShiftL => {
-                create_call(producer,FR_SHL_FN_NAME, &args)
-            }
-            OperatorType::ShiftR => {
-                create_call(producer,FR_SHR_FN_NAME, &args)
-            }
-            OperatorType::LesserEq => {
-                create_call(producer,FR_LE_FN_NAME, &args)
-            }
-            OperatorType::GreaterEq => {
-                create_call(producer,FR_GE_FN_NAME, &args)
-            }
-            OperatorType::Lesser => {
-                create_call(producer,FR_LT_FN_NAME, &args)
-            }
-            OperatorType::Greater => {
-                create_call(producer,FR_GT_FN_NAME, &args)
-            }
-            OperatorType::Eq(_) => {
-                create_call(producer,FR_EQ_FN_NAME, &args)
-            }
-            OperatorType::NotEq => {
-                create_call(producer,FR_NEQ_FN_NAME, &args)
-            }
-            OperatorType::BitOr => {
-                create_call(producer,FR_BITOR_FN_NAME, &args)
-            }
-            OperatorType::BitAnd => {
-                create_call(producer,FR_BITAND_FN_NAME, &args)
-            }
-            OperatorType::BitXor => {
-                create_call(producer,FR_BITXOR_FN_NAME, &args)
-            }
-            OperatorType::PrefixSub => {
-                create_call(producer,FR_NEG_FN_NAME, &args)
-            }
-            OperatorType::BoolOr => {
-                create_call(producer, FR_LOR_FN_NAME, &args)
-            }
-            OperatorType::BoolAnd => {
-                create_call(producer, FR_LAND_FN_NAME, &args)
-            }
-            OperatorType::BoolNot => {
-                create_call(producer, FR_LNOT_FN_NAME, &args)
-            }
-            OperatorType::Complement => {
-                create_call(producer, FR_BITFLIP_FN_NAME, &args)
-            }
-            OperatorType::ToAddress => {
-                create_call(producer,FR_ADDR_CAST_FN_NAME, &args)
-            }
+            OperatorType::Mul => create_call(producer, FR_MUL_FN_NAME, &args),
+            OperatorType::Div => create_call(producer, FR_DIV_FN_NAME, &args),
+            OperatorType::Add => create_call(producer, FR_ADD_FN_NAME, &args),
+            OperatorType::Sub => create_call(producer, FR_SUB_FN_NAME, &args),
+            OperatorType::Pow => create_call(producer, FR_POW_FN_NAME, &args),
+            OperatorType::IntDiv => create_call(producer, FR_INTDIV_FN_NAME, &args),
+            OperatorType::Mod => create_call(producer, FR_MOD_FN_NAME, &args),
+            OperatorType::ShiftL => create_call(producer, FR_SHL_FN_NAME, &args),
+            OperatorType::ShiftR => create_call(producer, FR_SHR_FN_NAME, &args),
+            OperatorType::LesserEq => create_call(producer, FR_LE_FN_NAME, &args),
+            OperatorType::GreaterEq => create_call(producer, FR_GE_FN_NAME, &args),
+            OperatorType::Lesser => create_call(producer, FR_LT_FN_NAME, &args),
+            OperatorType::Greater => create_call(producer, FR_GT_FN_NAME, &args),
+            OperatorType::Eq(_) => create_call(producer, FR_EQ_FN_NAME, &args),
+            OperatorType::NotEq => create_call(producer, FR_NEQ_FN_NAME, &args),
+            OperatorType::BitOr => create_call(producer, FR_BITOR_FN_NAME, &args),
+            OperatorType::BitAnd => create_call(producer, FR_BITAND_FN_NAME, &args),
+            OperatorType::BitXor => create_call(producer, FR_BITXOR_FN_NAME, &args),
+            OperatorType::PrefixSub => create_call(producer, FR_NEG_FN_NAME, &args),
+            OperatorType::BoolOr => create_call(producer, FR_LOR_FN_NAME, &args),
+            OperatorType::BoolAnd => create_call(producer, FR_LAND_FN_NAME, &args),
+            OperatorType::BoolNot => create_call(producer, FR_LNOT_FN_NAME, &args),
+            OperatorType::Complement => create_call(producer, FR_BITFLIP_FN_NAME, &args),
+            OperatorType::ToAddress => create_call(producer, FR_ADDR_CAST_FN_NAME, &args),
             OperatorType::MulAddress => {
                 let lhs = args[0].into_int_value();
                 let rhs = args[1].into_int_value();
@@ -263,7 +215,7 @@ impl WriteLLVMIR for ComputeBucket {
                 create_add_with_name(producer, lhs, rhs, "add_addr")
             }
         };
-        Some(i)
+        Some(to_basic_metadata_enum(i))
     }
 }
 

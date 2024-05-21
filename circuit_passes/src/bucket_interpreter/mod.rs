@@ -35,6 +35,7 @@ use self::value::Value::{self, KnownBigInt, KnownU32, Unknown};
 #[derive(Default, Debug, Clone)]
 pub struct InterpreterFlags {
     pub all_signals_unknown: bool,
+    pub visit_unknown_condition_branches: bool,
 }
 
 pub struct BucketInterpreter<'a, 'd> {
@@ -42,6 +43,7 @@ pub struct BucketInterpreter<'a, 'd> {
     observer: &'a dyn for<'e> Observer<Env<'e>>,
     flags: InterpreterFlags,
     mem: &'a PassMemory,
+    #[allow(dead_code)]
     scope: String,
 }
 
@@ -732,7 +734,10 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 Instruction::Load(LoadBucket { bounded_fn: Some(symbol), .. }) =>
                     fr::is_builtin_function(symbol),
                 Instruction::Call(CallBucket { symbol, .. }) => fr::is_builtin_function(symbol),
-                _ => false,
+                x => {
+                    println!("Did not expect {:?}", x);
+                    false
+                }
             }));
             // The extracted loop body and array parameter functions can change any values in
             //  the environment via the parameters passed to it. So interpret the function and
@@ -921,7 +926,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         self._compute_condition(cond, &env, observe).map(|r| (r, env))
     }
 
-    fn _impl_conditional_bucket<'s, 'i, E>(
+    fn _impl_conditional_bucket<'s, 'i, E: Clone>(
         &'s self,
         cond: &'i InstructionPointer,
         true_branch: &'i [InstructionPointer],
@@ -936,7 +941,13 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             |_| unreachable!() // Cannot contain InterpRes::Return
         );
         match val {
-            None => InterpRes::Continue((Some(Value::Unknown), None, env)),
+            None => {
+                if self.flags.visit_unknown_condition_branches {
+                    process_body(&self, &true_branch, env.clone(), observe);
+                    process_body(&self, &false_branch, env.clone(), observe);
+                }
+                InterpRes::Continue((Some(Value::Unknown), None, env))
+            }
             Some(true) => {
                 process_body(&self, &true_branch, env, observe).map(|(r, e)| (r, Some(true), e))
             }

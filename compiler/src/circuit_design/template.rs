@@ -4,8 +4,7 @@ use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use std::default::Default;
 use code_producers::llvm_elements::{
-    AnyType, AnyValue, build_fn_name, LLVMInstruction, LLVMIRProducer, run_fn_name,
-    to_basic_type_enum, Linkage,
+    build_fn_name, run_fn_name, to_basic_type_enum, AnyType, AnyValue, LLVMIRProducer, LLVMValue, Linkage
 };
 use code_producers::llvm_elements::functions::{create_bb, create_function};
 use code_producers::llvm_elements::instructions::{
@@ -84,7 +83,7 @@ impl ToSExp for TemplateCodeInfo {
 }
 
 impl WriteLLVMIR for TemplateCodeInfo {
-    fn produce_llvm_ir<'ctx>(&self, producer: &dyn LLVMIRProducer<'ctx>) -> Option<LLVMInstruction<'ctx>> {
+    fn produce_llvm_ir<'ctx>(&self, producer: &dyn LLVMIRProducer<'ctx>) -> Option<LLVMValue<'ctx>> {
         if cfg!(debug_assertions) {
             println!("Generating code for {}", self.header);
         }
@@ -164,7 +163,7 @@ impl WriteLLVMIR for TemplateCodeInfo {
         let prologue = create_bb(producer, run_function, "prologue");
         create_br(producer, prologue);
         producer.set_current_bb(prologue);
-        let ret = create_return_void(producer);
+        create_return_void(producer);
 
         // Use the template name as the Section identifier to prevent function merging
         //  pass from combining the build/run functions from different templates.
@@ -174,7 +173,8 @@ impl WriteLLVMIR for TemplateCodeInfo {
         // Set External linkage so main template functions are not removed by global DCE
         run_function.set_linkage(Linkage::External);
         build_function.set_linkage(Linkage::External);
-        Some(ret)
+
+        None // We don't return a Value from a template definition
     }
 }
 

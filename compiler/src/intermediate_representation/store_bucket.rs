@@ -1,9 +1,10 @@
 pub use either::Either;
 use super::{ir_interface::*, make_ref};
 use crate::translating_traits::*;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{
-    run_fn_name, to_enum, ConstraintKind, LLVMIRProducer, LLVMInstruction,
+    run_fn_name, to_enum, ConstraintKind, LLVMIRProducer, LLVMInstruction, LLVMValue,
 };
 use code_producers::llvm_elements::array_switch::unsized_array_ptr_ty;
 use code_producers::llvm_elements::instructions::{
@@ -13,7 +14,6 @@ use code_producers::llvm_elements::instructions::{
 use code_producers::llvm_elements::stdlib::LLVM_DONOTHING_FN_NAME;
 use code_producers::llvm_elements::values::{create_literal_u32, zero};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct StoreBucket {
@@ -94,11 +94,9 @@ impl StoreBucket {
         dest_address_type: &AddressType,
         context: InstrContext,
         bounded_fn: &Option<String>,
-    ) -> Option<LLVMInstruction<'a>> {
-        let dest_index = dest
-            .produce_llvm_ir(producer)
-            .expect("We need to produce some kind of instruction!")
-            .into_int_value();
+    ) -> Option<LLVMValue<'a>> {
+        let dest_index =
+            dest.produce_llvm_ir(producer).expect("Must produce some kind of instruction!");
 
         // Use a closure here to avoid creating dead code if this value is not used.
         //  The closure also delays code generation so that the value being stored
@@ -109,13 +107,11 @@ impl StoreBucket {
         });
 
         // If we have bounds for an unknown index, we will get the base address and let the function check the bounds
-        let store = match &bounded_fn {
+        match &bounded_fn {
             Some(name) => {
                 assert!(producer.body_ctx().get_wrapping_constraint().is_none());
                 assert_eq!(1, context.size, "unhandled array store");
-                if name == LLVM_DONOTHING_FN_NAME {
-                    None
-                } else {
+                if name != LLVM_DONOTHING_FN_NAME {
                     let arr_ptr = match &dest_address_type {
                         AddressType::Variable => producer.body_ctx().get_variable_array(producer),
                         AddressType::Signal => producer.template_ctx().get_signal_array(producer),
@@ -127,16 +123,18 @@ impl StoreBucket {
                             create_gep(producer, subcmp, &[zero(producer)])
                         }
                     };
-                    let arr_ptr = create_pointer_cast(producer, arr_ptr, unsized_array_ptr_ty(producer));
-                    Some(create_call(
+                    let arr_ptr =
+                        create_pointer_cast(producer, arr_ptr, unsized_array_ptr_ty(producer));
+                    create_call(
                         producer,
                         name.as_str(),
-                        &[arr_ptr.into(), dest_index.into(), source().into_int_value().into()],
-                    ))
+                        &[arr_ptr.into(), dest_index, source().into_int_value().into()],
+                    );
                 }
             }
             None => {
-                let dest_gep = make_ref(producer, &dest_address_type, dest_index, false);
+                let dest_gep =
+                    make_ref(producer, &dest_address_type, dest_index.into_int_value(), false);
                 if context.size > 1 {
                     // In the non-scalar case, produce an array copy. If the stored source
                     //  is a LoadBucket, first convert it into an address.
@@ -146,7 +144,7 @@ impl StoreBucket {
                                 let src_index = v
                                     .src
                                     .produce_llvm_ir(producer)
-                                    .expect("We need to produce some kind of instruction!")
+                                    .expect("Must produce some kind of instruction!")
                                     .into_int_value();
                                 make_ref(producer, &v.address_type, src_index, false).into()
                             });
@@ -154,7 +152,10 @@ impl StoreBucket {
                     }
                     let gen_constraints = producer.body_ctx().get_wrapping_constraint().is_some();
                     if gen_constraints {
-                        assert_eq!(producer.body_ctx().get_wrapping_constraint().unwrap(), ConstraintKind::Substitution);
+                        assert_eq!(
+                            producer.body_ctx().get_wrapping_constraint().unwrap(),
+                            ConstraintKind::Substitution
+                        );
                     }
                     create_array_copy(
                         producer,
@@ -163,16 +164,17 @@ impl StoreBucket {
                         context.size,
                         gen_constraints,
                     );
-                    None
                 } else {
-                    let value = source();
-                    let mut ret = create_store(producer, dest_gep, value);
-                    if producer.body_ctx().get_wrapping_constraint().is_some() {
-                        assert_eq!(producer.body_ctx().get_wrapping_constraint().unwrap(), ConstraintKind::Substitution);
-                        ret = create_constraint_values_call(producer, value, dest_gep);
-                    }
                     // In the scalar case, just produce a store from the source value that was given
-                    Some(ret)
+                    let value = source();
+                    create_store(producer, dest_gep, value);
+                    if producer.body_ctx().get_wrapping_constraint().is_some() {
+                        assert_eq!(
+                            producer.body_ctx().get_wrapping_constraint().unwrap(),
+                            ConstraintKind::Substitution
+                        );
+                        create_constraint_values_call(producer, value, dest_gep);
+                    }
                 }
             }
         };
@@ -225,15 +227,13 @@ impl StoreBucket {
                 _ => {}
             }
         }
-        store
+
+        None // We don't return a Value from this bucket
     }
 }
 
 impl WriteLLVMIR for StoreBucket {
-    fn produce_llvm_ir<'a>(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-    ) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
         // A store instruction has a source that states the origin of the value that is going to be stored
         Self::produce_llvm_ir(

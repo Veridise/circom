@@ -1,5 +1,5 @@
 use code_producers::c_elements::CProducer;
-use code_producers::llvm_elements::{ConstraintKind, LLVMIRProducer, LLVMInstruction};
+use code_producers::llvm_elements::{ConstraintKind, LLVMIRProducer, LLVMValue};
 use code_producers::wasm_elements::WASMProducer;
 use super::{BucketId, Instruction, InstructionPointer, SExp, ToSExp, UpdateId};
 use super::ir_interface::{IntoInstruction, ObtainMeta};
@@ -77,10 +77,7 @@ impl From<&ConstraintBucket> for ConstraintKind {
 }
 
 impl WriteLLVMIR for ConstraintBucket {
-    fn produce_llvm_ir<'a>(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-    ) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
         producer.body_ctx().set_wrapping_constraint(Some(self.into()));
         let inner = self.unwrap().produce_llvm_ir(producer);

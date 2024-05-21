@@ -2,7 +2,8 @@ use std::convert::TryFrom;
 use either::Either;
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::{
-    to_basic_metadata_enum, ConstraintKind, LLVMIRProducer, LLVMInstruction,
+    to_basic_metadata_enum, to_basic_metadata_enum_opt, AnyValue, ConstraintKind, LLVMIRProducer,
+    LLVMValue,
 };
 use code_producers::llvm_elements::instructions::{
     create_alloca, create_array_copy, create_call, create_gep, create_store, create_pointer_cast,
@@ -64,15 +65,22 @@ impl ToString for CallBucket {
     fn to_string(&self) -> String {
         let line = self.line.to_string();
         let template_id = self.message_id.to_string();
-	let ret = match &self.return_info {
-            ReturnType::Intermediate { op_aux_no } => {format!("Intermediate({})",op_aux_no.to_string())}
-	    _ => {format!("Final")}
-	};
+        let ret = match &self.return_info {
+            ReturnType::Intermediate { op_aux_no } => {
+                format!("Intermediate({})", op_aux_no.to_string())
+            }
+            _ => {
+                format!("Final")
+            }
+        };
         let mut args = "".to_string();
         for i in &self.arguments {
             args = format!("{}{},", args, i.to_string());
         }
-        format!("CALL(line:{},template_id:{},id:{},return_type:{},args:{})", line, template_id, self.symbol, ret, args)
+        format!(
+            "CALL(line:{},template_id:{},id:{},return_type:{},args:{})",
+            line, template_id, self.symbol, ret, args
+        )
     }
 }
 
@@ -100,10 +108,7 @@ impl WriteLLVMIR for CallBucket {
     /// Since calls use the same internal IR as templates they expect the same memory layout.
     /// Any signal is copied previously to an arena and the function uses that arena
     /// as a set of local variables.
-    fn produce_llvm_ir<'a>(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-    ) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
         // Check arena_size==0 which indicates arguments should not be placed into arena
@@ -111,13 +116,13 @@ impl WriteLLVMIR for CallBucket {
         if arena_size == 0 {
             // Only builders::build_call() produces arena_size = 0 and it's not inside a constraint
             assert!(producer.body_ctx().get_wrapping_constraint().is_none());
-            let mut args = vec![];
+            let mut args = Vec::with_capacity(self.arguments.len());
             for arg in self.arguments.iter() {
-                args.push(to_basic_metadata_enum(
+                args.push(
                     arg.produce_llvm_ir(producer).expect("Call arguments must produce a value!"),
-                ));
+                );
             }
-            Some(create_call(producer, self.symbol.as_str(), &args))
+            to_basic_metadata_enum_opt(create_call(producer, self.symbol.as_str(), &args))
         } else {
             // Create array with arena_size size
             let arena_size = u32::try_from(arena_size).expect("overflow");
@@ -140,7 +145,7 @@ impl WriteLLVMIR for CallBucket {
                             let index = v
                                 .src
                                 .produce_llvm_ir(producer)
-                                .expect("We need to produce some kind of instruction!")
+                                .expect("Must produce some kind of instruction!")
                                 .into_int_value();
                             make_ref(producer, &v.address_type, index, false)
                         }
@@ -151,7 +156,7 @@ impl WriteLLVMIR for CallBucket {
                     let arg_load = arg
                         .produce_llvm_ir(producer)
                         .expect("Call arguments must produce a value!");
-                    create_store(producer, ptr, arg_load);
+                    create_store(producer, ptr, arg_load.as_any_value_enum());
                 }
             }
 
@@ -176,7 +181,7 @@ impl WriteLLVMIR for CallBucket {
                         .get_wrapping_constraint()
                         .filter(|t| *t != ConstraintKind::Equality)
                         .is_none());
-                    Some(call_ret_val)
+                    to_basic_metadata_enum_opt(call_ret_val)
                 }
                 ReturnType::Final(data) => {
                     // Only happens with Substitution Constraint and the StoreBucket below will fully handle it

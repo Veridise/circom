@@ -2,8 +2,8 @@ use inkwell::attributes::AttributeLoc;
 use inkwell::basic_block::BasicBlock;
 use inkwell::debug_info::AsDIScope;
 use inkwell::types::FunctionType;
-use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
-use super::{BaseBodyCtx, BodyCtx, ConstraintKind, LLVM, LLVMIRProducer, TemplateCtx};
+use inkwell::values::{ArrayValue, FunctionValue, IntValue, PointerValue};
+use super::{BaseBodyCtx, BodyCtx, ConstraintKind, LLVMIRProducer, LLVMValue, TemplateCtx, LLVM};
 use super::instructions::create_gep;
 use super::values::zero;
 
@@ -176,7 +176,7 @@ impl<'a> ExtractedFunctionCtx<'a> {
         })
     }
 
-    fn get_arg_ptr(&self, id: AnyValueEnum<'a>) -> PointerValue<'a> {
+    fn get_arg_ptr(&self, id: LLVMValue<'a>) -> PointerValue<'a> {
         let num = id
             .into_int_value()
             .get_zero_extended_constant()
@@ -215,7 +215,7 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
     fn load_subcmp(
         &self,
         _producer: &dyn LLVMIRProducer<'a>,
-        _id: AnyValueEnum<'a>,
+        _id: LLVMValue<'a>,
     ) -> PointerValue<'a> {
         unreachable!()
     }
@@ -223,7 +223,7 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
     fn load_subcmp_addr(
         &self,
         _producer: &dyn LLVMIRProducer<'a>,
-        id: AnyValueEnum<'a>,
+        id: LLVMValue<'a>,
     ) -> PointerValue<'a> {
         self.get_arg_ptr(id)
     }
@@ -231,7 +231,7 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
     fn load_subcmp_counter(
         &self,
         _producer: &dyn LLVMIRProducer<'a>,
-        id: AnyValueEnum<'a>,
+        id: LLVMValue<'a>,
         implicit: bool,
     ) -> Option<PointerValue<'a>> {
         if implicit {
@@ -247,7 +247,7 @@ impl<'a> TemplateCtx<'a> for ExtractedFunctionCtx<'a> {
     fn get_subcmp_signal(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
-        subcmp_id: AnyValueEnum<'a>,
+        subcmp_id: LLVMValue<'a>,
         index: IntValue<'a>,
     ) -> PointerValue<'a> {
         assert_eq!(zero(producer), index);

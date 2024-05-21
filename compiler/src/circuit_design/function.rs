@@ -4,12 +4,10 @@ use crate::intermediate_representation::{InstructionList, SExp, ToSExp};
 use crate::intermediate_representation::ir_interface::ObtainMeta;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
+use code_producers::llvm_elements::{LLVMIRProducer, LLVMValue};
 use code_producers::llvm_elements::functions::create_bb;
-use code_producers::llvm_elements::instructions::create_br;
-
+use code_producers::llvm_elements::instructions::{create_br, create_unreachable, get_insert_block};
 use code_producers::wasm_elements::*;
-//use std::io::Write;
 
 pub type FunctionCode = Box<FunctionCodeInfo>;
 #[derive(Default, Clone, Eq, PartialEq, Debug)]
@@ -62,7 +60,10 @@ impl ToSExp for FunctionCodeInfo {
 }
 
 impl WriteLLVMIR for FunctionCodeInfo {
-    fn produce_llvm_ir<'ctx>(&self, producer: &dyn LLVMIRProducer<'ctx>) -> Option<LLVMInstruction<'ctx>> {
+    fn produce_llvm_ir<'ctx>(
+        &self,
+        producer: &dyn LLVMIRProducer<'ctx>,
+    ) -> Option<LLVMValue<'ctx>> {
         if cfg!(debug_assertions) {
             println!("Generating code for {}", self.header);
         }
@@ -71,15 +72,22 @@ impl WriteLLVMIR for FunctionCodeInfo {
         let main = create_bb(producer, function, self.header.as_str());
         producer.set_current_bb(main);
 
-        let mut last = None;
         for t in &self.body {
             let bb = create_bb(producer, function, t.label_name(function.count_basic_blocks()).as_str());
             create_br(producer, bb);
             producer.set_current_bb(bb);
-            last = t.produce_llvm_ir(producer);
+            t.produce_llvm_ir(producer);
         }
 
-        last
+        // If the final block is empty, add unreachable statement.
+        // Use get_insert_block() because the final block may not have
+        //  been created by one of the calls to create_bb() above but
+        //  could be craeted within the last call to produce_llvm_ir().
+        if let None = get_insert_block(producer).get_last_instruction() {
+            create_unreachable(producer);
+        }
+
+        None // We don't return a Value from a function definition
     }
 }
 

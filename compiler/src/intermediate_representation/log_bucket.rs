@@ -1,25 +1,23 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
-use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use code_producers::wasm_elements::*;
 use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
-
+use code_producers::c_elements::*;
+use code_producers::llvm_elements::{LLVMIRProducer, LLVMValue};
+use code_producers::wasm_elements::*;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum LogBucketArg {
     LogExp(InstructionPointer),
-    LogStr(usize)
+    LogStr(usize),
 }
-impl LogBucketArg{
-    pub fn get_mut_arg_logexp(&mut self)-> &mut InstructionPointer{
-        match self{
+impl LogBucketArg {
+    pub fn get_mut_arg_logexp(&mut self) -> &mut InstructionPointer {
+        match self {
             LogBucketArg::LogExp(arg) => arg,
             LogBucketArg::LogStr(_) => unreachable!(),
         }
     }
 }
-
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LogBucket {
@@ -56,7 +54,8 @@ impl ToString for LogBucket {
         for print in self.argsprint.clone() {
             if let LogBucketArg::LogExp(exp) = print {
                 let print = exp.to_string();
-                let log = format!("LOG(line: {},template_id: {},evaluate: {})", line, template_id, print);
+                let log =
+                    format!("LOG(line: {},template_id: {},evaluate: {})", line, template_id, print);
                 ret = ret + &log;
             }
         }
@@ -89,9 +88,9 @@ impl UpdateId for LogBucket {
 }
 
 impl WriteLLVMIR for LogBucket {
-    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
-        None // Ignore this statements
+        None // We don't return a Value from this bucket
     }
 }
 
