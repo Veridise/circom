@@ -69,7 +69,7 @@ impl WriteLLVMIR for Circuit {
             let name = f.header.as_str();
             let param_types = if name.starts_with(GENERATED_FN_PREFIX) {
                 // Use the FunctionCodeInfo instance to generate the vector of parameter types.
-                let mut types = vec![];
+                let mut types = Vec::with_capacity(f.params.len());
                 for p in &f.params {
                     // This section is a little more complicated than desired because IntType and ArrayType do
                     //  not have a common Trait that defines the `array_type` and `ptr_type` member functions.

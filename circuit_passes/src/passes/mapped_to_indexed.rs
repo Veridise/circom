@@ -48,7 +48,7 @@ impl<'d> MappedToIndexedPass<'d> {
         let io_def =
             self.memory.get_iodef(&env.get_subcmp_template_id(resolved_addr), &signal_code);
         let offset = if indexes.len() > 0 {
-            let mut indexes_values = vec![];
+            let mut indexes_values = Vec::with_capacity(indexes.len());
             for i in indexes {
                 let val = interpreter
                     .compute_instruction(i, env, false)

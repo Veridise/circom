@@ -40,7 +40,7 @@ impl<'a> ZeroingInterpreter<'a> {
     }
 
     pub fn compute_compute_bucket(&self, bucket: &ComputeBucket, env: &Env) -> RCI {
-        let mut stack: Vec<Value> = vec![];
+        let mut stack: Vec<Value> = Vec::with_capacity(bucket.stack.len());
         for i in &bucket.stack {
             let value = check_res!(self.compute_instruction(i, env).expect_some("operand"));
             stack.push(value.unwrap());

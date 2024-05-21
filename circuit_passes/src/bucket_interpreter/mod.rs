@@ -12,7 +12,6 @@ pub mod write_collector;
 
 use std::cell::RefCell;
 use std::ops::Range;
-use std::vec;
 use paste::paste;
 use code_producers::llvm_elements::{fr, array_switch};
 use code_producers::llvm_elements::stdlib::{GENERATED_FN_PREFIX, LLVM_DONOTHING_FN_NAME};
@@ -381,7 +380,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                         let io_def =
                             self.mem.get_iodef(&env.get_subcmp_template_id(addr), signal_code);
                         if indexes.len() > 0 {
-                            let mut indexes_values = vec![];
+                            let mut indexes_values = Vec::with_capacity(indexes.len());
                             for i in indexes {
                                 let val = check_res!(self._compute_instruction(
                                     i,
@@ -502,7 +501,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                             self.mem.get_iodef(&acc_env.get_subcmp_template_id(addr), signal_code);
                         let map_access = io_def.offset;
                         if indexes.len() > 0 {
-                            let mut indexes_values = vec![];
+                            let mut indexes_values = Vec::with_capacity(indexes.len());
                             for i in indexes {
                                 let (val, new_env) = check_res!(
                                     self._execute_instruction(i, acc_env, continue_observing),
@@ -605,7 +604,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         observe: bool,
         process: impl Fn(&'s Self, &'i InstructionPointer, E, bool) -> RGI<E>,
     ) -> RGI<E> {
-        let mut stack = vec![];
+        let mut stack = Vec::with_capacity(bucket.stack.len());
         let mut env = env;
         for i in &bucket.stack {
             let (val, new_env) = check_res!(process(&self, i, env, observe));
@@ -746,7 +745,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 self._execute_function_extracted(&bucket, env, observe)
             ))
         } else {
-            let mut args = vec![];
+            let mut args = Vec::with_capacity(bucket.arguments.len());
             for i in &bucket.arguments {
                 let (val, new_env) = check_res!(self._execute_instruction(i, env, observe));
                 let val = check_std_res!(opt_as_result(val, "function argument"));
