@@ -192,12 +192,12 @@ impl WriteLLVMIR for Circuit {
             ], false);
             let alloca = create_alloca(producer, component_memory.as_any_type_enum(), "");
             create_call(producer,
-                                build_fn_name(producer.get_main_template_header().clone()).as_str(),
+                                build_fn_name(producer.get_main_template_header()).as_str(),
                                 &[alloca.into()]);
             let signals_ptr = create_gep(producer, alloca, &[zero(producer), zero(producer)]);
             let signals = create_load(producer, signals_ptr).into_pointer_value();
             create_call(producer,
-            run_fn_name(producer.get_main_template_header().clone()).as_str(),
+            run_fn_name(producer.get_main_template_header()).as_str(),
                                 &[signals.into()]);
             create_return_void(producer);
         }

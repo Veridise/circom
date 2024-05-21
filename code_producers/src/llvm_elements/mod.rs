@@ -419,11 +419,11 @@ impl<'a> LLVM<'a> {
 }
 
 #[inline]
-pub fn run_fn_name(name: String) -> String {
+pub fn run_fn_name(name: &str) -> String {
     format!("{}_run", name)
 }
 
 #[inline]
-pub fn build_fn_name(name: String) -> String {
+pub fn build_fn_name(name: &str) -> String {
     format!("{}_build", name)
 }

@@ -174,8 +174,8 @@ impl SummaryProducer {
                 id: template.template_id,
                 subcmps,
                 signals,
-                logic_fn_name: run_fn_name(template.template_header.clone()),
-                constructor_fn_name: build_fn_name(template.template_header.clone()),
+                logic_fn_name: run_fn_name(&template.template_header),
+                constructor_fn_name: build_fn_name(&template.template_header),
             });
             summary.components.last_mut()
         } else {

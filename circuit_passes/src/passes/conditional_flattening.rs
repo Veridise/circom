@@ -69,7 +69,7 @@ impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
         // NOTE: Store 'cond_result' even when it is None (meaning the BranchBucket
         //  condition could not be determined) so that it will fully differentiate the
         //  branching behavior of functions called at multiple sites.
-        let in_func = env.extracted_func_caller().map(|n| n.clone());
+        let in_func = env.extracted_func_caller().cloned();
         // NOTE: 'in_func' is None when the current branch is NOT located within a function
         //  that was generated during loop unrolling to hold the body of a loop.
         self.evaluated_conditions

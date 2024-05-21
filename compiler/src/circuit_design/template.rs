@@ -104,7 +104,7 @@ impl WriteLLVMIR for TemplateCodeInfo {
             self.get_source_file_id(),
             self.get_line(),
             self.name.as_str(),
-            build_fn_name(self.header.clone()).as_str(), 
+            build_fn_name(&self.header).as_str(), 
             void_type(producer).fn_type(&[component_memory.ptr_type(Default::default()).into()], false)
         );
         Self::manage_debug_loc(producer, self, || build_function);
@@ -136,7 +136,7 @@ impl WriteLLVMIR for TemplateCodeInfo {
             self.get_source_file_id(),
             self.get_line(),
             self.name.as_str(),
-            run_fn_name(self.header.clone()).as_str(),
+            run_fn_name(&self.header).as_str(),
             void.fn_type(&[bigint_type(producer).array_type(0).ptr_type(Default::default()).into()], false)
         );
         Self::manage_debug_loc(producer, self, || run_function);

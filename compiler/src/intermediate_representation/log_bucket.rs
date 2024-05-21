@@ -51,7 +51,7 @@ impl ToString for LogBucket {
         let line = self.line.to_string();
         let template_id = self.message_id.to_string();
         let mut ret = String::new();
-        for print in self.argsprint.clone() {
+        for print in &self.argsprint {
             if let LogBucketArg::LogExp(exp) = print {
                 let print = exp.to_string();
                 let log =
