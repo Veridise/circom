@@ -475,4 +475,3 @@ mod tests {
         assert_eq!(checker, Writes::init(Some(vec![]), None, Some(vec![])));
     }
 }
-
