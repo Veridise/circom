@@ -11,8 +11,13 @@ use code_producers::c_elements::*;
 use code_producers::llvm_elements::array_switch::{load_array_stores_fns, load_array_load_fns};
 use code_producers::llvm_elements::*;
 use code_producers::llvm_elements::fr::load_fr;
-use code_producers::llvm_elements::functions::{add_attribute, create_bb, create_function, ExtractedFunctionLLVMIRProducer, FunctionLLVMIRProducer};
-use code_producers::llvm_elements::instructions::{create_alloca, create_call, create_gep, create_load, create_return_void};
+use code_producers::llvm_elements::functions::{
+    add_attribute, create_bb, create_function, ExtractedFunctionLLVMIRProducer,
+    FunctionLLVMIRProducer,
+};
+use code_producers::llvm_elements::instructions::{
+    create_alloca, create_call, create_gep, create_load, create_return_void,
+};
 use code_producers::llvm_elements::stdlib::{load_stdlib, GENERATED_FN_PREFIX};
 use code_producers::llvm_elements::types::{bigint_type, i32_type, void_type};
 use code_producers::llvm_elements::values::zero;
@@ -49,10 +54,7 @@ impl Default for Circuit {
 }
 
 impl WriteLLVMIR for Circuit {
-    fn produce_llvm_ir<'a>(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-    ) -> Option<LLVMValue<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         // Code for prelude
 
         // Code for standard library?
@@ -174,31 +176,40 @@ impl WriteLLVMIR for Circuit {
 
         // Main function
         {
-            let main_fn = create_function(producer,
-                                          &None,
-                                          0,
-                                          "",
-                                          "main",
-                                          void_type(producer).fn_type(&[], false));
+            let main_fn = create_function(
+                producer,
+                &None,
+                0,
+                "",
+                "main",
+                void_type(producer).fn_type(&[], false),
+            );
             main_fn.set_linkage(Linkage::External);
             let main = create_bb(producer, main_fn, "main");
             producer.set_current_bb(main);
 
             let bigint_ptr = bigint_type(producer).array_type(0);
             // Set the type of the component memory: signals array + signals counter
-            let component_memory = producer.llvm().context().struct_type(&[
-                to_basic_type_enum(bigint_ptr.ptr_type(Default::default())),
-                to_basic_type_enum(i32_type(producer))
-            ], false);
+            let component_memory = producer.llvm().context().struct_type(
+                &[
+                    to_basic_type_enum(bigint_ptr.ptr_type(Default::default())),
+                    to_basic_type_enum(i32_type(producer)),
+                ],
+                false,
+            );
             let alloca = create_alloca(producer, component_memory.as_any_type_enum(), "");
-            create_call(producer,
-                                build_fn_name(producer.get_main_template_header()).as_str(),
-                                &[alloca.into()]);
+            create_call(
+                producer,
+                build_fn_name(producer.get_main_template_header()).as_str(),
+                &[alloca.into()],
+            );
             let signals_ptr = create_gep(producer, alloca, &[zero(producer), zero(producer)]);
             let signals = create_load(producer, signals_ptr).into_pointer_value();
-            create_call(producer,
-            run_fn_name(producer.get_main_template_header()).as_str(),
-                                &[signals.into()]);
+            create_call(
+                producer,
+                run_fn_name(producer.get_main_template_header()).as_str(),
+                &[signals.into()],
+            );
             create_return_void(producer);
         }
 
