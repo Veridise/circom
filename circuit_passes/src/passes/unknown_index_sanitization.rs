@@ -18,19 +18,18 @@ use super::{CircuitTransformationPass, GlobalPassData};
 
 struct ZeroingInterpreter<'a> {
     mem: &'a PassMemory,
-    ff_constants: &'a Vec<String>,
 }
 
 impl<'a> ZeroingInterpreter<'a> {
-    pub fn init(mem: &'a PassMemory, ff_constants: &'a Vec<String>) -> Self {
-        ZeroingInterpreter { mem, ff_constants }
+    pub fn init(mem: &'a PassMemory) -> Self {
+        ZeroingInterpreter { mem }
     }
 
     pub fn compute_value_bucket(&self, bucket: &ValueBucket, _env: &Env) -> RCI {
         match bucket.parse_as {
             ValueType::U32 => InterpRes::Continue(Some(KnownU32(bucket.value))),
             ValueType::BigInt => {
-                let constant = &self.ff_constants[bucket.value];
+                let constant = &self.mem.get_ff_constant(bucket.value);
                 to_bigint(constant).add_loc_if_err(bucket).map(|r| Some(KnownBigInt(r)))
             }
         }
@@ -110,8 +109,7 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
             LocationRule::Mapped { .. } => unreachable!(),
             LocationRule::Indexed { location, .. } => {
                 let mem = &self.memory;
-                let ff_constants = mem.get_ff_constants_ref();
-                let interpreter = ZeroingInterpreter::init(mem, &ff_constants);
+                let interpreter = ZeroingInterpreter::init(mem);
                 let res = Result::from(interpreter.compute_instruction(location, env))?;
                 let offset = match res {
                     Some(KnownU32(base)) => base,

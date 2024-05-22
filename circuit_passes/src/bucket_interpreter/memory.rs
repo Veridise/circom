@@ -190,10 +190,6 @@ impl PassMemory {
         Ref::map(self.mem_layout.borrow(), |m| &m.ff_constants[index])
     }
 
-    pub fn get_ff_constants_ref(&self) -> Ref<Vec<String>> {
-        Ref::map(self.mem_layout.borrow(), |m| &m.ff_constants)
-    }
-
     /// Stores a new constant and returns its index
     pub fn add_field_constant(&self, new_value: String) -> usize {
         let temp = &mut self.mem_layout.borrow_mut().ff_constants;
