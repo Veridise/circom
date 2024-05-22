@@ -281,7 +281,7 @@ fn initialize_c_producer(vcp: &VCP, database: &TemplateDB, version: &str) -> CPr
 fn initialize_llvm_data(vcp: &VCP, database: &TemplateDB) -> LLVMCircuitData {
     let mut producer = LLVMCircuitData::default();
     producer.main_header = vcp.get_main_instance().unwrap().template_header.clone();
-    producer.io_map = build_io_map(vcp, database);
+    producer.mem_layout.io_map = build_io_map(vcp, database);
     producer
 }
 
@@ -413,9 +413,9 @@ pub fn build_circuit(vcp: VCP, flag: CompilationFlags, version: &str) -> Circuit
         build_function_instances(&mut circuit, &circuit_info, vcp.functions, field_tracker, string_table, &mut ssa);
 
     for (scope_name, ssa) in ssa {
-        circuit.llvm_data.signal_index_mapping.insert(scope_name.clone(), ssa.dump_signals());
-        circuit.llvm_data.variable_index_mapping.insert(scope_name.clone(), ssa.dump_vars());
-        circuit.llvm_data.component_index_mapping.insert(scope_name, ssa.dump_components());
+        circuit.llvm_data.mem_layout.signal_index_mapping.insert(scope_name.clone(), ssa.dump_signals());
+        circuit.llvm_data.mem_layout.variable_index_mapping.insert(scope_name.clone(), ssa.dump_vars());
+        circuit.llvm_data.mem_layout.component_index_mapping.insert(scope_name, ssa.dump_components());
     }
 
     let table_usize_to_string = create_table_usize_to_string(table_string_to_usize);
@@ -425,7 +425,7 @@ pub fn build_circuit(vcp: VCP, flag: CompilationFlags, version: &str) -> Circuit
         let constant = field_tracker.get_constant(i).unwrap().clone();
         circuit.wasm_producer.field_tracking.push(constant.clone());
         circuit.c_producer.field_tracking.push(constant.clone());
-        circuit.llvm_data.ff_constants.push(constant);
+        circuit.llvm_data.mem_layout.ff_constants.push(constant);
     }
     for fun in &mut circuit.functions {
         set_arena_size_in_calls(&mut fun.body, &function_to_arena_size);

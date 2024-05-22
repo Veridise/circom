@@ -39,7 +39,7 @@ impl<'d> ConditionalFlatteningPass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         ConditionalFlatteningPass {
             global_data,
-            memory: PassMemory::new(prime, Default::default()),
+            memory: PassMemory::new(prime),
             evaluated_conditions: Default::default(),
             branch_bucket_order: Default::default(),
             new_functions: Default::default(),

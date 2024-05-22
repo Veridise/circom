@@ -30,7 +30,7 @@ pub struct CompilationFlags {
     pub summary_flag: bool,
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Circuit {
     pub wasm_producer: WASMProducer,
     pub c_producer: CProducer,
@@ -62,8 +62,8 @@ impl WriteLLVMIR for Circuit {
         load_stdlib(producer);
 
         // Code for bounded array switch functions
-        load_array_load_fns(producer, &self.llvm_data.bounded_array_loads);
-        load_array_stores_fns(producer, &self.llvm_data.bounded_array_stores);
+        load_array_load_fns(producer, &self.llvm_data.bounded_arrays.loads);
+        load_array_stores_fns(producer, &self.llvm_data.bounded_arrays.stores);
 
         // Declare all the functions
         let mut funcs = HashMap::new();

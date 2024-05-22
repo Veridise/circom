@@ -5,6 +5,7 @@ use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::{Instruction, InstructionPointer, BucketId};
 use compiler::intermediate_representation::ir_interface::*;
 use code_producers::llvm_elements::array_switch::{get_array_load_name, get_array_store_name};
+use code_producers::llvm_elements::BoundedArrays;
 use crate::bucket_interpreter::{to_bigint, operations};
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::error::BadInterp;
@@ -83,7 +84,7 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         UnknownIndexSanitizationPass {
             global_data,
-            memory: PassMemory::new(prime, Default::default()),
+            memory: PassMemory::new(prime),
             bounded_fn_replacements: Default::default(),
             scheduled_bounded_loads: Default::default(),
             scheduled_bounded_stores: Default::default(),
@@ -185,27 +186,14 @@ impl Observer<Env<'_>> for UnknownIndexSanitizationPass<'_> {
     }
 }
 
-fn do_array_union(a: &HashSet<Range<usize>>, b: &HashSet<Range<usize>>) -> HashSet<Range<usize>> {
-    a.union(b).cloned().collect()
-}
-
 impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
     default__name!("UnknownIndexSanitizationPass");
     default__get_mem!();
     default__run_template!();
 
-    fn get_updated_bounded_array_loads(
-        &self,
-        old_array_loads: &HashSet<Range<usize>>,
-    ) -> HashSet<Range<usize>> {
-        do_array_union(old_array_loads, &self.scheduled_bounded_loads.borrow())
-    }
-
-    fn get_updated_bounded_array_stores(
-        &self,
-        old_array_stores: &HashSet<Range<usize>>,
-    ) -> HashSet<Range<usize>> {
-        do_array_union(old_array_stores, &self.scheduled_bounded_stores.borrow())
+    fn update_bounded_arrays(&self, bounded_arrays: &mut BoundedArrays) {
+        bounded_arrays.loads.extend(self.scheduled_bounded_loads.take().into_iter());
+        bounded_arrays.stores.extend(self.scheduled_bounded_stores.take().into_iter());
     }
 
     fn transform_bounded_fn(
@@ -213,9 +201,9 @@ impl CircuitTransformationPass for UnknownIndexSanitizationPass<'_> {
         bucket_id: &BucketId,
         bounded_fn: &Option<String>,
     ) -> Option<String> {
-        if let Some(n) = self.bounded_fn_replacements.borrow_mut().remove(bucket_id) {
-            return Some(n);
+        match self.bounded_fn_replacements.borrow_mut().remove(bucket_id) {
+            None => self.transform_bounded_fn_default(bucket_id, bounded_fn),
+            s => s,
         }
-        self.transform_bounded_fn_default(bucket_id, bounded_fn)
     }
 }

@@ -27,7 +27,7 @@ impl<'d> SimplificationPass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         SimplificationPass {
             global_data,
-            memory: PassMemory::new(prime, Default::default()),
+            memory: PassMemory::new(prime),
             within_constraint: Default::default(),
             compute_replacements: Default::default(),
             call_replacements: Default::default(),

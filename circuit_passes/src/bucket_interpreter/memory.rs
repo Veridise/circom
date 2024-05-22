@@ -1,19 +1,18 @@
 use std::cell::{RefCell, Ref};
 use std::collections::HashMap;
-use std::ops::Range;
-use code_producers::components::{TemplateInstanceIOMap, IODef};
-use code_producers::llvm_elements::IndexMapping;
+use std::ops::{Deref, Range};
+use code_producers::components::IODef;
+use code_producers::llvm_elements::{IndexMapping, MemoryLayout};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
-use compiler::compiler_interface::Circuit;
 use compiler::num_bigint::BigInt;
+use indexmap::IndexMap;
 use program_structure::constants::UsefulConstants;
-use crate::bucket_interpreter::BucketInterpreter;
-use crate::bucket_interpreter::env::{Env, EnvContextKind, LibraryAccess};
-use crate::bucket_interpreter::observer::Observer;
 use crate::passes::GlobalPassData;
-use super::InterpreterFlags;
+use super::{BucketInterpreter, InterpreterFlags};
+use super::env::{Env, EnvContextKind, LibraryAccess};
 use super::error::BadInterp;
+use super::observer::Observer;
 
 #[derive(Debug, Default)]
 pub struct Scope {
@@ -39,37 +38,27 @@ pub struct PassMemory {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need
     //  mutability. In some cases, very fine-grained mutability which is why everything here is
     //  wrapped separately and the template/function library values themselves are wrapped separately.
-    templates_library: RefCell<HashMap<String, TemplateCode>>,
-    functions_library: RefCell<HashMap<String, FunctionCode>>,
-    /// Mirrors `LLVMCircuitData::ff_constants`.
-    /// When ValueBucket is parsed as a bigint, its value is the index into this map.
-    ff_constants: RefCell<Vec<String>>,
+    //
+    // The IndexMap is used because the order of insertion must be preserved or else the use of
+    //  a template may be encountered before its definition causing a panic in code generation.
+    templates_library: RefCell<IndexMap<String, TemplateCode>>,
+    functions_library: RefCell<IndexMap<String, FunctionCode>>,
+    /// References [LLVMCircuitData](code_producers::llvm_elements::LLVMCircuitData)
+    mem_layout: RefCell<MemoryLayout>,
     /// Identifies the current template/function scope of the [CircuitTransformationPass](crate::passes::CircuitTransformationPass)
     current_scope: RefCell<Scope>,
-    ///
-    io_map: RefCell<TemplateInstanceIOMap>,
-    /// Map template/function header to signal index, to the total range of signal memory occupied by it
-    signal_index_mapping: RefCell<HashMap<String, IndexMapping>>,
-    /// Map template/function header to variable index, to the total range of variable memory occupied by it
-    variable_index_mapping: RefCell<HashMap<String, IndexMapping>>,
-    /// Map template/function header to component index, to the total range of component memory occupied by it
-    component_addr_index_mapping: RefCell<HashMap<String, IndexMapping>>,
-    ///
+    /// The prime of the finite field
     prime: BigInt,
 }
 
 impl PassMemory {
-    pub fn new(prime: String, io_map: TemplateInstanceIOMap) -> Self {
+    pub fn new(prime: String) -> Self {
         PassMemory {
             prime: UsefulConstants::new(&prime).get_p().clone(),
-            io_map: RefCell::new(io_map),
+            mem_layout: Default::default(),
             current_scope: Default::default(),
-            ff_constants: Default::default(),
             templates_library: Default::default(),
             functions_library: Default::default(),
-            signal_index_mapping: Default::default(),
-            variable_index_mapping: Default::default(),
-            component_addr_index_mapping: Default::default(),
         }
     }
 
@@ -135,27 +124,51 @@ impl PassMemory {
         self.run_template_with_flags(global_data, observer, template, InterpreterFlags::default())
     }
 
-    pub fn add_template(&self, template: &TemplateCode) {
-        self.templates_library.borrow_mut().insert(template.header.clone(), (*template).clone());
+    pub fn get_templates(&self) -> Vec<Ref<TemplateCode>> {
+        let borrow = self.templates_library.borrow();
+        let mut result = Vec::with_capacity(borrow.len());
+        for k in borrow.deref().keys() {
+            result.push(Ref::map(Ref::clone(&borrow), |m| &m[k]));
+        }
+        result
     }
 
-    pub fn add_function(&self, function: &FunctionCode) {
-        self.functions_library.borrow_mut().insert(function.header.clone(), (*function).clone());
+    pub fn get_functions(&self) -> Vec<Ref<FunctionCode>> {
+        let borrow = self.functions_library.borrow();
+        let mut result = Vec::with_capacity(borrow.len());
+        for k in borrow.deref().keys() {
+            result.push(Ref::map(Ref::clone(&borrow), |m| &m[k]));
+        }
+        result
     }
 
-    pub fn fill_from_circuit(&self, circuit: &Circuit) {
-        for template in &circuit.templates {
+    fn add_template(&self, template: TemplateCode) {
+        self.templates_library.borrow_mut().insert(template.header.clone(), template);
+    }
+
+    fn add_function(&self, function: FunctionCode) {
+        self.functions_library.borrow_mut().insert(function.header.clone(), function);
+    }
+
+    pub fn fill(
+        &self,
+        templates: Vec<TemplateCode>,
+        functions: Vec<FunctionCode>,
+        layout: MemoryLayout,
+    ) {
+        for template in templates {
             self.add_template(template);
         }
-        for function in &circuit.functions {
+        for function in functions {
             self.add_function(function);
         }
-        self.ff_constants.replace(circuit.llvm_data.ff_constants.clone());
-        self.io_map.replace(circuit.llvm_data.io_map.clone());
-        self.variable_index_mapping.replace(circuit.llvm_data.variable_index_mapping.clone());
-        self.signal_index_mapping.replace(circuit.llvm_data.signal_index_mapping.clone());
-        self.component_addr_index_mapping
-            .replace(circuit.llvm_data.component_index_mapping.clone());
+        self.mem_layout.replace(layout);
+    }
+
+    pub fn clear(&self) -> MemoryLayout {
+        self.templates_library.take();
+        self.functions_library.take();
+        self.mem_layout.take()
     }
 
     pub fn set_scope(&self, s: Scope) {
@@ -175,23 +188,23 @@ impl PassMemory {
     }
 
     pub fn get_ff_constant(&self, index: usize) -> String {
-        self.ff_constants.borrow()[index].clone()
+        self.mem_layout.borrow().ff_constants[index].clone()
     }
 
     pub fn get_ff_constants_clone(&self) -> Vec<String> {
-        self.ff_constants.borrow().clone()
+        self.mem_layout.borrow().ff_constants.clone()
     }
 
     /// Stores a new constant and returns its index
     pub fn add_field_constant(&self, new_value: String) -> usize {
-        let mut temp = self.ff_constants.borrow_mut();
+        let temp = &mut self.mem_layout.borrow_mut().ff_constants;
         let idx = temp.len();
         temp.push(new_value);
         idx
     }
 
     pub fn new_variable_index_mapping(&self, scope: &String, size: usize) -> usize {
-        let mut base = self.variable_index_mapping.borrow_mut();
+        let base = &mut self.mem_layout.borrow_mut().variable_index_mapping;
         let scope_map = base.entry(scope.clone()).or_default();
         let new_idx = match scope_map.last_key_value() {
             Some((k, _)) => *k + 1,
@@ -210,7 +223,7 @@ impl PassMemory {
 
     #[cfg(test)]
     pub fn new_signal_index_mapping(&self, scope: &String, size: usize) -> usize {
-        let mut base = self.signal_index_mapping.borrow_mut();
+        let base = &mut self.mem_layout.borrow_mut().signal_index_mapping;
         let scope_map = base.entry(scope.clone()).or_default();
         let new_idx = match scope_map.last_key_value() {
             Some((k, _)) => *k + 1,
@@ -229,11 +242,11 @@ impl PassMemory {
     }
 
     pub fn get_iodef(&self, template_id: &usize, signal_code: &usize) -> IODef {
-        self.io_map.borrow()[template_id][*signal_code].clone()
+        self.mem_layout.borrow().io_map[template_id][*signal_code].clone()
     }
 
     pub fn get_signal_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
-        self.signal_index_mapping.borrow()[scope][index].clone()
+        self.mem_layout.borrow().signal_index_mapping[scope][index].clone()
     }
 
     pub fn get_current_scope_signal_index_mapping(&self, index: &usize) -> Range<usize> {
@@ -241,7 +254,7 @@ impl PassMemory {
     }
 
     pub fn get_variable_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
-        self.variable_index_mapping.borrow()[scope][index].clone()
+        self.mem_layout.borrow().variable_index_mapping[scope][index].clone()
     }
 
     pub fn get_current_scope_variable_index_mapping(&self, index: &usize) -> Range<usize> {
@@ -249,11 +262,11 @@ impl PassMemory {
     }
 
     pub fn get_variable_index_mapping_clone(&self) -> HashMap<String, IndexMapping> {
-        self.variable_index_mapping.borrow().clone()
+        self.mem_layout.borrow().variable_index_mapping.clone()
     }
 
     pub fn get_component_addr_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
-        self.component_addr_index_mapping.borrow()[scope][index].clone()
+        self.mem_layout.borrow().component_index_mapping[scope][index].clone()
     }
 
     pub fn get_current_scope_component_addr_index_mapping(&self, index: &usize) -> Range<usize> {

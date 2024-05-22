@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::ops::Range;
+use code_producers::llvm_elements::BoundedArrays;
 use compiler::circuit_design::function::{FunctionCode, FunctionCodeInfo};
 use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
@@ -69,46 +69,36 @@ pub trait CircuitTransformationPass {
     fn get_mem(&self) -> &PassMemory;
     fn run_template(&self, template: &TemplateCode) -> Result<(), BadInterp>;
 
-    fn get_updated_bounded_array_loads(
-        &self,
-        old_array_loads: &HashSet<Range<usize>>,
-    ) -> HashSet<Range<usize>> {
-        old_array_loads.clone()
-    }
+    fn update_bounded_arrays(&self, _: &mut BoundedArrays) {}
 
-    fn get_updated_bounded_array_stores(
-        &self,
-        old_array_stores: &HashSet<Range<usize>>,
-    ) -> HashSet<Range<usize>> {
-        old_array_stores.clone()
-    }
-
-    fn transform_circuit(&self, circuit: &Circuit) -> Result<Circuit, BadInterp> {
+    fn transform_circuit(&self, circuit: Circuit) -> Result<Circuit, BadInterp> {
         self.pre_hook_circuit(&circuit)?;
-        let templates = circuit
-            .templates
-            .iter()
-            .map(|t| self.transform_template(t))
+
+        // Setup the PassMemory from the Circuit
+        let mut llvm_data = circuit.llvm_data;
+        let mem = self.get_mem();
+        mem.fill(circuit.templates, circuit.functions, llvm_data.mem_layout);
+
+        // Transform templates and functions
+        let templates = mem
+            .get_templates()
+            .into_iter()
+            .map(|t| self.transform_template(&t))
             .collect::<Result<_, _>>()?;
-        let functions = circuit
-            .functions
-            .iter()
-            .map(|f| self.transform_function(f))
+        let functions = mem
+            .get_functions()
+            .into_iter()
+            .map(|f| self.transform_function(&f))
             .collect::<Result<_, _>>()?;
-        let array_loads =
-            self.get_updated_bounded_array_loads(&circuit.llvm_data.bounded_array_loads);
-        let array_stores =
-            self.get_updated_bounded_array_stores(&circuit.llvm_data.bounded_array_stores);
+
+        // Update the Circuit LLVMCircuitData and create the transformed Circuit
+        llvm_data.mem_layout = mem.clear();
+        self.update_bounded_arrays(&mut llvm_data.bounded_arrays);
         let mut new_circuit = Circuit {
-            wasm_producer: circuit.wasm_producer.clone(),
-            c_producer: circuit.c_producer.clone(),
-            summary_producer: circuit.summary_producer.clone(),
-            llvm_data: circuit.llvm_data.clone_with_updates(
-                self.get_mem().get_ff_constants_clone(),
-                self.get_mem().get_variable_index_mapping_clone(),
-                array_loads,
-                array_stores,
-            ),
+            wasm_producer: circuit.wasm_producer,
+            c_producer: circuit.c_producer,
+            summary_producer: circuit.summary_producer,
+            llvm_data,
             templates,
             functions,
         };
@@ -682,8 +672,7 @@ pub trait CircuitTransformationPass {
         Ok(NopBucket { id: new_id() }.allocate())
     }
 
-    fn pre_hook_circuit(&self, circuit: &Circuit) -> Result<(), BadInterp> {
-        self.get_mem().fill_from_circuit(circuit);
+    fn pre_hook_circuit(&self, _: &Circuit) -> Result<(), BadInterp> {
         Ok(())
     }
 
@@ -885,15 +874,15 @@ impl PassManager {
         // NOTE: Used RefCell rather than a mutable reference because storing
         //  the mutable reference in EnvRecorder was causing rustc errors.
         let global_data = RefCell::new(GlobalPassData::new());
-        let mut transformed_circuit = circuit;
+        let mut circuit = circuit;
         for kind in self.passes.borrow_mut().drain(..) {
             let pass = Self::build_pass(kind, prime, &global_data);
             if cfg!(debug_assertions) {
                 println!("Do {}...", pass.name());
             }
-            transformed_circuit = pass.transform_circuit(&transformed_circuit)?;
-            assert_unique_ids_in_circuit(&transformed_circuit);
+            circuit = pass.transform_circuit(circuit)?;
+            assert_unique_ids_in_circuit(&circuit);
         }
-        Ok(transformed_circuit)
+        Ok(circuit)
     }
 }

@@ -30,7 +30,7 @@ impl<'d> ConstArgDeduplicationPass<'d> {
     pub fn new(prime: String, _global_data: &'d RefCell<GlobalPassData>) -> Self {
         ConstArgDeduplicationPass {
             _global_data,
-            memory: PassMemory::new(prime, Default::default()),
+            memory: PassMemory::new(prime),
             new_body_functions: Default::default(),
         }
     }

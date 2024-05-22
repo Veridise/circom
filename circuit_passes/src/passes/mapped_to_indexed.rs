@@ -28,7 +28,7 @@ impl<'d> MappedToIndexedPass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         MappedToIndexedPass {
             global_data,
-            memory: PassMemory::new(prime, Default::default()),
+            memory: PassMemory::new(prime),
             replacements: Default::default(),
         }
     }

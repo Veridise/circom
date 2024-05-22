@@ -304,7 +304,7 @@ mod tests {
         fn new() -> Self {
             Self {
                 global_data: RefCell::new(GlobalPassData::new()),
-                memory: PassMemory::new(String::from("goldilocks"), Default::default()),
+                memory: PassMemory::new(String::from("goldilocks")),
             }
         }
 

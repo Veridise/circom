@@ -54,7 +54,7 @@ impl CircuitTransformationPass for UnusedFuncRemovalPass<'_> {
         unreachable!()
     }
 
-    fn transform_circuit(&self, circuit: &Circuit) -> Result<Circuit, BadInterp> {
+    fn transform_circuit(&self, circuit: Circuit) -> Result<Circuit, BadInterp> {
         //Build a structure to implement LibraryAccess
         struct LibsImpl {
             functions: HashMap<String, RefCell<FunctionCode>>,
@@ -78,39 +78,33 @@ impl CircuitTransformationPass for UnusedFuncRemovalPass<'_> {
             },
         };
 
-        // Search each template for CallBucket and cache the names, returning a list of cloned templates
+        // Search each template for CallBucket and cache the names
         let visitor = ObservedVisitor::new(self, Some(&libs));
-        let templates = circuit
-            .templates
-            .iter()
-            .map(|t| visitor.visit_instructions(&t.body, &(), true).map(|_| t.clone()))
-            .collect::<Result<_, _>>()?;
+        for t in &circuit.templates {
+            visitor.visit_instructions(&t.body, &(), true)?;
+        }
 
         // Filter out functions that are never used
         let functions = circuit
             .functions
-            .iter()
+            .into_iter()
             .filter_map(|f| {
                 if self.used_functions.borrow().contains(&f.header) {
-                    Some(f.clone())
+                    Some(f)
                 } else {
                     None
                 }
             })
             .collect();
 
-        // Return new circuit with reduced function list (and cloned templates)
+        // Return new circuit with reduced function list
         Ok(Circuit {
-            wasm_producer: circuit.wasm_producer.clone(),
-            c_producer: circuit.c_producer.clone(),
-            summary_producer: circuit.summary_producer.clone(),
-            llvm_data: circuit.llvm_data.clone_with_updates(
-                circuit.llvm_data.ff_constants.clone(),
-                circuit.llvm_data.variable_index_mapping.clone(),
-                self.get_updated_bounded_array_loads(&circuit.llvm_data.bounded_array_loads),
-                self.get_updated_bounded_array_stores(&circuit.llvm_data.bounded_array_stores),
-            ),
-            templates,
+            wasm_producer: circuit.wasm_producer,
+            c_producer: circuit.c_producer,
+            summary_producer: circuit.summary_producer,
+            // The 'llvm_data' will not be modified because there is no use of PassMemory
+            llvm_data: circuit.llvm_data,
+            templates: circuit.templates,
             functions,
         })
     }
