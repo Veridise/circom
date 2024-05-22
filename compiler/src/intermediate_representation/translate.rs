@@ -111,7 +111,7 @@ impl Counter {
 }
 
 pub type SSA = (String, usize);
-pub type Name2Index<N> = HashMap<N, (usize, Vec<usize>)>;
+pub type Name2Index<N> = HashMap<N, (usize, usize)>;
 
 #[derive(Clone)]
 pub struct SSACollector {
@@ -120,7 +120,7 @@ pub struct SSACollector {
     vars: Name2Index<SSA>,
     // Signals and components are global to the template so we don't need to SSA them
     signals: Name2Index<String>,
-    components_addrs: Name2Index<String>
+    components_addrs: Name2Index<String>,
 }
 
 impl SSACollector {
@@ -128,20 +128,25 @@ impl SSACollector {
         SSACollector {
             counter: Default::default(),
             vars: Default::default(),
-            signals: Default:: default(),
-            components_addrs: Default::default()
+            signals: Default::default(),
+            components_addrs: Default::default(),
         }
     }
 
+    #[inline]
+    fn total_size(lengths: &Vec<usize>) -> usize {
+        lengths.iter().fold(1, |acc, i| acc * i)
+    }
+
     pub fn insert_var(&mut self, name: &String, addr: usize, lengths: &Vec<usize>) {
+        let size = Self::total_size(lengths);
         let ssa_name = (name.clone(), self.counter.get_and_inc());
-        self.vars.insert(ssa_name, (addr, lengths.clone()));
+        self.vars.insert(ssa_name, (addr, size));
     }
 
     pub fn dump_vars(&self) -> IndexMapping {
         let mut mapping = IndexMapping::new();
-        for (addr, lengths) in self.vars.values() {
-            let size = lengths.iter().fold(1, |acc, i| acc * i);
+        for (addr, size) in self.vars.values() {
             let range = (*addr)..(addr + size);
             for i in range.clone() {
                 mapping.insert(i, range.clone());
@@ -151,17 +156,12 @@ impl SSACollector {
     }
 
     pub fn insert_signal(&mut self, name: &String, addr: usize, lengths: &Vec<usize>) {
-        self.signals.insert(name.clone(), (addr, lengths.clone()));
-    }
-
-    pub fn get_signal(&self, name: &String) -> Option<&(usize, Vec<usize>)> {
-        self.signals.get(name)
+        self.signals.insert(name.clone(), (addr, Self::total_size(lengths)));
     }
 
     pub fn dump_signals(&self) -> IndexMapping {
         let mut mapping = IndexMapping::new();
-        for (addr, lengths) in self.signals.values() {
-            let size = lengths.iter().fold(1, |acc, i| acc * i);
+        for (addr, size) in self.signals.values() {
             let range = (*addr)..(addr + size);
             for i in range.clone() {
                 mapping.insert(i, range.clone());
@@ -171,13 +171,12 @@ impl SSACollector {
     }
 
     pub fn insert_component_addr(&mut self, name: &String, addr: usize, lengths: &Vec<usize>) {
-        self.components_addrs.insert(name.clone(), (addr, lengths.clone()));
+        self.components_addrs.insert(name.clone(), (addr, Self::total_size(lengths)));
     }
 
     pub fn dump_components(&self) -> IndexMapping {
         let mut mapping = IndexMapping::new();
-        for (addr, lengths) in self.components_addrs.values() {
-            let size = lengths.iter().fold(1, |acc, i| acc * i);
+        for (addr, size) in self.components_addrs.values() {
             let range = (*addr)..(addr + size);
             for i in range.clone() {
                 mapping.insert(i, range.clone());
