@@ -133,13 +133,8 @@ impl SSACollector {
         }
     }
 
-    #[inline]
-    fn total_size(lengths: &Vec<usize>) -> usize {
-        lengths.iter().fold(1, |acc, i| acc * i)
-    }
-
     pub fn insert_var(&mut self, name: &String, addr: usize, lengths: &Vec<usize>) {
-        let size = Self::total_size(lengths);
+        let size = total_size(lengths);
         let ssa_name = (name.clone(), self.counter.get_and_inc());
         self.vars.insert(ssa_name, (addr, size));
     }
@@ -156,7 +151,7 @@ impl SSACollector {
     }
 
     pub fn insert_signal(&mut self, name: &String, addr: usize, lengths: &Vec<usize>) {
-        self.signals.insert(name.clone(), (addr, Self::total_size(lengths)));
+        self.signals.insert(name.clone(), (addr, total_size(lengths)));
     }
 
     pub fn dump_signals(&self) -> IndexMapping {
@@ -171,7 +166,7 @@ impl SSACollector {
     }
 
     pub fn insert_component_addr(&mut self, name: &String, addr: usize, lengths: &Vec<usize>) {
-        self.components_addrs.insert(name.clone(), (addr, Self::total_size(lengths)));
+        self.components_addrs.insert(name.clone(), (addr, total_size(lengths)));
     }
 
     pub fn dump_components(&self) -> IndexMapping {
@@ -261,12 +256,17 @@ struct Context<'a> {
     cmp_to_type: HashMap<String, ClusterType>,
 }
 
+#[inline]
+fn total_size(lengths: &Vec<usize>) -> usize {
+    lengths.iter().fold(1, |acc, i| acc * i)
+}
+
 fn initialize_parameters(state: &mut State, file_lib: &FileLibrary, params: Vec<Param>, body: &Statement) {
     let meta = body.get_meta();
     let line_num = file_lib.get_line(meta.get_start(), meta.get_file_id()).unwrap();
     for p in params {
         let lengths = p.length;
-        let full_size = lengths.iter().fold(1, |p, s| p * (*s));
+        let full_size = total_size(&lengths);
         let address = state.reserve_variable(full_size);
         let address_instruction = ValueBucket {
             id: new_id(),
@@ -291,7 +291,7 @@ fn initialize_constants(state: &mut State, file_lib: &FileLibrary, constants: Ve
     for arg in constants {
         let mut curr_param_stores = Vec::default();
         let dimensions = arg.lengths;
-        let size = dimensions.iter().fold(1, |p, c| p * (*c));
+        let size = total_size(&dimensions);
         let address = state.reserve_variable(size);
         let address_instruction = ValueBucket {
             id: new_id(),
@@ -373,7 +373,7 @@ fn initialize_signals(state: &mut State, file_lib: &FileLibrary, signals: Vec<Si
     let meta = body.get_meta();
     let line_num = file_lib.get_line(meta.get_start(), meta.get_file_id()).unwrap();
     for signal in signals {
-        let size = signal.lengths.iter().fold(1, |p, c| p * (*c));
+        let size = total_size(&signal.lengths);
         let address = state.reserve_signal(size);
         let instruction = ValueBucket {
             id: new_id(),
@@ -439,12 +439,9 @@ fn create_components(state: &mut State, context: &Context, triggers: &[Trigger],
 }
 
 fn create_uniform_components(state: &mut State, context: &Context, triggers: &[Trigger], cluster: TriggerCluster, meta: &Meta) {
-    fn compute_number_cmp(lengths: &Vec<usize>) -> usize {
-        lengths.iter().fold(1, |p, c| p * (*c))
-    }
     fn compute_jump(lengths: &Vec<usize>, indexes: &[usize]) -> usize {
         let mut jump = 0;
-        let mut full_length = lengths.iter().fold(1, |p, c| p * (*c));
+        let mut full_length = total_size(&lengths);
         let mut lengths = lengths.clone();
         lengths.reverse();
         for index in indexes {
@@ -484,7 +481,7 @@ fn create_uniform_components(state: &mut State, context: &Context, triggers: &[T
             signal_offset: c_info.offset,
 	        component_offset: c_info.component_offset,
             has_inputs: c_info.has_inputs,
-            number_of_cmp: compute_number_cmp(&symbol.dimensions),
+            number_of_cmp: total_size(&symbol.dimensions),
             dimensions: symbol.dimensions,
             signal_offset_jump: offset_jump,
 	        component_offset_jump: component_offset_jump,
@@ -499,7 +496,7 @@ fn create_uniform_components(state: &mut State, context: &Context, triggers: &[T
 fn create_mixed_components(state: &mut State, context: &Context, triggers: &[Trigger], cluster: TriggerCluster, meta: &Meta) {
     fn compute_jump(lengths: &Vec<usize>, indexes: &[usize]) -> usize {
         let mut jump = 0;
-        let mut full_length = lengths.iter().fold(1, |p, c| p * (*c));
+        let mut full_length = total_size(&lengths);
         let mut lengths = lengths.clone();
         lengths.reverse();
         for index in indexes {
@@ -703,7 +700,7 @@ fn translate_declaration(stmt: Statement, state: &mut State, context: &Context) 
     if let Declaration { name, meta, .. } = stmt {
         let starts_at = context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap();
         let dimensions = meta.get_memory_knowledge().get_concrete_dimensions().to_vec();
-        let size = dimensions.iter().fold(1, |p, c| p * (*c));
+        let size = total_size(&dimensions);
         let address = state.reserve_variable(size);
         let instruction = ValueBucket {
             id: new_id(),
@@ -839,7 +836,7 @@ fn translate_return(stmt: Statement, state: &mut State, context: &Context) {
             source_file_id: meta.file_id,
             line: context.files.get_line(meta.get_start(), meta.get_file_id()).unwrap(),
             message_id: state.message_id,
-            with_size: return_type.iter().fold(1, |p, c| p * (*c)),
+            with_size: total_size(&return_type),
             value: translate_expression(value, state, context),
         }
         .allocate();
@@ -1106,7 +1103,7 @@ impl ProcessedSymbol {
         let symbol_info = state.environment.get_variable(&symbol_name).unwrap().clone();
         let mut lengths = symbol_info.dimensions.clone();
         lengths.reverse();
-        let mut with_length = symbol_info.dimensions.iter().fold(1, |r, c| r * (*c));
+        let mut with_length = total_size(&symbol_info.dimensions);
         let mut signal = None;
         let mut signal_type = state.signal_to_type.get(&symbol_name).cloned();
         let mut bf_index = vec![];
@@ -1142,11 +1139,11 @@ impl ProcessedSymbol {
             let mut is_first = true;
             for possible_length in multiple_possible_lengths{
                 if is_first{
-                    with_length = possible_length.iter().fold(1, |r, c| r * (*c));
+                    with_length = total_size(&possible_length);
                     is_first = false;
                 }
                 else{
-                    if with_length != possible_length.iter().fold(1, |r, c| r * (*c)){
+                    if with_length != total_size(&possible_length){
                         unreachable!("On development: Circom compiler does not accept for now the assignment of arrays of unknown sizes during the execution of loops");
                     }
                 }
@@ -1329,7 +1326,7 @@ fn compute_full_address(
         let at = symbol.access_instruction;
         let mut with_dimensions = symbol.dimensions;
         with_dimensions.reverse();
-        let mut linear_length = with_dimensions.iter().fold(1, |p, c| p * (*c));
+        let mut linear_length = total_size(&with_dimensions);
         let index_stack = indexing_instructions_filter(indexed_with, state);
         let mut stack = vec![];
         for instruction in index_stack {
