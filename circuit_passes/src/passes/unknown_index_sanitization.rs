@@ -17,13 +17,13 @@ use crate::{check_res, default__get_mem, default__name, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 struct ZeroingInterpreter<'a> {
-    pub ff_constants: &'a Vec<String>,
     mem: &'a PassMemory,
+    ff_constants: &'a Vec<String>,
 }
 
 impl<'a> ZeroingInterpreter<'a> {
     pub fn init(mem: &'a PassMemory, ff_constants: &'a Vec<String>) -> Self {
-        ZeroingInterpreter { ff_constants, mem }
+        ZeroingInterpreter { mem, ff_constants }
     }
 
     pub fn compute_value_bucket(&self, bucket: &ValueBucket, _env: &Env) -> RCI {
@@ -110,7 +110,7 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
             LocationRule::Mapped { .. } => unreachable!(),
             LocationRule::Indexed { location, .. } => {
                 let mem = &self.memory;
-                let ff_constants = mem.get_ff_constants_clone();
+                let ff_constants = mem.get_ff_constants_ref();
                 let interpreter = ZeroingInterpreter::init(mem, &ff_constants);
                 let res = Result::from(interpreter.compute_instruction(location, env))?;
                 let offset = match res {

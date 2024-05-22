@@ -1,8 +1,7 @@
 use std::cell::{RefCell, Ref};
-use std::collections::HashMap;
 use std::ops::{Deref, Range};
 use code_producers::components::IODef;
-use code_producers::llvm_elements::{IndexMapping, MemoryLayout};
+use code_producers::llvm_elements::MemoryLayout;
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::num_bigint::BigInt;
@@ -187,12 +186,12 @@ impl PassMemory {
         &self.prime
     }
 
-    pub fn get_ff_constant(&self, index: usize) -> String {
-        self.mem_layout.borrow().ff_constants[index].clone()
+    pub fn get_ff_constant(&self, index: usize) -> Ref<String> {
+        Ref::map(self.mem_layout.borrow(), |m| &m.ff_constants[index])
     }
 
-    pub fn get_ff_constants_clone(&self) -> Vec<String> {
-        self.mem_layout.borrow().ff_constants.clone()
+    pub fn get_ff_constants_ref(&self) -> Ref<Vec<String>> {
+        Ref::map(self.mem_layout.borrow(), |m| &m.ff_constants)
     }
 
     /// Stores a new constant and returns its index
@@ -259,10 +258,6 @@ impl PassMemory {
 
     pub fn get_current_scope_variable_index_mapping(&self, index: &usize) -> Range<usize> {
         self.get_variable_index_mapping(&self.get_current_scope_header(), index)
-    }
-
-    pub fn get_variable_index_mapping_clone(&self) -> HashMap<String, IndexMapping> {
-        self.mem_layout.borrow().variable_index_mapping.clone()
     }
 
     pub fn get_component_addr_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
