@@ -37,6 +37,8 @@ struct SubcmpSummary {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct TemplateSummary {
     name: String,
+    param_names: Vec<String>,
+    param_values: Vec<Vec<String>>,
     id: usize,
     main: bool,
     signals: Vec<SignalSummary>,
@@ -170,6 +172,12 @@ impl SummaryProducer {
 
             summary.components.push(TemplateSummary {
                 name: template.template_name.clone(),
+                param_names: template.header.iter().map(|a| a.name.clone()).collect(),
+                param_values: template
+                    .header
+                    .iter()
+                    .map(|a| a.values.iter().map(num_bigint::BigInt::to_string).collect())
+                    .collect(),
                 main: is_main,
                 id: template.template_id,
                 subcmps,

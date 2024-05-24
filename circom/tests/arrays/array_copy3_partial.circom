@@ -100,4 +100,3 @@ component main = Array3(5);
 //CHECK-NEXT:   %17 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 45
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %15, [0 x i256]* %0, i256* %16, i256* %17)
 //CHECK-NEXT:   br label %prologue
-
