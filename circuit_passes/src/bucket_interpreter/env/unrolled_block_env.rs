@@ -9,7 +9,7 @@ use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::loop_unroll::body_extractor::LoopBodyExtractor;
-use super::{Env, LibraryAccess};
+use super::{Env, EnvContextKind, LibraryAccess};
 
 /// This Env is used by the loop unroller to process the BlockBucket containing a
 /// unrolled loop specifically handling the case where the LibraryAccess does not
@@ -60,6 +60,10 @@ impl<'a> UnrolledBlockEnvData<'a> {
 
     pub fn extracted_func_caller(&self) -> Option<&BucketId> {
         None
+    }
+
+    pub fn get_context_kind(&self) -> EnvContextKind {
+        self.base.get_context_kind()
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
@@ -149,7 +153,7 @@ impl<'a> UnrolledBlockEnvData<'a> {
 
     pub fn create_subcmp(
         self,
-        name: &'a String,
+        name: &String,
         base_index: usize,
         count: usize,
         template_id: usize,

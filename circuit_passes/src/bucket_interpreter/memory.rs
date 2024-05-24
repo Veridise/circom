@@ -9,7 +9,7 @@ use compiler::compiler_interface::Circuit;
 use compiler::num_bigint::BigInt;
 use program_structure::constants::UsefulConstants;
 use crate::bucket_interpreter::BucketInterpreter;
-use crate::bucket_interpreter::env::{Env, LibraryAccess};
+use crate::bucket_interpreter::env::{Env, EnvContextKind, LibraryAccess};
 use crate::bucket_interpreter::observer::Observer;
 use crate::passes::GlobalPassData;
 use super::InterpreterFlags;
@@ -44,15 +44,15 @@ pub struct PassMemory {
     /// Mirrors `LLVMCircuitData::ff_constants`.
     /// When ValueBucket is parsed as a bigint, its value is the index into this map.
     ff_constants: RefCell<Vec<String>>,
-    /// Identifies the current template/function under analysis
+    /// Identifies the current template/function scope of the [CircuitTransformationPass](crate::passes::CircuitTransformationPass)
     current_scope: RefCell<Scope>,
     ///
     io_map: RefCell<TemplateInstanceIOMap>,
-    ///
+    /// Map template/function header to signal index, to the total range of signal memory occupied by it
     signal_index_mapping: RefCell<HashMap<String, IndexMapping>>,
-    ///
+    /// Map template/function header to variable index, to the total range of variable memory occupied by it
     variable_index_mapping: RefCell<HashMap<String, IndexMapping>>,
-    ///
+    /// Map template/function header to component index, to the total range of component memory occupied by it
     component_addr_index_mapping: RefCell<HashMap<String, IndexMapping>>,
     ///
     prime: BigInt,
@@ -109,20 +109,30 @@ impl PassMemory {
         BucketInterpreter::init(global_data, observer, flags, self, scope)
     }
 
+    pub fn run_template_with_flags<'d>(
+        &self,
+        global_data: &'d RefCell<GlobalPassData>,
+        observer: &dyn for<'e> Observer<Env<'e>>,
+        template: &TemplateCode,
+        flags: InterpreterFlags,
+    ) -> Result<(), BadInterp> {
+        assert!(!self.get_current_scope_header().is_empty());
+        if cfg!(debug_assertions) {
+            println!("Running template {}", self.get_current_scope_header());
+        }
+        let interpreter = self.build_interpreter_with_flags(global_data, observer, flags);
+        let env = Env::new_standard_env(EnvContextKind::Template, self);
+        interpreter.execute_instructions(&template.body, env, true)?;
+        Ok(())
+    }
+
     pub fn run_template<'d>(
         &self,
         global_data: &'d RefCell<GlobalPassData>,
         observer: &dyn for<'e> Observer<Env<'e>>,
         template: &TemplateCode,
     ) -> Result<(), BadInterp> {
-        assert!(!self.get_current_scope_header().is_empty());
-        if cfg!(debug_assertions) {
-            println!("Running template {}", self.get_current_scope_header());
-        }
-        let interpreter = self.build_interpreter(global_data, observer);
-        let env = Env::new_standard_env(self);
-        interpreter.execute_instructions(&template.body, env, true)?;
-        Ok(())
+        self.run_template_with_flags(global_data, observer, template, InterpreterFlags::default())
     }
 
     pub fn add_template(&self, template: &TemplateCode) {
@@ -180,27 +190,7 @@ impl PassMemory {
         idx
     }
 
-    pub fn get_iodef(&self, template_id: &usize, signal_code: &usize) -> IODef {
-        self.io_map.borrow()[template_id][*signal_code].clone()
-    }
-
-    pub fn get_signal_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
-        self.signal_index_mapping.borrow()[scope][index].clone()
-    }
-
-    pub fn get_current_scope_signal_index_mapping(&self, index: &usize) -> Range<usize> {
-        self.get_signal_index_mapping(&self.get_current_scope_header(), index)
-    }
-
-    pub fn get_variables_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
-        self.variable_index_mapping.borrow()[scope][index].clone()
-    }
-
-    pub fn get_current_scope_variables_index_mapping(&self, index: &usize) -> Range<usize> {
-        self.get_variables_index_mapping(&self.get_current_scope_header(), index)
-    }
-
-    pub fn new_variable_index_mapping(&self, scope: &String, size: &usize) -> usize {
+    pub fn new_variable_index_mapping(&self, scope: &String, size: usize) -> usize {
         let mut base = self.variable_index_mapping.borrow_mut();
         let scope_map = base.entry(scope.clone()).or_default();
         let new_idx = match scope_map.last_key_value() {
@@ -214,8 +204,48 @@ impl PassMemory {
         new_idx
     }
 
-    pub fn new_current_scope_variable_index_mapping(&self, size: &usize) -> usize {
+    pub fn new_current_scope_variable_index_mapping(&self, size: usize) -> usize {
         self.new_variable_index_mapping(&self.get_current_scope_header(), size)
+    }
+
+    #[cfg(test)]
+    pub fn new_signal_index_mapping(&self, scope: &String, size: usize) -> usize {
+        let mut base = self.signal_index_mapping.borrow_mut();
+        let scope_map = base.entry(scope.clone()).or_default();
+        let new_idx = match scope_map.last_key_value() {
+            Some((k, _)) => *k + 1,
+            None => 0,
+        };
+        let range = (new_idx)..(new_idx + size);
+        for i in range.clone() {
+            scope_map.insert(i, range.clone());
+        }
+        new_idx
+    }
+
+    #[cfg(test)]
+    pub fn new_current_scope_signal_index_mapping(&self, size: usize) -> usize {
+        self.new_signal_index_mapping(&self.get_current_scope_header(), size)
+    }
+
+    pub fn get_iodef(&self, template_id: &usize, signal_code: &usize) -> IODef {
+        self.io_map.borrow()[template_id][*signal_code].clone()
+    }
+
+    pub fn get_signal_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
+        self.signal_index_mapping.borrow()[scope][index].clone()
+    }
+
+    pub fn get_current_scope_signal_index_mapping(&self, index: &usize) -> Range<usize> {
+        self.get_signal_index_mapping(&self.get_current_scope_header(), index)
+    }
+
+    pub fn get_variable_index_mapping(&self, scope: &String, index: &usize) -> Range<usize> {
+        self.variable_index_mapping.borrow()[scope][index].clone()
+    }
+
+    pub fn get_current_scope_variable_index_mapping(&self, index: &usize) -> Range<usize> {
+        self.get_variable_index_mapping(&self.get_current_scope_header(), index)
     }
 
     pub fn get_variable_index_mapping_clone(&self) -> HashMap<String, IndexMapping> {

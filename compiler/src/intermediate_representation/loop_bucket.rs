@@ -1,12 +1,13 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
-use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
-use code_producers::llvm_elements::functions::create_bb;
-use code_producers::llvm_elements::instructions::{create_br, create_conditional_branch};
-use code_producers::wasm_elements::*;
 use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
-
+use code_producers::c_elements::*;
+use code_producers::llvm_elements::{LLVMIRProducer, LLVMValue};
+use code_producers::llvm_elements::functions::create_bb;
+use code_producers::llvm_elements::instructions::{
+    create_br, create_br_with_checks, create_conditional_branch,
+};
+use code_producers::wasm_elements::*;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LoopBucket {
@@ -71,10 +72,7 @@ impl UpdateId for LoopBucket {
 }
 
 impl WriteLLVMIR for LoopBucket {
-    fn produce_llvm_ir<'a>(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-    ) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
         let current_function = producer.current_function();
@@ -94,18 +92,16 @@ impl WriteLLVMIR for LoopBucket {
             end_bb,
         );
 
-        // Body contents and branch back to header to check condition
+        // Generate body contents and branch back to header to check condition
         producer.set_current_bb(body_bb);
         for stmt in &self.body {
             stmt.produce_llvm_ir(producer);
         }
-        create_br(producer, cond_bb);
+        create_br_with_checks(producer, cond_bb);
 
-        //
         producer.set_current_bb(end_bb);
 
-        // Returns None since the current block "end_bb" is empty
-        None
+        None // We don't return a Value from this bucket
     }
 }
 

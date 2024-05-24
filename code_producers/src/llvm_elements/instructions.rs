@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use inkwell::basic_block::BasicBlock;
 use inkwell::IntPredicate::{EQ, NE, SLT, SGT, SLE, SGE};
 use inkwell::types::{AnyType, AnyTypeEnum, PointerType, IntType};
@@ -6,7 +5,7 @@ use inkwell::values::{
     AnyValue, AnyValueEnum, BasicMetadataValueEnum, BasicValue, FunctionValue, InstructionOpcode,
     InstructionValue, IntMathValue, IntValue, PointerValue,
 };
-use super::{to_basic_metadata_enum, LLVMIRProducer, LLVMInstruction};
+use super::{to_basic_metadata_enum, LLVMIRProducer, LLVMInstruction, LLVMValue};
 use super::fr::{FR_MUL_FN_NAME, FR_LT_FN_NAME};
 use super::functions::create_bb;
 use super::stdlib::{CONSTRAINT_VALUES_FN_NAME, CONSTRAINT_VALUE_FN_NAME};
@@ -602,17 +601,17 @@ pub fn create_return_void<'a>(producer: &dyn LLVMIRProducer<'a>) -> LLVMInstruct
     producer.llvm().builder.build_return(None).as_any_value_enum()
 }
 
+#[inline]
+#[must_use]
+pub fn get_insert_block<'a>(producer: &dyn LLVMIRProducer<'a>) -> BasicBlock<'a> {
+    producer.llvm().builder.get_insert_block().expect("no current block!")
+}
+
 pub fn create_return<'a, V: BasicValue<'a>>(
     producer: &dyn LLVMIRProducer<'a>,
     val: V,
 ) -> LLVMInstruction<'a> {
-    let f = producer
-        .llvm()
-        .builder
-        .get_insert_block()
-        .expect("no current block!")
-        .get_parent()
-        .expect("no current function!");
+    let f = get_insert_block(producer).get_parent().expect("no current function!");
     let ret_ty =
         f.get_type().get_return_type().expect("non-void function should have a return type!");
     let ret_val = if ret_ty.is_int_type() {
@@ -630,6 +629,22 @@ pub fn create_return<'a, V: BasicValue<'a>>(
 
 pub fn create_br<'a>(producer: &dyn LLVMIRProducer<'a>, bb: BasicBlock<'a>) -> LLVMInstruction<'a> {
     producer.llvm().builder.build_unconditional_branch(bb).as_any_value_enum()
+}
+
+// Handle the special case: must not branch after a branch, return, or unreachable statement
+pub fn create_br_with_checks<'a>(
+    producer: &dyn LLVMIRProducer<'a>,
+    bb: BasicBlock<'a>,
+) -> Option<LLVMInstruction<'a>> {
+    if let Some(inst) = get_insert_block(producer).get_last_instruction() {
+        match inst.get_opcode() {
+            InstructionOpcode::Unreachable | InstructionOpcode::Return | InstructionOpcode::Br => {
+                return None;
+            }
+            _ => {}
+        }
+    }
+    Some(create_br(producer, bb))
 }
 
 pub fn find_function<'a>(producer: &dyn LLVMIRProducer<'a>, name: &str) -> FunctionValue<'a> {
@@ -686,15 +701,15 @@ pub fn create_conditional_branch<'a>(
 
 pub fn create_return_from_any_value<'a>(
     producer: &dyn LLVMIRProducer<'a>,
-    val: AnyValueEnum<'a>,
+    val: LLVMValue<'a>,
 ) -> LLVMInstruction<'a> {
     match val {
-        AnyValueEnum::ArrayValue(x) => create_return(producer, x),
-        AnyValueEnum::IntValue(x) => create_return(producer, x),
-        AnyValueEnum::FloatValue(x) => create_return(producer, x),
-        AnyValueEnum::PointerValue(x) => create_return(producer, x),
-        AnyValueEnum::StructValue(x) => create_return(producer, x),
-        AnyValueEnum::VectorValue(x) => create_return(producer, x),
+        LLVMValue::ArrayValue(x) => create_return(producer, x),
+        LLVMValue::IntValue(x) => create_return(producer, x),
+        LLVMValue::FloatValue(x) => create_return(producer, x),
+        LLVMValue::PointerValue(x) => create_return(producer, x),
+        LLVMValue::StructValue(x) => create_return(producer, x),
+        LLVMValue::VectorValue(x) => create_return(producer, x),
         _ => panic!("Cannot create a return from a non basic value!"),
     }
 }
@@ -746,15 +761,6 @@ pub fn create_gep<'a>(
     indices: &[IntValue<'a>],
 ) -> PointerValue<'a> {
     create_gep_with_name(producer, ptr, indices, "")
-}
-
-pub fn get_instruction_arg(inst: InstructionValue, idx: u32) -> LLVMInstruction {
-    let r = inst.get_operand(idx).unwrap();
-    if r.is_left() {
-        r.unwrap_left().as_any_value_enum()
-    } else {
-        r.unwrap_right().get_last_instruction().unwrap().as_any_value_enum()
-    }
 }
 
 pub fn create_cast_to_addr_with_name<'a, T: IntMathValue<'a>>(
@@ -869,42 +875,6 @@ pub fn create_constraint_values_call<'a>(
     create_constraint_values_call_with_name(producer, value, pointer, "constraint")
 }
 
-/// Extracts the pointer and the indexes of a gep instruction
-/// getelementptr %ptr, 0, %idx ---> (%ptr, [0, %idx])
-pub fn get_data_from_gep(gep: PointerValue) -> (PointerValue, Vec<u64>) {
-    let inst = gep.as_instruction().expect("expected an instruction!");
-    match inst.get_opcode() {
-        InstructionOpcode::Call => {
-            let base_ptr = inst
-                .get_first_use()
-                .expect("Unable to find use of returned value in caller")
-                .get_used_value()
-                .expect_left("Pointer value must be a basic value!")
-                .into_pointer_value();
-            (base_ptr, vec![])
-        }
-        InstructionOpcode::GetElementPtr => {
-            let base_ptr = inst
-                .get_operand(0)
-                .expect("Base pointer is missing in GEP")
-                .expect_left("Pointer value must be a basic value!")
-                .into_pointer_value();
-            let count = inst.get_num_operands();
-            let mut ret = Vec::with_capacity(count as usize);
-            for i in 1..count {
-                let idx = inst
-                    .get_operand(i)
-                    .unwrap_or_else(|| panic!("Missing operand {} in GEP", i))
-                    .left_or_else(|_| panic!("Operand {} is not a basic value", i))
-                    .into_int_value()
-                    .get_sign_extended_constant()
-                    .unwrap_or_else(|| panic!("Operand {} is not a constant int value", i));
-                let idx = u64::try_from(idx)
-                    .unwrap_or_else(|_| panic!("Value of operand {} is too large: {}", i, idx));
-                ret.push(idx);
-            }
-            (base_ptr, ret)
-        }
-        _ => unreachable!("Did not expect {:?}", inst.get_opcode()),
-    }
+pub fn create_unreachable<'a>(producer: &dyn LLVMIRProducer<'a>) -> LLVMInstruction<'a> {
+    producer.llvm().builder.build_unreachable().as_any_value_enum()
 }

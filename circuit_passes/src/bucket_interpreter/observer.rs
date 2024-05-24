@@ -11,9 +11,9 @@ use super::error::BadInterp;
 macro_rules! observe {
     ($self:ident, $on_inst_fn: ident, $inst:expr, $env:ident, $observe:ident $(, $bucket_id:expr)?) => {
         if $observe {
-            $self.observer.$on_inst_fn($inst, &$env, $($bucket_id)?)?
+            $self.observer.$on_inst_fn($inst, &$env, $($bucket_id)?)
         } else {
-            false
+            Result::Ok(false)
         }
     };
 }
@@ -69,7 +69,7 @@ pub trait Observer<S> {
         Ok(true)
     }
 
-    // Implementation node: the return value here determines if the Instruction instance
+    // Implementation note: the return value here determines if the Instruction instance
     //  nested within the LocationRule is observed which means this must be called before
     //  the inner Instruction is visited and its return value passed in for the observe flag.
     fn on_location_rule(

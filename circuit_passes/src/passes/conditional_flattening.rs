@@ -28,7 +28,7 @@ pub struct ConditionalFlatteningPass<'d> {
     /// Track the order that the branches appear in the traversal to stabilize output for lit tests.
     branch_bucket_order: RefCell<IndexSet<BucketId>>,
     /// Maps CallBucket symbol (i.e. target function name) to BranchBucket value mapping to the
-    /// new function that has brances simplified according to that mapping.
+    /// new function that has branches simplified according to that mapping.
     new_functions: RefCell<IndexMap<String, IndexMap<BranchValues, FunctionCode>>>,
     /// Within the CircuitTransformationPass impl below, this holds the BranchBucket
     /// condition for when the function is called by the current CallBucket.

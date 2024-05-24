@@ -1,15 +1,13 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
-use code_producers::llvm_elements::{
-    any_value_wraps_basic_value, LLVMInstruction, LLVMIRProducer, AnyValue,
-};
-use code_producers::llvm_elements::{AnyValueEnum, InstructionOpcode}; //from inkwell via "pub use" in mod.rs
-use code_producers::llvm_elements::functions::create_bb;
-use code_producers::llvm_elements::instructions::{create_br, create_conditional_branch};
-use code_producers::wasm_elements::*;
 use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
-
+use code_producers::c_elements::*;
+use code_producers::llvm_elements::{LLVMIRProducer, LLVMValue};
+use code_producers::llvm_elements::functions::create_bb;
+use code_producers::llvm_elements::instructions::{
+    create_br_with_checks, create_conditional_branch, create_unreachable,
+};
+use code_producers::wasm_elements::*;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BranchBucket {
@@ -86,7 +84,7 @@ impl UpdateId for BranchBucket {
 }
 
 impl WriteLLVMIR for BranchBucket {
-    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
         // Necessary basic blocks
@@ -102,32 +100,12 @@ impl WriteLLVMIR for BranchBucket {
 
         // Define helper to process the body of the given branch of the if-statement.
         // If needed, it will produce an unconditional jump to the "merge" basic block.
-        // Returns true iff the unconditional jump was produced.
+        // Returns the unconditional jump if one was produced, otherwise None.
         let process_body = |branch_body: &InstructionList| {
-            let mut last_inst = None;
             for inst in branch_body {
-                last_inst = inst.produce_llvm_ir(producer);
+                inst.produce_llvm_ir(producer);
             }
-            if let Some(inst) = last_inst {
-                //The final instruction will never be a BasicValueEnum. Even the
-                //  ternary conditional operator will be desugared to a normal
-                //  if-statement that stores to a temporary variable.
-                assert!(!any_value_wraps_basic_value(inst));
-                //Special case: Should not branch after a branch, return, or unreachable
-                if let AnyValueEnum::InstructionValue(v) = inst {
-                    match v.get_opcode() {
-                        InstructionOpcode::Unreachable
-                        | InstructionOpcode::Return
-                        | InstructionOpcode::Br => {
-                            return false;
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            //Any other case
-            create_br(producer, merge_bb);
-            true
+            create_br_with_checks(producer, merge_bb)
         };
 
         // Then branch
@@ -139,14 +117,12 @@ impl WriteLLVMIR for BranchBucket {
         // Merge block (where the function body continues)
         producer.set_current_bb(merge_bb);
 
-
         //If there are no jumps to the merge block, it is unreachable.
-        if !jump_from_if && !jump_from_else {
-            let u = producer.llvm().builder.build_unreachable();
-            Some(u.as_any_value_enum())
-        } else {
-            None //merge block is empty
+        if jump_from_if.is_none() && jump_from_else.is_none() {
+            create_unreachable(producer);
         }
+
+        None
     }
 }
 

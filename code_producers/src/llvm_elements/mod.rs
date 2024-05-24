@@ -35,6 +35,7 @@ pub mod values;
 pub mod array_switch;
 
 pub type LLVMInstruction<'a> = AnyValueEnum<'a>;
+pub type LLVMValue<'a> = BasicMetadataValueEnum<'a>;
 pub type DebugCtx<'a> = (DebugInfoBuilder<'a>, DICompileUnit<'a>);
 
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
@@ -70,7 +71,7 @@ impl<'a> BaseBodyCtx<'a> {
     }
 
     fn get_wrapping_constraint(&self) -> Option<ConstraintKind> {
-        self.inside_constraint.borrow().clone()
+        *self.inside_constraint.borrow()
     }
 
     fn set_wrapping_constraint(&self, value: Option<ConstraintKind>) {
@@ -80,24 +81,21 @@ impl<'a> BaseBodyCtx<'a> {
 
 pub trait TemplateCtx<'a>: BodyCtx<'a> {
     /// Returns the memory address of the subcomponent
-    fn load_subcmp(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-        id: AnyValueEnum<'a>,
-    ) -> PointerValue<'a>;
+    fn load_subcmp(&self, producer: &dyn LLVMIRProducer<'a>, id: LLVMValue<'a>)
+        -> PointerValue<'a>;
 
     /// Creates the necessary code to load a subcomponent given the expression used as id
     fn load_subcmp_addr(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
-        id: AnyValueEnum<'a>,
+        id: LLVMValue<'a>,
     ) -> PointerValue<'a>;
 
     /// Creates the necessary code to load a subcomponent counter given the expression used as id
     fn load_subcmp_counter(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
-        id: AnyValueEnum<'a>,
+        id: LLVMValue<'a>,
         implicit: bool,
     ) -> Option<PointerValue<'a>>;
 
@@ -105,7 +103,7 @@ pub trait TemplateCtx<'a>: BodyCtx<'a> {
     fn get_subcmp_signal(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
-        subcmp_id: AnyValueEnum<'a>,
+        subcmp_id: LLVMValue<'a>,
         index: IntValue<'a>,
     ) -> PointerValue<'a>;
 
@@ -240,37 +238,50 @@ pub type LLVMAdapter<'a> = &'a Rc<RefCell<LLVM<'a>>>;
 pub type BigIntType<'a> = IntType<'a>; // i256
 
 #[inline]
+#[must_use]
 pub fn any_value_wraps_basic_value(v: AnyValueEnum) -> bool {
     BasicValueEnum::try_from(v).is_ok()
 }
 
 #[inline]
+#[must_use]
 pub fn any_value_to_basic(v: AnyValueEnum) -> BasicValueEnum {
     BasicValueEnum::try_from(v).expect("Attempted to convert a non basic value!")
 }
 
 #[inline]
+#[must_use]
 pub fn to_enum<'a, T: AnyValue<'a>>(v: T) -> AnyValueEnum<'a> {
     v.as_any_value_enum()
 }
 
 #[inline]
+#[must_use]
 pub fn to_basic_enum<'a, T: AnyValue<'a>>(v: T) -> BasicValueEnum<'a> {
     any_value_to_basic(to_enum(v))
 }
 
 #[inline]
+#[must_use]
 pub fn to_basic_metadata_enum(value: AnyValueEnum) -> BasicMetadataValueEnum {
     BasicMetadataValueEnum::try_from(value)
-        .expect("Attempted to convert a value that does not support BasicMetadataValueEnum")
+        .expect("Attempted to convert a value that is not basic or metadata")
 }
 
 #[inline]
+#[must_use]
+pub fn to_basic_metadata_enum_opt(value: AnyValueEnum) -> Option<BasicMetadataValueEnum> {
+    BasicMetadataValueEnum::try_from(value).ok()
+}
+
+#[inline]
+#[must_use]
 pub fn to_type_enum<'a, T: AnyType<'a>>(ty: T) -> AnyTypeEnum<'a> {
     ty.as_any_type_enum()
 }
 
 #[inline]
+#[must_use]
 pub fn to_basic_type_enum<'a, T: BasicType<'a>>(ty: T) -> BasicTypeEnum<'a> {
     ty.as_basic_type_enum()
 }

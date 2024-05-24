@@ -4,14 +4,14 @@ use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
-use crate::bucket_interpreter::env::{PRINT_ENV_SORTED, sort};
-use crate::bucket_interpreter::error::{BadInterp, new_inconsistency_err_result};
+use crate::bucket_interpreter::error::{new_inconsistency_err, BadInterp};
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use super::{SubcmpEnv, LibraryAccess};
+use super::{EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED, sort};
 
 #[derive(Clone)]
 pub struct StandardEnvData<'a> {
+    context_kind: EnvContextKind,
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
     subcmps: HashMap<usize, SubcmpEnv>,
@@ -51,8 +51,9 @@ impl LibraryAccess for StandardEnvData<'_> {
 }
 
 impl<'a> StandardEnvData<'a> {
-    pub fn new(libs: &'a dyn LibraryAccess) -> Self {
+    pub fn new(context_kind: EnvContextKind, libs: &'a dyn LibraryAccess) -> Self {
         StandardEnvData {
+            context_kind,
             vars: Default::default(),
             signals: Default::default(),
             subcmps: Default::default(),
@@ -64,6 +65,10 @@ impl<'a> StandardEnvData<'a> {
     // READ OPERATIONS
     pub fn extracted_func_caller(&self) -> Option<&BucketId> {
         None
+    }
+
+    pub fn get_context_kind(&self) -> EnvContextKind {
+        self.context_kind
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
@@ -188,9 +193,10 @@ impl<'a> StandardEnvData<'a> {
                 f(entry.get_mut());
                 Ok(copy)
             }
-            Entry::Vacant(_) => {
-                new_inconsistency_err_result(format!("Can't find subcomponent {}", subcmp_idx))
-            }
+            Entry::Vacant(_) => Result::Err(new_inconsistency_err(format!(
+                "Can't find subcomponent {}",
+                subcmp_idx
+            ))),
         }
     }
 

@@ -1,11 +1,10 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{LLVMInstruction, to_enum, LLVMIRProducer};
+use code_producers::llvm_elements::{LLVMIRProducer, LLVMValue};
 use code_producers::llvm_elements::values::{create_literal_u32, get_const};
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
-
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct ValueBucket {
@@ -68,15 +67,13 @@ impl UpdateId for ValueBucket {
 }
 
 impl WriteLLVMIR for ValueBucket {
-    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         // NOTE: do not change debug location for a value because it is not a top-level source statement
 
         // Represents a literal value
         match self.parse_as {
-            ValueType::BigInt =>
-                Some(get_const(producer, self.value)),
-            ValueType::U32 =>
-                Some(to_enum(create_literal_u32(producer, self.value as u64)))
+            ValueType::BigInt => Some(get_const(producer, self.value)),
+            ValueType::U32 => Some(create_literal_u32(producer, self.value as u64).into()),
         }
     }
 }

@@ -2,7 +2,7 @@ use super::ir_interface::*;
 use super::{BucketId, new_id, SExp, ToSExp, UpdateId};
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
-use code_producers::llvm_elements::{ConstraintKind, LLVMIRProducer, LLVMInstruction};
+use code_producers::llvm_elements::{ConstraintKind, LLVMIRProducer, LLVMValue};
 use code_producers::llvm_elements::instructions::{create_call, create_constraint_value_call};
 use code_producers::llvm_elements::stdlib::ASSERT_FN_NAME;
 use code_producers::llvm_elements::types::bool_type;
@@ -62,10 +62,7 @@ impl UpdateId for AssertBucket {
 }
 
 impl WriteLLVMIR for AssertBucket {
-    fn produce_llvm_ir<'a>(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-    ) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
         let mut bool_val = self
@@ -76,15 +73,16 @@ impl WriteLLVMIR for AssertBucket {
         if bool_val.get_type().get_bit_width() > 1 {
             bool_val = bool_val.const_truncate(bool_type(producer))
         }
-        let mut ret = create_call(producer, ASSERT_FN_NAME, &[bool_val.into()]);
+        create_call(producer, ASSERT_FN_NAME, &[bool_val.into()]);
         if producer.body_ctx().get_wrapping_constraint().is_some() {
             assert_eq!(
                 producer.body_ctx().get_wrapping_constraint().unwrap(),
                 ConstraintKind::Equality
             );
-            ret = create_constraint_value_call(producer, bool_val.into());
+            create_constraint_value_call(producer, bool_val.into());
         }
-        Some(ret)
+
+        None // We don't return a Value from this bucket
     }
 }
 

@@ -498,7 +498,7 @@ impl LoopBodyExtractor {
                     Some((a, v)) => {
                         // ASSERT: index values are known in every available iteration
                         assert!(!v.is_unknown());
-                        Some((a, v.get_u32()?))
+                        Some((a, v.as_u32()?))
                     }
                 });
             }

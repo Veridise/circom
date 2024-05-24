@@ -1,4 +1,4 @@
-use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
+use code_producers::llvm_elements::{LLVMIRProducer, LLVMValue};
 use crate::intermediate_representation::{SExp, ToSExp, UpdateId};
 use crate::translating_traits::WriteLLVMIR;
 use super::ir_interface::*;
@@ -57,7 +57,7 @@ impl UpdateId for LocationRule {
 }
 
 impl WriteLLVMIR for LocationRule {
-    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         match self {
             LocationRule::Indexed { location, .. } => location.produce_llvm_ir(producer),
             LocationRule::Mapped { .. } => unreachable!("LocationRule::Mapped should have been replaced"),

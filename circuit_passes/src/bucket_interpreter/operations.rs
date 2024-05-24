@@ -56,7 +56,7 @@ pub fn compute_offset(indexes: &Vec<usize>, lengths: &Vec<usize>) -> Result<usiz
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::compute_offset;
 
     fn test_expected_offset_helper(indexes: &Vec<usize>, lengths: &Vec<usize>) -> usize {

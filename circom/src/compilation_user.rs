@@ -105,6 +105,7 @@ pub fn compile(config: CompilerConfig, program_archive: ProgramArchive, prime: &
         let pm = PassManager::new();
         let result = pm
             .schedule_const_arg_deduplication_pass()
+            .schedule_unreachable_code_removal()
             .schedule_loop_unroll_pass()
             .schedule_conditional_flattening_pass()
             .schedule_unused_function_removal_pass() //previous 2 passes create the dead functions

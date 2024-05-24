@@ -1,7 +1,7 @@
 use core::fmt;
 use std::fmt::Formatter;
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum ReportCode {
     //Parse Errors
     UnclosedComment,

@@ -47,7 +47,7 @@ impl Debug for EnvRecorder<'_, '_> {
             "loadstore_to_index_per_iter",
             self.loadstore_to_index_per_iter.borrow(),
             "vals_at_header_per_iter",
-            self.vals_at_header_per_iter.borrow(),
+            self.vals_at_header_per_iter.borrow().iter().collect::<BTreeMap<_, _>>(),
             "env_at_header",
             self.env_at_header.borrow(),
         )

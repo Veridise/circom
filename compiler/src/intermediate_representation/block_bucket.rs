@@ -1,4 +1,4 @@
-use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
+use code_producers::llvm_elements::{LLVMIRProducer, LLVMValue};
 use crate::intermediate_representation::{
     BucketId, Instruction, InstructionList, new_id, SExp, ToSExp, UpdateId,
 };
@@ -71,16 +71,13 @@ impl UpdateId for BlockBucket {
 }
 
 impl WriteLLVMIR for BlockBucket {
-    fn produce_llvm_ir<'a>(
-        &self,
-        producer: &dyn LLVMIRProducer<'a>,
-    ) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         Self::manage_debug_loc_from_curr(producer, self);
 
-        let mut last = None;
         for inst in &self.body {
-            last = inst.produce_llvm_ir(producer);
+            inst.produce_llvm_ir(producer);
         }
-        last
+
+        None // We don't return a Value from this bucket
     }
 }

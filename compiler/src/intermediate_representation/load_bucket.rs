@@ -1,13 +1,12 @@
 use super::{ir_interface::*, make_ref};
 use crate::translating_traits::*;
+use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
 use code_producers::c_elements::*;
 use code_producers::llvm_elements::array_switch::unsized_array_ptr_ty;
-use code_producers::llvm_elements::{LLVMInstruction, LLVMIRProducer};
+use code_producers::llvm_elements::{to_basic_metadata_enum, LLVMIRProducer, LLVMValue};
 use code_producers::llvm_elements::instructions::{create_gep, create_load, create_call, create_pointer_cast};
 use code_producers::llvm_elements::values::zero;
 use code_producers::wasm_elements::*;
-use crate::intermediate_representation::{BucketId, new_id, SExp, ToSExp, UpdateId};
-
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct LoadBucket {
@@ -73,11 +72,14 @@ impl UpdateId for LoadBucket {
 }
 
 impl WriteLLVMIR for LoadBucket {
-    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMInstruction<'a>> {
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>> {
         // NOTE: do not change debug location for a load because it is not a top-level source statement
 
         // Generate the code of the location and use the last value as the reference
-        let index = self.src.produce_llvm_ir(producer).expect("We need to produce some kind of instruction!").into_int_value();
+        let index = self
+            .src
+            .produce_llvm_ir(producer)
+            .expect("Load must produce some kind of instruction!");
 
         // If we have bounds for an unknown index, we will get the base address and let the function check the bounds
         let load = match &self.bounded_fn {
@@ -87,7 +89,8 @@ impl WriteLLVMIR for LoadBucket {
                         AddressType::Variable => producer.body_ctx().get_variable_array(producer),
                         AddressType::Signal => producer.template_ctx().get_signal_array(producer),
                         AddressType::SubcmpSignal { cmp_address, counter_override, .. } => {
-                            let addr = cmp_address.produce_llvm_ir(producer)
+                            let addr = cmp_address
+                                .produce_llvm_ir(producer)
                                 .expect("The address of a subcomponent must yield a value!");
                             if *counter_override {
                                 return producer
@@ -101,11 +104,14 @@ impl WriteLLVMIR for LoadBucket {
                     };
                     create_pointer_cast(producer, arr_ptr, unsized_array_ptr_ty(producer))
                 };
-                create_call(producer, name.as_str(), &[get_ptr().into(), index.into()])
+                create_call(producer, name.as_str(), &[get_ptr().into(), index])
             }
-            None => create_load(producer, make_ref(producer, &self.address_type, index, true)),
+            None => create_load(
+                producer,
+                make_ref(producer, &self.address_type, index.into_int_value(), true),
+            ),
         };
-        Some(load)
+        Some(to_basic_metadata_enum(load))
     }
 }
 

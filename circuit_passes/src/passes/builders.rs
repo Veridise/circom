@@ -38,11 +38,11 @@ pub fn build_bigint_value_bucket(
 }
 
 pub fn build_bigint_value(
-    bucket: &dyn ObtainMeta,
+    meta: &dyn ObtainMeta,
     mem: &PassMemory,
     val: &dyn ToString,
 ) -> InstructionPointer {
-    build_bigint_value_bucket(bucket, mem, val).allocate()
+    build_bigint_value_bucket(meta, mem, val).allocate()
 }
 
 pub fn build_call(

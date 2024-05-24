@@ -40,7 +40,10 @@ impl<'d> SimplificationPass<'d> {
         self.memory.build_interpreter_with_flags(
             self.global_data,
             self,
-            InterpreterFlags { all_signals_unknown: self.within_constraint.borrow().to_owned() },
+            InterpreterFlags {
+                all_signals_unknown: self.within_constraint.borrow().to_owned(),
+                ..Default::default()
+            },
         )
     }
 

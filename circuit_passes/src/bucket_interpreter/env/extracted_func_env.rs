@@ -9,7 +9,7 @@ use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::body_extractor::{ToOriginalLocation, FuncArgIdx};
-use super::{Env, LibraryAccess};
+use super::{Env, EnvContextKind, LibraryAccess};
 
 /// This Env is used to process functions created by extracting loop bodies
 /// into 'LOOP_BODY_FN_PREFIX' functions. It has to interpret the references
@@ -61,12 +61,16 @@ impl<'a> ExtractedFuncEnvData<'a> {
         ExtractedFuncEnvData { base: Box::new(inner), caller: caller.clone(), remap, arenas }
     }
 
+    pub fn get_base(self) -> Env<'a> {
+        *self.base
+    }
+
     pub fn extracted_func_caller(&self) -> Option<&BucketId> {
         Some(&self.caller)
     }
 
-    pub fn get_base(self) -> Env<'a> {
-        *self.base
+    pub fn get_context_kind(&self) -> EnvContextKind {
+        EnvContextKind::ExtractedFunction
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
@@ -189,7 +193,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
     }
 
     pub fn subcmp_counter_is_zero(&self, subcmp_idx: usize) -> bool {
-        let res = match self.remap.get(&subcmp_idx).cloned() {
+        match self.remap.get(&subcmp_idx).cloned() {
             None => {
                 //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
                 assert!(self.arenas.contains(&subcmp_idx));
@@ -216,8 +220,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                     _ => false, // no counter for Variable/Signal types
                 }
             }
-        };
-        res
+        }
     }
 
     pub fn subcmp_counter_equal_to(&self, subcmp_idx: usize, value: usize) -> bool {
@@ -321,7 +324,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             // ASSERT: always 0 from 'get_reverse_passing_refs_for_itr' in 'body_extractor.rs'
                             assert_eq!(idx, 0);
                             // NOTE: If unwrapping to u32 directly causes a panic, then need to allow Value as the parameter.
-                            self.base.set_subcmp_counter(subcmp, new_value.get_u32()?)?
+                            self.base.set_subcmp_counter(subcmp, new_value.as_u32()?)?
                         } else {
                             self.base.set_subcmp_signal(subcmp, idx, new_value)?
                         }
@@ -352,7 +355,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn create_subcmp(
         self,
-        _name: &'a String,
+        _name: &String,
         _base_index: usize,
         _count: usize,
         _template_id: usize,

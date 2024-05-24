@@ -1,8 +1,8 @@
 use std::default::Default;
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{AnyType, BasicType, PointerType};
-use inkwell::values::{AnyValueEnum, ArrayValue, FunctionValue, IntValue, PointerValue};
-use super::{BaseBodyCtx, BodyCtx, ConstraintKind, LLVM, LLVMIRProducer, TemplateCtx};
+use inkwell::values::{ArrayValue, FunctionValue, IntValue, PointerValue};
+use super::{BaseBodyCtx, BodyCtx, ConstraintKind, LLVMIRProducer, LLVMValue, TemplateCtx, LLVM};
 use super::instructions::{create_alloca, create_gep, create_load};
 use super::types::{bigint_type, i32_type};
 use super::values::{create_literal_u32, zero};
@@ -64,7 +64,7 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
     fn load_subcmp(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
-        id: AnyValueEnum<'a>,
+        id: LLVMValue<'a>,
     ) -> PointerValue<'a> {
         create_gep(producer, self.subcmps, &[zero(producer), id.into_int_value()])
     }
@@ -72,7 +72,7 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
     fn load_subcmp_addr(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
-        id: AnyValueEnum<'a>,
+        id: LLVMValue<'a>,
     ) -> PointerValue<'a> {
         let signals = create_gep(
             producer,
@@ -85,7 +85,7 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
     fn load_subcmp_counter(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
-        id: AnyValueEnum<'a>,
+        id: LLVMValue<'a>,
         _implicit: bool,
     ) -> Option<PointerValue<'a>> {
         Some(create_gep(
@@ -98,7 +98,7 @@ impl<'a> TemplateCtx<'a> for StdTemplateCtx<'a> {
     fn get_subcmp_signal(
         &self,
         producer: &dyn LLVMIRProducer<'a>,
-        subcmp_id: AnyValueEnum<'a>,
+        subcmp_id: LLVMValue<'a>,
         index: IntValue<'a>,
     ) -> PointerValue<'a> {
         create_gep(producer, self.load_subcmp_addr(producer, subcmp_id), &[zero(producer), index])
@@ -132,7 +132,7 @@ impl<'a> BodyCtx<'a> for StdTemplateCtx<'a> {
     }
 
     fn get_variable_array(&self, _producer: &dyn LLVMIRProducer<'a>) -> PointerValue<'a> {
-        self.stack.into()
+        self.stack
     }
 
     fn get_wrapping_constraint(&self) -> Option<ConstraintKind> {
