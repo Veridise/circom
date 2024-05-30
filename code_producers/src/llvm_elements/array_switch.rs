@@ -59,7 +59,7 @@ mod array_switch_private {
         for idx in index_range.clone() {
             let case_val = i32_ty.const_int(idx.try_into().unwrap(), false);
             let case_bb = create_bb(producer, func, format!("case_{}", idx).as_str());
-            producer.set_current_bb(case_bb);
+            producer.llvm().set_current_bb(case_bb);
 
             let ptr = create_gep(producer, arr, &[zero(producer), case_val]);
             let val = create_load(producer, ptr).into_int_value();
@@ -69,11 +69,11 @@ mod array_switch_private {
         }
         // -- else case
         let else_bb = create_bb(producer, func, "else");
-        producer.set_current_bb(else_bb);
+        producer.llvm().set_current_bb(else_bb);
         create_call(producer, ASSERT_FN_NAME, &[bool_ty.const_zero().into()]);
         create_return(producer, bigint_ty.const_zero());
 
-        producer.set_current_bb(main);
+        producer.llvm().set_current_bb(main);
 
         create_switch(producer, arr_idx, else_bb, &cases);
     }
@@ -109,7 +109,7 @@ mod array_switch_private {
         for idx in index_range.clone() {
             let case_val = i32_ty.const_int(idx.try_into().unwrap(), false);
             let case_bb = create_bb(producer, func, format!("case_{}", idx).as_str());
-            producer.set_current_bb(case_bb);
+            producer.llvm().set_current_bb(case_bb);
 
             let ptr = create_gep(producer, arr, &[zero(producer), case_val]);
             create_store(producer, ptr, val.into());
@@ -119,11 +119,11 @@ mod array_switch_private {
         }
         // -- else case
         let else_bb = create_bb(producer, func, "else");
-        producer.set_current_bb(else_bb);
+        producer.llvm().set_current_bb(else_bb);
         create_call(producer, ASSERT_FN_NAME, &[bool_ty.const_zero().into()]);
         create_return_void(producer);
 
-        producer.set_current_bb(main);
+        producer.llvm().set_current_bb(main);
 
         create_switch(producer, arr_idx, else_bb, &cases);
     }

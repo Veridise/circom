@@ -186,7 +186,7 @@ impl WriteLLVMIR for Circuit {
             );
             main_fn.set_linkage(Linkage::External);
             let main = create_bb(producer, main_fn, "main");
-            producer.set_current_bb(main);
+            producer.llvm().set_current_bb(main);
 
             let bigint_ptr = bigint_type(producer).array_type(0);
             // Set the type of the component memory: signals array + signals counter

@@ -70,12 +70,12 @@ impl WriteLLVMIR for FunctionCodeInfo {
         Self::manage_debug_loc_from_curr(producer, self);
         let function = producer.current_function();
         let main = create_bb(producer, function, self.header.as_str());
-        producer.set_current_bb(main);
+        producer.llvm().set_current_bb(main);
 
         for t in &self.body {
             let bb = create_bb(producer, function, t.label_name(function.count_basic_blocks()).as_str());
             create_br(producer, bb);
-            producer.set_current_bb(bb);
+            producer.llvm().set_current_bb(bb);
             t.produce_llvm_ir(producer);
         }
 

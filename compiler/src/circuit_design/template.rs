@@ -109,7 +109,7 @@ impl WriteLLVMIR for TemplateCodeInfo {
         );
         Self::manage_debug_loc(producer, self, || build_function);
         let main = create_bb(producer,build_function, "main");
-        producer.set_current_bb(main);
+        producer.llvm().set_current_bb(main);
 
         let cmp_mem = build_function.get_nth_param(0).unwrap();
         // Allocate memory for the component
@@ -141,7 +141,7 @@ impl WriteLLVMIR for TemplateCodeInfo {
         );
         Self::manage_debug_loc(producer, self, || run_function);
         let prelude = create_bb(producer, run_function, "prelude");
-        producer.set_current_bb(prelude);
+        producer.llvm().set_current_bb(prelude);
         let template_producer = TemplateLLVMIRProducer::new(
             producer,
             self.var_stack_depth,
@@ -155,14 +155,14 @@ impl WriteLLVMIR for TemplateCodeInfo {
         for t in &self.body {
             let bb = create_bb(&template_producer, run_function, t.label_name(run_function.count_basic_blocks()).as_str());
             create_br(&template_producer, bb);
-            template_producer.set_current_bb(bb);
+            template_producer.llvm().set_current_bb(bb);
             t.produce_llvm_ir(&template_producer);
         }
 
         // Run function prologue
         let prologue = create_bb(producer, run_function, "prologue");
         create_br(producer, prologue);
-        producer.set_current_bb(prologue);
+        producer.llvm().set_current_bb(prologue);
         create_return_void(producer);
 
         // Use the template name as the Section identifier to prevent function merging

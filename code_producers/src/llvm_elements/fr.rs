@@ -60,7 +60,7 @@ macro_rules! fr_nullary_op {
     ($name: expr, $producer: expr, $retTy: expr) => {{
         let func = create_function($producer, &None, 0, "", $name, $retTy.fn_type(&[], false));
         let main = create_bb($producer, func, $name);
-        $producer.set_current_bb(main);
+        $producer.llvm().set_current_bb(main);
         func
     }};
 }
@@ -70,7 +70,7 @@ macro_rules! fr_unary_op_base {
         let args = &[$argTy.into()];
         let func = create_function($producer, &None, 0, "", $name, $retTy.fn_type(args, false));
         let main = create_bb($producer, func, $name);
-        $producer.set_current_bb(main);
+        $producer.llvm().set_current_bb(main);
 
         let lhs = func.get_nth_param(0).unwrap();
         (lhs, func)
@@ -88,7 +88,7 @@ macro_rules! fr_binary_op_base {
         let args = &[$argTy.into(), $argTy.into()];
         let func = create_function($producer, &None, 0, "", $name, $retTy.fn_type(args, false));
         let main = create_bb($producer, func, $name);
-        $producer.set_current_bb(main);
+        $producer.llvm().set_current_bb(main);
 
         let lhs = func.get_nth_param(0).unwrap();
         let rhs = func.get_nth_param(1).unwrap();
@@ -306,7 +306,7 @@ fn index_arr_ptr_fn(producer: &dyn LLVMIRProducer) {
     idx.set_name("idx");
 
     let main = create_bb(producer, func, FR_INDEX_ARR_PTR);
-    producer.set_current_bb(main);
+    producer.llvm().set_current_bb(main);
     create_return(
         producer,
         create_gep(producer, arr.into_pointer_value(), &[zero(producer), idx.into_int_value()]),

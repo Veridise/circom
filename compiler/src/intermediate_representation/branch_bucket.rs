@@ -109,13 +109,13 @@ impl WriteLLVMIR for BranchBucket {
         };
 
         // Then branch
-        producer.set_current_bb(then_bb);
+        producer.llvm().set_current_bb(then_bb);
         let jump_from_if = process_body(&self.if_branch);
         // Else branch
-        producer.set_current_bb(else_bb);
+        producer.llvm().set_current_bb(else_bb);
         let jump_from_else = process_body(&self.else_branch);
         // Merge block (where the function body continues)
-        producer.set_current_bb(merge_bb);
+        producer.llvm().set_current_bb(merge_bb);
 
         //If there are no jumps to the merge block, it is unreachable.
         if jump_from_if.is_none() && jump_from_else.is_none() {
