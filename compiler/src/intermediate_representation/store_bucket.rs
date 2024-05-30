@@ -205,13 +205,14 @@ impl StoreBucket {
             ..
         } = &dest_address_type
         {
-            let sub_cmp_name = match &dest {
-                LocationRule::Indexed { template_header, .. } => template_header.clone(),
+            let sub_cmp_name = match dest {
+                LocationRule::Indexed { template_header, .. } => {
+                    template_header.as_ref().expect("Could not get the name of the subcomponent")
+                }
                 LocationRule::Mapped { .. } => {
                     unreachable!("LocationRule::Mapped should have been replaced")
                 }
-            }
-            .expect("Could not get the name of the subcomponent");
+            };
             match status {
                 StatusInput::Last => {
                     // If we reach this point gep is the address of the subcomponent so we can just reuse it

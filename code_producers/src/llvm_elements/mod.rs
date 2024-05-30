@@ -132,46 +132,40 @@ pub trait LLVMIRProducer<'a> {
 // Uses BTreeMap so the maximum key (i.e. local index) can be obtained easily
 pub type IndexMapping = BTreeMap<usize, Range<usize>>;
 
-#[derive(Default, Eq, PartialEq, Debug)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BoundedArrays {
+    pub loads: HashSet<Range<usize>>,
+    pub stores: HashSet<Range<usize>>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct MemoryLayout {
+    /// When ValueBucket is parsed as a bigint, its value is the index into this map.
+    pub ff_constants: Vec<String>,
+    ///
+    pub io_map: TemplateInstanceIOMap,
+    /// Map template/function header to signal index, to the total range of signal memory occupied by it
+    pub signal_index_mapping: HashMap<String, IndexMapping>,
+    /// Map template/function header to variable index, to the total range of variable memory occupied by it
+    pub variable_index_mapping: HashMap<String, IndexMapping>,
+    /// Map template/function header to component index, to the total range of component memory occupied by it
+    pub component_index_mapping: HashMap<String, IndexMapping>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct LLVMCircuitData {
     pub main_header: String,
-    pub ff_constants: Vec<String>,
-    pub io_map: TemplateInstanceIOMap,
-    pub signal_index_mapping: HashMap<String, IndexMapping>,
-    pub variable_index_mapping: HashMap<String, IndexMapping>,
-    pub component_index_mapping: HashMap<String, IndexMapping>,
-    pub bounded_array_loads: HashSet<Range<usize>>,
-    pub bounded_array_stores: HashSet<Range<usize>>,
+    pub mem_layout: MemoryLayout,
+    pub bounded_arrays: BoundedArrays,
 }
 
-impl LLVMCircuitData {
-    pub fn clone_with_updates(
-        &self,
-        ff_constants: Vec<String>,
-        variable_index_mapping: HashMap<String, IndexMapping>,
-        array_loads: HashSet<Range<usize>>,
-        array_stores: HashSet<Range<usize>>,
-    ) -> Self {
-        LLVMCircuitData {
-            main_header: self.main_header.clone(),
-            ff_constants,
-            io_map: self.io_map.clone(),
-            signal_index_mapping: self.signal_index_mapping.clone(),
-            variable_index_mapping,
-            component_index_mapping: self.component_index_mapping.clone(),
-            bounded_array_loads: array_loads,
-            bounded_array_stores: array_stores,
-        }
-    }
-}
-
-pub struct TopLevelLLVMIRProducer<'a> {
+pub struct TopLevelLLVMIRProducer<'a, 'c> {
     current_module: LLVM<'a>,
-    ff_constants: Vec<String>,
-    main_template_header: String,
+    ff_constants: &'c Vec<String>,
+    main_template_header: &'c String,
 }
 
-impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
+impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a, '_> {
     fn llvm(&self) -> &LLVM<'a> {
         &self.current_module
     }
@@ -193,7 +187,7 @@ impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
     }
 
     fn get_ff_constants(&self) -> &Vec<String> {
-        &self.ff_constants
+        self.ff_constants
     }
 
     fn get_template_mem_arg(&self, _run_fn: FunctionValue<'a>) -> ArrayValue<'a> {
@@ -203,11 +197,11 @@ impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a> {
     }
 
     fn get_main_template_header(&self) -> &String {
-        &self.main_template_header
+        self.main_template_header
     }
 }
 
-impl<'a> TopLevelLLVMIRProducer<'a> {
+impl TopLevelLLVMIRProducer<'_, '_> {
     pub fn write_to_file(&self, path: &str) -> Result<(), ()> {
         self.current_module.write_to_file(path)
     }
@@ -218,13 +212,13 @@ pub fn create_context() -> Context {
     Context::create()
 }
 
-impl<'a> TopLevelLLVMIRProducer<'a> {
+impl<'a, 'c> TopLevelLLVMIRProducer<'a, 'c> {
     pub fn new(
         context: &'a Context,
         program_archive: &ProgramArchive,
         llvm_path: &str,
-        ff_constants: Vec<String>,
-        main_template_header: String,
+        ff_constants: &'c Vec<String>,
+        main_template_header: &'c String,
     ) -> Self {
         TopLevelLLVMIRProducer {
             current_module: LLVM::from_context(context, program_archive, llvm_path),
@@ -419,11 +413,11 @@ impl<'a> LLVM<'a> {
 }
 
 #[inline]
-pub fn run_fn_name(name: String) -> String {
+pub fn run_fn_name(name: &str) -> String {
     format!("{}_run", name)
 }
 
 #[inline]
-pub fn build_fn_name(name: String) -> String {
+pub fn build_fn_name(name: &str) -> String {
     format!("{}_build", name)
 }

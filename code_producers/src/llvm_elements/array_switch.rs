@@ -55,7 +55,7 @@ mod array_switch_private {
         let arr_idx = func.get_nth_param(1).unwrap().into_int_value();
 
         // build the switch cases
-        let mut cases = vec![];
+        let mut cases = Vec::with_capacity(index_range.len());
         for idx in index_range.clone() {
             let case_val = i32_ty.const_int(idx.try_into().unwrap(), false);
             let case_bb = create_bb(producer, func, format!("case_{}", idx).as_str());
@@ -105,7 +105,7 @@ mod array_switch_private {
         let val = func.get_nth_param(2).unwrap();
 
         // build the switch cases
-        let mut cases = vec![];
+        let mut cases = Vec::with_capacity(index_range.len());
         for idx in index_range.clone() {
             let case_val = i32_ty.const_int(idx.try_into().unwrap(), false);
             let case_bb = create_bb(producer, func, format!("case_{}", idx).as_str());

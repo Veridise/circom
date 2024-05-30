@@ -33,22 +33,21 @@ pub trait WriteWasm {
 
 pub trait WriteLLVMIR {
     /// This should return the value produced or None for instruction-like nodes that produce no value
-    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>)
-        -> Option<LLVMValue<'a>>;
+    fn produce_llvm_ir<'a>(&self, producer: &dyn LLVMIRProducer<'a>) -> Option<LLVMValue<'a>>;
 
-    fn write_llvm_ir(
+    fn write_llvm_ir<'c>(
         &self,
         program_archive: &ProgramArchive,
         out_path: &str,
-        data: &LLVMCircuitData,
+        data: &'c LLVMCircuitData,
     ) -> Result<(), ()> {
         let context = create_context();
         let top_level = TopLevelLLVMIRProducer::new(
             &context,
             program_archive,
             out_path,
-            data.ff_constants.clone(),
-            data.main_header.clone(),
+            &data.mem_layout.ff_constants,
+            &data.main_header,
         );
         self.produce_llvm_ir(&top_level);
         top_level.write_to_file(out_path)

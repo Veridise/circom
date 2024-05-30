@@ -30,7 +30,7 @@ impl<'d> ConstArgDeduplicationPass<'d> {
     pub fn new(prime: String, _global_data: &'d RefCell<GlobalPassData>) -> Self {
         ConstArgDeduplicationPass {
             _global_data,
-            memory: PassMemory::new(prime, Default::default()),
+            memory: PassMemory::new(prime),
             new_body_functions: Default::default(),
         }
     }
@@ -94,7 +94,7 @@ impl<'d> ConstArgDeduplicationPass<'d> {
         const_stores: Vec<&InstructionPointer>,
     ) -> FunctionCode {
         // Copy the list of stores and add a "return void" at the end
-        let mut new_body = vec![];
+        let mut new_body = Vec::with_capacity(const_stores.len());
         for s in const_stores {
             let mut copy: InstructionPointer = s.clone();
             copy.update_id();
@@ -164,8 +164,8 @@ impl CircuitTransformationPass for ConstArgDeduplicationPass<'_> {
                         new_body.push(self.transform_instruction(i)?);
                     }
                     _ => {
-                        let mut idx_val_pairs = vec![];
-                        let mut const_stores = vec![];
+                        let mut idx_val_pairs = Vec::with_capacity(param_chunk.len());
+                        let mut const_stores = Vec::with_capacity(param_chunk.len());
                         for bucket_id in param_chunk {
                             let i = body_iter.next().expect("Expected more statements");
                             idx_val_pairs.push(self.get_lvar_src_pair(bucket_id, i));

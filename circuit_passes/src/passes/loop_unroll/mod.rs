@@ -38,7 +38,7 @@ impl<'d> LoopUnrollPass<'d> {
     pub fn new(prime: String, global_data: &'d RefCell<GlobalPassData>) -> Self {
         LoopUnrollPass {
             global_data,
-            memory: PassMemory::new(prime, Default::default()),
+            memory: PassMemory::new(prime),
             replacements: Default::default(),
             extractor: Default::default(),
         }
@@ -185,7 +185,6 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
-    use code_producers::llvm_elements::IndexMapping;
     use compiler::circuit_design::template::TemplateCodeInfo;
     use compiler::compiler_interface::Circuit;
     use compiler::intermediate_representation::{Instruction, new_id};
@@ -202,12 +201,9 @@ mod tests {
         let prime = "goldilocks".to_string();
         let global_data = RefCell::new(GlobalPassData::new());
         let pass = LoopUnrollPass::new(prime, &global_data);
-        let mut circuit = example_program();
-        circuit.llvm_data.variable_index_mapping.insert("test_0".to_string(), IndexMapping::new());
-        circuit.llvm_data.signal_index_mapping.insert("test_0".to_string(), IndexMapping::new());
-        circuit.llvm_data.component_index_mapping.insert("test_0".to_string(), IndexMapping::new());
+        let circuit = example_program();
         let new_circuit =
-            pass.transform_circuit(&circuit).map_err(|e| e.get_message().clone()).unwrap();
+            pass.transform_circuit(circuit.clone()).map_err(|e| e.get_message().clone()).unwrap();
         if cfg!(debug_assertions) {
             println!("{}", new_circuit.templates[0].body.last().unwrap().to_string());
         }
