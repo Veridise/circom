@@ -278,7 +278,7 @@ pub fn to_basic_type_enum<'a, T: BasicType<'a>>(ty: T) -> BasicTypeEnum<'a> {
 pub struct LLVM<'a> {
     module: Module<'a>,
     pub builder: Builder<'a>,
-    debug: HashMap<usize, DebugCtx<'a>>, //indexed by file_id
+    debug_info: HashMap<usize, DebugCtx<'a>>, //indexed by file_id
 }
 
 impl<'a> LLVM<'a> {
@@ -287,8 +287,8 @@ impl<'a> LLVM<'a> {
         program_archive: &ProgramArchive,
         out_path: &str,
     ) -> Self {
-        let m = context.create_module(out_path);
-        m.add_basic_value_flag(
+        let module = context.create_module(out_path);
+        module.add_basic_value_flag(
             "Debug Info Version",
             inkwell::module::FlagBehavior::Warning,
             context.i32_type().const_int(3, false),
@@ -318,7 +318,7 @@ impl<'a> LLVM<'a> {
             let (dir, name) =
                 path.split_at(path.rfind(std::path::MAIN_SEPARATOR).map_or(0, |x| x + 1));
             //Create and store the new DebugCtx
-            let res = m.create_debug_info_builder(
+            let res = module.create_debug_info_builder(
                 true,
                 inkwell::debug_info::DWARFSourceLanguage::C11,
                 name,
@@ -337,7 +337,7 @@ impl<'a> LLVM<'a> {
             );
             debug_info.insert(pair.0, res);
         }
-        LLVM { module: m, builder: context.create_builder(), debug: debug_info }
+        LLVM { module, builder: context.create_builder(), debug_info }
     }
 
     pub fn set_current_bb(&self, bb: BasicBlock<'a>) {
@@ -349,7 +349,7 @@ impl<'a> LLVM<'a> {
     }
 
     pub fn get_debug_info(&self, file_id: &usize) -> Result<&DebugCtx, String> {
-        self.debug
+        self.debug_info
             .get(file_id)
             .ok_or_else(|| format!("Could not find debug info for file with ID={}", file_id))
     }
@@ -363,7 +363,7 @@ impl<'a> LLVM<'a> {
         pm.run_on(&self.module);
 
         // Must finalize all debug info before running the verifier
-        for dbg in self.debug.values() {
+        for dbg in self.debug_info.values() {
             dbg.0.finalize();
         }
         // Run module verification
