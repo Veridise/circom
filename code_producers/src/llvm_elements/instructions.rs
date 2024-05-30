@@ -54,15 +54,15 @@ pub fn create_pow_with_name<'a, T: IntMathValue<'a> + Copy>(
         // Check the condition
         create_conditional_branch(producer, res_is_neg, bb_if_then, bb_if_else);
         // Then branch
-        producer.set_current_bb(bb_if_then);
+        producer.llvm().set_current_bb(bb_if_then);
         bldr.build_store(ptr_abv, create_neg(producer, rhs).into_int_value());
         bldr.build_unconditional_branch(bb_if_merge);
         // Else branch
-        producer.set_current_bb(bb_if_else);
+        producer.llvm().set_current_bb(bb_if_else);
         bldr.build_store(ptr_abv, rhs);
         bldr.build_unconditional_branch(bb_if_merge);
         // Merge/tail block
-        producer.set_current_bb(bb_if_merge);
+        producer.llvm().set_current_bb(bb_if_merge);
     }
 
     let ptr_res = bldr.build_alloca(ty, "res");
@@ -81,7 +81,7 @@ pub fn create_pow_with_name<'a, T: IntMathValue<'a> + Copy>(
         //// Loop condition block
         // [TH] I believe the loop variable does not require finite field
         //  arithmetic, thus the standard LLVM less-than operator is used.
-        producer.set_current_bb(bb_lp_cond);
+        producer.llvm().set_current_bb(bb_lp_cond);
         let res_cond = create_lt(
             producer,
             bldr.build_load(ptr_lp_var, "").into_int_value(),
@@ -91,7 +91,7 @@ pub fn create_pow_with_name<'a, T: IntMathValue<'a> + Copy>(
         create_conditional_branch(producer, res_cond.into_int_value(), bb_lp_body, bb_lp_end);
 
         //// Loop body block
-        producer.set_current_bb(bb_lp_body);
+        producer.llvm().set_current_bb(bb_lp_body);
         //   store( res, fn_mul( load(res) , lhs )) -- use method for finite field operation
         let res_mul = create_call(
             producer,
@@ -108,7 +108,7 @@ pub fn create_pow_with_name<'a, T: IntMathValue<'a> + Copy>(
         bldr.build_store(ptr_lp_var, res_add.into_int_value());
         create_br(producer, bb_lp_cond);
 
-        producer.set_current_bb(bb_lp_end);
+        producer.llvm().set_current_bb(bb_lp_end);
     }
 
     //// Generate if-then to invert result when exponent is negative
@@ -119,14 +119,14 @@ pub fn create_pow_with_name<'a, T: IntMathValue<'a> + Copy>(
         // Check the condition
         create_conditional_branch(producer, res_is_neg, bb_if_then, bb_if_merge);
         // Then branch
-        producer.set_current_bb(bb_if_then);
+        producer.llvm().set_current_bb(bb_if_then);
         bldr.build_store(
             ptr_res,
             create_inv(producer, bldr.build_load(ptr_res, "").into_int_value()).into_int_value(),
         );
         bldr.build_unconditional_branch(bb_if_merge);
         // Merge/tail block
-        producer.set_current_bb(bb_if_merge);
+        producer.llvm().set_current_bb(bb_if_merge);
     }
 
     // Return the value holding the result of the power operation

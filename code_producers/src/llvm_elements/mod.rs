@@ -120,7 +120,6 @@ pub trait TemplateCtx<'a>: BodyCtx<'a> {
 
 pub trait LLVMIRProducer<'a> {
     fn llvm(&self) -> &LLVM<'a>;
-    fn set_current_bb(&self, bb: BasicBlock<'a>);
     fn template_ctx(&self) -> &dyn TemplateCtx<'a>;
     fn body_ctx(&self) -> &dyn BodyCtx<'a>;
     fn current_function(&self) -> FunctionValue<'a>;
@@ -168,10 +167,6 @@ pub struct TopLevelLLVMIRProducer<'a, 'c> {
 impl<'a> LLVMIRProducer<'a> for TopLevelLLVMIRProducer<'a, '_> {
     fn llvm(&self) -> &LLVM<'a> {
         &self.current_module
-    }
-
-    fn set_current_bb(&self, bb: BasicBlock<'a>) {
-        self.llvm().builder.position_at_end(bb);
     }
 
     fn template_ctx(&self) -> &dyn TemplateCtx<'a> {
@@ -343,6 +338,10 @@ impl<'a> LLVM<'a> {
             debug_info.insert(pair.0, res);
         }
         LLVM { module: m, builder: context.create_builder(), debug: debug_info }
+    }
+
+    pub fn set_current_bb(&self, bb: BasicBlock<'a>) {
+        self.builder.position_at_end(bb);
     }
 
     pub fn context(&self) -> ContextRef<'a> {

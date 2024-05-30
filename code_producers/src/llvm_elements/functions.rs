@@ -114,10 +114,6 @@ impl<'ctx, 'prod> LLVMIRProducer<'ctx> for FunctionLLVMIRProducer<'ctx, 'prod> {
         self.parent.llvm()
     }
 
-    fn set_current_bb(&self, bb: BasicBlock<'ctx>) {
-        self.parent.set_current_bb(bb)
-    }
-
     fn template_ctx(&self) -> &dyn TemplateCtx<'ctx> {
         self.parent.template_ctx()
     }
@@ -288,10 +284,6 @@ impl<'ctx, 'prod> ExtractedFunctionLLVMIRProducer<'ctx, 'prod> {
 impl<'ctx, 'prod> LLVMIRProducer<'ctx> for ExtractedFunctionLLVMIRProducer<'ctx, 'prod> {
     fn llvm(&self) -> &LLVM<'ctx> {
         self.parent.llvm()
-    }
-
-    fn set_current_bb(&self, bb: BasicBlock<'ctx>) {
-        self.parent.set_current_bb(bb)
     }
 
     fn template_ctx(&self) -> &dyn TemplateCtx<'ctx> {

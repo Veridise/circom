@@ -81,7 +81,7 @@ impl WriteLLVMIR for LoopBucket {
         let end_bb = create_bb(producer, current_function, "loop.end");
         // Generate jump from current block to the new condition block
         create_br(producer, cond_bb);
-        producer.set_current_bb(cond_bb);
+        producer.llvm().set_current_bb(cond_bb);
         // Cond logic
         let cond_res = self.continue_condition.produce_llvm_ir(producer);
         // XXX: Assumption: If the value is 0 the we go to the end block
@@ -93,13 +93,13 @@ impl WriteLLVMIR for LoopBucket {
         );
 
         // Generate body contents and branch back to header to check condition
-        producer.set_current_bb(body_bb);
+        producer.llvm().set_current_bb(body_bb);
         for stmt in &self.body {
             stmt.produce_llvm_ir(producer);
         }
         create_br_with_checks(producer, cond_bb);
 
-        producer.set_current_bb(end_bb);
+        producer.llvm().set_current_bb(end_bb);
 
         None // We don't return a Value from this bucket
     }

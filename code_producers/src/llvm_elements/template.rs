@@ -1,5 +1,4 @@
 use std::default::Default;
-use inkwell::basic_block::BasicBlock;
 use inkwell::types::{AnyType, BasicType, PointerType};
 use inkwell::values::{ArrayValue, FunctionValue, IntValue, PointerValue};
 use super::{BaseBodyCtx, BodyCtx, ConstraintKind, LLVMIRProducer, LLVMValue, TemplateCtx, LLVM};
@@ -152,10 +151,6 @@ pub struct TemplateLLVMIRProducer<'ctx: 'prod, 'prod> {
 impl<'a, 'b> LLVMIRProducer<'a> for TemplateLLVMIRProducer<'a, 'b> {
     fn llvm(&self) -> &LLVM<'a> {
         self.parent.llvm()
-    }
-
-    fn set_current_bb(&self, bb: BasicBlock<'a>) {
-        self.parent.set_current_bb(bb)
     }
 
     fn template_ctx(&self) -> &dyn TemplateCtx<'a> {

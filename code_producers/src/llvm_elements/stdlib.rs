@@ -48,7 +48,7 @@ mod stdlib_private {
             void_ty.fn_type(args, false),
         );
         let main = create_bb(producer, func, "main");
-        producer.set_current_bb(main);
+        producer.llvm().set_current_bb(main);
 
         let lhs = func.get_nth_param(0).unwrap();
         let rhs = func.get_nth_param(1).unwrap();
@@ -72,7 +72,7 @@ mod stdlib_private {
             void_ty.fn_type(args, false),
         );
         let main = create_bb(producer, func, "main");
-        producer.set_current_bb(main);
+        producer.llvm().set_current_bb(main);
 
         let bool = func.get_nth_param(0).unwrap();
         let constr = func.get_nth_param(1).unwrap();
@@ -94,12 +94,12 @@ mod stdlib_private {
         let if_false = create_bb(producer, func, "if.assert.fails");
         let end = create_bb(producer, func, "end");
         let bool = func.get_nth_param(0).unwrap();
-        producer.set_current_bb(main);
+        producer.llvm().set_current_bb(main);
         create_conditional_branch(producer, bool.into_int_value(), end, if_false);
-        producer.set_current_bb(if_false);
+        producer.llvm().set_current_bb(if_false);
         create_call(producer, "__abort", &[]);
         create_br(producer, end);
-        producer.set_current_bb(end);
+        producer.llvm().set_current_bb(end);
         create_return_void(producer);
     }
 
