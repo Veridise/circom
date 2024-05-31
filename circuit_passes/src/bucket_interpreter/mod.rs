@@ -31,6 +31,8 @@ use self::operations::compute_offset;
 use self::result_types::*;
 use self::value::Value::{self, KnownBigInt, KnownU32, Unknown};
 
+pub const LOOP_LIMIT: usize = 1_000_000;
+
 #[derive(Default, Debug, Clone)]
 pub struct InterpreterFlags {
     pub all_signals_unknown: bool,
@@ -1013,12 +1015,11 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         let mut last_value = Some(Unknown);
         let mut loop_env = env;
         let mut n_iters = 0;
-        let limit = 1_000_000;
         loop {
             n_iters += 1;
-            if n_iters >= limit {
+            if n_iters >= LOOP_LIMIT {
                 return error::new_compute_err_result(format!(
-                    "Could not compute value of loop within {limit} iterations"
+                    "Could not compute value of loop within {LOOP_LIMIT} iterations"
                 ));
             }
 

@@ -13,9 +13,10 @@ use compiler::intermediate_representation::{
 };
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::Env;
-use crate::bucket_interpreter::error::BadInterp;
+use crate::bucket_interpreter::error::{self, BadInterp};
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
+use crate::bucket_interpreter::LOOP_LIMIT;
 use crate::{default__name, default__get_mem, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 use self::{body_extractor::LoopBodyExtractor, loop_env_recorder::EnvRecorder};
@@ -50,21 +51,28 @@ impl<'d> LoopUnrollPass<'d> {
         env: &Env,
     ) -> Result<(Option<InstructionList>, usize), BadInterp> {
         if DEBUG_LOOP_UNROLL {
-            println!("\nTry unrolling loop {}:", bucket.id); //TODO: TEMP
+            println!("\nTry unrolling loop {}:", bucket.id);
             for (i, s) in bucket.body.iter().enumerate() {
                 println!("[{}/{}]{}", i + 1, bucket.body.len(), s.to_sexp().to_pretty(100));
             }
             for (i, s) in bucket.body.iter().enumerate() {
                 println!("[{}/{}]{:?}", i + 1, bucket.body.len(), s);
             }
-            println!("LOOP ENTRY env {}", env); //TODO: TEMP
+            println!("LOOP ENTRY env {}", env);
         }
         // Compute loop iteration count. If unknown, return immediately.
         let recorder = EnvRecorder::new(self.global_data, &self.memory);
         {
             let interpreter = self.memory.build_interpreter(self.global_data, &recorder);
             let mut inner_env = env.clone();
+            let mut n_iters = 0;
             loop {
+                n_iters += 1;
+                if n_iters >= LOOP_LIMIT {
+                    return Result::Err(error::new_compute_err(format!(
+                        "Could not determine loop count within {LOOP_LIMIT} iterations"
+                    )));
+                }
                 recorder.record_header_env(&inner_env);
                 let (cond, new_env) =
                     interpreter.execute_loop_bucket_once(bucket, inner_env, true)?;
