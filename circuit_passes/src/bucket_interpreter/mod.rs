@@ -57,9 +57,9 @@ type RE<'e> = Result<(Option<Value>, Env<'e>), BadInterp>;
 type RC = Result<Option<Value>, BadInterp>;
 /// Like 'RE' but with a fully generic environment type
 type RG<E> = Result<(Option<Value>, E), BadInterp>;
-/// Result of the interpreter "execute condition" functions
+/// Result of the interpreter 'execute_loop_bucket_once()' function
 type REB<'e> = Result<(Option<bool>, Env<'e>), BadInterp>;
-/// Result of the interpreter "compute condition" functions
+/// Result of the interpreter 'compute_condition()' function
 type RCB = Result<Option<bool>, BadInterp>;
 
 #[inline]
@@ -204,16 +204,23 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> REB<'env> {
-        self._execute_conditional_bucket(
-            &bucket.continue_condition,
-            &bucket.body,
-            &[],
-            env,
-            observe,
-        )
-        .add_loc_if_err(bucket)
-        .map(|(_, cond, e)| (cond, e))
-        .into()
+        let res = self
+            ._execute_conditional_bucket(
+                &bucket.continue_condition,
+                &bucket.body,
+                &[],
+                env,
+                observe,
+            )
+            .add_loc_if_err(bucket);
+        match res {
+            InterpRes::Err(err) => Result::Err(err),
+            InterpRes::Continue((_, cond, e)) => Result::Ok((cond, e)),
+            // If there is an early return within the loop body, it cannot be unrolled because
+            //  that return would be moved to a generated loop body function and those always
+            //  have void return type. Although this could be changed in the future if needed.
+            InterpRes::Return((_, _, e)) => Result::Ok((None, e)),
+        }
     }
 
     pub fn execute_instructions<'env>(
