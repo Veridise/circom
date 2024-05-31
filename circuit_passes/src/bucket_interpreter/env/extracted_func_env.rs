@@ -193,7 +193,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
     }
 
     pub fn subcmp_counter_is_zero(&self, subcmp_idx: usize) -> bool {
-        match self.remap.get(&subcmp_idx).cloned() {
+        match self.remap.get(&subcmp_idx) {
             None => {
                 //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
                 assert!(self.arenas.contains(&subcmp_idx));
@@ -203,7 +203,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
             Some((loc, _)) => {
                 match loc {
                     AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
-                        let subcmp = match *cmp_address {
+                        let subcmp = match **cmp_address {
                             Instruction::Value(ValueBucket {
                                 parse_as: ValueType::U32,
                                 value,
@@ -211,7 +211,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             }) => value,
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
-                        if counter_override {
+                        if *counter_override {
                             unreachable!() // there is no counter for a counter reference
                         } else {
                             self.base.subcmp_counter_is_zero(subcmp)
@@ -224,7 +224,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
     }
 
     pub fn subcmp_counter_equal_to(&self, subcmp_idx: usize, value: usize) -> bool {
-        let res = match self.remap.get(&subcmp_idx).cloned() {
+        let res = match self.remap.get(&subcmp_idx) {
             None => {
                 //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
                 assert!(self.arenas.contains(&subcmp_idx));
@@ -233,7 +233,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
             Some((loc, _)) => {
                 match loc {
                     AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
-                        let subcmp = match *cmp_address {
+                        let subcmp = match **cmp_address {
                             Instruction::Value(ValueBucket {
                                 parse_as: ValueType::U32,
                                 value,
@@ -241,7 +241,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             }) => value,
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
-                        if counter_override {
+                        if *counter_override {
                             unreachable!() // there is no counter for a counter reference
                         } else {
                             self.base.subcmp_counter_equal_to(subcmp, value)
@@ -297,7 +297,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
         //NOTE: This is only called by BucketInterpreter::store_value_in_address.
         //Use the map from loop unrolling to convert the SubcmpSignal reference back
         //  into the proper reference (reversing ExtractedFunctionLocationUpdater).
-        let new_env = match self.remap.get(&subcmp_idx).cloned() {
+        let new_env = match self.remap.get(&subcmp_idx) {
             None => {
                 //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
                 assert!(self.arenas.contains(&subcmp_idx));
@@ -309,10 +309,10 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 //  the LocationRule that 'signal_idx' is computed from.
                 assert_eq!(signal_idx, 0);
                 match loc {
-                    AddressType::Variable => self.base.set_var(idx, new_value),
-                    AddressType::Signal => self.base.set_signal(idx, new_value),
+                    AddressType::Variable => self.base.set_var(*idx, new_value),
+                    AddressType::Signal => self.base.set_signal(*idx, new_value),
                     AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
-                        let subcmp = match *cmp_address {
+                        let subcmp = match **cmp_address {
                             Instruction::Value(ValueBucket {
                                 parse_as: ValueType::U32,
                                 value,
@@ -320,13 +320,13 @@ impl<'a> ExtractedFuncEnvData<'a> {
                             }) => value,
                             _ => unreachable!(), //ASSERT: 'cmp_address' was formed by 'loop_unroll::new_u32_value'
                         };
-                        if counter_override {
+                        if *counter_override {
                             // ASSERT: always 0 from 'get_reverse_passing_refs_for_itr' in 'body_extractor.rs'
-                            assert_eq!(idx, 0);
+                            assert_eq!(*idx, 0);
                             // NOTE: If unwrapping to u32 directly causes a panic, then need to allow Value as the parameter.
                             self.base.set_subcmp_counter(subcmp, new_value.as_u32()?)?
                         } else {
-                            self.base.set_subcmp_signal(subcmp, idx, new_value)?
+                            self.base.set_subcmp_signal(subcmp, *idx, new_value)?
                         }
                     }
                 }
