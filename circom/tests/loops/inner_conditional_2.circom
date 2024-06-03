@@ -30,8 +30,8 @@ template runner() {
 component main = runner();
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
+//CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
@@ -40,7 +40,7 @@ component main = runner();
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
 //CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 3
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T02]], align 4
-//CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T01]], i256 %[[T03]])
+//CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i256 @fr_mul(i256 %[[T01]], i256 %[[T03]])
 //CHECK-NEXT:   store i256 %[[C01]], i256* %[[T04]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
@@ -57,8 +57,8 @@ component main = runner();
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
+//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
@@ -67,7 +67,7 @@ component main = runner();
 //CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
 //CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 3
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T02]], align 4
-//CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i256 @fr_mul(i256 %[[T01]], i256 %[[T03]])
+//CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T01]], i256 %[[T03]])
 //CHECK-NEXT:   store i256 %[[C01]], i256* %[[T04]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 

@@ -171,8 +171,10 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
 
     fn post_hook_circuit(&self, cir: &mut Circuit) -> Result<(), BadInterp> {
         // Transform and add the new body functions
-        for f in self.extractor.get_new_functions().iter() {
-            cir.functions.push(self.transform_function(&f)?);
+        let new_funcs = self.extractor.get_new_functions();
+        cir.functions.reserve_exact(new_funcs.len());
+        for f in new_funcs.iter() {
+            cir.functions.insert(0, self.transform_function(&f)?);
         }
         //ASSERT: All unrolled replacements were applied
         assert!(self.replacements.borrow().is_empty());
