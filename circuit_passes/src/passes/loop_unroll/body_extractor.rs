@@ -7,6 +7,7 @@ use compiler::circuit_design::function::{FunctionCodeInfo, FunctionCode};
 use compiler::hir::very_concrete_program::Param;
 use compiler::intermediate_representation::{BucketId, InstructionList, new_id, UpdateId};
 use compiler::intermediate_representation::ir_interface::*;
+use crate::bucket_interpreter::env::EnvContextKind;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::{DEBUG_LOOP_UNROLL, LOOP_BODY_FN_PREFIX};
@@ -151,10 +152,11 @@ impl LoopBodyExtractor {
         &self,
         bucket: &LoopBucket,
         recorder: EnvRecorder<'a, '_>,
+        context_kind: EnvContextKind,
         unrolled: &mut InstructionList,
     ) -> Result<(), BadInterp> {
         assert!(bucket.body.len() > 1);
-        let extra_arg_info = Self::compute_extra_args(&recorder)?;
+        let extra_arg_info = Self::compute_extra_args(&recorder, context_kind)?;
         let name = self.build_new_body(
             &recorder.get_current_scope_name(),
             bucket,
@@ -173,8 +175,12 @@ impl LoopBodyExtractor {
             );
             // Parameter for local vars
             args[0] = builders::build_storage_ptr_ref(bucket, AddressType::Variable);
-            // Parameter for signals/arena
-            args[1] = builders::build_storage_ptr_ref(bucket, AddressType::Signal);
+            // Parameter for signals/arena, not needed when unrolling w/in a circom source function
+            args[1] = if context_kind == EnvContextKind::SourceFunction {
+                builders::build_null_ptr(bucket, FR_NULL_I256_ARR_PTR)
+            } else {
+                builders::build_storage_ptr_ref(bucket, AddressType::Signal)
+            };
             // Additional parameters for subcmps and variant array indexing within the loop
             let mut passing_refs = extra_arg_info.get_passing_refs_for_itr(iter_num);
             // Sort by the Option to ensure None comes first so that the value for a Some entry that uses the same
@@ -467,6 +473,7 @@ impl LoopBodyExtractor {
     /// extra arguments that will be needed.
     fn compute_extra_args<'a>(
         recorder: &EnvRecorder<'a, '_>,
+        context_kind: EnvContextKind,
     ) -> Result<ExtraArgsResult, BadInterp> {
         // Table structure indexed first by load/store/call BucketId, then by iteration number.
         //  View the first (BucketId) as columns and the second (iteration number) as rows.
@@ -552,70 +559,74 @@ impl LoopBodyExtractor {
         //  share the same funtion argument. The one exception to that rule is buckets that
         //  are unused in some iteration(s) (indicated by None), they can be included in a
         //  group if they are part of that same group in all iterations where present.
-        let x: Vec<(BucketId, Vec<Option<SubcmpSignalCompare>>)> = bucket_to_itr_to_ref
-            .iter()
-            .filter_map(|(b, col)| {
-                //if the iteration does not contain any Some(SubCmp), then we return None
-                //otherwise, return a new Some(Vec<Option<SubcmpSignalCompare>>)
-                let conv: Vec<Option<SubcmpSignalCompare>> = col
-                    .iter()
-                    .map(|o| match o {
-                        // Ignore the offset here since the parameters pass the
-                        //  counter and the entire array for the subcomponent.
-                        Some((at, _)) => match at {
-                            AddressType::SubcmpSignal { .. } => {
-                                Some(SubcmpSignalCompare::convert(&at))
-                            }
-                            _ => None,
-                        },
-                        None => None,
-                    })
-                    .collect();
-                //If the converted column is all None, return None, otherwise return some
-                if conv.iter().all(Option::is_none) {
-                    None
-                } else {
-                    Some((*b, conv))
-                }
-            })
-            .collect();
-        let subcmp_arg_groups = Self::group_equal_lists(&x[..]);
-        if DEBUG_LOOP_UNROLL {
-            println!("subcmp_arg_groups = {:?}", subcmp_arg_groups);
-        }
-        //ASSERT: Every bucket mapped to a Some(SubcmpSignal) in any iteration is present in exactly one group.
-        assert!(bucket_to_itr_to_ref
-            .iter()
-            .filter_map(|(k, v)| {
-                if v.iter().any(|e| matches!(e, Some((AddressType::SubcmpSignal { .. }, _)))) {
-                    Some(k)
-                } else {
-                    None
-                }
-            })
-            .all(|b| subcmp_arg_groups.iter().filter(|s| s.contains(b)).count() == 1));
-
-        // Finally, add the extra argument numbers for the subcomponents
-        for buckets in subcmp_arg_groups.iter() {
-            let arena_idx: FuncArgIdx = next_idx;
-            let counter_idx: FuncArgIdx = next_idx + 1;
-            next_idx += 2;
-            for b in buckets {
-                bucket_to_args.entry(*b).and_modify(|e| {
-                    if let ArgIndex::Signal(sig, _) = e {
-                        *e = ArgIndex::SubCmp {
-                            signal: *sig,
-                            arena: arena_idx,
-                            counter: counter_idx,
-                        };
+        // However, this should not be done if already within an extracted function body.
+        if context_kind != EnvContextKind::ExtractedFunction {
+            let x: Vec<(BucketId, Vec<Option<SubcmpSignalCompare>>)> = bucket_to_itr_to_ref
+                .iter()
+                .filter_map(|(b, col)| {
+                    //if the iteration does not contain any Some(SubCmp), then we return None
+                    //otherwise, return a new Some(Vec<Option<SubcmpSignalCompare>>)
+                    let conv: Vec<Option<SubcmpSignalCompare>> = col
+                        .iter()
+                        .map(|o| match o {
+                            // Ignore the offset here since the parameters pass the
+                            //  counter and the entire array for the subcomponent.
+                            Some((at, _)) => match at {
+                                AddressType::SubcmpSignal { .. } => {
+                                    Some(SubcmpSignalCompare::convert(&at))
+                                }
+                                _ => None,
+                            },
+                            None => None,
+                        })
+                        .collect();
+                    //If the converted column is all None, return None, otherwise return some
+                    if conv.iter().all(Option::is_none) {
+                        None
                     } else {
-                        // All buckets had ArgIndex::Signal added earlier
-                        //  and no bucket appears in more than one group.
-                        unreachable!()
+                        Some((*b, conv))
                     }
-                });
+                })
+                .collect();
+            let subcmp_arg_groups = Self::group_equal_lists(&x[..]);
+            if DEBUG_LOOP_UNROLL {
+                println!("subcmp_arg_groups = {:?}", subcmp_arg_groups);
+            }
+            //ASSERT: Every bucket mapped to a Some(SubcmpSignal) in any iteration is present in exactly one group.
+            assert!(bucket_to_itr_to_ref
+                .iter()
+                .filter_map(|(k, v)| {
+                    if v.iter().any(|e| matches!(e, Some((AddressType::SubcmpSignal { .. }, _)))) {
+                        Some(k)
+                    } else {
+                        None
+                    }
+                })
+                .all(|b| subcmp_arg_groups.iter().filter(|s| s.contains(b)).count() == 1));
+
+            // Finally, add the extra argument numbers for the subcomponents
+            for buckets in subcmp_arg_groups.iter() {
+                let arena_idx: FuncArgIdx = next_idx;
+                let counter_idx: FuncArgIdx = next_idx + 1;
+                next_idx += 2;
+                for b in buckets {
+                    bucket_to_args.entry(*b).and_modify(|e| {
+                        if let ArgIndex::Signal(sig, _) = e {
+                            *e = ArgIndex::SubCmp {
+                                signal: *sig,
+                                arena: arena_idx,
+                                counter: counter_idx,
+                            };
+                        } else {
+                            // All buckets had ArgIndex::Signal added earlier
+                            //  and no bucket appears in more than one group.
+                            unreachable!()
+                        }
+                    });
+                }
             }
         }
+
         //Keep only the table columns where extra parameters are necessary
         bucket_to_itr_to_ref.retain(|k, _| bucket_to_args.contains_key(k));
         Ok(ExtraArgsResult {

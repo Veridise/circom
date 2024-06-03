@@ -107,7 +107,12 @@ impl<'d> LoopUnrollPass<'d> {
                     }
                 }
                 _ => {
-                    self.extractor.extract(bucket, recorder, &mut block_body)?;
+                    self.extractor.extract(
+                        bucket,
+                        recorder,
+                        env.get_context_kind(),
+                        &mut block_body,
+                    )?;
                 }
             }
         } else {
@@ -152,7 +157,7 @@ impl Observer<Env<'_>> for LoopUnrollPass<'_> {
     }
 
     fn ignore_function_calls(&self) -> bool {
-        true
+        false
     }
 
     fn ignore_subcmp_calls(&self) -> bool {
