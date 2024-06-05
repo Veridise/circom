@@ -13,6 +13,21 @@ function fun(a, n, b, c, d, e, f, g) {
 
 //signal_arena = { out, in }
 //lvars = { m, n, a[0], a[1], b[0], b[1], i }
+//
+//     var a[2];
+//     i = 0;
+//     	a[0] = 3 + in;
+//     i = 1;
+//     	a[1] = 3 + in;
+//     i = 2;
+//     var b[2];
+//     i = 0;
+//     	b[0] = fun(a, 2, 3, 3, 3, 3, 3, 3);
+//     i = 1;
+//     	b[1] = fun(a, 2, 3, 3, 3, 3, 3, 3);
+//     i = 2;
+//     out <-- b[0];
+//
 template CallInLoop(n, m) {
     signal input in;
     signal output out;
@@ -29,46 +44,6 @@ template CallInLoop(n, m) {
 
 component main = CallInLoop(2, 3);
 
-//
-//     var a[2];
-//     i = 0;
-//     	a[0] = 3 + in;
-//     i = 1;
-//     	a[1] = 3 + in;
-//     i = 2;
-//     var b[2];
-//     i = 0;
-//     	b[0] = fun(a, 2, 3, 3, 3, 3, 3, 3);
-//     i = 1;
-//     	b[1] = fun(a, 2, 3, 3, 3, 3, 3, 3);
-//     i = 2;
-//     out <-- b[0];
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
-//CHECK-NEXT:   br label %store1
-//CHECK-EMPTY: 
-//CHECK-NEXT: store1:
-//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_0, i32 0
-//CHECK-NEXT:   %[[T000:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 1
-//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T000]], align 4
-//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 3, i256 %[[T001]])
-//CHECK-NEXT:   store i256 %call.fr_add, i256* %[[T002]], align 4
-//CHECK-NEXT:   br label %store2
-//CHECK-EMPTY: 
-//CHECK-NEXT: store2:
-//CHECK-NEXT:   %[[T005:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 4
-//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 4
-//CHECK-NEXT:   %[[T004:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T003]], align 4
-//CHECK-NEXT:   %call.fr_add1 = call i256 @fr_add(i256 %[[T004]], i256 1)
-//CHECK-NEXT:   store i256 %call.fr_add1, i256* %[[T005]], align 4
-//CHECK-NEXT:   br label %return3
-//CHECK-EMPTY: 
-//CHECK-NEXT: return3:
-//CHECK-NEXT:   ret void
-//CHECK-NEXT: }
-//
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
@@ -112,6 +87,31 @@ component main = CallInLoop(2, 3);
 //CHECK-NEXT:   %[[T012:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T011]], align 4
 //CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %[[T012]], i256 1)
 //CHECK-NEXT:   store i256 %call.fr_add, i256* %[[T013]], align 4
+//CHECK-NEXT:   br label %return3
+//CHECK-EMPTY: 
+//CHECK-NEXT: return3:
+//CHECK-NEXT:   ret void
+//CHECK-NEXT: }
+//
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
+//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
+//CHECK-NEXT:   br label %store1
+//CHECK-EMPTY: 
+//CHECK-NEXT: store1:
+//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_0, i32 0
+//CHECK-NEXT:   %[[T000:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %signals, i32 0, i32 1
+//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T000]], align 4
+//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 3, i256 %[[T001]])
+//CHECK-NEXT:   store i256 %call.fr_add, i256* %[[T002]], align 4
+//CHECK-NEXT:   br label %store2
+//CHECK-EMPTY: 
+//CHECK-NEXT: store2:
+//CHECK-NEXT:   %[[T005:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 4
+//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 4
+//CHECK-NEXT:   %[[T004:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T003]], align 4
+//CHECK-NEXT:   %call.fr_add1 = call i256 @fr_add(i256 %[[T004]], i256 1)
+//CHECK-NEXT:   store i256 %call.fr_add1, i256* %[[T005]], align 4
 //CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
 //CHECK-NEXT: return3:

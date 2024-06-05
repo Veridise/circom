@@ -2,6 +2,14 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
+// %0 (i.e. signal arena) = { a[0], a[1] }
+// %lvars = { n, b[0], b[1], j, i }
+//
+//Fully unrolled:
+//  b[0] = a[0];
+//  b[1] = a[1];
+//  b[1] = a[0];
+//
 template InnerLoops(n) {
     signal input a[n];
     var b[n];
@@ -23,13 +31,34 @@ template InnerLoops(n) {
 
 component main = InnerLoops(2);
 
-// %0 (i.e. signal arena) = { a[0], a[1] }
-// %lvars = { n, b[0], b[1], j, i }
-//
-//Fully unrolled:
-//  b[0] = a[0];
-//  b[1] = a[1];
-//  b[1] = a[0];
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
+//CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
+//CHECK-NEXT:   br label %store{{[0-9]+}}
+//CHECK-EMPTY: 
+//CHECK-NEXT: store{{[0-9]+}}:
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 4
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
+//CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i32 @fr_cast_to_addr(i256 %[[T01]])
+//CHECK-NEXT:   %[[A05:[0-9a-zA-Z_.]+]] = mul i32 1, %[[C01]]
+//CHECK-NEXT:   %[[A06:[0-9a-zA-Z_.]+]] = add i32 %[[A05]], 1
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 %[[A06]]
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T02]], align 4
+//CHECK-NEXT:   store i256 %[[T03]], i256* %[[T04]], align 4
+//CHECK-NEXT:   br label %store{{[0-9]+}}
+//CHECK-EMPTY: 
+//CHECK-NEXT: store{{[0-9]+}}:
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 3
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 3
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T05]], align 4
+//CHECK-NEXT:   %[[C02:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T06]], i256 1)
+//CHECK-NEXT:   store i256 %[[C02]], i256* %[[T07]], align 4
+//CHECK-NEXT:   br label %return{{[0-9]+}}
+//CHECK-EMPTY: 
+//CHECK-NEXT: return{{[0-9]+}}:
+//CHECK-NEXT:   ret void
+//CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
@@ -62,35 +91,6 @@ component main = InnerLoops(2);
 //CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T09]], align 4
 //CHECK-NEXT:   %[[C04:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T10]], i256 1)
 //CHECK-NEXT:   store i256 %[[C04]], i256* %[[T11]], align 4
-//CHECK-NEXT:   br label %return{{[0-9]+}}
-//CHECK-EMPTY: 
-//CHECK-NEXT: return{{[0-9]+}}:
-//CHECK-NEXT:   ret void
-//CHECK-NEXT: }
-//
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
-//CHECK-NEXT:   br label %store{{[0-9]+}}
-//CHECK-EMPTY: 
-//CHECK-NEXT: store{{[0-9]+}}:
-//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 4
-//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T00]], align 4
-//CHECK-NEXT:   %[[C01:[0-9a-zA-Z_.]+]] = call i32 @fr_cast_to_addr(i256 %[[T01]])
-//CHECK-NEXT:   %[[A05:[0-9a-zA-Z_.]+]] = mul i32 1, %[[C01]]
-//CHECK-NEXT:   %[[A06:[0-9a-zA-Z_.]+]] = add i32 %[[A05]], 1
-//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 %[[A06]]
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %sig_0, i32 0
-//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T02]], align 4
-//CHECK-NEXT:   store i256 %[[T03]], i256* %[[T04]], align 4
-//CHECK-NEXT:   br label %store{{[0-9]+}}
-//CHECK-EMPTY: 
-//CHECK-NEXT: store{{[0-9]+}}:
-//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 3
-//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 3
-//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T05]], align 4
-//CHECK-NEXT:   %[[C02:[0-9a-zA-Z_.]+]] = call i256 @fr_add(i256 %[[T06]], i256 1)
-//CHECK-NEXT:   store i256 %[[C02]], i256* %[[T07]], align 4
 //CHECK-NEXT:   br label %return{{[0-9]+}}
 //CHECK-EMPTY: 
 //CHECK-NEXT: return{{[0-9]+}}:
