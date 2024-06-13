@@ -12,7 +12,7 @@ use super::value::Value::{KnownBigInt, KnownU32, Unknown};
 /// Poor man's lattice that gives up the moment values are not equal
 /// It's a join semi lattice with a top (Unknown)
 /// Not a complete lattice because there is no bottom
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Value {
     Unknown,
     KnownU32(usize),

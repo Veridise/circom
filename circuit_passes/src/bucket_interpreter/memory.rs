@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use program_structure::constants::UsefulConstants;
 use crate::passes::GlobalPassData;
 use super::{BucketInterpreter, InterpreterFlags};
-use super::env::{Env, EnvContextKind, LibraryAccess};
+use super::env::{Env, LibraryAccess};
 use super::error::BadInterp;
 use super::observer::Observer;
 
@@ -109,7 +109,7 @@ impl PassMemory {
             println!("Running template {}", self.get_current_scope_header());
         }
         let interpreter = self.build_interpreter_with_flags(global_data, observer, flags);
-        let env = Env::new_standard_env(EnvContextKind::Template, self);
+        let env = Env::new_template_env(self);
         interpreter.execute_instructions(&template.body, env, true)?;
         Ok(())
     }

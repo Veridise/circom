@@ -283,11 +283,8 @@ mod tests {
     use compiler::intermediate_representation::{ir_interface::*, new_id};
     use crate::{
         bucket_interpreter::{
-            env::{Env, EnvContextKind},
-            memory::PassMemory,
-            observer::Observer,
-            write_collector::write_checker::Writes,
-            BucketInterpreter, InterpRes,
+            env::Env, memory::PassMemory, observer::Observer,
+            write_collector::write_checker::Writes, BucketInterpreter, InterpRes,
         },
         passes::{
             builders::{build_bigint_value, build_u32_value},
@@ -313,7 +310,7 @@ mod tests {
         }
 
         fn make_env(&self) -> Env {
-            Env::new_standard_env(EnvContextKind::Template, &self.memory)
+            Env::new_template_env(&self.memory)
         }
     }
 

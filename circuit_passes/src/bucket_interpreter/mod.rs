@@ -24,7 +24,7 @@ use observer::Observer;
 use program_structure::error_code::ReportCode;
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::GlobalPassData;
-use self::env::{Env, EnvContextKind, LibraryAccess};
+use self::env::{CallStack, CallStackFrame, Env, LibraryAccess};
 use self::error::BadInterp;
 use self::memory::PassMemory;
 use self::operations::compute_offset;
@@ -32,6 +32,7 @@ use self::result_types::*;
 use self::value::Value::{self, KnownBigInt, KnownU32, Unknown};
 
 pub const LOOP_LIMIT: usize = 1_000_000;
+pub const CALL_STACK_LIMIT: usize = 400;
 
 #[derive(Default, Debug, Clone)]
 pub struct InterpreterFlags {
@@ -690,35 +691,40 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         Result::Ok((res.0, res.1.peel_extracted_func()))
     }
 
-    //NOTE: When executing a function
     fn _execute_function_basic(
         &self,
         name: &String,
         args: Vec<Value>,
+        call_stack: &CallStack,
         observe: bool,
     ) -> Result<Value, BadInterp> {
-        if cfg!(debug_assertions) {
-            println!("Running function {}", name);
-        }
-        let mut new_env = Env::new_standard_env(EnvContextKind::SourceFunction, self.mem);
-        let mut args_copy = args;
-        for (id, arg) in args_copy.drain(..).enumerate() {
-            new_env = new_env.set_var(id, arg);
-        }
-        let interp = self.mem.build_interpreter_with_scope(
-            self.global_data,
-            self.observer,
-            self.flags.clone(),
-            name.clone(),
-        );
+        let new_frame = CallStackFrame { name: name.clone(), args: args.clone() };
+        if call_stack.contains(&new_frame) || call_stack.depth() > CALL_STACK_LIMIT {
+            Ok(Value::Unknown)
+        } else {
+            if cfg!(debug_assertions) {
+                println!("Running function {}", name);
+            }
+            let mut new_env = Env::new_source_func_env(call_stack.push(new_frame), self.mem);
+            let mut args_copy = args;
+            for (id, arg) in args_copy.drain(..).enumerate() {
+                new_env = new_env.set_var(id, arg);
+            }
+            let interp = self.mem.build_interpreter_with_scope(
+                self.global_data,
+                self.observer,
+                self.flags.clone(),
+                name.clone(),
+            );
 
-        let (v, _) = Result::from(interp._execute_instructions(
-            &self.mem.get_function(name).body,
-            new_env,
-            observe && !interp.observer.ignore_function_calls(),
-        ))?;
-        //ASSERT: all Circom source functions must return a value
-        opt_as_result(v, "value returned from function")
+            let (v, _) = Result::from(interp._execute_instructions(
+                &self.mem.get_function(name).body,
+                new_env,
+                observe && !interp.observer.ignore_function_calls(),
+            ))?;
+            //ASSERT: all Circom source functions must return a value
+            opt_as_result(v, "value returned from function")
+        }
     }
 
     fn _compute_call_bucket(&self, _bucket: &CallBucket, _env: &Env, _observe: bool) -> RCI {
@@ -764,6 +770,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             check_res!(InterpRes::try_continue(self._execute_function_basic(
                 &bucket.symbol,
                 args,
+                env.get_call_stack(),
                 observe
             ))
             .map(|v| (Some(v), env)))

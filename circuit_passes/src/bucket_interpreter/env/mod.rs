@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
+use indexmap::IndexSet;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::body_extractor::{LoopBodyExtractor, ToOriginalLocation, FuncArgIdx};
@@ -106,6 +107,35 @@ pub enum EnvContextKind {
     ExtractedFunction,
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct CallStackFrame {
+    pub name: String,
+    pub args: Vec<Value>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct CallStack {
+    // Uses IndexSet to preserve stack ordering but with fast contains() check
+    frames: IndexSet<CallStackFrame>,
+}
+
+impl CallStack {
+    pub fn contains(&self, f: &CallStackFrame) -> bool {
+        self.frames.contains(f)
+    }
+
+    pub fn depth(&self) -> usize {
+        self.frames.len()
+    }
+
+    pub fn push(&self, f: CallStackFrame) -> CallStack {
+        let mut ret = self.clone();
+        let unique = ret.frames.insert(f);
+        debug_assert!(unique, "called push() without first checking contains()");
+        ret
+    }
+}
+
 // An immutable environment whose modification methods return a new object
 #[derive(Clone)]
 pub enum Env<'a> {
@@ -153,8 +183,12 @@ impl LibraryAccess for Env<'_> {
 }
 
 impl<'a> Env<'a> {
-    pub fn new_standard_env(context_kind: EnvContextKind, libs: &'a dyn LibraryAccess) -> Self {
-        Env::Standard(StandardEnvData::new(context_kind, libs))
+    pub fn new_template_env(libs: &'a dyn LibraryAccess) -> Self {
+        Env::Standard(StandardEnvData::new(EnvContextKind::Template, CallStack::default(), libs))
+    }
+
+    pub fn new_source_func_env(call_stack: CallStack, libs: &'a dyn LibraryAccess) -> Self {
+        Env::Standard(StandardEnvData::new(EnvContextKind::SourceFunction, call_stack, libs))
     }
 
     pub fn new_unroll_block_env(inner: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {
@@ -191,6 +225,14 @@ impl<'a> Env<'a> {
             Env::Standard(d) => d.get_context_kind(),
             Env::UnrolledBlock(d) => d.get_context_kind(),
             Env::ExtractedFunction(d) => d.get_context_kind(),
+        }
+    }
+
+    pub fn get_call_stack(&self) -> &CallStack {
+        match self {
+            Env::Standard(d) => d.get_call_stack(),
+            Env::UnrolledBlock(d) => d.get_call_stack(),
+            Env::ExtractedFunction(d) => d.get_call_stack(),
         }
     }
 
