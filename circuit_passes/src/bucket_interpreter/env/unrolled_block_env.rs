@@ -9,7 +9,7 @@ use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::loop_unroll::body_extractor::LoopBodyExtractor;
-use super::{Env, EnvContextKind, LibraryAccess};
+use super::{CallStack, Env, EnvContextKind, LibraryAccess};
 
 /// This Env is used by the loop unroller to process the BlockBucket containing a
 /// unrolled loop specifically handling the case where the LibraryAccess does not
@@ -64,6 +64,10 @@ impl<'a> UnrolledBlockEnvData<'a> {
 
     pub fn get_context_kind(&self) -> EnvContextKind {
         self.base.get_context_kind()
+    }
+
+    pub fn get_call_stack(&self) -> &CallStack {
+        self.base.get_call_stack()
     }
 
     pub fn get_var(&self, idx: usize) -> Value {

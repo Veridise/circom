@@ -7,11 +7,12 @@ use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::error::{new_inconsistency_err, BadInterp};
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use super::{EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED, sort};
+use super::{sort, CallStack, EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED};
 
 #[derive(Clone)]
 pub struct StandardEnvData<'a> {
     context_kind: EnvContextKind,
+    call_stack: CallStack,
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
     subcmps: HashMap<usize, SubcmpEnv>,
@@ -51,9 +52,14 @@ impl LibraryAccess for StandardEnvData<'_> {
 }
 
 impl<'a> StandardEnvData<'a> {
-    pub fn new(context_kind: EnvContextKind, libs: &'a dyn LibraryAccess) -> Self {
+    pub fn new(
+        context_kind: EnvContextKind,
+        call_stack: CallStack,
+        libs: &'a dyn LibraryAccess,
+    ) -> Self {
         StandardEnvData {
             context_kind,
+            call_stack,
             vars: Default::default(),
             signals: Default::default(),
             subcmps: Default::default(),
@@ -69,6 +75,10 @@ impl<'a> StandardEnvData<'a> {
 
     pub fn get_context_kind(&self) -> EnvContextKind {
         self.context_kind
+    }
+
+    pub fn get_call_stack(&self) -> &CallStack {
+        &self.call_stack
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
