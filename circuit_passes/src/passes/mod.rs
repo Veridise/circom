@@ -746,6 +746,7 @@ pub enum PassKind {
     UnknownIndexSanitization,
 }
 
+#[derive(Debug)]
 pub struct GlobalPassData {
     /// Created during loop unrolling, maps generated function name + UnrolledIterLvars
     /// (from Env::get_vars_sort) to location reference in the original function. Used

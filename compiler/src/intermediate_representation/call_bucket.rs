@@ -88,6 +88,7 @@ impl ToSExp for CallBucket {
     fn to_sexp(&self) -> SExp {
         SExp::list([
             SExp::atom("CALL"),
+            SExp::key_val("id", SExp::atom(self.id)),
             SExp::key_val("line", SExp::atom(self.line)),
             SExp::key_val("symbol", SExp::atom(&self.symbol)),
             SExp::key_val("args", self.arguments.to_sexp()),

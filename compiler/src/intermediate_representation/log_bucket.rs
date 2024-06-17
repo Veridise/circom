@@ -67,6 +67,7 @@ impl ToSExp for LogBucket {
     fn to_sexp(&self) -> SExp {
         SExp::list([
             SExp::atom("LOG"),
+            SExp::key_val("id", SExp::atom(self.id)),
             SExp::list(self.argsprint.iter().map(|a| match a {
                 LogBucketArg::LogExp(e) => e.to_sexp(),
                 LogBucketArg::LogStr(s) => SExp::atom(format!("String_{s}")),

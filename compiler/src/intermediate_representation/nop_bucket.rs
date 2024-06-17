@@ -34,7 +34,7 @@ impl ToString for NopBucket {
 
 impl ToSExp for NopBucket {
     fn to_sexp(&self) -> SExp {
-        SExp::atom("NOP")
+        SExp::list([SExp::atom("NOP"), SExp::key_val("id", SExp::atom(self.id))])
     }
 }
 

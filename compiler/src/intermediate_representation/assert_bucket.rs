@@ -48,6 +48,7 @@ impl ToSExp for AssertBucket {
     fn to_sexp(&self) -> SExp {
         SExp::list([
             SExp::atom("ASSERT"),
+            SExp::key_val("id", SExp::atom(self.id)),
             SExp::key_val("line", SExp::atom(self.line)),
             SExp::key_val("cond", self.evaluate.to_sexp()),
         ])

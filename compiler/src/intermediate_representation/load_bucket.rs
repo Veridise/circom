@@ -55,6 +55,7 @@ impl ToSExp for LoadBucket {
     fn to_sexp(&self) -> SExp {
         SExp::list([
             SExp::atom("LOAD"),
+            SExp::key_val("id", SExp::atom(self.id)),
             SExp::key_val("line", SExp::atom(self.line)),
             SExp::key_val("bounded_fn", SExp::atom(format!("{:?}", self.bounded_fn))),
             SExp::key_val("src_type", self.address_type.to_sexp()),
