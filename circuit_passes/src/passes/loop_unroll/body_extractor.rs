@@ -302,6 +302,9 @@ impl LoopBodyExtractor {
         });
         // Store the function to be transformed and added to circuit later
         self.new_body_functions.borrow_mut().push(new_func);
+        if DEBUG_LOOP_UNROLL {
+            println!("[BodyExtractor] created function {}", func_name);
+        }
         func_name
     }
 

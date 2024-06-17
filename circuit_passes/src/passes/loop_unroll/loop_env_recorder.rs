@@ -116,6 +116,9 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         iter_env: UnrolledIterLvars,
         value: (ToOriginalLocation, HashSet<FuncArgIdx>),
     ) {
+        if DEBUG_LOOP_UNROLL {
+            println!("[EnvRecorder] stored data {:?} -> {:?}", iter_env, value);
+        }
         self.global_data
             .borrow_mut()
             .extract_func_orig_loc
