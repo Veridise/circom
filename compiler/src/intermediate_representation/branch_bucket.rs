@@ -62,6 +62,7 @@ impl ToSExp for BranchBucket {
     fn to_sexp(&self) -> SExp {
         SExp::list([
             SExp::atom("IF"),
+            SExp::key_val("id", SExp::atom(self.id)),
             SExp::key_val("line", SExp::atom(self.line)),
             SExp::key_val("cond", self.cond.to_sexp()),
             SExp::key_val("if_branch", self.if_branch.to_sexp()),

@@ -72,6 +72,7 @@ impl ToSExp for CreateCmpBucket {
     fn to_sexp(&self) -> SExp {
         SExp::list([
             SExp::atom("CREATE_CMP"),
+            SExp::key_val("id", SExp::atom(self.id)),
             SExp::key_val("line", SExp::atom(self.line)),
             SExp::key_val("name", SExp::atom(&self.symbol)),
             SExp::key_val("sub_cmp", self.sub_cmp_id.to_sexp()),

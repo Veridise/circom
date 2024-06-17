@@ -53,6 +53,7 @@ impl ToSExp for ValueBucket {
     fn to_sexp(&self) -> SExp {
         SExp::list([
             SExp::atom("VALUE"),
+            SExp::key_val("id", SExp::atom(self.id)),
             SExp::key_val("line", SExp::atom(self.line)),
             SExp::key_val("op_aux_no", SExp::atom(self.op_aux_no)),
             SExp::key_val(self.parse_as, SExp::atom(self.value)),

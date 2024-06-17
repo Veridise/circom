@@ -65,6 +65,7 @@ impl ToSExp for StoreBucket {
     fn to_sexp(&self) -> SExp {
         SExp::list([
             SExp::atom("STORE"),
+            SExp::key_val("id", SExp::atom(self.id)),
             SExp::key_val("line", SExp::atom(self.line)),
             SExp::key_val("context", SExp::atom(self.context)),
             SExp::key_val("dest_is_output", SExp::atom(self.dest_is_output)),

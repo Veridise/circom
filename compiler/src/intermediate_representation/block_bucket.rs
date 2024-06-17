@@ -54,6 +54,7 @@ impl ToSExp for BlockBucket {
     fn to_sexp(&self) -> SExp {
         SExp::list([
             SExp::atom("BLOCK"),
+            SExp::key_val("id", SExp::atom(self.id)),
             SExp::key_val("line", SExp::atom(self.line)),
             SExp::key_val("n_iters", SExp::atom(self.n_iters)),
             SExp::key_val("body", self.body.to_sexp()),
