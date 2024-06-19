@@ -70,6 +70,7 @@ impl ToSExp for StoreBucket {
             SExp::key_val("context", SExp::atom(self.context)),
             SExp::key_val("dest_is_output", SExp::atom(self.dest_is_output)),
             SExp::key_val("bounded_fn", SExp::atom(format!("{:?}", self.bounded_fn))),
+            SExp::key_val("ctx", SExp::atom(self.context.size)),
             SExp::key_val("dest_type", self.dest_address_type.to_sexp()),
             SExp::key_val("dest", self.dest.to_sexp()),
             SExp::key_val("src", self.src.to_sexp()),
