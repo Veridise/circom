@@ -2,7 +2,7 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
-// %0 (i.e. signal arena)  = [ out[0], out[1], out[2], out[3], in ]
+// %0 (i.e. signal arena) = [ out[0], out[1], out[2], out[3], in ]
 // %lvars =  [ n, i, j ]
 // %subcmps = []
 template Num2Bits(n) {
@@ -25,9 +25,6 @@ template Num2Bits(n) {
 }
 
 component main = Num2Bits(2);
-//
-// %0 (i.e. signal arena) = { out[0], out[1], out[2], out[3], in }
-// %lvars = { n, i, j }
 //
 //unrolled code:
 //	out[0] = in;

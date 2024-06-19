@@ -2,8 +2,9 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
-// %0 (i.e. signal arena) = { a[0], a[1] }
-// %lvars = { n, b[0], b[1], j, i }
+// %0 (i.e. signal arena) = [ a[0], a[1] ]
+// %lvars = [ n, b[0], b[1], j, i ]
+// %subcmps = []
 //
 //Fully unrolled:
 //  b[0] = a[0];
