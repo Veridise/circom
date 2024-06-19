@@ -204,10 +204,10 @@ mod tests {
     use compiler::compiler_interface::Circuit;
     use compiler::intermediate_representation::{Instruction, new_id};
     use compiler::intermediate_representation::ir_interface::{
-        AddressType, Allocate, ComputeBucket, InstrContext, LoadBucket, LocationRule, LoopBucket,
-        ObtainMetaImpl, OperatorType, StoreBucket,
+        AddressType, Allocate, InstrContext, LoadBucket, LocationRule, LoopBucket, ObtainMetaImpl,
+        OperatorType, StoreBucket,
     };
-    use crate::passes::builders::build_u32_value;
+    use crate::passes::builders::{build_compute, build_u32_value};
     use crate::passes::{CircuitTransformationPass, GlobalPassData};
     use crate::passes::loop_unroll::{LoopUnrollPass, LOOP_BODY_FN_PREFIX};
 
@@ -293,14 +293,11 @@ mod tests {
                         source_file_id: None,
                         line: 0,
                         message_id: 0,
-                        continue_condition: ComputeBucket {
-                            id: new_id(),
-                            source_file_id: None,
-                            line: 0,
-                            message_id: 0,
-                            op: OperatorType::Lesser,
-                            op_aux_no: 0,
-                            stack: vec![
+                        continue_condition: build_compute(
+                            &ObtainMetaImpl::default(),
+                            OperatorType::Lesser,
+                            0,
+                            vec![
                                 LoadBucket {
                                     id: new_id(),
                                     source_file_id: None,
@@ -317,8 +314,7 @@ mod tests {
                                 .allocate(),
                                 build_u32_value(&ObtainMetaImpl::default(), 5),
                             ],
-                        }
-                        .allocate(),
+                        ),
                         body: vec![
                             //   (store 0 (compute add (load 0) 2))
                             StoreBucket {
@@ -333,14 +329,11 @@ mod tests {
                                     location: build_u32_value(&ObtainMetaImpl::default(), 0),
                                     template_header: None,
                                 },
-                                src: ComputeBucket {
-                                    id: new_id(),
-                                    source_file_id: None,
-                                    line: 0,
-                                    message_id: 0,
-                                    op: OperatorType::Add,
-                                    op_aux_no: 0,
-                                    stack: vec![
+                                src: build_compute(
+                                    &ObtainMetaImpl::default(),
+                                    OperatorType::Add,
+                                    0,
+                                    vec![
                                         LoadBucket {
                                             id: new_id(),
                                             source_file_id: None,
@@ -360,8 +353,7 @@ mod tests {
                                         .allocate(),
                                         build_u32_value(&ObtainMetaImpl::default(), 2),
                                     ],
-                                }
-                                .allocate(),
+                                ),
                                 bounded_fn: None,
                             }
                             .allocate(),
@@ -378,14 +370,11 @@ mod tests {
                                     location: build_u32_value(&ObtainMetaImpl::default(), 1),
                                     template_header: None,
                                 },
-                                src: ComputeBucket {
-                                    id: new_id(),
-                                    source_file_id: None,
-                                    line: 0,
-                                    message_id: 0,
-                                    op: OperatorType::Add,
-                                    op_aux_no: 0,
-                                    stack: vec![
+                                src: build_compute(
+                                    &ObtainMetaImpl::default(),
+                                    OperatorType::Add,
+                                    0,
+                                    vec![
                                         LoadBucket {
                                             id: new_id(),
                                             source_file_id: None,
@@ -405,8 +394,7 @@ mod tests {
                                         .allocate(),
                                         build_u32_value(&ObtainMetaImpl::default(), 1),
                                     ],
-                                }
-                                .allocate(),
+                                ),
                                 bounded_fn: None,
                             }
                             .allocate(),

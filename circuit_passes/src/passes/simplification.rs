@@ -9,6 +9,7 @@ use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
+use crate::passes::builders::build_compute;
 use crate::{default__name, default__get_mem, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
@@ -285,16 +286,12 @@ impl CircuitTransformationPass for SimplificationPass<'_> {
                             };
                             stack.push(expr);
                         }
-                        ComputeBucket {
-                            id: new_id(),
-                            source_file_id: compute_bucket.source_file_id,
-                            line: compute_bucket.line,
-                            message_id: compute_bucket.message_id,
-                            op: compute_bucket.op,
-                            op_aux_no: compute_bucket.op_aux_no,
+                        build_compute(
+                            compute_bucket,
+                            compute_bucket.op,
+                            compute_bucket.op_aux_no,
                             stack,
-                        }
-                        .allocate()
+                        )
                     };
                     return Ok(AssertBucket {
                         id: new_id(),

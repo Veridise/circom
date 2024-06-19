@@ -143,3 +143,21 @@ pub fn build_void_return(meta: &dyn ObtainMeta) -> InstructionPointer {
     }
     .allocate()
 }
+
+pub fn build_compute(
+    meta: &dyn ObtainMeta,
+    op: OperatorType,
+    op_aux_no: usize,
+    stack: Vec<InstructionPointer>,
+) -> InstructionPointer {
+    ComputeBucket {
+        id: new_id(),
+        source_file_id: meta.get_source_file_id().clone(),
+        line: meta.get_line(),
+        message_id: meta.get_message_id(),
+        op,
+        op_aux_no,
+        stack,
+    }
+    .allocate()
+}
