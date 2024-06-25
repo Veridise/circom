@@ -76,6 +76,12 @@ impl<'d> LoopUnrollPass<'d> {
                 recorder.record_header_env(&inner_env);
                 let (cond, new_env) =
                     interpreter.execute_loop_bucket_once(bucket, inner_env, true)?;
+                if DEBUG_LOOP_UNROLL {
+                    println!(
+                        "[try_unroll_loop] execute_loop_bucket_once -> cond={:?}, env={:?}",
+                        cond, new_env
+                    );
+                }
                 match cond {
                     // If the conditional becomes unknown just give up.
                     None => return Ok((None, 0)),
@@ -140,7 +146,11 @@ impl<'d> LoopUnrollPass<'d> {
 
 impl Observer<Env<'_>> for LoopUnrollPass<'_> {
     fn on_loop_bucket(&self, bucket: &LoopBucket, env: &Env) -> Result<bool, BadInterp> {
-        if let (Some(block_body), n_iters) = self.try_unroll_loop(bucket, env)? {
+        let result = self.try_unroll_loop(bucket, env);
+        if DEBUG_LOOP_UNROLL {
+            println!("[try_unroll_loop] result = {:?}", result);
+        }
+        if let (Some(block_body), n_iters) = result? {
             let block = BlockBucket {
                 id: new_id(),
                 source_file_id: bucket.source_file_id,
