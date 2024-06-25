@@ -2,10 +2,14 @@ pragma circom 2.1.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
+// %0 = [ a[0], a[1], a[2], a[3] ]
 function sum(a) {
     return a[0] + a[1] + a[2] + a[3];
 }
 
+// %0 (i.e. signal arena) = [ y, x[0], x[1], x[2], x[3] ]
+// %lvars =  []
+// %subcmps = []
 template CallArgTest() {
     signal input x[4];
     signal output y;

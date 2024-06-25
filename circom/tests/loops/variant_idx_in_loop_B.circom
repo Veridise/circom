@@ -2,6 +2,9 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
+// %0 (i.e. signal arena) = [ out, in ]
+// %lvars = [ n, temp[0], temp[1], i ]
+// %subcmps = []
 template VariantIndex(n) {
     signal input in;
     signal output out;
@@ -15,10 +18,6 @@ template VariantIndex(n) {
 
 component main = VariantIndex(2);
 
-// %0 (i.e. signal arena) = [ out, in ]
-// %lvars = [ n, temp[0], temp[1], i ]
-// %subcmps = []
-//
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0){{.*}} {
 //CHECK:      store{{[0-9]+}}:

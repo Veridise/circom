@@ -2,7 +2,7 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
-//arena = { a[0], a[1], n, b, c, d, e, f, g}
+//arena = [ a[0], a[1], n, b, c, d, e, f, g ]
 function fun(a, n, b, c, d, e, f, g) {
 	var x[5];
     for (var i = 0; i < n; i++) {
@@ -11,8 +11,8 @@ function fun(a, n, b, c, d, e, f, g) {
 	return x[0] + x[2] + x[4];
 }
 
-//signal_arena = { out, in }
-//lvars = { m, n, a[0], a[1], b[0], b[1], i }
+//signal_arena = [ out, in ]
+//lvars = [ m, n, a[0], a[1], b[0], b[1], i ]
 //
 //     var a[2];
 //     i = 0;

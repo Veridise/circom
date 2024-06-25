@@ -2,10 +2,13 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
+// %0 = [ n ]
 function identity(n) {
     return n;
 }
 
+// %0 (i.e. signal arena) = [ c[0], c[1], c[2] , a[0], a[1], a[2], b ]
+// %lvars = [ n, i, <identity_result> ]
 template Example(n) {
     signal input a[n];
     signal input b;
@@ -23,9 +26,6 @@ template Example(n) {
 
 component main = Example(3);
 
-// %0 (i.e. signal arena) { c[0], c[1], c[2] , a[0], a[1], a[2], b }
-// %lvars = { n, i, <identity_result> }
-//
 //CHECK-LABEL: define{{.*}} void @Example_{{[0-9]+}}_run
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
 //CHECK: unrolled_loop{{[0-9]+}}:

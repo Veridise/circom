@@ -2,6 +2,9 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
+// %0 (i.e. signal arena) = [ out[0], out[1], out[2], in ]
+// %lvars = [ n, lc, i ]
+// %subcmps = []
 template SimpleVariantIdx(n) {
     signal input in;
     signal output out[n];
@@ -18,10 +21,6 @@ component main = SimpleVariantIdx(3);
 
 //NOTE: For indexing dependent on the loop variable, need to compute pointer
 //	reference outside of the body function call. All else can be done inside.
-//
-// %0 (i.e. signal arena) = [ out[0], out[1], out[2], in ]
-// %lvars = [ n, lc, i ]
-// %subcmps = []
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]]){{.*}} {
