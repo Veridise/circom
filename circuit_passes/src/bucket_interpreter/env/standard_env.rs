@@ -25,7 +25,8 @@ impl Display for StandardEnvData<'_> {
         if PRINT_ENV_SORTED {
             write!(
                 f,
-                "StandardEnv{{\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
+                "StandardEnv{{\n  kind = {:?}\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
+                self.get_context_kind(),
                 sort(&self.vars, std::convert::identity),
                 sort(&self.signals, std::convert::identity),
                 sort(&self.subcmp_names, std::convert::identity),
@@ -34,8 +35,8 @@ impl Display for StandardEnvData<'_> {
         } else {
             write!(
                 f,
-                "StandardEnv{{\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
-                self.vars, self.signals, self.subcmp_names, self.subcmps
+                "StandardEnv{{\n  kind = {:?}\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
+                self.get_context_kind(), self.vars, self.signals, self.subcmp_names, self.subcmps
             )
         }
     }

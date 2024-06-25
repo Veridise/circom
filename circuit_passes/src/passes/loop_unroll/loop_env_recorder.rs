@@ -190,7 +190,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         if let Ok(Value::Unknown) = res {
             if DEBUG_LOOP_UNROLL {
                 println!(
-                    "loop body is not safe to move because index is unknown from rule {:?}",
+                    "loop body is not safe to move because index is unknown from loc: {:?}",
                     loc
                 );
             }
@@ -224,7 +224,7 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
                     cmp_address: {
                         if addr_result == Value::Unknown {
                             if DEBUG_LOOP_UNROLL {
-                                println!("loop body is not safe to move because index is unknown from addr {:?}", cmp_address);
+                                println!("loop body is not safe to move because index is unknown from addr: {:?}", cmp_address);
                             }
                             self.safe_to_move.replace(false);
                             NopBucket { id: 0 }.allocate()

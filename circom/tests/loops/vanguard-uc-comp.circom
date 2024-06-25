@@ -2,6 +2,9 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
+// %0 (i.e. signal arena) = [ out[0], out[1], in ]
+// %lvars = [ n, lc1, e2, i ]
+// %subcmps = []
 template Num2Bits(n) {
     signal input in;
     signal output out[n];
@@ -20,10 +23,6 @@ template Num2Bits(n) {
 
 component main = Num2Bits(2);
 
-// %0 (i.e. signal arena) = [ out[0], out[1], in ]
-// %lvars = [ n, lc1, e2, i ]
-// %subcmps = []
-//
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
 //CHECK-SAME: [[$F_ID:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %sig_[[X3:[0-9]+]], i256* %sig_[[X4:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID]]:

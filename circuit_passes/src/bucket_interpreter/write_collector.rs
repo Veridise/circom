@@ -287,7 +287,7 @@ mod tests {
             write_collector::write_checker::Writes, BucketInterpreter, InterpRes,
         },
         passes::{
-            builders::{build_bigint_value, build_u32_value},
+            builders::{build_bigint_value, build_compute, build_u32_value},
             GlobalPassData,
         },
     };
@@ -422,14 +422,11 @@ mod tests {
                 dest_is_output: true,
                 dest_address_type: AddressType::Signal,
                 dest: LocationRule::Indexed {
-                    location: ComputeBucket {
-                        id: new_id(),
-                        source_file_id: None,
-                        line: 0,
-                        message_id: 0,
-                        op: OperatorType::ToAddress,
-                        op_aux_no: 0,
-                        stack: vec![LoadBucket {
+                    location: build_compute(
+                        &ObtainMetaImpl::default(),
+                        OperatorType::ToAddress,
+                        0,
+                        vec![LoadBucket {
                             id: new_id(),
                             source_file_id: None,
                             line: 0,
@@ -452,8 +449,7 @@ mod tests {
                             bounded_fn: None,
                         }
                         .allocate()],
-                    }
-                    .allocate(),
+                    ),
                     template_header: None,
                 },
                 src: build_bigint_value(&ObtainMetaImpl::default(), &setup.memory, &"987654321"),

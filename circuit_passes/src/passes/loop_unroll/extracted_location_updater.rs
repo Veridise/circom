@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 use code_producers::llvm_elements::stdlib::LLVM_DONOTHING_FN_NAME;
 use compiler::intermediate_representation::{BucketId, InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
-use crate::passes::builders::build_u32_value;
+use crate::passes::builders::{build_compute, build_u32_value};
 
 use super::body_extractor::ArgIndex;
 
@@ -59,14 +59,11 @@ impl ExtractedFunctionLocationUpdater<'_> {
                         template_header: None,
                     },
                     bounded_fn: None,
-                    src: ComputeBucket {
-                        id: new_id(),
-                        source_file_id: bucket_meta.get_source_file_id().clone(),
-                        line: bucket_meta.get_line(),
-                        message_id: bucket_meta.get_message_id(),
-                        op: OperatorType::Sub,
-                        op_aux_no: 0,
-                        stack: vec![
+                    src: build_compute(
+                        bucket_meta,
+                        OperatorType::Sub,
+                        0,
+                        vec![
                             LoadBucket {
                                 id: new_id(),
                                 source_file_id: bucket_meta.get_source_file_id().clone(),
@@ -83,8 +80,7 @@ impl ExtractedFunctionLocationUpdater<'_> {
                             .allocate(),
                             build_u32_value(bucket_meta, 1),
                         ],
-                    }
-                    .allocate(),
+                    ),
                 }
                 .allocate(),
             );
@@ -96,14 +92,11 @@ impl ExtractedFunctionLocationUpdater<'_> {
                     source_file_id: bucket_meta.get_source_file_id().clone(),
                     line: bucket_meta.get_line(),
                     message_id: bucket_meta.get_message_id(),
-                    cond: ComputeBucket {
-                        id: new_id(),
-                        source_file_id: bucket_meta.get_source_file_id().clone(),
-                        line: bucket_meta.get_line(),
-                        message_id: bucket_meta.get_message_id(),
-                        op: OperatorType::Eq(1),
-                        op_aux_no: 0,
-                        stack: vec![
+                    cond: build_compute(
+                        bucket_meta,
+                        OperatorType::Eq(1),
+                        0,
+                        vec![
                             LoadBucket {
                                 id: new_id(),
                                 source_file_id: bucket_meta.get_source_file_id().clone(),
@@ -120,8 +113,7 @@ impl ExtractedFunctionLocationUpdater<'_> {
                             .allocate(),
                             build_u32_value(bucket_meta, 0),
                         ],
-                    }
-                    .allocate(),
+                    ),
                     if_branch: vec![StoreBucket {
                         id: new_id(),
                         source_file_id: bucket_meta.get_source_file_id().clone(),

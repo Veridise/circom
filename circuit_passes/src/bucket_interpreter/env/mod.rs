@@ -24,8 +24,8 @@ pub fn sort<'a, V1, V2, T: IntoIterator<Item = (&'a usize, V1)>>(
     map: T,
     func: fn(V1) -> V2,
 ) -> BTreeMap<usize, V2> {
-    map.into_iter().fold(BTreeMap::new(), |mut acc, e| {
-        acc.insert(*e.0, func(e.1));
+    map.into_iter().fold(BTreeMap::new(), |mut acc, (k, v)| {
+        acc.insert(*k, func(v));
         acc
     })
 }

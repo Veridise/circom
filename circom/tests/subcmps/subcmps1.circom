@@ -15,6 +15,10 @@ template IsZero() {
 }
 
 // Simple circuit that returns what signals are equal to 0
+//
+// %0 (i.e. signal arena) = [ outs[0], outs[1], outs[2], ins[0], ins[1], ins[2] ]
+// %lvars =  [ n, i ]
+// %subcmps = [ IsZero[0]{signals=[out,in,inv]}, IsZero[1]{SAME} ]
 template SubCmps1(n) {
     signal input ins[n];
     signal output outs[n];
@@ -30,10 +34,6 @@ template SubCmps1(n) {
 
 component main = SubCmps1(3);
 
-// %0 (i.e. signal arena) = [ outs[0], outs[1], outs[2], ins[0], ins[1], ins[2] ]
-// %lvars =  [ n, i ]
-// %subcmps = [ IsZero[0]{signals=[out,in,inv]}, IsZero[1]{SAME} ]
-//
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
 //CHECK-SAME: i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %sig_[[X3:[0-9]+]],
 //CHECK-SAME: i256* %subsig_[[X4:[0-9]+]], [0 x i256]* %sub_[[X4]], i256* %subc_[[X4]]){{.*}} {
