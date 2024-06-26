@@ -38,6 +38,38 @@ component main = EarlyReturn();
 //CHECK-NEXT:   br label %branch1
 //CHECK-EMPTY: 
 //CHECK-NEXT: branch1:
+//CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
+//CHECK-NEXT:   %1 = load i256, i256* %0, align 4
+//CHECK-NEXT:   %call.fr_eq = call i1 @fr_eq(i256 %1, i256 99)
+//CHECK-NEXT:   br i1 %call.fr_eq, label %if.then, label %if.else
+//CHECK-EMPTY: 
+//CHECK-NEXT: if.then:
+//CHECK-NEXT:   br label %if.merge
+//CHECK-EMPTY: 
+//CHECK-NEXT: if.else:
+//CHECK-NEXT:   br label %if.merge
+//CHECK-EMPTY: 
+//CHECK-NEXT: if.merge:
+//CHECK-NEXT:   br label %assert5
+//CHECK-EMPTY: 
+//CHECK-NEXT: assert5:
+//CHECK-NEXT:   %2 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 0
+//CHECK-NEXT:   %3 = load i256, i256* %2, align 4
+//CHECK-NEXT:   %call.fr_eq1 = call i1 @fr_eq(i256 %3, i256 0)
+//CHECK-NEXT:   call void @__assert(i1 %call.fr_eq1)
+//CHECK-NEXT:   br label %store6
+//CHECK-EMPTY: 
+//CHECK-NEXT: store6:
+//CHECK-NEXT:   %4 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
+//CHECK-NEXT:   %5 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
+//CHECK-NEXT:   %6 = load i256, i256* %5, align 4
+//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %6, i256 1)
+//CHECK-NEXT:   store i256 %call.fr_add, i256* %4, align 4
+//CHECK-NEXT:   br label %return7
+//CHECK-EMPTY: 
+//CHECK-NEXT: return7:
+//CHECK-NEXT:   ret void
+//CHECK-NEXT: }
 
 //CHECK-LABEL: define{{.*}} i256 @noEarlyReturnFn_{{[0-9]+}}(i256* %0){{.*}} {
 //CHECK-NEXT: noEarlyReturnFn_[[$F_ID_2:[0-9]+]]:

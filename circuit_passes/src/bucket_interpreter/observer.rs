@@ -124,7 +124,6 @@ pub trait Observer<S> {
         }
     }
 
-    fn ignore_subcmp_calls(&self) -> bool;
     fn ignore_function_calls(&self) -> bool;
     fn ignore_extracted_function_calls(&self) -> bool;
 }

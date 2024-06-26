@@ -34,10 +34,6 @@ impl Observer<()> for UnusedFuncRemovalPass<'_> {
         false
     }
 
-    fn ignore_subcmp_calls(&self) -> bool {
-        false
-    }
-
     fn ignore_extracted_function_calls(&self) -> bool {
         false
     }
