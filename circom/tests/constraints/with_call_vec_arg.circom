@@ -25,19 +25,24 @@ template ComputeFee() {
 component main = ComputeFee();
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0, i256* %var_1){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
 //CHECK-NEXT: call1:
 //CHECK-NEXT:   %[[FUN_NAME:[0-9a-zA-Z_.]+]]_arena = alloca [3 x i256], align 8
 //CHECK-NEXT:   %[[T00:[0-9a-zA-Z_.]+]] = getelementptr [3 x i256], [3 x i256]* %[[FUN_NAME]]_arena, i32 0, i32 0
-//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %var_1, i32 0
-//CHECK-NEXT:   %[[COPY_SRC_0:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[T01]], i32 0
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 8
+//CHECK-NEXT:   %[[T12:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T01]], align 4
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_.]+]] = call i32 @fr_cast_to_addr(i256 %[[T12]])
+//CHECK-NEXT:   %[[T14:[0-9a-zA-Z_.]+]] = mul i32 2, %[[T13]]
+//CHECK-NEXT:   %[[T15:[0-9a-zA-Z_.]+]] = add i32 %[[T14]], 0
+//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 %[[T15]]
+//CHECK-NEXT:   %[[COPY_SRC_0:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[T16]], i32 0
 //CHECK-NEXT:   %[[COPY_DST_0:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[T00]], i32 0
 //CHECK-NEXT:   %[[COPY_VAL_0:[0-9a-zA-Z_.]+]] = load i256, i256* %[[COPY_SRC_0]], align 4
 //CHECK-NEXT:   store i256 %[[COPY_VAL_0]], i256* %[[COPY_DST_0]], align 4
-//CHECK-NEXT:   %[[COPY_SRC_1:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[T01]], i32 1
+//CHECK-NEXT:   %[[COPY_SRC_1:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[T16]], i32 1
 //CHECK-NEXT:   %[[COPY_DST_1:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[T00]], i32 1
 //CHECK-NEXT:   %[[COPY_VAL_1:[0-9a-zA-Z_.]+]] = load i256, i256* %[[COPY_SRC_1]], align 4
 //CHECK-NEXT:   store i256 %[[COPY_VAL_1]], i256* %[[COPY_DST_1]], align 4
@@ -141,14 +146,10 @@ component main = ComputeFee();
 //CHECK-NEXT: unrolled_loop8:
 //CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = bitcast [9 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %[[T11:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 0
-//CHECK-NEXT:   %[[T12:[0-9a-zA-Z_.]+]] = bitcast [9 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T12]], i32 0, i256 0
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T10]], [0 x i256]* %0, i256* %[[T11]], i256* %[[T13]])
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T10]], [0 x i256]* %0, i256* %[[T11]])
 //CHECK-NEXT:   %[[T14:[0-9a-zA-Z_.]+]] = bitcast [9 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %[[T15:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 1
-//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_.]+]] = bitcast [9 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %[[T17:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T16]], i32 0, i256 2
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T14]], [0 x i256]* %0, i256* %[[T15]], i256* %[[T17]])
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T14]], [0 x i256]* %0, i256* %[[T15]])
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:
