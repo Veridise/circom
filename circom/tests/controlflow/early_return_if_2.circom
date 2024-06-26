@@ -32,27 +32,12 @@ template EarlyReturn() {
 
 component main = EarlyReturn();
 
-//CHECK-LABEL: define{{.*}} i256 @earlyReturnFn_0(i256* %0){{.*}} {
-//CHECK-NEXT: earlyReturnFn_0:
-//CHECK-NEXT:   br label %branch1
+//CHECK-LABEL: define{{.*}} i256 @earlyReturnFn_0.T(i256* %0){{.*}} {
+//CHECK-NEXT: earlyReturnFn_0.T:
+//CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
-//CHECK-NEXT: branch1:
-//CHECK-NEXT:   %1 = getelementptr i256, i256* %0, i32 1
-//CHECK-NEXT:   %2 = load i256, i256* %1, align 4
-//CHECK-NEXT:   %call.fr_eq = call i1 @fr_eq(i256 %2, i256 0)
-//CHECK-NEXT:   br i1 %call.fr_eq, label %if.then, label %if.else
-//CHECK-EMPTY: 
-//CHECK-NEXT: if.then:
-//CHECK-NEXT:   %3 = getelementptr i256, i256* %0, i32 0
-//CHECK-NEXT:   %4 = load i256, i256* %3, align 4
-//CHECK-NEXT:   ret i256 %4
-//CHECK-EMPTY: 
-//CHECK-NEXT: if.else:
-//CHECK-NEXT:   br label %if.merge
-//CHECK-EMPTY: 
-//CHECK-NEXT: if.merge:
-//CHECK-NEXT:   br label %nop5
-//CHECK-EMPTY: 
-//CHECK-NEXT: nop5:
-//CHECK-NEXT:   unreachable
+//CHECK-NEXT: fold_true1:
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T01]], align 4
+//CHECK-NEXT:   ret i256 %[[T02]]
 //CHECK-NEXT: }

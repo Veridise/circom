@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{InstructionPointer, new_id, BucketId};
+use compiler::intermediate_representation::{new_id, BucketId, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
 use indexmap::{IndexMap, IndexSet};
 use crate::bucket_interpreter::env::{Env, LibraryAccess};
@@ -69,7 +69,7 @@ impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
         // NOTE: Store 'cond_result' even when it is None (meaning the BranchBucket
         //  condition could not be determined) so that it will fully differentiate the
         //  branching behavior of functions called at multiple sites.
-        let in_func = env.extracted_func_caller().cloned();
+        let in_func = env.function_caller().cloned();
         // NOTE: 'in_func' is None when the current branch is NOT located within a function
         //  that was generated during loop unrolling to hold the body of a loop.
         self.evaluated_conditions
@@ -91,7 +91,7 @@ impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
     }
 
     fn ignore_function_calls(&self) -> bool {
-        true
+        false
     }
 
     fn ignore_extracted_function_calls(&self) -> bool {
@@ -163,7 +163,7 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
                     message_id: bucket.message_id,
                     symbol: new_target,
                     argument_types: bucket.argument_types.clone(),
-                    arguments: self.transform_instructions(&bucket.arguments)?,
+                    arguments: self.transform_instructions_fixed_len(&bucket.arguments)?,
                     arena_size: bucket.arena_size,
                     return_info: self.transform_return_type(&bucket.id, &bucket.return_info)?,
                 }

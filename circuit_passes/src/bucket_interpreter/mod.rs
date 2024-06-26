@@ -694,19 +694,20 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
 
     fn _execute_function_basic(
         &self,
-        name: &String,
+        bucket: &CallBucket,
         args: Vec<Value>,
         call_stack: &CallStack,
         observe: bool,
     ) -> Result<Value, BadInterp> {
-        let new_frame = CallStackFrame { name: name.clone(), args: args.clone() };
+        let new_frame = CallStackFrame { name: bucket.symbol.clone(), args: args.clone() };
         if call_stack.contains(&new_frame) || call_stack.depth() > CALL_STACK_LIMIT {
             Ok(Value::Unknown)
         } else {
             if cfg!(debug_assertions) {
-                println!("Running function {}", name);
+                println!("Running function {}", bucket.symbol);
             }
-            let mut new_env = Env::new_source_func_env(call_stack.push(new_frame), self.mem);
+            let mut new_env =
+                Env::new_source_func_env(&bucket.id, call_stack.push(new_frame), self.mem);
             let mut args_copy = args;
             for (id, arg) in args_copy.drain(..).enumerate() {
                 new_env = new_env.set_var(id, arg);
@@ -715,11 +716,11 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 self.global_data,
                 self.observer,
                 self.flags.clone(),
-                name.clone(),
+                bucket.symbol.clone(),
             );
 
             let (v, _) = Result::from(interp._execute_instructions(
-                &self.mem.get_function(name).body,
+                &self.mem.get_function(&bucket.symbol).body,
                 new_env,
                 observe && !interp.observer.ignore_function_calls(),
             ))?;
@@ -809,7 +810,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 args.push(check_std_res!(opt_as_result(val, "function argument")));
             }
             check_res!(InterpRes::try_continue(self._execute_function_basic(
-                &bucket.symbol,
+                &bucket,
                 args,
                 env.get_call_stack(),
                 observe

@@ -65,7 +65,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
         *self.base
     }
 
-    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
+    pub fn function_caller(&self) -> Option<&BucketId> {
         Some(&self.caller)
     }
 

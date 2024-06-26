@@ -58,7 +58,7 @@ impl<'a> UnrolledBlockEnvData<'a> {
         new_env!(base, extractor)
     }
 
-    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
+    pub fn function_caller(&self) -> Option<&BucketId> {
         None
     }
 
