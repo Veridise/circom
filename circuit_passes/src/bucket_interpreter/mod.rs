@@ -13,15 +13,16 @@ pub mod write_collector;
 use std::cell::RefCell;
 use std::ops::Range;
 use paste::paste;
-use code_producers::llvm_elements::{fr, array_switch};
+use code_producers::llvm_elements::{array_switch, fr};
 use code_producers::llvm_elements::stdlib::{GENERATED_FN_PREFIX, LLVM_DONOTHING_FN_NAME};
 use compiler::intermediate_representation::{
-    BucketId, Instruction, InstructionList, InstructionPointer,
+    new_id, BucketId, Instruction, InstructionList, InstructionPointer,
 };
 use compiler::intermediate_representation::ir_interface::*;
 use compiler::num_bigint::BigInt;
 use observer::Observer;
 use program_structure::error_code::ReportCode;
+use crate::passes::builders::{build_compute, build_u32_value};
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::GlobalPassData;
 use self::env::{CallStack, CallStackFrame, Env, LibraryAccess};
@@ -738,7 +739,6 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         env: Env<'env>,
         observe: bool,
     ) -> REI<'env> {
-        let mut env = env;
         let res = if bucket.symbol.starts_with(GENERATED_FN_PREFIX) {
             // ASSUME: The arguments to a generated function will always be LoadBucket with 'bounded_fn'
             //  that are intended to generate pointers or a call to some built-in function that returns
@@ -760,12 +760,53 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 self._execute_function_extracted(&bucket, env, observe)
             ))
         } else {
-            let mut args = Vec::with_capacity(bucket.arguments.len());
-            for i in &bucket.arguments {
-                let (val, new_env) = check_res!(self._execute_instruction(i, env, observe));
-                let val = check_std_res!(opt_as_result(val, "function argument"));
-                args.push(val);
-                env = new_env;
+            let mut args = vec![];
+            for a in &bucket.arguments {
+                // Case: vector load
+                if let Instruction::Load(load) = &**a {
+                    let load_size = load.context.size;
+                    if load_size > 1 {
+                        assert!(load.bounded_fn.is_none());
+                        match &load.src {
+                            LocationRule::Mapped { .. } => todo!("Can this happen?"),
+                            LocationRule::Indexed { location, template_header } => {
+                                for i in 0..load_size {
+                                    let scalar_load = LoadBucket {
+                                        id: new_id(),
+                                        source_file_id: load.source_file_id,
+                                        line: load.line,
+                                        message_id: load.message_id,
+                                        address_type: load.address_type.clone(),
+                                        src: LocationRule::Indexed {
+                                            location: build_compute(
+                                                load,
+                                                OperatorType::Add,
+                                                0,
+                                                vec![location.clone(), build_u32_value(load, i)],
+                                            ),
+                                            template_header: template_header.clone(),
+                                        },
+                                        context: InstrContext { size: 1 },
+                                        bounded_fn: None,
+                                    }
+                                    .allocate();
+                                    let val = check_res!(
+                                        self._compute_instruction(&scalar_load, &env, observe),
+                                        |v| (v, env)
+                                    );
+                                    args.push(check_std_res!(opt_as_result(
+                                        val,
+                                        "function argument"
+                                    )));
+                                }
+                            }
+                        }
+                        continue;
+                    }
+                }
+                // Case: anything else
+                let val = check_res!(self._compute_instruction(a, &env, observe), |v| (v, env));
+                args.push(check_std_res!(opt_as_result(val, "function argument")));
             }
             check_res!(InterpRes::try_continue(self._execute_function_basic(
                 &bucket.symbol,

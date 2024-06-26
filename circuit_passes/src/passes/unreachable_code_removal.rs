@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::collections::HashSet;
-use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use paste::paste;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::{new_id, BucketId};
@@ -131,25 +130,22 @@ impl CircuitTransformationPass for UnreachableRemovalPass<'_> {
 
     fn transform_call_bucket(&self, bucket: &CallBucket) -> Result<InstructionPointer, BadInterp> {
         if self.visited.borrow_mut().remove(&bucket.id) {
-            if bucket.symbol.starts_with(GENERATED_FN_PREFIX) {
-                // BucketInterpreter::_execute_call_bucket() will never visit arguments
-                //  within these generated functions so we need a special case so they
-                //  are not removed unless the CallBucket is removed entirely.
-                Ok(CallBucket {
-                    id: new_id(),
-                    source_file_id: bucket.source_file_id,
-                    line: bucket.line,
-                    message_id: bucket.message_id,
-                    symbol: bucket.symbol.to_string(),
-                    argument_types: bucket.argument_types.clone(),
-                    arguments: bucket.arguments.clone(),
-                    arena_size: bucket.arena_size,
-                    return_info: self.transform_return_type(&bucket.id, &bucket.return_info)?,
-                }
-                .allocate())
-            } else {
-                self.transform_call_bucket_default(bucket)
+            // BucketInterpreter::_execute_call_bucket() will never visit arguments within
+            //  generated functions and will only visit the scalar arguments of all other
+            //  functions so we need a special case to prevent the arguments from being
+            //  removed unless the CallBucket is removed entirely.
+            Ok(CallBucket {
+                id: new_id(),
+                source_file_id: bucket.source_file_id,
+                line: bucket.line,
+                message_id: bucket.message_id,
+                symbol: bucket.symbol.to_string(),
+                argument_types: bucket.argument_types.clone(),
+                arguments: bucket.arguments.clone(),
+                arena_size: bucket.arena_size,
+                return_info: self.transform_return_type(&bucket.id, &bucket.return_info)?,
             }
+            .allocate())
         } else {
             Ok(NopBucket { id: new_id() }.allocate())
         }
