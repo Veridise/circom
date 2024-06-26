@@ -158,7 +158,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
     }
 
     fn ignore_function_calls(&self) -> bool {
-        true
+        false
     }
 
     fn ignore_subcmp_calls(&self) -> bool {
