@@ -184,15 +184,25 @@ impl LibraryAccess for Env<'_> {
 
 impl<'a> Env<'a> {
     pub fn new_template_env(libs: &'a dyn LibraryAccess) -> Self {
-        Env::Standard(StandardEnvData::new(EnvContextKind::Template, CallStack::default(), libs))
+        Env::Standard(StandardEnvData::new(
+            EnvContextKind::Template,
+            None,
+            CallStack::default(),
+            libs,
+        ))
     }
 
-    pub fn new_source_func_env(call_stack: CallStack, libs: &'a dyn LibraryAccess) -> Self {
-        Env::Standard(StandardEnvData::new(EnvContextKind::SourceFunction, call_stack, libs))
-    }
-
-    pub fn new_unroll_block_env(inner: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {
-        Env::UnrolledBlock(UnrolledBlockEnvData::new(inner, extractor))
+    pub fn new_source_func_env(
+        caller: &BucketId,
+        call_stack: CallStack,
+        libs: &'a dyn LibraryAccess,
+    ) -> Self {
+        Env::Standard(StandardEnvData::new(
+            EnvContextKind::SourceFunction,
+            Some(caller),
+            call_stack,
+            libs,
+        ))
     }
 
     pub fn new_extracted_func_env(
@@ -204,6 +214,10 @@ impl<'a> Env<'a> {
         Env::ExtractedFunction(ExtractedFuncEnvData::new(inner, caller, remap, arenas))
     }
 
+    pub fn new_unroll_block_env(inner: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {
+        Env::UnrolledBlock(UnrolledBlockEnvData::new(inner, extractor))
+    }
+
     // READ OPERATIONS
     pub fn peel_extracted_func(self) -> Self {
         match self {
@@ -212,11 +226,11 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
+    pub fn function_caller(&self) -> Option<&BucketId> {
         match self {
-            Env::Standard(e) => e.extracted_func_caller(),
-            Env::UnrolledBlock(e) => e.extracted_func_caller(),
-            Env::ExtractedFunction(e) => e.extracted_func_caller(),
+            Env::Standard(e) => e.function_caller(),
+            Env::UnrolledBlock(e) => e.function_caller(),
+            Env::ExtractedFunction(e) => e.function_caller(),
         }
     }
 

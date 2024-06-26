@@ -168,4 +168,15 @@ impl CircuitTransformationPass for UnreachableRemovalPass<'_> {
             }
         }
     }
+
+    fn transform_instructions_unfixed_len(
+        &self,
+        i: &InstructionList,
+    ) -> Result<InstructionList, BadInterp> {
+        let mut res = self.transform_instructions_default(i);
+        if let Ok(body) = &mut res {
+            body.retain(|i| !matches!(**i, Instruction::Nop(_)));
+        }
+        res
+    }
 }

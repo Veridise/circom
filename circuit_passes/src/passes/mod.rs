@@ -161,10 +161,31 @@ pub trait CircuitTransformationPass {
         _header: &String,
         body: &InstructionList,
     ) -> Result<InstructionList, BadInterp> {
-        self.transform_instructions(body)
+        self.transform_instructions_unfixed_len(body)
     }
 
-    fn transform_instructions(&self, i: &InstructionList) -> Result<InstructionList, BadInterp> {
+    /// This one is used when the length of the result may be different from the
+    /// length of the input, i.e. the body of a function, loop, etc.
+    fn transform_instructions_unfixed_len(
+        &self,
+        i: &InstructionList,
+    ) -> Result<InstructionList, BadInterp> {
+        self.transform_instructions_default(i)
+    }
+
+    /// This one is used when the length of the result must be the same as the
+    /// length of the input, i.e. the arguments to a call expression, etc.
+    fn transform_instructions_fixed_len(
+        &self,
+        i: &InstructionList,
+    ) -> Result<InstructionList, BadInterp> {
+        self.transform_instructions_default(i)
+    }
+
+    fn transform_instructions_default(
+        &self,
+        i: &InstructionList,
+    ) -> Result<InstructionList, BadInterp> {
         i.iter().map(|i| self.transform_instruction(i)).collect()
     }
 
@@ -275,7 +296,7 @@ pub trait CircuitTransformationPass {
             },
             LocationRule::Mapped { signal_code, indexes } => LocationRule::Mapped {
                 signal_code: *signal_code,
-                indexes: self.transform_instructions(indexes)?,
+                indexes: self.transform_instructions_fixed_len(indexes)?,
             },
         })
     }
@@ -361,7 +382,7 @@ pub trait CircuitTransformationPass {
             message_id: bucket.message_id,
             op: bucket.op,
             op_aux_no: bucket.op_aux_no,
-            stack: self.transform_instructions(&bucket.stack)?,
+            stack: self.transform_instructions_fixed_len(&bucket.stack)?,
         }
         .allocate())
     }
@@ -421,7 +442,7 @@ pub trait CircuitTransformationPass {
             message_id: bucket.message_id,
             symbol: bucket.symbol.to_string(),
             argument_types: bucket.argument_types.clone(),
-            arguments: self.transform_instructions(&bucket.arguments)?,
+            arguments: self.transform_instructions_fixed_len(&bucket.arguments)?,
             arena_size: bucket.arena_size,
             return_info: self.transform_return_type(&bucket.id, &bucket.return_info)?,
         }
@@ -445,8 +466,8 @@ pub trait CircuitTransformationPass {
             line: bucket.line,
             message_id: bucket.message_id,
             cond: self.transform_instruction(&bucket.cond)?,
-            if_branch: self.transform_instructions(&bucket.if_branch)?,
-            else_branch: self.transform_instructions(&bucket.else_branch)?,
+            if_branch: self.transform_instructions_unfixed_len(&bucket.if_branch)?,
+            else_branch: self.transform_instructions_unfixed_len(&bucket.else_branch)?,
         }
         .allocate())
     }
@@ -547,7 +568,7 @@ pub trait CircuitTransformationPass {
             line: bucket.line,
             message_id: bucket.message_id,
             continue_condition: self.transform_instruction(&bucket.continue_condition)?,
-            body: self.transform_instructions(&bucket.body)?,
+            body: self.transform_instructions_unfixed_len(&bucket.body)?,
         }
         .allocate())
     }
@@ -654,7 +675,7 @@ pub trait CircuitTransformationPass {
             source_file_id: bucket.source_file_id,
             line: bucket.line,
             message_id: bucket.message_id,
-            body: self.transform_instructions(&bucket.body)?,
+            body: self.transform_instructions_unfixed_len(&bucket.body)?,
             n_iters: bucket.n_iters,
             label: bucket.label.clone(),
         }

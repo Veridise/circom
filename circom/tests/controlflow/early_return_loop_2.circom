@@ -43,8 +43,5 @@ component main = EarlyReturn();
 //CHECK-NEXT:   ret i256 %5
 //CHECK-EMPTY: 
 //CHECK-NEXT: loop.end:
-//CHECK-NEXT:   br label %nop6
-//CHECK-EMPTY: 
-//CHECK-NEXT: nop6:
 //CHECK-NEXT:   unreachable
 //CHECK-NEXT: }

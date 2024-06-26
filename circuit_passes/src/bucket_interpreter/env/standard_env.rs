@@ -12,6 +12,7 @@ use super::{sort, CallStack, EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV
 #[derive(Clone)]
 pub struct StandardEnvData<'a> {
     context_kind: EnvContextKind,
+    caller: Option<BucketId>,
     call_stack: CallStack,
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
@@ -55,11 +56,13 @@ impl LibraryAccess for StandardEnvData<'_> {
 impl<'a> StandardEnvData<'a> {
     pub fn new(
         context_kind: EnvContextKind,
+        caller: Option<&BucketId>,
         call_stack: CallStack,
         libs: &'a dyn LibraryAccess,
     ) -> Self {
         StandardEnvData {
             context_kind,
+            caller: caller.cloned(),
             call_stack,
             vars: Default::default(),
             signals: Default::default(),
@@ -70,8 +73,8 @@ impl<'a> StandardEnvData<'a> {
     }
 
     // READ OPERATIONS
-    pub fn extracted_func_caller(&self) -> Option<&BucketId> {
-        None
+    pub fn function_caller(&self) -> Option<&BucketId> {
+        self.caller.as_ref()
     }
 
     pub fn get_context_kind(&self) -> EnvContextKind {
