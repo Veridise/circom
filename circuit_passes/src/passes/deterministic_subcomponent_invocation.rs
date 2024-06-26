@@ -73,10 +73,6 @@ impl Observer<Env<'_>> for DeterministicSubCmpInvokePass<'_> {
         true
     }
 
-    fn ignore_subcmp_calls(&self) -> bool {
-        true
-    }
-
     fn ignore_extracted_function_calls(&self) -> bool {
         false
     }

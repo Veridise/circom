@@ -90,10 +90,6 @@ impl Observer<Env<'_>> for UnreachableRemovalPass<'_> {
         false // Observe within all functions
     }
 
-    fn ignore_subcmp_calls(&self) -> bool {
-        false // Observe within subcomponents
-    }
-
     fn ignore_extracted_function_calls(&self) -> bool {
         false // Observe within all functions
     }
