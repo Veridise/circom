@@ -69,12 +69,11 @@ impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
         // NOTE: Store 'cond_result' even when it is None (meaning the BranchBucket
         //  condition could not be determined) so that it will fully differentiate the
         //  branching behavior of functions called at multiple sites.
-        let in_func = env.function_caller().cloned();
-        // NOTE: 'in_func' is None when the current branch is NOT located within a function
-        //  that was generated during loop unrolling to hold the body of a loop.
+        let caller_id = env.function_caller().cloned();
+        // NOTE: 'caller_id' is None when the current branch is NOT located within a function.
         self.evaluated_conditions
             .borrow_mut()
-            .entry(in_func)
+            .entry(caller_id)
             .or_default()
             .entry(bucket.id)
             // If an existing entry is not equal to the new computed value, use None for unknown
@@ -111,6 +110,8 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
                 cir.functions.push(f);
             }
         }
+        //ASSERT: All call buckets were visited and updated (only the None key may remain)
+        assert!(self.evaluated_conditions.borrow().iter().all(|(k, _)| k.is_none()));
         Ok(())
     }
 
