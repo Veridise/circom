@@ -21,9 +21,9 @@ pub struct ConditionalFlatteningPass<'d> {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     /// NOTE: IndexMap/IndexSet are used to preserve insertion order to stabilize lit test output.
     //
-    /// Maps the ID of the CallBucket that is currently on the interpreter's stack (or None if the
-    /// interpreter is currently analyzing code that is not in one of the generated loopbody functions)
-    /// to a list of (ID, evaluated condition) pairs for the BranchBuckets in the current context.
+    /// Maps the ID of the CallBucket that is currently on the interpreter's stack (or None
+    /// if the interpreter is currently analyzing code that is not within a function) to a
+    /// list of (ID, evaluated condition) pairs for the BranchBuckets in the current context.
     evaluated_conditions: RefCell<IndexMap<Option<BucketId>, BranchValues>>,
     /// Track the order that the branches appear in the traversal to stabilize output for lit tests.
     branch_bucket_order: RefCell<IndexSet<BucketId>>,
@@ -43,8 +43,8 @@ impl<'d> ConditionalFlatteningPass<'d> {
             evaluated_conditions: Default::default(),
             branch_bucket_order: Default::default(),
             new_functions: Default::default(),
-            //The None key in this map is for the cases that are NOT inside the loopbody functions. When
-            // traversal enters a loopbody function, this will change to the BranchValues of that CallBucket.
+            //The None key in this map is for the cases that are NOT inside a function. When traversal
+            // enters a function, this will change to the BranchValues of that CallBucket.
             caller_context: RefCell::new(None),
         }
     }
@@ -117,8 +117,8 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
 
     fn transform_call_bucket(&self, bucket: &CallBucket) -> Result<InstructionPointer, BadInterp> {
         let call_bucket_id = Some(bucket.id);
-        // The Some keys in the 'evaluated_conditions' map are for the cases that are inside
-        //  the loopbody functions when executed from the CallBucket.id used as the key.
+        // The Some keys in the 'evaluated_conditions' map are for the cases that are
+        //  inside a function when executed from the CallBucket.id used as the key.
         // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
         let ec = { self.evaluated_conditions.borrow_mut().shift_remove(&call_bucket_id) };
         if let Some(cond_vals) = ec {
@@ -133,9 +133,8 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
                         function_versions[&cond_vals].header.clone()
                     } else {
                         let old_name = &bucket.symbol;
-                        // Set the 'within_call' context and then use self.transform_function(..)
-                        //  on the existing extracted loopbody function to create a new
-                        //  FunctionCode by running this transformer on the existing one.
+                        // Set the 'within_call' context and then use self.transform_function(..) on the existing
+                        //  function to create a new FunctionCode by running this transformer on the existing one.
                         let old_ctx = self.caller_context.replace(Some(cond_vals.clone()));
                         let mut res =
                             self.transform_function(&self.memory.get_function(old_name))?;
