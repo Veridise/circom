@@ -2,7 +2,7 @@ mod loop_env_recorder;
 mod extracted_location_updater;
 pub mod body_extractor;
 
-use std::cell::{Ref, RefCell};
+use std::cell::{Ref, RefCell, RefMut};
 use std::collections::{BTreeMap, HashMap};
 use std::vec;
 use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
@@ -19,7 +19,7 @@ use crate::bucket_interpreter::error::{self, BadInterp};
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::LOOP_LIMIT;
-use crate::{default__name, default__get_mem, default__run_template};
+use crate::{checked_insert, default__get_mem, default__name, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 use self::{body_extractor::LoopBodyExtractor, loop_env_recorder::EnvRecorder};
 
@@ -218,19 +218,15 @@ impl Observer<Env<'_>> for LoopUnrollPass<'_> {
             }
             // NOTE: 'caller_id' is None when the current loop is NOT located within a function.
             match caller_id {
-                Some(id) => {
-                    let previously_added = self
-                        .loop_replacements_in_calls
-                        .borrow_mut()
-                        .entry(id)
-                        .or_default()
-                        .insert(bucket.id, block);
-                    assert!(previously_added.is_none(), "Overwriting {:?}", previously_added);
-                }
+                Some(id) => checked_insert!(
+                    RefMut::map(self.loop_replacements_in_calls.borrow_mut(), |m| {
+                        m.entry(id).or_default()
+                    }),
+                    bucket.id,
+                    block
+                ),
                 None => {
-                    let previously_added =
-                        self.loop_replacements_top_level.borrow_mut().insert(bucket.id, block);
-                    assert!(previously_added.is_none(), "Overwriting {:?}", previously_added);
+                    checked_insert!(self.loop_replacements_top_level.borrow_mut(), bucket.id, block)
                 }
             }
         }
@@ -325,13 +321,13 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
                         println!("[UNROLL][transform_call_bucket] created function {:?}", res);
                     }
                     // Store the new function
-                    let previously_added = self
-                        .new_functions
-                        .borrow_mut()
-                        .entry(old_target.clone())
-                        .or_default()
-                        .insert(versions_key, res);
-                    assert!(previously_added.is_none(), "Overwriting {:?}", previously_added);
+                    checked_insert!(
+                        RefMut::map(self.new_functions.borrow_mut(), |m| {
+                            m.entry(old_target.clone()).or_default()
+                        }),
+                        versions_key,
+                        res
+                    );
                     new_name
                 }
             };

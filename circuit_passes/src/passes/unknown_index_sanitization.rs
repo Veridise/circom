@@ -13,7 +13,7 @@ use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::result_types::{InterpRes, RCI};
 use crate::bucket_interpreter::value::Value::{self, KnownBigInt, KnownU32};
-use crate::{check_res, default__get_mem, default__name, default__run_template};
+use crate::{check_res, checked_insert, default__get_mem, default__name, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 struct ZeroingInterpreter<'a> {
@@ -150,9 +150,11 @@ impl Observer<Env<'_>> for UnknownIndexSanitizationPass<'_> {
         if self.is_location_unknown(location, &bucket.id, env)? {
             let address = &bucket.address_type;
             let index_range = self.find_bounds(address, location, env)?;
-            self.bounded_fn_replacements
-                .borrow_mut()
-                .insert(bucket.id, get_array_load_name(&index_range));
+            checked_insert!(
+                self.bounded_fn_replacements.borrow_mut(),
+                bucket.id,
+                get_array_load_name(&index_range)
+            );
             self.scheduled_bounded_loads.borrow_mut().insert(index_range);
         }
         Ok(true)
@@ -163,9 +165,11 @@ impl Observer<Env<'_>> for UnknownIndexSanitizationPass<'_> {
         if self.is_location_unknown(location, &bucket.id, env)? {
             let address = &bucket.dest_address_type;
             let index_range = self.find_bounds(address, location, env)?;
-            self.bounded_fn_replacements
-                .borrow_mut()
-                .insert(bucket.id, get_array_store_name(&index_range));
+            checked_insert!(
+                self.bounded_fn_replacements.borrow_mut(),
+                bucket.id,
+                get_array_store_name(&index_range)
+            );
             self.scheduled_bounded_stores.borrow_mut().insert(index_range);
         }
         Ok(true)

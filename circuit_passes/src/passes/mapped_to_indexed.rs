@@ -10,7 +10,7 @@ use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::operations::compute_offset;
 use crate::bucket_interpreter::result_types::opt_as_result_u32;
 use crate::bucket_interpreter::value::Value::KnownU32;
-use crate::{default__get_mem, default__name, default__run_template};
+use crate::{checked_insert, default__get_mem, default__name, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 pub struct MappedToIndexedPass<'d> {
@@ -82,8 +82,7 @@ impl<'d> MappedToIndexedPass<'d> {
                         *signal_code,
                         env,
                     )?;
-                    let old = self.replacements.borrow_mut().insert(*bucket_id, indexed_rule);
-                    assert!(old.is_none()); // ensure nothing is unexpectedly overwritten
+                    checked_insert!(self.replacements.borrow_mut(), *bucket_id, indexed_rule);
                 }
             },
             LocationRule::Indexed { .. } => {} // do nothing for indexed
