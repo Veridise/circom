@@ -33,8 +33,8 @@ template EarlyReturn() {
 
 component main = EarlyReturn();
 
-//CHECK-LABEL: define{{.*}} i256 @noEarlyReturnFn_{{[0-9]+}}(i256* %0){{.*}} {
-//CHECK-NEXT: noEarlyReturnFn_[[$F_ID_2:[0-9]+]]:
+//CHECK-LABEL: define{{.*}} i256 @noEarlyReturnFn_{{[0-9\.]+}}(i256* %0){{.*}} {
+//CHECK-NEXT: noEarlyReturnFn_[[$F_ID_2:[0-9\.]+]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
