@@ -2,7 +2,7 @@ mod loop_env_recorder;
 mod extracted_location_updater;
 pub mod body_extractor;
 
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::collections::{BTreeMap, HashMap};
 use std::vec;
 use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
@@ -43,10 +43,13 @@ pub struct LoopUnrollPass<'d> {
     /// Track the order that the loops appear during the traversal to stabilize the order
     /// they appear in the new function names.
     loop_bucket_order: RefCell<IndexSet<BucketId>>,
-    /// Maps the ID of the CallBucket that is currently on the interpreter's stack (or None
-    /// if the interpreter is currently analyzing code that is not within a function) to a
-    /// mapping of LoopBucket id to its unrolled replacement body.
-    replacements: RefCell<HashMap<Option<BucketId>, UnrolledLoops>>,
+    /// Maps the ID of the CallBucket that is currently on the interpreter's stack to a mapping
+    /// of LoopBucket id to its unrolled replacement body. When not within a function call,
+    /// `loop_replacements_top_level` is used instead. To avoid BorrowMutError, these must be
+    /// in separate RefCell rather than using a single map with Option<BucketId> as the key
+    /// and using the key None to store the top-level entry.
+    loop_replacements_in_calls: RefCell<HashMap<BucketId, UnrolledLoops>>,
+    loop_replacements_top_level: RefCell<UnrolledLoops>,
     /// Maps CallBucket symbol (i.e. target function name) plus a mapping of LoopBucket IDs to
     /// iteration counts to the new function that has loops unrolled according to that mapping.
     /// Uses IndexMap to ensure consistent ordering of functions in the output (for lit tests).
@@ -65,7 +68,8 @@ impl<'d> LoopUnrollPass<'d> {
             memory: PassMemory::new(prime),
             extractor: Default::default(),
             loop_bucket_order: Default::default(),
-            replacements: Default::default(),
+            loop_replacements_in_calls: Default::default(),
+            loop_replacements_top_level: Default::default(),
             new_functions: Default::default(),
             caller_context: Default::default(),
         }
@@ -213,13 +217,22 @@ impl Observer<Env<'_>> for LoopUnrollPass<'_> {
                 );
             }
             // NOTE: 'caller_id' is None when the current loop is NOT located within a function.
-            let previously_added = self
-                .replacements
-                .borrow_mut()
-                .entry(caller_id)
-                .or_default()
-                .insert(bucket.id, block);
-            assert!(previously_added.is_none(), "Overwriting {:?}", previously_added);
+            match caller_id {
+                Some(id) => {
+                    let previously_added = self
+                        .loop_replacements_in_calls
+                        .borrow_mut()
+                        .entry(id)
+                        .or_default()
+                        .insert(bucket.id, block);
+                    assert!(previously_added.is_none(), "Overwriting {:?}", previously_added);
+                }
+                None => {
+                    let previously_added =
+                        self.loop_replacements_top_level.borrow_mut().insert(bucket.id, block);
+                    assert!(previously_added.is_none(), "Overwriting {:?}", previously_added);
+                }
+            }
         }
         // Do not continue observing within this loop bucket because continue_inside()
         //  runs a new interpreter inside the unrolled body that is observed instead.
@@ -253,8 +266,8 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
                 cir.functions.push(f);
             }
         }
-        //ASSERT: All call buckets were visited and updated (only the None key may remain)
-        assert!(self.replacements.borrow().iter().all(|(k, _)| k.is_none()));
+        //ASSERT: All call buckets were visited and updated
+        assert!(self.loop_replacements_in_calls.borrow().is_empty());
         Ok(())
     }
 
@@ -262,11 +275,8 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
         if DEBUG_LOOP_UNROLL {
             println!("[UNROLL][transform_call_bucket] {:?}", bucket);
         }
-        let call_bucket_id = Some(bucket.id);
-        // The Some keys in the 'replacements' map are for the cases that are
-        //  inside a function when executed from the CallBucket.id used as the key.
         // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
-        let reps = { self.replacements.borrow_mut().remove(&call_bucket_id) };
+        let reps = { self.loop_replacements_in_calls.borrow_mut().remove(&bucket.id) };
         if let Some(loop_replacements) = reps {
             assert!(!loop_replacements.is_empty());
 
@@ -351,12 +361,11 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
         if DEBUG_LOOP_UNROLL {
             println!("[UNROLL][transform_loop_bucket] {:?}", bucket);
         }
-        // Get from the current 'caller_context' or lookup via None key in 'evaluated_conditions'
-        let reps = self.replacements.borrow();
-        if let Some(m) = self.caller_context.borrow().as_ref().or_else(|| reps.get(&None)) {
-            if let Some(unrolled) = m.get(&bucket.id) {
-                return self.transform_block_bucket(unrolled);
-            }
+        // Get from the current 'caller_context' or use 'loop_replacements_top_level'
+        let top_borrow: Ref<UnrolledLoops> = self.loop_replacements_top_level.borrow();
+        let ctx_borrow: Ref<Option<UnrolledLoops>> = self.caller_context.borrow();
+        if let Some(unrolled) = ctx_borrow.as_ref().unwrap_or_else(|| &top_borrow).get(&bucket.id) {
+            return self.transform_block_bucket(unrolled);
         }
         self.transform_loop_bucket_default(bucket)
     }
