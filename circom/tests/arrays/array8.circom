@@ -30,7 +30,7 @@ component main = ArrayReturnTemplate(4);
 
 //CHECK-LABEL: define{{.*}} i256* @return_array_B_{{[0-9]+}}
 //CHECK-SAME: (i256* %[[ARENA:[0-9a-zA-Z_.]+]]){{.*}} {
-//CHECK:        %[[SRC_PTR:[0-9a-zA-Z_.]+]] = call i256* @return_array_A_{{[0-9\.]+}}(i256* %{{.*}})
+//CHECK:        %[[SRC_PTR:[0-9a-zA-Z_.]+]] = call i256* @return_array_A_{{[0-9]+}}(i256* %{{.*}})
 //CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[ARENA]], i32 2
 //CHECK-NEXT:   %[[COPY_SRC_0:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[SRC_PTR]], i32 0
 //CHECK-NEXT:   %[[COPY_DST_0:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[DST_PTR]], i32 0
@@ -59,7 +59,7 @@ component main = ArrayReturnTemplate(4);
 //CHECK-NEXT:   ret i256* %[[T10]]
 //CHECK-NEXT: }
 
-//CHECK-LABEL: define{{.*}} i256* @return_array_A_{{[0-9\.]+}}
+//CHECK-LABEL: define{{.*}} i256* @return_array_A_{{[0-9]+}}
 //CHECK-SAME: (i256* %[[ARENA:[0-9a-zA-Z_.]+]]){{.*}} {
 //CHECK:       return{{[0-9]+}}:
 //CHECK-NEXT:    %[[T0:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %[[ARENA]], i32 3
