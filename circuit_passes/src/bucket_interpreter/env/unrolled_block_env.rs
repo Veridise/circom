@@ -59,7 +59,7 @@ impl<'a> UnrolledBlockEnvData<'a> {
     }
 
     pub fn function_caller(&self) -> Option<&BucketId> {
-        None
+        self.base.function_caller()
     }
 
     pub fn get_context_kind(&self) -> EnvContextKind {
