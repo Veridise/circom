@@ -13,6 +13,7 @@ use crate::bucket_interpreter::observer::Observer;
 use crate::{default__name, default__run_template, default__get_mem};
 use super::{CircuitTransformationPass, GlobalPassData};
 
+// Uses BTreeMap instead of HashMap because this type must implement the Hash trait.
 type BranchValues = BTreeMap<BucketId, Option<bool>>;
 
 pub struct ConditionalFlatteningPass<'d> {
@@ -21,17 +22,20 @@ pub struct ConditionalFlatteningPass<'d> {
     // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
     /// NOTE: IndexMap/IndexSet are used to preserve insertion order to stabilize lit test output.
     //
-    /// Maps the ID of the CallBucket that is currently on the interpreter's stack (or None if the
-    /// interpreter is currently analyzing code that is not in one of the generated loopbody functions)
-    /// to a list of (ID, evaluated condition) pairs for the BranchBuckets in the current context.
+    /// Maps the ID of the CallBucket that is currently on the interpreter's stack (or None
+    /// if the interpreter is currently analyzing code that is not within a function) to a
+    /// list of (ID, evaluated condition) pairs for the BranchBuckets in the current context.
     evaluated_conditions: RefCell<IndexMap<Option<BucketId>, BranchValues>>,
     /// Track the order that the branches appear in the traversal to stabilize output for lit tests.
     branch_bucket_order: RefCell<IndexSet<BucketId>>,
     /// Maps CallBucket symbol (i.e. target function name) to BranchBucket value mapping to the
     /// new function that has branches simplified according to that mapping.
+    /// Uses IndexMap to ensure consistent ordering of functions in the output (for lit tests).
     new_functions: RefCell<IndexMap<String, IndexMap<BranchValues, FunctionCode>>>,
-    /// Within the CircuitTransformationPass impl below, this holds the BranchBucket
-    /// condition for when the function is called by the current CallBucket.
+    /// Within the CircuitTransformationPass impl below, this holds the BranchBucket condition for
+    /// when the function is called by the current CallBucket. The None key in this map is for the
+    /// cases that are NOT inside a function. When traversal enters a function, this will change to
+    /// the BranchValues for that CallBucket.
     caller_context: RefCell<Option<BranchValues>>,
 }
 
@@ -43,17 +47,15 @@ impl<'d> ConditionalFlatteningPass<'d> {
             evaluated_conditions: Default::default(),
             branch_bucket_order: Default::default(),
             new_functions: Default::default(),
-            //The None key in this map is for the cases that are NOT inside the loopbody functions. When
-            // traversal enters a loopbody function, this will change to the BranchValues of that CallBucket.
             caller_context: RefCell::new(None),
         }
     }
 
-    fn get_known_condition(&self, bucket_id: &BucketId) -> Option<bool> {
+    fn get_known_condition_in_context(&self, branch_bucket_id: &BucketId) -> Option<bool> {
         // Get from the current 'caller_context' or lookup via None key in 'evaluated_conditions'
         let ec = self.evaluated_conditions.borrow();
         if let Some(bv) = self.caller_context.borrow().as_ref().or_else(|| ec.get(&None)) {
-            if let Some(Some(side)) = bv.get(bucket_id) {
+            if let Some(Some(side)) = bv.get(branch_bucket_id) {
                 return Some(*side);
             }
         }
@@ -104,7 +106,7 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
     default__run_template!();
 
     fn post_hook_circuit(&self, cir: &mut Circuit) -> Result<(), BadInterp> {
-        // Add the new functions
+        // Add the duplicated versions of functions created by transform_call_bucket()
         for (_, ev) in self.new_functions.borrow_mut().drain(..) {
             for f in ev.into_values() {
                 cir.functions.push(f);
@@ -117,8 +119,8 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
 
     fn transform_call_bucket(&self, bucket: &CallBucket) -> Result<InstructionPointer, BadInterp> {
         let call_bucket_id = Some(bucket.id);
-        // The Some keys in the 'evaluated_conditions' map are for the cases that are inside
-        //  the loopbody functions when executed from the CallBucket.id used as the key.
+        // The Some keys in the 'evaluated_conditions' map are for the cases that are
+        //  inside a function when executed from the CallBucket.id used as the key.
         // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
         let ec = { self.evaluated_conditions.borrow_mut().shift_remove(&call_bucket_id) };
         if let Some(cond_vals) = ec {
@@ -133,9 +135,8 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
                         function_versions[&cond_vals].header.clone()
                     } else {
                         let old_name = &bucket.symbol;
-                        // Set the 'within_call' context and then use self.transform_function(..)
-                        //  on the existing extracted loopbody function to create a new
-                        //  FunctionCode by running this transformer on the existing one.
+                        // Set the caller context and then use self.transform_function(..) on the existing
+                        //  function to create a new FunctionCode by running this transformer on the existing one.
                         let old_ctx = self.caller_context.replace(Some(cond_vals.clone()));
                         let mut res =
                             self.transform_function(&self.memory.get_function(old_name))?;
@@ -178,7 +179,7 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
         &self,
         bucket: &BranchBucket,
     ) -> Result<InstructionPointer, BadInterp> {
-        if let Some(side) = self.get_known_condition(&bucket.id) {
+        if let Some(side) = self.get_known_condition_in_context(&bucket.id) {
             let code = if side { &bucket.if_branch } else { &bucket.else_branch };
             let block = BlockBucket {
                 id: new_id(),
