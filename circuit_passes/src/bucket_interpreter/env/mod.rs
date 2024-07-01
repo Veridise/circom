@@ -144,41 +144,53 @@ pub enum Env<'a> {
     ExtractedFunction(ExtractedFuncEnvData<'a>),
 }
 
+macro_rules! switch_impl_read {
+    ($self: ident, $func: ident $(, $args:tt)*) => {
+        match $self {
+            Env::Standard(d) => d.$func($($args),*),
+            Env::UnrolledBlock(d) => d.$func($($args),*),
+            Env::ExtractedFunction(d) => d.$func($($args),*),
+        }
+    };
+}
+
+macro_rules! switch_impl_write {
+    ($self: ident, $func: ident $(, $args:tt)*) => {
+        match $self {
+            Env::Standard(d) => Env::Standard(d.$func($($args),*)),
+            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.$func($($args),*)),
+            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.$func($($args),*)),
+        }
+    };
+    // This one is for inner functions that return a Result
+    ($self: ident, try $func: ident $(, $args:tt)*) => {
+        Ok(match $self {
+            Env::Standard(d) => Env::Standard(d.$func($($args),*)?),
+            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.$func($($args),*)?),
+            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.$func($($args),*)?),
+        })
+    };
+}
+
 impl Display for Env<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Env::Standard(d) => d.fmt(f),
-            Env::UnrolledBlock(d) => d.fmt(f),
-            Env::ExtractedFunction(d) => d.fmt(f),
-        }
+        switch_impl_read!(self, fmt, f)
     }
 }
 
 impl std::fmt::Debug for Env<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Env::Standard(d) => d.fmt(f),
-            Env::UnrolledBlock(d) => d.fmt(f),
-            Env::ExtractedFunction(d) => d.fmt(f),
-        }
+        switch_impl_read!(self, fmt, f)
     }
 }
 
 impl LibraryAccess for Env<'_> {
     fn get_function(&self, name: &String) -> Ref<FunctionCode> {
-        match self {
-            Env::Standard(d) => d.get_function(name),
-            Env::UnrolledBlock(d) => d.get_function(name),
-            Env::ExtractedFunction(d) => d.get_function(name),
-        }
+        switch_impl_read!(self, get_function, name)
     }
 
     fn get_template(&self, name: &String) -> Ref<TemplateCode> {
-        match self {
-            Env::Standard(d) => d.get_template(name),
-            Env::UnrolledBlock(d) => d.get_template(name),
-            Env::ExtractedFunction(d) => d.get_template(name),
-        }
+        switch_impl_read!(self, get_template, name)
     }
 }
 
@@ -227,134 +239,70 @@ impl<'a> Env<'a> {
     }
 
     pub fn function_caller(&self) -> Option<&BucketId> {
-        match self {
-            Env::Standard(e) => e.function_caller(),
-            Env::UnrolledBlock(e) => e.function_caller(),
-            Env::ExtractedFunction(e) => e.function_caller(),
-        }
+        switch_impl_read!(self, function_caller)
     }
 
     pub fn get_context_kind(&self) -> EnvContextKind {
-        match self {
-            Env::Standard(d) => d.get_context_kind(),
-            Env::UnrolledBlock(d) => d.get_context_kind(),
-            Env::ExtractedFunction(d) => d.get_context_kind(),
-        }
+        switch_impl_read!(self, get_context_kind)
     }
 
     pub fn get_call_stack(&self) -> &CallStack {
-        match self {
-            Env::Standard(d) => d.get_call_stack(),
-            Env::UnrolledBlock(d) => d.get_call_stack(),
-            Env::ExtractedFunction(d) => d.get_call_stack(),
-        }
+        switch_impl_read!(self, get_call_stack)
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
-        match self {
-            Env::Standard(d) => d.get_var(idx),
-            Env::UnrolledBlock(d) => d.get_var(idx),
-            Env::ExtractedFunction(d) => d.get_var(idx),
-        }
+        switch_impl_read!(self, get_var, idx)
     }
 
     pub fn get_signal(&self, idx: usize) -> Value {
-        match self {
-            Env::Standard(d) => d.get_signal(idx),
-            Env::UnrolledBlock(d) => d.get_signal(idx),
-            Env::ExtractedFunction(d) => d.get_signal(idx),
-        }
+        switch_impl_read!(self, get_signal, idx)
     }
 
     pub fn get_subcmp_signal(&self, subcmp_idx: usize, signal_idx: usize) -> Value {
-        match self {
-            Env::Standard(d) => d.get_subcmp_signal(subcmp_idx, signal_idx),
-            Env::UnrolledBlock(d) => d.get_subcmp_signal(subcmp_idx, signal_idx),
-            Env::ExtractedFunction(d) => d.get_subcmp_signal(subcmp_idx, signal_idx),
-        }
+        switch_impl_read!(self, get_subcmp_signal, subcmp_idx, signal_idx)
     }
 
     pub fn get_subcmp_name(&self, subcmp_idx: usize) -> &String {
-        match self {
-            Env::Standard(d) => d.get_subcmp_name(subcmp_idx),
-            Env::UnrolledBlock(d) => d.get_subcmp_name(subcmp_idx),
-            Env::ExtractedFunction(d) => d.get_subcmp_name(subcmp_idx),
-        }
+        switch_impl_read!(self, get_subcmp_name, subcmp_idx)
     }
 
     pub fn get_subcmp_template_id(&self, subcmp_idx: usize) -> usize {
-        match self {
-            Env::Standard(d) => d.get_subcmp_template_id(subcmp_idx),
-            Env::UnrolledBlock(d) => d.get_subcmp_template_id(subcmp_idx),
-            Env::ExtractedFunction(d) => d.get_subcmp_template_id(subcmp_idx),
-        }
+        switch_impl_read!(self, get_subcmp_template_id, subcmp_idx)
     }
 
     pub fn get_subcmp_counter(&self, subcmp_idx: usize) -> Value {
-        match self {
-            Env::Standard(d) => d.get_subcmp_counter(subcmp_idx),
-            Env::UnrolledBlock(d) => d.get_subcmp_counter(subcmp_idx),
-            Env::ExtractedFunction(d) => d.get_subcmp_counter(subcmp_idx),
-        }
+        switch_impl_read!(self, get_subcmp_counter, subcmp_idx)
     }
 
     pub fn subcmp_counter_is_zero(&self, subcmp_idx: usize) -> bool {
-        match self {
-            Env::Standard(d) => d.subcmp_counter_is_zero(subcmp_idx),
-            Env::UnrolledBlock(d) => d.subcmp_counter_is_zero(subcmp_idx),
-            Env::ExtractedFunction(d) => d.subcmp_counter_is_zero(subcmp_idx),
-        }
+        switch_impl_read!(self, subcmp_counter_is_zero, subcmp_idx)
     }
 
     pub fn subcmp_counter_equal_to(&self, subcmp_idx: usize, value: usize) -> bool {
-        match self {
-            Env::Standard(d) => d.subcmp_counter_equal_to(subcmp_idx, value),
-            Env::UnrolledBlock(d) => d.subcmp_counter_equal_to(subcmp_idx, value),
-            Env::ExtractedFunction(d) => d.subcmp_counter_equal_to(subcmp_idx, value),
-        }
+        switch_impl_read!(self, subcmp_counter_equal_to, subcmp_idx, value)
     }
 
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
-        match self {
-            Env::Standard(d) => d.get_vars_sort(),
-            Env::UnrolledBlock(d) => d.get_vars_sort(),
-            Env::ExtractedFunction(d) => d.get_vars_sort(),
-        }
+        switch_impl_read!(self, get_vars_sort)
     }
 
     // WRITE OPERATIONS
     pub fn set_var(self, idx: usize, value: Value) -> Self {
-        match self {
-            Env::Standard(d) => Env::Standard(d.set_var(idx, value)),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_var(idx, value)),
-            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_var(idx, value)),
-        }
+        switch_impl_write!(self, set_var, idx, value)
     }
 
     pub fn set_signal(self, idx: usize, value: Value) -> Self {
-        match self {
-            Env::Standard(d) => Env::Standard(d.set_signal(idx, value)),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_signal(idx, value)),
-            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_signal(idx, value)),
-        }
+        switch_impl_write!(self, set_signal, idx, value)
     }
 
     /// Sets the given variables to Value::Unknown, for all signals if None.
     pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
-        match self {
-            Env::Standard(d) => Env::Standard(d.set_vars_to_unk(idxs)),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_vars_to_unk(idxs)),
-            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_vars_to_unk(idxs)),
-        }
+        switch_impl_write!(self, set_vars_to_unk, idxs)
     }
 
     /// Sets the given signals to Value::Unknown, for all signals if None.
     pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
-        match self {
-            Env::Standard(d) => Env::Standard(d.set_signals_to_unk(idxs)),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_signals_to_unk(idxs)),
-            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_signals_to_unk(idxs)),
-        }
+        switch_impl_write!(self, set_signals_to_unk, idxs)
     }
 
     /// Sets all the signals of the given subcomponent(s) to Value::Unknown, for all subcomponents if None.
@@ -362,11 +310,7 @@ impl<'a> Env<'a> {
         self,
         subcmp_idxs: Option<T>,
     ) -> Result<Self, BadInterp> {
-        Ok(match self {
-            Env::Standard(d) => Env::Standard(d.set_subcmps_to_unk(subcmp_idxs)?),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_subcmps_to_unk(subcmp_idxs)?),
-            Env::ExtractedFunction(d) => Env::ExtractedFunction(d.set_subcmps_to_unk(subcmp_idxs)?),
-        })
+        switch_impl_write!(self, try set_subcmps_to_unk, subcmp_idxs)
     }
 
     pub fn set_subcmp_signal(
@@ -375,35 +319,15 @@ impl<'a> Env<'a> {
         signal_idx: usize,
         value: Value,
     ) -> Result<Self, BadInterp> {
-        Ok(match self {
-            Env::Standard(d) => Env::Standard(d.set_subcmp_signal(subcmp_idx, signal_idx, value)?),
-            Env::UnrolledBlock(d) => {
-                Env::UnrolledBlock(d.set_subcmp_signal(subcmp_idx, signal_idx, value)?)
-            }
-            Env::ExtractedFunction(d) => {
-                Env::ExtractedFunction(d.set_subcmp_signal(subcmp_idx, signal_idx, value)?)
-            }
-        })
+        switch_impl_write!(self, try set_subcmp_signal, subcmp_idx, signal_idx, value)
     }
 
     pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Result<Self, BadInterp> {
-        Ok(match self {
-            Env::Standard(d) => Env::Standard(d.set_subcmp_counter(subcmp_idx, new_val)?),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.set_subcmp_counter(subcmp_idx, new_val)?),
-            Env::ExtractedFunction(d) => {
-                Env::ExtractedFunction(d.set_subcmp_counter(subcmp_idx, new_val)?)
-            }
-        })
+        switch_impl_write!(self, try set_subcmp_counter, subcmp_idx, new_val)
     }
 
     pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
-        Ok(match self {
-            Env::Standard(d) => Env::Standard(d.decrease_subcmp_counter(subcmp_idx)?),
-            Env::UnrolledBlock(d) => Env::UnrolledBlock(d.decrease_subcmp_counter(subcmp_idx)?),
-            Env::ExtractedFunction(d) => {
-                Env::ExtractedFunction(d.decrease_subcmp_counter(subcmp_idx)?)
-            }
-        })
+        switch_impl_write!(self, try decrease_subcmp_counter, subcmp_idx)
     }
 
     pub fn run_subcmp(
@@ -412,15 +336,7 @@ impl<'a> Env<'a> {
         name: &String,
         interpreter: &BucketInterpreter,
     ) -> Self {
-        match self {
-            Env::Standard(d) => Env::Standard(d.run_subcmp(subcmp_idx, name, interpreter)),
-            Env::UnrolledBlock(d) => {
-                Env::UnrolledBlock(d.run_subcmp(subcmp_idx, name, interpreter))
-            }
-            Env::ExtractedFunction(d) => {
-                Env::ExtractedFunction(d.run_subcmp(subcmp_idx, name, interpreter))
-            }
-        }
+        switch_impl_write!(self, run_subcmp, subcmp_idx, name, interpreter)
     }
 
     pub fn create_subcmp(
@@ -430,16 +346,6 @@ impl<'a> Env<'a> {
         count: usize,
         template_id: usize,
     ) -> Self {
-        match self {
-            Env::Standard(d) => {
-                Env::Standard(d.create_subcmp(name, base_index, count, template_id))
-            }
-            Env::UnrolledBlock(d) => {
-                Env::UnrolledBlock(d.create_subcmp(name, base_index, count, template_id))
-            }
-            Env::ExtractedFunction(d) => {
-                Env::ExtractedFunction(d.create_subcmp(name, base_index, count, template_id))
-            }
-        }
+        switch_impl_write!(self, create_subcmp, name, base_index, count, template_id)
     }
 }
