@@ -24,9 +24,9 @@ pub struct ExtractedFuncEnvData<'a> {
     arenas: HashSet<FuncArgIdx>,
 }
 
-macro_rules! update_inner {
-    ($self: expr, $inner: expr) => {{
-        ExtractedFuncEnvData::new($inner, &$self.caller, $self.remap, $self.arenas)
+macro_rules! with_updated_base {
+    ($self: expr, $base: expr) => {{
+        ExtractedFuncEnvData::new($base, &$self.caller, $self.remap, $self.arenas)
     }};
 }
 
@@ -53,12 +53,12 @@ impl LibraryAccess for ExtractedFuncEnvData<'_> {
 //  back into the proper reference to access the correct Env entry.
 impl<'a> ExtractedFuncEnvData<'a> {
     pub fn new(
-        inner: Env<'a>,
+        base: Env<'a>,
         caller: &BucketId,
         remap: ToOriginalLocation,
         arenas: HashSet<FuncArgIdx>,
     ) -> Self {
-        ExtractedFuncEnvData { base: Box::new(inner), caller: caller.clone(), remap, arenas }
+        ExtractedFuncEnvData { base: Box::new(base), caller: caller.clone(), remap, arenas }
     }
 
     pub fn get_base(self) -> Env<'a> {
@@ -265,22 +265,22 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn set_var(self, idx: usize, value: Value) -> Self {
         // Local variables are referenced in the normal way
-        update_inner!(self, self.base.set_var(idx, value))
+        with_updated_base!(self, self.base.set_var(idx, value))
     }
 
     pub fn set_signal(self, idx: usize, value: Value) -> Self {
         // Signals are referenced in the normal way
-        update_inner!(self, self.base.set_signal(idx, value))
+        with_updated_base!(self, self.base.set_signal(idx, value))
     }
 
     pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         // Local variables are referenced in the normal way
-        update_inner!(self, self.base.set_vars_to_unk(idxs))
+        with_updated_base!(self, self.base.set_vars_to_unk(idxs))
     }
 
     pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         // Signals are referenced in the normal way
-        update_inner!(self, self.base.set_signals_to_unk(idxs))
+        with_updated_base!(self, self.base.set_signals_to_unk(idxs))
     }
 
     pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
@@ -290,7 +290,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
         // The indexes here are already converted within BucketInterpreter::get_write_operations_in_store_bucket
         //  via interpreting the LocationRule and performing the PassMemory lookup on the unchanged scope
         //  (per comment in BucketInterpreter::run_function_loopbody).
-        Ok(update_inner!(self, self.base.set_subcmps_to_unk(subcmp_idxs)?))
+        Ok(with_updated_base!(self, self.base.set_subcmps_to_unk(subcmp_idxs)?))
     }
 
     pub fn set_subcmp_signal(
@@ -337,7 +337,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 }
             }
         };
-        Ok(update_inner!(self, new_env))
+        Ok(with_updated_base!(self, new_env))
     }
 
     pub fn set_subcmp_counter(
