@@ -10,7 +10,7 @@ use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::builders::build_compute;
-use crate::{default__name, default__get_mem, default__run_template};
+use crate::{checked_insert, default__get_mem, default__name, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 pub struct SimplificationPass<'d> {
@@ -64,7 +64,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
         let v = interp.compute_compute_bucket(bucket, env, false)?;
         let v = v.expect("Compute bucket must produce a value!");
         if !v.is_unknown() {
-            self.compute_replacements.borrow_mut().insert(bucket.id, v);
+            checked_insert!(self.compute_replacements.borrow_mut(), bucket.id, v);
             Ok(false)
         } else {
             Ok(true)
@@ -76,7 +76,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
         if let Some(v) = interp.compute_call_bucket(bucket, env, false)? {
             // Call buckets may not return a value directly
             if !v.is_unknown() {
-                self.call_replacements.borrow_mut().insert(bucket.id, v);
+                checked_insert!(self.call_replacements.borrow_mut(), bucket.id, v);
                 return Ok(false);
             }
         }
@@ -106,7 +106,11 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                         }
                         // If at least one is a known value, then we can (likely) simplify
                         if values.iter().any(Value::is_known) {
-                            self.constraint_eq_replacements.borrow_mut().insert(e.get_id(), values);
+                            checked_insert!(
+                                self.constraint_eq_replacements.borrow_mut(),
+                                e.get_id(),
+                                values
+                            );
                         }
                     }
                 }
@@ -145,9 +149,11 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
 
                         // If at least one is a known value, then we can (likely) simplify
                         if src.is_known() || dest.is_known() || dest_address_type.is_known() {
-                            self.constraint_sub_replacements
-                                .borrow_mut()
-                                .insert(e.get_id(), (src, dest, dest_address_type));
+                            checked_insert!(
+                                self.constraint_sub_replacements.borrow_mut(),
+                                e.get_id(),
+                                (src, dest, dest_address_type)
+                            );
                         }
                     }
                 }

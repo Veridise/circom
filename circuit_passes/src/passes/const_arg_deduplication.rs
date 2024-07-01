@@ -22,7 +22,6 @@ use super::{CircuitTransformationPass, GlobalPassData, builders};
 pub struct ConstArgDeduplicationPass<'d> {
     _global_data: &'d RefCell<GlobalPassData>,
     memory: PassMemory,
-    // new_body_functions: RefCell<Vec<FunctionCode>>,
     new_body_functions: RefCell<HashMap<Vec<(usize, usize)>, FunctionCode>>,
 }
 

@@ -148,6 +148,17 @@ pub fn assert_unique_ids_in_circuit(circuit: &Circuit) {
     }
 }
 
+#[macro_export]
+macro_rules! checked_insert {
+    ($map: expr, $key: expr, $val: expr) => {{
+        let key = $key;
+        let val = $val;
+        let mut map = $map;
+        assert!(!map.contains_key(&key) || map[&key] == val, "Overwriting {:?}", map[&key]);
+        map.insert(key, val);
+    }};
+}
+
 /// Return true iff all elements returned by the given Iterator are equal.
 pub fn all_same<T>(data: T) -> bool
 where

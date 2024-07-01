@@ -7,7 +7,7 @@ use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
-use crate::{default__name, default__get_mem, default__run_template};
+use crate::{checked_insert, default__get_mem, default__name, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 pub struct DeterministicSubCmpInvokePass<'d> {
@@ -47,7 +47,7 @@ impl<'d> DeterministicSubCmpInvokePass<'d> {
                 .expect("cmp_address instruction in SubcmpSignal must produce a value!")
                 .as_u32()?;
             let new_status = if env.subcmp_counter_equal_to(addr, 1) { Last } else { NoLast };
-            self.replacements.borrow_mut().insert(address_type.clone(), new_status);
+            checked_insert!(self.replacements.borrow_mut(), address_type.clone(), new_status);
         }
         Ok(())
     }
