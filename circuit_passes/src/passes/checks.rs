@@ -154,7 +154,13 @@ macro_rules! checked_insert {
         let key = $key;
         let val = $val;
         let mut map = $map;
-        assert!(!map.contains_key(&key) || map[&key] == val, "Overwriting {:?}", map[&key]);
+        assert!(
+            !map.contains_key(&key) || map[&key] == val,
+            "OVERWRITING {:?}={:?}\nWITH {:?}",
+            key,
+            map[&key],
+            val
+        );
         map.insert(key, val);
     }};
 }
