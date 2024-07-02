@@ -204,7 +204,7 @@ impl Observer<Env<'_>> for LoopUnrollPass<'_> {
             };
             self.continue_inside(&block, env)?;
 
-            let caller_id = env.function_caller().cloned();
+            let caller_id = env.get_caller_stack().last().cloned();
             if DEBUG_LOOP_UNROLL {
                 println!(
                     "[UNROLL][on_loop_bucket] storing replacement for {} from caller {:?} :: {:?}",

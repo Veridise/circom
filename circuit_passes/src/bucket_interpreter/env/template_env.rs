@@ -63,16 +63,16 @@ impl<'a> TemplateEnvData<'a> {
     }
 
     // READ OPERATIONS
-    pub fn function_caller(&self) -> Option<&BucketId> {
-        None
-    }
-
     pub fn get_context_kind(&self) -> EnvContextKind {
         EnvContextKind::Template
     }
 
     pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
         Some(CallStack::new(new_frame))
+    }
+
+    pub fn get_caller_stack(&self) -> &[BucketId] {
+        &[]
     }
 
     pub fn get_var(&self, idx: usize) -> Value {

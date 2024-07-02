@@ -19,14 +19,14 @@ use super::{CallStack, CallStackFrame, Env, EnvContextKind, LibraryAccess};
 #[derive(Clone)]
 pub struct ExtractedFuncEnvData<'a> {
     base: Box<Env<'a>>,
-    caller: BucketId,
+    caller_stack: Vec<BucketId>,
     remap: ToOriginalLocation,
     arenas: HashSet<FuncArgIdx>,
 }
 
 macro_rules! with_updated_base {
     ($self: expr, $base: expr) => {{
-        ExtractedFuncEnvData::new($base, &$self.caller, $self.remap, $self.arenas)
+        ExtractedFuncEnvData::copy($base, $self.caller_stack, $self.remap, $self.arenas)
     }};
 }
 
@@ -58,15 +58,22 @@ impl<'a> ExtractedFuncEnvData<'a> {
         remap: ToOriginalLocation,
         arenas: HashSet<FuncArgIdx>,
     ) -> Self {
-        ExtractedFuncEnvData { base: Box::new(base), caller: caller.clone(), remap, arenas }
+        let mut caller_stack = base.get_caller_stack().to_vec();
+        caller_stack.push(*caller);
+        ExtractedFuncEnvData { base: Box::new(base), caller_stack, remap, arenas }
+    }
+
+    fn copy(
+        base: Env<'a>,
+        caller_stack: Vec<BucketId>,
+        remap: ToOriginalLocation,
+        arenas: HashSet<FuncArgIdx>,
+    ) -> Self {
+        ExtractedFuncEnvData { base: Box::new(base), caller_stack, remap, arenas }
     }
 
     pub fn get_base(self) -> Env<'a> {
         *self.base
-    }
-
-    pub fn function_caller(&self) -> Option<&BucketId> {
-        Some(&self.caller)
     }
 
     pub fn get_context_kind(&self) -> EnvContextKind {
@@ -75,6 +82,10 @@ impl<'a> ExtractedFuncEnvData<'a> {
 
     pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
         self.base.safe_to_interpret(new_frame)
+    }
+
+    pub fn get_caller_stack(&self) -> &[BucketId] {
+        &self.caller_stack
     }
 
     pub fn get_var(&self, idx: usize) -> Value {

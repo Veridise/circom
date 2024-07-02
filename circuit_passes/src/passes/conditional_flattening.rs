@@ -71,7 +71,7 @@ impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
         // NOTE: Store 'cond_result' even when it is None (meaning the BranchBucket
         //  condition could not be determined) so that it will fully differentiate the
         //  branching behavior of functions called at multiple sites.
-        let caller_id = env.function_caller().cloned();
+        let caller_id = env.get_caller_stack().last().cloned();
         // NOTE: 'caller_id' is None when the current branch is NOT located within a function.
         self.evaluated_conditions
             .borrow_mut()
