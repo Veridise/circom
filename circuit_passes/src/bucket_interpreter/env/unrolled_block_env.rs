@@ -62,7 +62,7 @@ impl<'a> UnrolledBlockEnvData<'a> {
         self.base.get_context_kind()
     }
 
-    pub fn get_call_stack(&self) -> &CallStack {
+    pub fn get_call_stack(&self) -> CallStack {
         self.base.get_call_stack()
     }
 

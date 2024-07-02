@@ -12,6 +12,7 @@ pub mod write_collector;
 
 use std::cell::RefCell;
 use std::ops::Range;
+use env::{CallStack, CallStackFrame};
 use paste::paste;
 use code_producers::llvm_elements::{array_switch, fr};
 use code_producers::llvm_elements::stdlib::{GENERATED_FN_PREFIX, LLVM_DONOTHING_FN_NAME};
@@ -25,7 +26,7 @@ use program_structure::error_code::ReportCode;
 use crate::passes::builders::{build_compute, build_u32_value};
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::GlobalPassData;
-use self::env::{CallStack, CallStackFrame, Env, LibraryAccess};
+use self::env::{Env, LibraryAccess};
 use self::error::BadInterp;
 use self::memory::PassMemory;
 use self::operations::compute_offset;
@@ -696,7 +697,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         &self,
         bucket: &CallBucket,
         args: Vec<Value>,
-        call_stack: &CallStack,
+        call_stack: CallStack,
         observe: bool,
     ) -> Result<Value, BadInterp> {
         let new_frame = CallStackFrame { name: bucket.symbol.clone(), args: args.clone() };

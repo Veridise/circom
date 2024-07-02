@@ -73,8 +73,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
         EnvContextKind::ExtractedFunction
     }
 
-    pub fn get_call_stack(&self) -> &CallStack {
-        // Return the stack of circom source function calls
+    pub fn get_call_stack(&self) -> CallStack {
         self.base.get_call_stack()
     }
 
@@ -354,7 +353,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
     }
 
     pub fn run_subcmp(self, _: usize, _: &String, _: &BucketInterpreter) -> Self {
-        //Return self just like the StandardEnvData
+        //Return self just like the FunctionEnvData
         self
     }
 
