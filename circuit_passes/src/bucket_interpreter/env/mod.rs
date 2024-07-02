@@ -4,16 +4,18 @@ use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
+use function_env::FunctionEnvData;
 use indexmap::IndexSet;
-use crate::bucket_interpreter::BucketInterpreter;
-use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::body_extractor::{LoopBodyExtractor, ToOriginalLocation, FuncArgIdx};
 use self::extracted_func_env::ExtractedFuncEnvData;
-use self::standard_env::StandardEnvData;
+use self::template_env::TemplateEnvData;
 use self::unrolled_block_env::UnrolledBlockEnvData;
+use super::BucketInterpreter;
 use super::error::BadInterp;
+use super::value::Value;
 
-mod standard_env;
+mod template_env;
+mod function_env;
 mod unrolled_block_env;
 mod extracted_func_env;
 
@@ -128,8 +130,8 @@ impl CallStack {
         self.frames.len()
     }
 
-    pub fn push(&self, f: CallStackFrame) -> CallStack {
-        let mut ret = self.clone();
+    pub fn push(self, f: CallStackFrame) -> CallStack {
+        let mut ret = self;
         let unique = ret.frames.insert(f);
         debug_assert!(unique, "called push() without first checking contains()");
         ret
@@ -139,7 +141,8 @@ impl CallStack {
 // An immutable environment whose modification methods return a new object
 #[derive(Clone)]
 pub enum Env<'a> {
-    Standard(StandardEnvData<'a>),
+    Template(TemplateEnvData<'a>),
+    Function(FunctionEnvData<'a>),
     UnrolledBlock(UnrolledBlockEnvData<'a>),
     ExtractedFunction(ExtractedFuncEnvData<'a>),
 }
@@ -147,7 +150,8 @@ pub enum Env<'a> {
 macro_rules! switch_impl_read {
     ($self: ident, $func: ident $(, $args:tt)*) => {
         match $self {
-            Env::Standard(d) => d.$func($($args),*),
+            Env::Template(d) => d.$func($($args),*),
+            Env::Function(d) => d.$func($($args),*),
             Env::UnrolledBlock(d) => d.$func($($args),*),
             Env::ExtractedFunction(d) => d.$func($($args),*),
         }
@@ -157,7 +161,8 @@ macro_rules! switch_impl_read {
 macro_rules! switch_impl_write {
     ($self: ident, $func: ident $(, $args:tt)*) => {
         match $self {
-            Env::Standard(d) => Env::Standard(d.$func($($args),*)),
+            Env::Template(d) => Env::Template(d.$func($($args),*)),
+            Env::Function(d) => Env::Function(d.$func($($args),*)),
             Env::UnrolledBlock(d) => Env::UnrolledBlock(d.$func($($args),*)),
             Env::ExtractedFunction(d) => Env::ExtractedFunction(d.$func($($args),*)),
         }
@@ -165,7 +170,8 @@ macro_rules! switch_impl_write {
     // This one is for inner functions that return a Result
     ($self: ident, try $func: ident $(, $args:tt)*) => {
         Ok(match $self {
-            Env::Standard(d) => Env::Standard(d.$func($($args),*)?),
+            Env::Template(d) => Env::Template(d.$func($($args),*)?),
+            Env::Function(d) => Env::Function(d.$func($($args),*)?),
             Env::UnrolledBlock(d) => Env::UnrolledBlock(d.$func($($args),*)?),
             Env::ExtractedFunction(d) => Env::ExtractedFunction(d.$func($($args),*)?),
         })
@@ -196,12 +202,7 @@ impl LibraryAccess for Env<'_> {
 
 impl<'a> Env<'a> {
     pub fn new_template_env(libs: &'a dyn LibraryAccess) -> Self {
-        Env::Standard(StandardEnvData::new(
-            EnvContextKind::Template,
-            None,
-            CallStack::default(),
-            libs,
-        ))
+        Env::Template(TemplateEnvData::new(libs))
     }
 
     pub fn new_source_func_env(
@@ -209,12 +210,7 @@ impl<'a> Env<'a> {
         call_stack: CallStack,
         libs: &'a dyn LibraryAccess,
     ) -> Self {
-        Env::Standard(StandardEnvData::new(
-            EnvContextKind::SourceFunction,
-            Some(caller),
-            call_stack,
-            libs,
-        ))
+        Env::Function(FunctionEnvData::new(caller, call_stack, libs))
     }
 
     pub fn new_extracted_func_env(
@@ -246,7 +242,13 @@ impl<'a> Env<'a> {
         switch_impl_read!(self, get_context_kind)
     }
 
-    pub fn get_call_stack(&self) -> &CallStack {
+    /// Return the stack of function call name+arg frames, i.e. the calling context
+    /// that contributed to the current interpreter execution environment.
+    /// Implementation note: This returns an owned value instead of a reference because
+    /// the Env::Template case has no reference to return. Shouldn't affect performance
+    /// too much because the common path ends up pushing the stack which would require
+    /// a clone anyway if references were used.
+    pub fn get_call_stack(&self) -> CallStack {
         switch_impl_read!(self, get_call_stack)
     }
 

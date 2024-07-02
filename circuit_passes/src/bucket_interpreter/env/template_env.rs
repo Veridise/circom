@@ -10,10 +10,7 @@ use crate::bucket_interpreter::value::Value;
 use super::{sort, CallStack, EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED};
 
 #[derive(Clone)]
-pub struct StandardEnvData<'a> {
-    context_kind: EnvContextKind,
-    caller: Option<BucketId>,
-    call_stack: CallStack,
+pub struct TemplateEnvData<'a> {
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
     subcmps: HashMap<usize, SubcmpEnv>,
@@ -21,13 +18,12 @@ pub struct StandardEnvData<'a> {
     libs: &'a dyn LibraryAccess,
 }
 
-impl Display for StandardEnvData<'_> {
+impl Display for TemplateEnvData<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if PRINT_ENV_SORTED {
             write!(
                 f,
-                "StandardEnv{{\n  kind = {:?}\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
-                self.get_context_kind(),
+                "TemplateEnv{{\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
                 sort(&self.vars, std::convert::identity),
                 sort(&self.signals, std::convert::identity),
                 sort(&self.subcmp_names, std::convert::identity),
@@ -36,14 +32,14 @@ impl Display for StandardEnvData<'_> {
         } else {
             write!(
                 f,
-                "StandardEnv{{\n  kind = {:?}\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
-                self.get_context_kind(), self.vars, self.signals, self.subcmp_names, self.subcmps
+                "TemplateEnv{{\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
+                self.vars, self.signals, self.subcmp_names, self.subcmps
             )
         }
     }
 }
 
-impl LibraryAccess for StandardEnvData<'_> {
+impl LibraryAccess for TemplateEnvData<'_> {
     fn get_function(&self, name: &String) -> Ref<FunctionCode> {
         self.libs.get_function(name)
     }
@@ -53,17 +49,9 @@ impl LibraryAccess for StandardEnvData<'_> {
     }
 }
 
-impl<'a> StandardEnvData<'a> {
-    pub fn new(
-        context_kind: EnvContextKind,
-        caller: Option<&BucketId>,
-        call_stack: CallStack,
-        libs: &'a dyn LibraryAccess,
-    ) -> Self {
-        StandardEnvData {
-            context_kind,
-            caller: caller.cloned(),
-            call_stack,
+impl<'a> TemplateEnvData<'a> {
+    pub fn new(libs: &'a dyn LibraryAccess) -> Self {
+        TemplateEnvData {
             vars: Default::default(),
             signals: Default::default(),
             subcmps: Default::default(),
@@ -74,15 +62,15 @@ impl<'a> StandardEnvData<'a> {
 
     // READ OPERATIONS
     pub fn function_caller(&self) -> Option<&BucketId> {
-        self.caller.as_ref()
+        None
     }
 
     pub fn get_context_kind(&self) -> EnvContextKind {
-        self.context_kind
+        EnvContextKind::Template
     }
 
-    pub fn get_call_stack(&self) -> &CallStack {
-        &self.call_stack
+    pub fn get_call_stack(&self) -> CallStack {
+        CallStack::default()
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
