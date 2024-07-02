@@ -111,17 +111,29 @@ pub enum EnvContextKind {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CallStackFrame {
-    pub name: String,
-    pub args: Vec<Value>,
+    name: String,
+    args: Vec<Value>,
 }
 
-#[derive(Clone, Debug, Default)]
+impl CallStackFrame {
+    pub fn new(name: String, args: Vec<Value>) -> CallStackFrame {
+        CallStackFrame { name, args }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct CallStack {
     // Uses IndexSet to preserve stack ordering but with fast contains() check
     frames: IndexSet<CallStackFrame>,
 }
 
 impl CallStack {
+    pub fn new(f: CallStackFrame) -> CallStack {
+        let mut frames = IndexSet::default();
+        frames.insert(f);
+        CallStack { frames }
+    }
+
     pub fn contains(&self, f: &CallStackFrame) -> bool {
         self.frames.contains(f)
     }
@@ -206,11 +218,12 @@ impl<'a> Env<'a> {
     }
 
     pub fn new_source_func_env(
+        base: Env<'a>,
         caller: &BucketId,
         call_stack: CallStack,
         libs: &'a dyn LibraryAccess,
     ) -> Self {
-        Env::Function(FunctionEnvData::new(caller, call_stack, libs))
+        Env::Function(FunctionEnvData::new(base, caller, call_stack, libs))
     }
 
     pub fn new_extracted_func_env(
@@ -242,14 +255,11 @@ impl<'a> Env<'a> {
         switch_impl_read!(self, get_context_kind)
     }
 
-    /// Return the stack of function call name+arg frames, i.e. the calling context
-    /// that contributed to the current interpreter execution environment.
-    /// Implementation note: This returns an owned value instead of a reference because
-    /// the Env::Template case has no reference to return. Shouldn't affect performance
-    /// too much because the common path ends up pushing the stack which would require
-    /// a clone anyway if references were used.
-    pub fn get_call_stack(&self) -> CallStack {
-        switch_impl_read!(self, get_call_stack)
+    /// This should be used to prevent the interpreter from getting stuck due
+    /// to recursive calls or an excessively large call stack in circom source.
+    /// Returns None when the interpreter should not continue any further.
+    pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
+        switch_impl_read!(self, safe_to_interpret, new_frame)
     }
 
     pub fn get_var(&self, idx: usize) -> Value {

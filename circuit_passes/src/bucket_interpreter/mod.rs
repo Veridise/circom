@@ -12,7 +12,6 @@ pub mod write_collector;
 
 use std::cell::RefCell;
 use std::ops::Range;
-use env::{CallStack, CallStackFrame};
 use paste::paste;
 use code_producers::llvm_elements::{array_switch, fr};
 use code_producers::llvm_elements::stdlib::{GENERATED_FN_PREFIX, LLVM_DONOTHING_FN_NAME};
@@ -26,7 +25,7 @@ use program_structure::error_code::ReportCode;
 use crate::passes::builders::{build_compute, build_u32_value};
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::GlobalPassData;
-use self::env::{Env, LibraryAccess};
+use self::env::{CallStackFrame, Env, LibraryAccess};
 use self::error::BadInterp;
 use self::memory::PassMemory;
 use self::operations::compute_offset;
@@ -693,24 +692,23 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         Result::Ok((res.0, res.1.peel_extracted_func()))
     }
 
-    fn _execute_function_basic(
+    fn _execute_function_basic<'env>(
         &self,
         bucket: &CallBucket,
+        env: Env<'env>,
         args: Vec<Value>,
-        call_stack: CallStack,
         observe: bool,
-    ) -> Result<Value, BadInterp> {
-        let new_frame = CallStackFrame { name: bucket.symbol.clone(), args: args.clone() };
-        if call_stack.contains(&new_frame) || call_stack.depth() > CALL_STACK_LIMIT {
-            Ok(Value::Unknown)
-        } else {
+    ) -> RE<'env> {
+        if let Some(new_call_stack) =
+            env.safe_to_interpret(CallStackFrame::new(bucket.symbol.clone(), args.clone()))
+        {
             if cfg!(debug_assertions) {
                 println!("Running function {}", bucket.symbol);
             }
             let mut new_env =
-                Env::new_source_func_env(&bucket.id, call_stack.push(new_frame), self.mem);
-            let mut args_copy = args;
-            for (id, arg) in args_copy.drain(..).enumerate() {
+                Env::new_source_func_env(env.clone(), &bucket.id, new_call_stack, self.mem);
+            let mut args_mut = args;
+            for (id, arg) in args_mut.drain(..).enumerate() {
                 new_env = new_env.set_var(id, arg);
             }
             let interp = self.mem.build_interpreter_with_scope(
@@ -725,8 +723,11 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 new_env,
                 observe && !interp.observer.ignore_function_calls(),
             ))?;
-            //ASSERT: all Circom source functions must return a value
-            opt_as_result(v, "value returned from function")
+            // CHECK: all Circom source functions must return a value
+            // Return the original Env, not the new one that is internal to the function.
+            opt_as_result(v, "value returned from function").map(|v| (Some(v), env))
+        } else {
+            Ok((Some(Value::Unknown), env))
         }
     }
 
@@ -810,13 +811,9 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 let val = check_res!(self._compute_instruction(a, &env, observe), |v| (v, env));
                 args.push(check_std_res!(opt_as_result(val, "function argument")));
             }
-            check_res!(InterpRes::try_continue(self._execute_function_basic(
-                &bucket,
-                args,
-                env.get_call_stack(),
-                observe
+            check_res!(InterpRes::try_continue(
+                self._execute_function_basic(&bucket, env, args, observe)
             ))
-            .map(|v| (Some(v), env)))
         };
 
         // Write the result in the destination according to the ReturnType

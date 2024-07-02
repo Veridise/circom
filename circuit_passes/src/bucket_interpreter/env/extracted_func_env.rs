@@ -9,7 +9,7 @@ use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::body_extractor::{ToOriginalLocation, FuncArgIdx};
-use super::{CallStack, Env, EnvContextKind, LibraryAccess};
+use super::{CallStack, CallStackFrame, Env, EnvContextKind, LibraryAccess};
 
 /// This Env is used to process functions created by extracting loop bodies
 /// into 'LOOP_BODY_FN_PREFIX' functions. It has to interpret the references
@@ -73,8 +73,8 @@ impl<'a> ExtractedFuncEnvData<'a> {
         EnvContextKind::ExtractedFunction
     }
 
-    pub fn get_call_stack(&self) -> CallStack {
-        self.base.get_call_stack()
+    pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
+        self.base.safe_to_interpret(new_frame)
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
