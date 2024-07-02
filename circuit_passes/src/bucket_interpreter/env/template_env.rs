@@ -7,7 +7,9 @@ use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::error::{new_inconsistency_err, BadInterp};
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use super::{sort, CallStack, EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED};
+use super::{
+    sort, CallStack, CallStackFrame, EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED,
+};
 
 #[derive(Clone)]
 pub struct TemplateEnvData<'a> {
@@ -69,8 +71,8 @@ impl<'a> TemplateEnvData<'a> {
         EnvContextKind::Template
     }
 
-    pub fn get_call_stack(&self) -> CallStack {
-        CallStack::default()
+    pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
+        Some(CallStack::new(new_frame))
     }
 
     pub fn get_var(&self, idx: usize) -> Value {

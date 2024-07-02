@@ -5,13 +5,21 @@ use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::error::{new_inconsistency_err, BadInterp};
-use crate::bucket_interpreter::BucketInterpreter;
+use crate::bucket_interpreter::{BucketInterpreter, CALL_STACK_LIMIT};
 use crate::bucket_interpreter::value::Value;
-use super::{sort, CallStack, EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED};
+use super::{
+    sort, CallStack, CallStackFrame, Env, EnvContextKind, LibraryAccess, SubcmpEnv,
+    PRINT_ENV_SORTED,
+};
 
 #[derive(Clone)]
 pub struct FunctionEnvData<'a> {
+    base: Box<Env<'a>>,
     caller: BucketId,
+    // Store a snapshot of the CallStack in each Env rather than having each Env store
+    //  only its relevant CallStackFrame and having safe_to_interpret() recursively check
+    //  the base Env because that lookup would further increase the Rust stack height
+    //  while doing the check that is intended to prevent Rust stack exhaustion.
     call_stack: CallStack,
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
@@ -52,8 +60,14 @@ impl LibraryAccess for FunctionEnvData<'_> {
 }
 
 impl<'a> FunctionEnvData<'a> {
-    pub fn new(caller: &BucketId, call_stack: CallStack, libs: &'a dyn LibraryAccess) -> Self {
+    pub fn new(
+        base: Env<'a>,
+        caller: &BucketId,
+        call_stack: CallStack,
+        libs: &'a dyn LibraryAccess,
+    ) -> Self {
         FunctionEnvData {
+            base: Box::new(base),
             caller: *caller,
             call_stack,
             vars: Default::default(),
@@ -73,8 +87,12 @@ impl<'a> FunctionEnvData<'a> {
         EnvContextKind::SourceFunction
     }
 
-    pub fn get_call_stack(&self) -> CallStack {
-        self.call_stack.clone()
+    pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
+        if !self.call_stack.contains(&new_frame) && self.call_stack.depth() <= CALL_STACK_LIMIT {
+            Some(self.call_stack.clone().push(new_frame))
+        } else {
+            None
+        }
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
