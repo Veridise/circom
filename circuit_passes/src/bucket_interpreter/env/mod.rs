@@ -247,10 +247,6 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn function_caller(&self) -> Option<&BucketId> {
-        switch_impl_read!(self, function_caller)
-    }
-
     pub fn get_context_kind(&self) -> EnvContextKind {
         switch_impl_read!(self, get_context_kind)
     }
@@ -260,6 +256,11 @@ impl<'a> Env<'a> {
     /// Returns None when the interpreter should not continue any further.
     pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
         switch_impl_read!(self, safe_to_interpret, new_frame)
+    }
+
+    /// Return the stack of ID's from the CallBuckets on the stack
+    pub fn get_caller_stack(&self) -> &[BucketId] {
+        switch_impl_read!(self, get_caller_stack)
     }
 
     pub fn get_var(&self, idx: usize) -> Value {

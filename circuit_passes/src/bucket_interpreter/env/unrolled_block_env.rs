@@ -54,16 +54,16 @@ impl<'a> UnrolledBlockEnvData<'a> {
         new_env!(base, extractor)
     }
 
-    pub fn function_caller(&self) -> Option<&BucketId> {
-        self.base.function_caller()
-    }
-
     pub fn get_context_kind(&self) -> EnvContextKind {
         self.base.get_context_kind()
     }
 
     pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
         self.base.safe_to_interpret(new_frame)
+    }
+
+    pub fn get_caller_stack(&self) -> &[BucketId] {
+        self.base.get_caller_stack()
     }
 
     pub fn get_var(&self, idx: usize) -> Value {

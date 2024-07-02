@@ -14,8 +14,7 @@ use super::{
 
 #[derive(Clone)]
 pub struct FunctionEnvData<'a> {
-    base: Box<Env<'a>>,
-    caller: BucketId,
+    caller_stack: Vec<BucketId>,
     // Store a snapshot of the CallStack in each Env rather than having each Env store
     //  only its relevant CallStackFrame and having safe_to_interpret() recursively check
     //  the base Env because that lookup would further increase the Rust stack height
@@ -33,7 +32,8 @@ impl Display for FunctionEnvData<'_> {
         if PRINT_ENV_SORTED {
             write!(
                 f,
-                "FunctionEnv{{\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
+                "FunctionEnv{{\n  ctx = {:?}\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
+                self.caller_stack,
                 sort(&self.vars, std::convert::identity),
                 sort(&self.signals, std::convert::identity),
                 sort(&self.subcmp_names, std::convert::identity),
@@ -42,8 +42,8 @@ impl Display for FunctionEnvData<'_> {
         } else {
             write!(
                 f,
-                "FunctionEnv{{\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
-                self.vars, self.signals, self.subcmp_names, self.subcmps
+                "FunctionEnv{{\n  ctx = {:?}\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
+                self.caller_stack, self.vars, self.signals, self.subcmp_names, self.subcmps
             )
         }
     }
@@ -66,9 +66,10 @@ impl<'a> FunctionEnvData<'a> {
         call_stack: CallStack,
         libs: &'a dyn LibraryAccess,
     ) -> Self {
+        let mut caller_stack = base.get_caller_stack().to_vec();
+        caller_stack.push(*caller);
         FunctionEnvData {
-            base: Box::new(base),
-            caller: *caller,
+            caller_stack,
             call_stack,
             vars: Default::default(),
             signals: Default::default(),
@@ -79,10 +80,6 @@ impl<'a> FunctionEnvData<'a> {
     }
 
     // READ OPERATIONS
-    pub fn function_caller(&self) -> Option<&BucketId> {
-        Some(&self.caller)
-    }
-
     pub fn get_context_kind(&self) -> EnvContextKind {
         EnvContextKind::SourceFunction
     }
@@ -93,6 +90,10 @@ impl<'a> FunctionEnvData<'a> {
         } else {
             None
         }
+    }
+
+    pub fn get_caller_stack(&self) -> &[BucketId] {
+        &self.caller_stack
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
