@@ -158,10 +158,10 @@ impl LoopBodyExtractor {
     ) -> Result<(), BadInterp> {
         assert!(bucket.body.len() > 1);
         let extra_arg_info = Self::compute_extra_args(&recorder, context_kind)?;
-        let name = self.build_new_body(
+        let name = self.build_new_extracted_function(
             &recorder.get_current_scope_name(),
             bucket,
-            extra_arg_info.bucket_to_args.clone(),
+            &extra_arg_info.bucket_to_args,
             extra_arg_info.num_args,
         );
         let mut extraction_data = ExtractedFuncData::default();
@@ -243,13 +243,14 @@ impl LoopBodyExtractor {
         Ok(())
     }
 
-    fn build_new_body(
+    fn build_new_extracted_function(
         &self,
-        source_body_name: &String,
-        bucket: &LoopBucket,
-        mut bucket_to_args: IndexMap<BucketId, ArgIndex>,
+        source_fun_name: &String,
+        source_bucket: &LoopBucket,
+        bucket_to_args: &IndexMap<BucketId, ArgIndex>,
         num_args: usize,
     ) -> String {
+        let mut bucket_to_args = bucket_to_args.clone();
         // NOTE: must create parameter list before 'bucket_to_args' is modified
         // Since the ArgIndex instances could have indices in any random order,
         //  create the vector of required size and then set elements by index.
@@ -276,7 +277,7 @@ impl LoopBodyExtractor {
 
         // Copy loop body and add a "return void" at the end
         let mut new_body = vec![];
-        for s in &bucket.body {
+        for s in &source_bucket.body {
             let mut copy = vec![s.clone()];
             //Traverse each cloned statement before calling `update_id()` and replace the
             //  old location reference with reference to the proper argument. Mappings are
@@ -294,15 +295,15 @@ impl LoopBodyExtractor {
             }
         }
         assert!(bucket_to_args.is_empty());
-        new_body.push(builders::build_void_return(bucket));
+        new_body.push(builders::build_void_return(source_bucket));
         // Create new function to hold the copied body
         // NOTE: This name must start with `GENERATED_FN_PREFIX` (which is the prefix
         //  of `LOOP_BODY_FN_PREFIX`) so that `ExtractedFunctionCtx` will be used.
         let func_name = format!("{}{}", LOOP_BODY_FN_PREFIX, new_id());
         let new_func = Box::new(FunctionCodeInfo {
-            source_file_id: bucket.source_file_id,
-            line: bucket.line,
-            name: source_body_name.clone(),
+            source_file_id: source_bucket.source_file_id,
+            line: source_bucket.line,
+            name: source_fun_name.clone(),
             header: func_name.clone(),
             body: new_body,
             params,
