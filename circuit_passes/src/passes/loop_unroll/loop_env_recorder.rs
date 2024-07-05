@@ -1,5 +1,5 @@
 use std::cell::{RefCell, Ref};
-use std::collections::{BTreeMap, HashSet, HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::{Debug, Formatter};
 use indexmap::IndexMap;
 use compiler::intermediate_representation::BucketId;
@@ -11,10 +11,9 @@ use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::GlobalPassData;
 use super::DEBUG_LOOP_UNROLL;
-use super::body_extractor::{UnrolledIterLvars, ToOriginalLocation, FuncArgIdx};
 
 pub struct EnvRecorder<'a, 'd> {
-    global_data: &'d RefCell<GlobalPassData>,
+    pub global_data: &'d RefCell<GlobalPassData>,
     mem: &'a PassMemory,
     // NOTE: RefCell is needed here because the instance of this struct is borrowed by
     //  the main interpreter while we also need to mutate these internal structures.
@@ -108,23 +107,6 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
 
     pub fn drop_header_env(&self) {
         self.env_at_header.replace(None);
-    }
-
-    pub fn record_reverse_arg_mapping(
-        &self,
-        extract_func: String,
-        iter_env: UnrolledIterLvars,
-        value: (ToOriginalLocation, HashSet<FuncArgIdx>),
-    ) {
-        if DEBUG_LOOP_UNROLL {
-            println!("[EnvRecorder] stored data {:?} -> {:?}", iter_env, value);
-        }
-        self.global_data
-            .borrow_mut()
-            .extract_func_orig_loc
-            .entry(extract_func)
-            .or_default()
-            .insert(iter_env, value);
     }
 
     #[inline]

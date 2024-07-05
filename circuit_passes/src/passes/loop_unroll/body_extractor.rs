@@ -10,10 +10,11 @@ use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::env::EnvContextKind;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
+use crate::checked_insert;
 use crate::passes::loop_unroll::{DEBUG_LOOP_UNROLL, LOOP_BODY_FN_PREFIX};
 use crate::passes::loop_unroll::extracted_location_updater::ExtractedFunctionLocationUpdater;
 use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
-use crate::passes::{builders, checks};
+use crate::passes::{builders, checks, ExtractedFuncData};
 
 pub type FuncArgIdx = usize;
 pub type AddressOffset = usize;
@@ -103,7 +104,7 @@ impl ExtraArgsResult {
                 if let Some((addr_ty, addr_offset)) = v[iter_num].as_ref() {
                     let ai = self.bucket_to_args[k];
                     acc.0.insert(ai.get_signal_idx(), (addr_ty.clone(), *addr_offset));
-                    // If applicable, insert the subcmp counter reference as well
+                    // If applicable, insert the index for the subcmp counter and arena parameters
                     if let ArgIndex::SubCmp { counter, arena, .. } = ai {
                         match addr_ty {
                             AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
@@ -163,6 +164,7 @@ impl LoopBodyExtractor {
             extra_arg_info.bucket_to_args.clone(),
             extra_arg_info.num_args,
         );
+        let mut extraction_data = ExtractedFuncData::default();
         for iter_num in 0..recorder.get_iter() {
             // NOTE: CallBucket arguments must use a LoadBucket to reference the necessary pointers
             //  within the current body. However, it doesn't actually need to generate a load
@@ -225,12 +227,19 @@ impl LoopBodyExtractor {
             }
             unrolled.push(builders::build_call(bucket, &name, args));
 
-            recorder.record_reverse_arg_mapping(
-                name.clone(),
-                recorder.take_header_vars_for_iter(&iter_num),
-                extra_arg_info.get_reverse_passing_refs_for_itr(iter_num),
-            );
+            // Store necessary data to GlobalPassData
+            let iter_env = recorder.take_header_vars_for_iter(&iter_num);
+            let mapping = extra_arg_info.get_reverse_passing_refs_for_itr(iter_num);
+            if DEBUG_LOOP_UNROLL {
+                println!("[EnvRecorder] stored data {:?} -> {:?}", iter_env, mapping);
+            }
+            checked_insert!(&mut extraction_data, iter_env, mapping);
         }
+        checked_insert!(
+            &mut recorder.global_data.borrow_mut().extract_func_orig_loc,
+            name,
+            extraction_data
+        );
         Ok(())
     }
 

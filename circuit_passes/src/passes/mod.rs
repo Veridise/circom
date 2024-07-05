@@ -766,15 +766,16 @@ pub enum PassKind {
     MappedToIndexed,
     UnknownIndexSanitization,
 }
+/// Maps UnrolledIterLvars (from Env::get_vars_sort) to a pair containing:
+/// (1) location references from the original function, used by ExtractedFuncEnvData to
+///     access the original function's Env via the extracted function's parameter references
+/// (2) the set of parameters that contain subcomponent arenas
+pub type ExtractedFuncData = BTreeMap<UnrolledIterLvars, (ToOriginalLocation, HashSet<FuncArgIdx>)>;
 
 #[derive(Debug)]
 pub struct GlobalPassData {
-    /// Created during loop unrolling, maps generated function name + UnrolledIterLvars
-    /// (from Env::get_vars_sort) to location reference in the original function. Used
-    /// by ExtractedFuncEnvData to access the original function's Env via the extracted
-    /// function's parameter references.
-    extract_func_orig_loc:
-        HashMap<String, BTreeMap<UnrolledIterLvars, (ToOriginalLocation, HashSet<FuncArgIdx>)>>,
+    /// Created during loop unrolling, maps generated function name to ExtractedFuncData for it.
+    extract_func_orig_loc: HashMap<String, ExtractedFuncData>,
 }
 
 impl GlobalPassData {

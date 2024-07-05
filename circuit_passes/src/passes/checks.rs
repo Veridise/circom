@@ -153,6 +153,7 @@ macro_rules! checked_insert {
     ($map: expr, $key: expr, $val: expr) => {{
         let key = $key;
         let val = $val;
+        #[allow(unused_mut)] // some callers may already pass a &mut and that causes warning here
         let mut map = $map;
         assert!(
             !map.contains_key(&key) || map[&key] == val,
