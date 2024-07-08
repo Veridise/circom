@@ -1,5 +1,7 @@
-use std::cell::{RefCell, Ref};
+use std::cell::{Ref, RefCell};
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet, BTreeSet};
+use std::rc::Rc;
 use std::vec;
 use indexmap::{IndexMap, IndexSet};
 use code_producers::llvm_elements::fr::*;
@@ -11,10 +13,10 @@ use crate::bucket_interpreter::env::EnvContextKind;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
 use crate::checked_insert;
-use crate::passes::loop_unroll::{DEBUG_LOOP_UNROLL, LOOP_BODY_FN_PREFIX};
-use crate::passes::loop_unroll::extracted_location_updater::ExtractedFunctionLocationUpdater;
-use crate::passes::loop_unroll::loop_env_recorder::EnvRecorder;
 use crate::passes::{builders, checks, ExtractedFuncData};
+use super::{DEBUG_LOOP_UNROLL, LOOP_BODY_FN_PREFIX};
+use super::extracted_location_updater::ExtractedFunctionLocationUpdater;
+use super::loop_env_recorder::EnvRecorder;
 
 pub type FuncArgIdx = usize;
 pub type AddressOffset = usize;
@@ -40,7 +42,7 @@ impl ArgIndex {
 /// Also, the input/output stuff doesn't matter since the extra arguments that are added
 /// based on this are only used to trigger generation of the run function after all of
 /// the inputs have been assigned.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Eq, PartialEq)]
 struct SubcmpSignalCompare {
     cmp_address_parse_as: ValueType,
     cmp_address_op_aux_no: usize,
@@ -75,12 +77,34 @@ impl SubcmpSignalCompare {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 struct ExtraArgsResult {
-    // NOTE: This collection and several intermediate collections that are used to build this
-    // one must use IndexMap/IndexSet to preserve insertion order to stabilize lit test output.
-    bucket_to_itr_to_ref: HashMap<BucketId, Vec<Option<(AddressType, AddressOffset)>>>,
-    bucket_to_args: IndexMap<BucketId, ArgIndex>,
+    // NOTE: These collections and several intermediate collections that are used to build them
+    // must use IndexMap/IndexSet to preserve insertion order to stabilize lit test output.
+    //
+    /// Table structure indexed first by load/store/call BucketId, then by iteration number
+    /// (i.e. the Vec index), containing the original memory references to use as arguments
+    /// when calling the extracted body function.
+    loc_to_itr_to_ref: IndexMap<BucketId, Vec<Option<(AddressType, AddressOffset)>>>,
+    loc_to_args: IndexMap<BucketId, ArgIndex>,
     num_args: usize,
+}
+
+impl PartialOrd for ExtraArgsResult {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        PartialOrd::partial_cmp(&self.num_args, &other.num_args)
+            .and_then(|_| self.loc_to_args.iter().partial_cmp(other.loc_to_args.iter()))
+            .and_then(|_| self.loc_to_itr_to_ref.iter().partial_cmp(other.loc_to_itr_to_ref.iter()))
+    }
+}
+
+impl Ord for ExtraArgsResult {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.num_args
+            .cmp(&other.num_args)
+            .then_with(|| self.loc_to_args.iter().cmp(other.loc_to_args.iter()))
+            .then_with(|| self.loc_to_itr_to_ref.iter().cmp(other.loc_to_itr_to_ref.iter()))
+    }
 }
 
 impl ExtraArgsResult {
@@ -88,21 +112,18 @@ impl ExtraArgsResult {
         &self,
         iter_num: usize,
     ) -> Vec<(&Option<(AddressType, AddressOffset)>, ArgIndex)> {
-        self.bucket_to_itr_to_ref
-            .iter()
-            .map(|(k, v)| (&v[iter_num], self.bucket_to_args[k]))
-            .collect()
+        self.loc_to_itr_to_ref.iter().map(|(k, v)| (&v[iter_num], self.loc_to_args[k])).collect()
     }
 
     fn get_reverse_passing_refs_for_itr(
         &self,
         iter_num: usize,
     ) -> (ToOriginalLocation, HashSet<FuncArgIdx>) {
-        self.bucket_to_itr_to_ref.iter().fold(
+        self.loc_to_itr_to_ref.iter().fold(
             (ToOriginalLocation::new(), HashSet::new()),
             |mut acc, (k, v)| {
                 if let Some((addr_ty, addr_offset)) = v[iter_num].as_ref() {
-                    let ai = self.bucket_to_args[k];
+                    let ai = self.loc_to_args[k];
                     acc.0.insert(ai.get_signal_idx(), (addr_ty.clone(), *addr_offset));
                     // If applicable, insert the index for the subcmp counter and arena parameters
                     if let ArgIndex::SubCmp { counter, arena, .. } = ai {
@@ -133,20 +154,37 @@ impl ExtraArgsResult {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
+struct Key {
+    loop_bucket_id: BucketId,
+    iter_count: usize,
+    extra_arg_info: Rc<ExtraArgsResult>,
+}
+
+#[derive(Debug, Default)]
 pub struct LoopBodyExtractor {
-    new_body_functions: RefCell<Vec<FunctionCode>>,
+    new_body_functions: RefCell<BTreeMap<Key, FunctionCode>>,
+    /// Exists only to stabilize function order for lit test output.
+    func_creation_order: RefCell<Vec<String>>,
 }
 
 impl LoopBodyExtractor {
-    fn new_filled_vec<T: Clone>(new_len: usize, value: T) -> Vec<T> {
-        let mut result = Vec::with_capacity(new_len);
-        result.resize(new_len, value);
-        result
+    pub fn search_new_functions(&self, name: &String) -> Ref<FunctionCode> {
+        Ref::map(self.new_body_functions.borrow(), |m| {
+            m.values()
+                .find(|f| f.header.eq(name))
+                .expect("Cannot find extracted function definition!")
+        })
     }
 
-    pub fn get_new_functions(&self) -> Ref<Vec<FunctionCode>> {
-        self.new_body_functions.borrow()
+    pub fn take_new_functions(&self) -> impl ExactSizeIterator<Item = FunctionCode> {
+        // NOTE: Ordering is only to stabilize lit test output. Otherwise, this could
+        // be implemented as `self.new_body_functions.take().into_values()`.
+        let mut ret: Vec<FunctionCode> = self.new_body_functions.take().into_values().collect();
+        let index_map: HashMap<String, usize> =
+            self.func_creation_order.take().into_iter().enumerate().map(|(i, t)| (t, i)).collect();
+        ret.sort_by_key(|f| index_map[&f.header]);
+        ret.into_iter()
     }
 
     pub fn extract<'a>(
@@ -157,13 +195,37 @@ impl LoopBodyExtractor {
         unrolled: &mut InstructionList,
     ) -> Result<(), BadInterp> {
         assert!(bucket.body.len() > 1);
-        let extra_arg_info = Self::compute_extra_args(&recorder, context_kind)?;
-        let name = self.build_new_extracted_function(
-            &recorder.get_current_scope_name(),
-            bucket,
-            &extra_arg_info.bucket_to_args,
-            extra_arg_info.num_args,
-        );
+
+        // Check if an applicable function already exists, otherwise create a new extracted loop body function.
+        let (extracted_name, extra_arg_info) = {
+            let extra_arg_info = Rc::new(Self::compute_extra_args(&recorder, context_kind)?);
+            let existing_fun = self.get_extracted_function_name(
+                bucket.id,
+                recorder.get_iter(),
+                Rc::clone(&extra_arg_info),
+            );
+            match existing_fun {
+                None => {
+                    let new_func = self.build_new_extracted_function(
+                        &recorder.get_current_scope_name(),
+                        bucket,
+                        &extra_arg_info.loc_to_args,
+                        extra_arg_info.num_args,
+                    );
+                    let new_name = new_func.header.clone();
+                    self.store_new_extracted_function(
+                        bucket.id,
+                        recorder.get_iter(),
+                        Rc::clone(&extra_arg_info),
+                        new_func,
+                    );
+                    (new_name, extra_arg_info)
+                }
+                Some(name) => (name.clone(), extra_arg_info),
+            }
+        };
+
+        // Generate the list of unrolled calls to the extracted loop body function.
         let mut extraction_data = ExtractedFuncData::default();
         for iter_num in 0..recorder.get_iter() {
             // NOTE: CallBucket arguments must use a LoadBucket to reference the necessary pointers
@@ -225,9 +287,9 @@ impl LoopBodyExtractor {
                     },
                 }
             }
-            unrolled.push(builders::build_call(bucket, &name, args));
+            unrolled.push(builders::build_call(bucket, &extracted_name, args));
 
-            // Store necessary data to GlobalPassData
+            // Store current iteration data to the ExtractedFuncData
             let iter_env = recorder.take_header_vars_for_iter(&iter_num);
             let mapping = extra_arg_info.get_reverse_passing_refs_for_itr(iter_num);
             if DEBUG_LOOP_UNROLL {
@@ -235,23 +297,27 @@ impl LoopBodyExtractor {
             }
             checked_insert!(&mut extraction_data, iter_env, mapping);
         }
+
+        // Store the ExtractedFuncData to GlobalPassData
         checked_insert!(
             &mut recorder.global_data.borrow_mut().extract_func_orig_loc,
-            name,
+            extracted_name,
             extraction_data
         );
+
         Ok(())
     }
 
+    /// The new function's name is in `FunctionCode.header`
     fn build_new_extracted_function(
         &self,
         source_fun_name: &String,
         source_bucket: &LoopBucket,
-        bucket_to_args: &IndexMap<BucketId, ArgIndex>,
+        loc_to_args: &IndexMap<BucketId, ArgIndex>,
         num_args: usize,
-    ) -> String {
-        let mut bucket_to_args = bucket_to_args.clone();
-        // NOTE: must create parameter list before 'bucket_to_args' is modified
+    ) -> FunctionCode {
+        let mut loc_to_args = loc_to_args.clone();
+        // NOTE: must create parameter list before 'loc_to_args' is modified
         // Since the ArgIndex instances could have indices in any random order,
         //  create the vector of required size and then set elements by index.
         let mut params = Self::new_filled_vec(
@@ -260,7 +326,7 @@ impl LoopBodyExtractor {
         );
         params[0] = Param { name: String::from("lvars"), length: vec![0] };
         params[1] = Param { name: String::from("signals"), length: vec![0] };
-        for (i, arg_index) in bucket_to_args.values().enumerate() {
+        for (i, arg_index) in loc_to_args.values().enumerate() {
             match arg_index {
                 ArgIndex::Signal(signal, prefix) => {
                     //Single signal uses scalar pointer
@@ -284,9 +350,9 @@ impl LoopBodyExtractor {
             //  removed as they are processed so no change is needed once the map is empty.
             //  Also retrieve the list of statements that were generated to be inserted
             //  after the current statement and insert them after the updated statement.
-            //NOTE: nothing will be updated or added if 'bucket_to_args' is empty so skip.
-            if !bucket_to_args.is_empty() {
-                let mut upd = ExtractedFunctionLocationUpdater::new(&mut bucket_to_args);
+            //NOTE: nothing will be updated or added if 'loc_to_args' is empty so skip.
+            if !loc_to_args.is_empty() {
+                let mut upd = ExtractedFunctionLocationUpdater::new(&mut loc_to_args);
                 upd.check_instructions(&mut copy);
             }
             for mut s in copy.drain(..) {
@@ -294,28 +360,26 @@ impl LoopBodyExtractor {
                 new_body.push(s);
             }
         }
-        assert!(bucket_to_args.is_empty());
+        assert!(loc_to_args.is_empty());
         new_body.push(builders::build_void_return(source_bucket));
         // Create new function to hold the copied body
         // NOTE: This name must start with `GENERATED_FN_PREFIX` (which is the prefix
         //  of `LOOP_BODY_FN_PREFIX`) so that `ExtractedFunctionCtx` will be used.
         let func_name = format!("{}{}", LOOP_BODY_FN_PREFIX, new_id());
+        if DEBUG_LOOP_UNROLL {
+            println!("[BodyExtractor] created function {}", func_name);
+        }
         let new_func = Box::new(FunctionCodeInfo {
             source_file_id: source_bucket.source_file_id,
             line: source_bucket.line,
             name: source_fun_name.clone(),
-            header: func_name.clone(),
+            header: func_name,
             body: new_body,
             params,
             returns: vec![], // void return type on the function
             ..FunctionCodeInfo::default()
         });
-        // Store the function to be transformed and added to circuit later
-        self.new_body_functions.borrow_mut().push(new_func);
-        if DEBUG_LOOP_UNROLL {
-            println!("[BodyExtractor] created function {}", func_name);
-        }
-        func_name
+        new_func
     }
 
     /// Create an Iterator containing the results of applying the given
@@ -498,20 +562,18 @@ impl LoopBodyExtractor {
         //  that do not execute that specific bucket. This is the reason it was important to
         //  store Unknown values in the `loadstore_to_index` index as well, so they are not
         //  confused with values that simply don't exist.
-        let mut bucket_to_itr_to_ref: IndexMap<
-            BucketId,
-            Vec<Option<(AddressType, AddressOffset)>>,
-        > = Default::default();
+        let mut loc_to_itr_to_ref: IndexMap<BucketId, Vec<Option<(AddressType, AddressOffset)>>> =
+            Default::default();
         //
-        let mut bucket_to_args: IndexMap<BucketId, ArgIndex> = Default::default();
+        let mut loc_to_args: IndexMap<BucketId, ArgIndex> = Default::default();
         let mut vpi = recorder.take_loadstore_to_index_map();
         // NOTE: starts at 2 because the current component's signal arena and lvars are first.
         let mut next_idx: FuncArgIdx = 2;
-        // First step is to collect all location references into the 'bucket_to_itr_to_ref' table.
+        // First step is to collect all location references into the 'loc_to_itr_to_ref' table.
         let all_loadstore_buckets: IndexSet<BucketId> =
             vpi.values().flat_map(|x| x.keys().cloned()).collect();
         for id in all_loadstore_buckets.iter() {
-            let column = bucket_to_itr_to_ref.entry(*id).or_default();
+            let column = loc_to_itr_to_ref.entry(*id).or_default();
             for iter_num in 0..recorder.get_iter() {
                 column.push(match vpi.get_mut(&iter_num).unwrap().shift_remove(id) {
                     None => None,
@@ -546,22 +608,22 @@ impl LoopBodyExtractor {
                         AddressType::Signal => "sig",
                         AddressType::SubcmpSignal { .. } => "subsig",
                     };
-                    bucket_to_args.insert(*id, ArgIndex::Signal(next_idx, prefix));
+                    loc_to_args.insert(*id, ArgIndex::Signal(next_idx, prefix));
                     next_idx += 1;
                 }
             }
         }
         if DEBUG_LOOP_UNROLL {
-            println!("bucket_to_args = {:?}", bucket_to_args);
-            println!("bucket_to_itr_to_ref = {:?}", bucket_to_itr_to_ref);
+            println!("loc_to_args = {:?}", loc_to_args);
+            println!("loc_to_itr_to_ref = {:?}", loc_to_itr_to_ref);
             println!("all_loadstore_bucket_ids = {:?}", all_loadstore_buckets);
         }
         //ASSERT: All columns have the same length (i.e. the number of iterations)
-        assert!(bucket_to_itr_to_ref.values().all(|c| c.len() == recorder.get_iter()));
-        //ASSERT: 'bucket_to_itr_to_ref.keys' is equal to 'all_loadstore_bucket_ids'
-        assert!(checks::contains_same(&all_loadstore_buckets, bucket_to_itr_to_ref.keys()));
-        //ASSERT: 'bucket_to_args.keys' is a subset of 'all_loadstore_bucket_ids'
-        assert!(checks::contains_all(&all_loadstore_buckets, bucket_to_args.keys()));
+        assert!(loc_to_itr_to_ref.values().all(|c| c.len() == recorder.get_iter()));
+        //ASSERT: 'loc_to_itr_to_ref.keys' is equal to 'all_loadstore_bucket_ids'
+        assert!(checks::contains_same(&all_loadstore_buckets, loc_to_itr_to_ref.keys()));
+        //ASSERT: 'loc_to_args.keys' is a subset of 'all_loadstore_bucket_ids'
+        assert!(checks::contains_all(&all_loadstore_buckets, loc_to_args.keys()));
 
         // Also, if it's a subcomponent reference, then extra arguments are needed for it's
         //  signal arena and counter (because the entire subcomponent storage pointer is not
@@ -574,7 +636,7 @@ impl LoopBodyExtractor {
         //  group if they are part of that same group in all iterations where present.
         // However, this should not be done if already within an extracted function body.
         if context_kind != EnvContextKind::ExtractedFunction {
-            let x: Vec<(BucketId, Vec<Option<SubcmpSignalCompare>>)> = bucket_to_itr_to_ref
+            let x: Vec<(BucketId, Vec<Option<SubcmpSignalCompare>>)> = loc_to_itr_to_ref
                 .iter()
                 .filter_map(|(b, col)| {
                     //if the iteration does not contain any Some(SubCmp), then we return None
@@ -606,7 +668,7 @@ impl LoopBodyExtractor {
                 println!("subcmp_arg_groups = {:?}", subcmp_arg_groups);
             }
             //ASSERT: Every bucket mapped to a Some(SubcmpSignal) in any iteration is present in exactly one group.
-            assert!(bucket_to_itr_to_ref
+            assert!(loc_to_itr_to_ref
                 .iter()
                 .filter_map(|(k, v)| {
                     if v.iter().any(|e| matches!(e, Some((AddressType::SubcmpSignal { .. }, _)))) {
@@ -623,7 +685,7 @@ impl LoopBodyExtractor {
                 let counter_idx: FuncArgIdx = next_idx + 1;
                 next_idx += 2;
                 for b in buckets {
-                    bucket_to_args.entry(*b).and_modify(|e| {
+                    loc_to_args.entry(*b).and_modify(|e| {
                         if let ArgIndex::Signal(sig, _) = e {
                             *e = ArgIndex::SubCmp {
                                 signal: *sig,
@@ -641,12 +703,42 @@ impl LoopBodyExtractor {
         }
 
         //Keep only the table columns where extra parameters are necessary
-        bucket_to_itr_to_ref.retain(|k, _| bucket_to_args.contains_key(k));
+        loc_to_itr_to_ref.retain(|k, _| loc_to_args.contains_key(k));
         Ok(ExtraArgsResult {
-            bucket_to_itr_to_ref: bucket_to_itr_to_ref.into_iter().collect(),
-            bucket_to_args,
+            loc_to_itr_to_ref: loc_to_itr_to_ref.into_iter().collect(),
+            loc_to_args,
             num_args: next_idx,
         })
+    }
+
+    fn new_filled_vec<T: Clone>(new_len: usize, value: T) -> Vec<T> {
+        let mut result = Vec::with_capacity(new_len);
+        result.resize(new_len, value);
+        result
+    }
+
+    /// Store the function to be transformed and added to the circuit later.
+    fn store_new_extracted_function(
+        &self,
+        loop_bucket_id: BucketId,
+        iter_count: usize,
+        extra_arg_info: Rc<ExtraArgsResult>,
+        new_func: FunctionCode,
+    ) {
+        self.func_creation_order.borrow_mut().push(new_func.header.clone());
+        let key = Key { loop_bucket_id, iter_count, extra_arg_info };
+        checked_insert!(self.new_body_functions.borrow_mut(), key, new_func);
+    }
+
+    /// Check if an extracted function exists for the given key information and return its header name.
+    fn get_extracted_function_name(
+        &self,
+        loop_bucket_id: BucketId,
+        iter_count: usize,
+        extra_arg_info: Rc<ExtraArgsResult>,
+    ) -> Option<Ref<String>> {
+        let key = Key { loop_bucket_id, iter_count, extra_arg_info };
+        Ref::filter_map(self.new_body_functions.borrow(), |m| m.get(&key).map(|f| &f.header)).ok()
     }
 }
 
