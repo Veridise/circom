@@ -91,7 +91,7 @@ impl<'d> LoopUnrollPass<'d> {
             println!("[UNROLL] LOOP ENTRY env {}", env);
         }
         // Compute loop iteration count. If unknown, return immediately.
-        let recorder = EnvRecorder::new(self.global_data, &self.memory);
+        let recorder = EnvRecorder::new(self.global_data, &self.memory, env.get_context_kind());
         {
             let interpreter = self.memory.build_interpreter(self.global_data, &recorder);
             let mut inner_env = env.clone();
@@ -151,12 +151,7 @@ impl<'d> LoopUnrollPass<'d> {
                     if DEBUG_LOOP_UNROLL {
                         println!("[UNROLL][try_unroll_loop] OUTCOME: safe to move, extracting");
                     }
-                    self.extractor.extract(
-                        bucket,
-                        recorder,
-                        env.get_context_kind(),
-                        &mut block_body,
-                    )?;
+                    self.extractor.extract(bucket, recorder, &mut block_body)?;
                 }
             }
         } else {

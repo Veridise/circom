@@ -189,14 +189,13 @@ impl LoopBodyExtractor {
         &self,
         bucket: &LoopBucket,
         recorder: EnvRecorder<'a, '_>,
-        context_kind: EnvContextKind,
         unrolled: &mut InstructionList,
     ) -> Result<(), BadInterp> {
         assert!(bucket.body.len() > 1);
 
         // Check if an applicable function already exists, otherwise create a new extracted loop body function.
         let (extracted_name, extra_arg_info) = {
-            let extra_arg_info = Rc::new(Self::compute_extra_args(&recorder, context_kind)?);
+            let extra_arg_info = Rc::new(Self::compute_extra_args(&recorder)?);
             let existing_fun = self.get_extracted_function_name(
                 bucket.id,
                 recorder.get_iter(),
@@ -255,7 +254,7 @@ impl LoopBodyExtractor {
             // Parameter for local vars
             args[0] = builders::build_storage_ptr_ref(bucket, AddressType::Variable);
             // Parameter for signals/arena, not needed when unrolling w/in a circom source function
-            args[1] = if context_kind == EnvContextKind::SourceFunction {
+            args[1] = if recorder.ctx_kind == EnvContextKind::SourceFunction {
                 builders::build_null_ptr(bucket, FR_NULL_I256_ARR_PTR)
             } else {
                 builders::build_storage_ptr_ref(bucket, AddressType::Signal)
@@ -550,7 +549,6 @@ impl LoopBodyExtractor {
     /// extra arguments that will be needed.
     fn compute_extra_args<'a>(
         recorder: &EnvRecorder<'a, '_>,
-        context_kind: EnvContextKind,
     ) -> Result<ExtraArgsResult, BadInterp> {
         // Table structure indexed first by load/store/call BucketId, then by iteration number.
         //  View the first (BucketId) as columns and the second (iteration number) as rows.
@@ -635,7 +633,7 @@ impl LoopBodyExtractor {
         //  are unused in some iteration(s) (indicated by None), they can be included in a
         //  group if they are part of that same group in all iterations where present.
         // However, this should not be done if already within an extracted function body.
-        if context_kind != EnvContextKind::ExtractedFunction {
+        if recorder.ctx_kind != EnvContextKind::ExtractedFunction {
             let x: Vec<(BucketId, Vec<Option<SubcmpSignalCompare>>)> = loc_to_itr_to_ref
                 .iter()
                 .filter_map(|(b, col)| {

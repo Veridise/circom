@@ -4,7 +4,7 @@ use std::fmt::{Debug, Formatter};
 use indexmap::IndexMap;
 use compiler::intermediate_representation::BucketId;
 use compiler::intermediate_representation::ir_interface::*;
-use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::env::{Env, EnvContextKind};
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
@@ -15,6 +15,7 @@ use super::DEBUG_LOOP_UNROLL;
 pub struct EnvRecorder<'a, 'd> {
     pub global_data: &'d RefCell<GlobalPassData>,
     mem: &'a PassMemory,
+    pub(crate) ctx_kind: EnvContextKind,
     // NOTE: RefCell is needed here because the instance of this struct is borrowed by
     //  the main interpreter while we also need to mutate these internal structures.
     current_iter_num: RefCell<usize>,
@@ -54,10 +55,15 @@ impl Debug for EnvRecorder<'_, '_> {
 }
 
 impl<'a, 'd> EnvRecorder<'a, 'd> {
-    pub fn new(global_data: &'d RefCell<GlobalPassData>, mem: &'a PassMemory) -> Self {
+    pub fn new(
+        global_data: &'d RefCell<GlobalPassData>,
+        mem: &'a PassMemory,
+        ctx_kind: EnvContextKind,
+    ) -> Self {
         EnvRecorder {
             global_data,
             mem,
+            ctx_kind,
             current_iter_num: RefCell::new(0),
             safe_to_move: RefCell::new(true),
             loadstore_to_index_per_iter: Default::default(),
