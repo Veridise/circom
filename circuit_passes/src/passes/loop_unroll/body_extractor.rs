@@ -229,7 +229,10 @@ impl LoopBodyExtractor {
                 let iter_env = recorder.take_header_vars_for_iter(&iter_num);
                 let mapping = arg_info.get_reverse_passing_refs_for_itr(&mem_refs, iter_num);
                 if DEBUG_LOOP_UNROLL {
-                    println!("[extract] storing arg mapping: {:?} -> {:?}", iter_env, mapping);
+                    println!(
+                        "[extract] storing orig loc data for: {}+{:?} -> {:?}",
+                        extracted_name, iter_env, mapping
+                    );
                 }
                 // NOTE: Encountering different iteration counts for the same loop will produce
                 //  different Env at loop header (i.e. `iter_env`) and the same Env at the loop
