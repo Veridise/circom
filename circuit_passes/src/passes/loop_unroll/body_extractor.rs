@@ -92,9 +92,7 @@ struct ExtraArgsResult {
 
 impl PartialOrd for ExtraArgsResult {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        PartialOrd::partial_cmp(&self.num_args, &other.num_args)
-            .and_then(|_| self.loc_to_args.iter().partial_cmp(other.loc_to_args.iter()))
-            .and_then(|_| self.loc_to_itr_to_ref.iter().partial_cmp(other.loc_to_itr_to_ref.iter()))
+        Some(self.cmp(other))
     }
 }
 
