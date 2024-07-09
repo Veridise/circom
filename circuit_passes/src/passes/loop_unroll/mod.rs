@@ -188,7 +188,7 @@ impl Observer<Env<'_>> for LoopUnrollPass<'_> {
         if DEBUG_LOOP_UNROLL {
             println!("[UNROLL][try_unroll_loop] result = {:?}", result);
         }
-        // Add the loop bucket to the ordering for the before visiting within via continue_inside()
+        // Add the loop bucket to the ordering before visiting within via continue_inside()
         //  so that outer loop iteration counts appear first in the new function name
         self.loop_bucket_order.borrow_mut().insert(bucket.id);
         //
