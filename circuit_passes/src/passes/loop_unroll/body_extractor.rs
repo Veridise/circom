@@ -204,6 +204,7 @@ impl LoopBodyExtractor {
             );
             match existing_fun {
                 None => {
+                    // Create and store the new function
                     let new_func = self.build_new_extracted_function(
                         &recorder.get_current_scope_name(),
                         bucket,
@@ -217,6 +218,23 @@ impl LoopBodyExtractor {
                         Rc::clone(&extra_arg_info),
                         new_func,
                     );
+                    // Store the parameter information for the new function to GlobalPassData
+
+                    let mut extraction_data = ExtractedFuncData::default();
+                    for iter_num in 0..recorder.get_iter() {
+                        let iter_env = recorder.take_header_vars_for_iter(&iter_num);
+                        let mapping = extra_arg_info.get_reverse_passing_refs_for_itr(iter_num);
+                        if DEBUG_LOOP_UNROLL {
+                            println!("[EnvRecorder] stored data {:?} -> {:?}", iter_env, mapping);
+                        }
+                        checked_insert!(&mut extraction_data, iter_env, mapping);
+                    }
+                    checked_insert!(
+                        &mut recorder.global_data.borrow_mut().extract_func_orig_loc,
+                        new_name.clone(),
+                        extraction_data
+                    );
+
                     (new_name, extra_arg_info)
                 }
                 Some(name) => (name.clone(), extra_arg_info),
@@ -224,7 +242,6 @@ impl LoopBodyExtractor {
         };
 
         // Generate the list of unrolled calls to the extracted loop body function.
-        let mut extraction_data = ExtractedFuncData::default();
         for iter_num in 0..recorder.get_iter() {
             // NOTE: CallBucket arguments must use a LoadBucket to reference the necessary pointers
             //  within the current body. However, it doesn't actually need to generate a load
@@ -286,22 +303,7 @@ impl LoopBodyExtractor {
                 }
             }
             unrolled.push(builders::build_call(bucket, &extracted_name, args));
-
-            // Store current iteration data to the ExtractedFuncData
-            let iter_env = recorder.take_header_vars_for_iter(&iter_num);
-            let mapping = extra_arg_info.get_reverse_passing_refs_for_itr(iter_num);
-            if DEBUG_LOOP_UNROLL {
-                println!("[EnvRecorder] stored data {:?} -> {:?}", iter_env, mapping);
-            }
-            checked_insert!(&mut extraction_data, iter_env, mapping);
         }
-
-        // Store the ExtractedFuncData to GlobalPassData
-        checked_insert!(
-            &mut recorder.global_data.borrow_mut().extract_func_orig_loc,
-            extracted_name,
-            extraction_data
-        );
 
         Ok(())
     }
