@@ -669,7 +669,7 @@ impl LoopBodyExtractor {
                 println!("subcmp_arg_groups = {:?}", subcmp_arg_groups);
             }
             //ASSERT: Every bucket mapped to a Some(SubcmpSignal) in any iteration is present in exactly one group.
-            assert!(loc_to_itr_to_ref
+            debug_assert!(loc_to_itr_to_ref
                 .iter()
                 .filter_map(|(k, v)| {
                     if v.iter().any(|e| matches!(e, Some((AddressType::SubcmpSignal { .. }, _)))) {
