@@ -152,8 +152,10 @@ impl ExtraArgsResult {
     }
 }
 
+/// Collection of data that determines if a new unique extracted
+/// body function should be created for a specific LoopBucket.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
-struct Key {
+struct UniqueFuncKey {
     loop_bucket_id: BucketId,
     iter_count: usize,
     extra_arg_info: Rc<ExtraArgsResult>,
@@ -161,7 +163,7 @@ struct Key {
 
 #[derive(Debug, Default)]
 pub struct LoopBodyExtractor {
-    new_body_functions: RefCell<BTreeMap<Key, FunctionCode>>,
+    new_body_functions: RefCell<BTreeMap<UniqueFuncKey, FunctionCode>>,
     /// Exists only to stabilize function order for lit test output.
     func_creation_order: RefCell<Vec<String>>,
 }
@@ -724,7 +726,7 @@ impl LoopBodyExtractor {
         new_func: FunctionCode,
     ) {
         self.func_creation_order.borrow_mut().push(new_func.header.clone());
-        let key = Key { loop_bucket_id, iter_count, extra_arg_info };
+        let key = UniqueFuncKey { loop_bucket_id, iter_count, extra_arg_info };
         checked_insert!(self.new_body_functions.borrow_mut(), key, new_func);
     }
 
@@ -735,7 +737,7 @@ impl LoopBodyExtractor {
         iter_count: usize,
         extra_arg_info: Rc<ExtraArgsResult>,
     ) -> Option<Ref<String>> {
-        let key = Key { loop_bucket_id, iter_count, extra_arg_info };
+        let key = UniqueFuncKey { loop_bucket_id, iter_count, extra_arg_info };
         Ref::filter_map(self.new_body_functions.borrow(), |m| m.get(&key).map(|f| &f.header)).ok()
     }
 }
