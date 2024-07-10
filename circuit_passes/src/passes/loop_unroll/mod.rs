@@ -91,7 +91,7 @@ impl<'d> LoopUnrollPass<'d> {
             println!("[UNROLL] LOOP ENTRY env {}", env);
         }
         // Compute loop iteration count. If unknown, return immediately.
-        let recorder = EnvRecorder::new(self.global_data, &self.memory);
+        let recorder = EnvRecorder::new(self.global_data, &self.memory, env.get_context_kind());
         {
             let interpreter = self.memory.build_interpreter(self.global_data, &recorder);
             let mut inner_env = env.clone();
@@ -151,12 +151,7 @@ impl<'d> LoopUnrollPass<'d> {
                     if DEBUG_LOOP_UNROLL {
                         println!("[UNROLL][try_unroll_loop] OUTCOME: safe to move, extracting");
                     }
-                    self.extractor.extract(
-                        bucket,
-                        recorder,
-                        env.get_context_kind(),
-                        &mut block_body,
-                    )?;
+                    self.extractor.extract(bucket, recorder, &mut block_body)?;
                 }
             }
         } else {
@@ -193,7 +188,7 @@ impl Observer<Env<'_>> for LoopUnrollPass<'_> {
         if DEBUG_LOOP_UNROLL {
             println!("[UNROLL][try_unroll_loop] result = {:?}", result);
         }
-        // Add the loop bucket to the ordering for the before visiting within via continue_inside()
+        // Add the loop bucket to the ordering before visiting within via continue_inside()
         //  so that outer loop iteration counts appear first in the new function name
         self.loop_bucket_order.borrow_mut().insert(bucket.id);
         //
@@ -251,9 +246,9 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
 
     fn post_hook_circuit(&self, cir: &mut Circuit) -> Result<(), BadInterp> {
         // Transform and add the new body functions from the extractor
-        let new_funcs = self.extractor.get_new_functions();
+        let new_funcs = self.extractor.take_new_functions();
         cir.functions.reserve_exact(new_funcs.len());
-        for f in new_funcs.iter() {
+        for f in new_funcs {
             cir.functions.insert(0, self.transform_function(&f)?);
         }
         // Add the duplicated versions of functions created by transform_call_bucket()

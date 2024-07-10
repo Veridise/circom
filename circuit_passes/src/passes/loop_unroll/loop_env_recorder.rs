@@ -1,21 +1,21 @@
 use std::cell::{RefCell, Ref};
-use std::collections::{BTreeMap, HashSet, HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::{Debug, Formatter};
 use indexmap::IndexMap;
 use compiler::intermediate_representation::BucketId;
 use compiler::intermediate_representation::ir_interface::*;
-use crate::bucket_interpreter::env::Env;
+use crate::bucket_interpreter::env::{Env, EnvContextKind};
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::GlobalPassData;
 use super::DEBUG_LOOP_UNROLL;
-use super::body_extractor::{UnrolledIterLvars, ToOriginalLocation, FuncArgIdx};
 
 pub struct EnvRecorder<'a, 'd> {
-    global_data: &'d RefCell<GlobalPassData>,
+    pub global_data: &'d RefCell<GlobalPassData>,
     mem: &'a PassMemory,
+    pub(crate) ctx_kind: EnvContextKind,
     // NOTE: RefCell is needed here because the instance of this struct is borrowed by
     //  the main interpreter while we also need to mutate these internal structures.
     current_iter_num: RefCell<usize>,
@@ -55,10 +55,15 @@ impl Debug for EnvRecorder<'_, '_> {
 }
 
 impl<'a, 'd> EnvRecorder<'a, 'd> {
-    pub fn new(global_data: &'d RefCell<GlobalPassData>, mem: &'a PassMemory) -> Self {
+    pub fn new(
+        global_data: &'d RefCell<GlobalPassData>,
+        mem: &'a PassMemory,
+        ctx_kind: EnvContextKind,
+    ) -> Self {
         EnvRecorder {
             global_data,
             mem,
+            ctx_kind,
             current_iter_num: RefCell::new(0),
             safe_to_move: RefCell::new(true),
             loadstore_to_index_per_iter: Default::default(),
@@ -108,23 +113,6 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
 
     pub fn drop_header_env(&self) {
         self.env_at_header.replace(None);
-    }
-
-    pub fn record_reverse_arg_mapping(
-        &self,
-        extract_func: String,
-        iter_env: UnrolledIterLvars,
-        value: (ToOriginalLocation, HashSet<FuncArgIdx>),
-    ) {
-        if DEBUG_LOOP_UNROLL {
-            println!("[EnvRecorder] stored data {:?} -> {:?}", iter_env, value);
-        }
-        self.global_data
-            .borrow_mut()
-            .extract_func_orig_loc
-            .entry(extract_func)
-            .or_default()
-            .insert(iter_env, value);
     }
 
     #[inline]
