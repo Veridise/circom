@@ -3,7 +3,7 @@ use code_producers::llvm_elements::fr::*;
 use compiler::intermediate_representation::{InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
 use crate::bucket_interpreter::memory::PassMemory;
-use super::loop_unroll::body_extractor::AddressOffset;
+use super::loop_unroll::AddressOffset;
 
 pub fn build_u32_value_bucket(meta: &dyn ObtainMeta, val: usize) -> ValueBucket {
     ValueBucket {
@@ -34,6 +34,23 @@ pub fn build_bigint_value_bucket(
         parse_as: ValueType::BigInt,
         op_aux_no: 0,
         value: mem.add_field_constant(val.to_string()),
+    }
+}
+
+pub fn build_block_bucket(
+    meta: &dyn ObtainMeta,
+    body: InstructionList,
+    n_iters: usize,
+    label: String,
+) -> BlockBucket {
+    BlockBucket {
+        id: new_id(),
+        source_file_id: meta.get_source_file_id().clone(),
+        line: meta.get_line(),
+        message_id: meta.get_message_id(),
+        body,
+        n_iters,
+        label,
     }
 }
 

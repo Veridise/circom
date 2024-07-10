@@ -7,6 +7,7 @@ use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{
     ir_interface::*, Instruction, InstructionList, InstructionPointer, new_id, BucketId,
 };
+use loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::bucket_interpreter::{error::BadInterp, memory::PassMemory};
 use self::unreachable_code_removal::UnreachableRemovalPass;
 use self::{
@@ -17,7 +18,7 @@ use self::{
     simplification::SimplificationPass, unknown_index_sanitization::UnknownIndexSanitizationPass,
     unused_func_removal::UnusedFuncRemovalPass,
 };
-use self::loop_unroll::body_extractor::{UnrolledIterLvars, ToOriginalLocation, FuncArgIdx};
+use self::loop_unroll::{UnrolledIterLvars, ToOriginalLocation, FuncArgIdx};
 
 mod checks;
 mod conditional_flattening;
@@ -790,8 +791,23 @@ impl GlobalPassData {
         match self.extract_func_orig_loc.get(name) {
             Some(x) => x,
             None => {
-                // Allow for the suffix(es) added by ConditionalFlatteningPass
-                let name = name.trim_end_matches(&['.', 'T', 'F', 'N']);
+                // The implementation below assumes this is only used for extracted
+                //  loop body functions. It was simpler to implement that way rather
+                //  than trying to account for the various suffixes added by the
+                //  LoopUnrollPass and ConditionalFlatteningPass.
+                assert!(name.starts_with(LOOP_BODY_FN_PREFIX));
+                // The ASCII assertions ensure the slicing below works as expected.
+                assert!(name.is_ascii());
+                debug_assert!(LOOP_BODY_FN_PREFIX.is_ascii());
+                // Find the first '.' after the 'LOOP_BODY_FN_PREFIX'
+                let prefix_len = LOOP_BODY_FN_PREFIX.len();
+                let idx = name[prefix_len..].find('.');
+                // If there is no '.' after the prefix, the name doesn't match
+                //  the expected suffix pattern so it can't be handled without
+                //  updating this matching code.
+                let idx = idx.expect("did not find suffix");
+                // Slice the name up to that position to obtain the original name for the lookup
+                let name = &name[..prefix_len + idx];
                 self.extract_func_orig_loc.get(name).unwrap()
             }
         }

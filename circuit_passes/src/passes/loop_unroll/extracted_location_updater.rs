@@ -1,13 +1,12 @@
-use indexmap::IndexMap;
 use code_producers::llvm_elements::stdlib::LLVM_DONOTHING_FN_NAME;
 use compiler::intermediate_representation::{BucketId, InstructionPointer, new_id};
 use compiler::intermediate_representation::ir_interface::*;
 use crate::passes::builders::{build_compute, build_u32_value};
-
 use super::body_extractor::ArgIndex;
+use super::index_map_ord::IndexMapOrd;
 
 pub struct ExtractedFunctionLocationUpdater<'a> {
-    bucket_arg_order: &'a mut IndexMap<BucketId, ArgIndex>,
+    bucket_arg_order: &'a mut IndexMapOrd<BucketId, ArgIndex>,
 }
 
 /// Used within extracted loopbody functions to replace all storage references
@@ -19,7 +18,7 @@ pub struct ExtractedFunctionLocationUpdater<'a> {
 /// will also just be passed as additional parameters to the function.
 impl ExtractedFunctionLocationUpdater<'_> {
     pub fn new(
-        bucket_arg_order: &mut IndexMap<BucketId, ArgIndex>,
+        bucket_arg_order: &mut IndexMapOrd<BucketId, ArgIndex>,
     ) -> ExtractedFunctionLocationUpdater {
         ExtractedFunctionLocationUpdater { bucket_arg_order }
     }

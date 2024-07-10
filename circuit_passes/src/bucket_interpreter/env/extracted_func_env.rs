@@ -8,7 +8,7 @@ use compiler::intermediate_representation::ir_interface::{AddressType, ValueBuck
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
-use crate::passes::loop_unroll::body_extractor::{ToOriginalLocation, FuncArgIdx};
+use crate::passes::loop_unroll::{ToOriginalLocation, FuncArgIdx};
 use super::{CallStack, CallStackFrame, Env, EnvContextKind, LibraryAccess};
 
 /// This Env is used to process functions created by extracting loop bodies
