@@ -1,64 +1,73 @@
+mod call_unroll_tree;
+mod index_map_ord;
 mod loop_env_recorder;
 mod extracted_location_updater;
+mod map_like_trait;
+mod observer;
 pub mod body_extractor;
 
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::{BTreeMap, HashMap};
-use std::vec;
+use call_unroll_tree::{Node, NodeRef};
+use code_producers::llvm_elements::fr;
 use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::circuit_design::function::FunctionCode;
-use compiler::circuit_design::template::TemplateCode;
+use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
-use compiler::intermediate_representation::{
-    new_id, BucketId, InstructionList, InstructionPointer, ToSExp, UpdateId,
-};
-use compiler::intermediate_representation::ir_interface::*;
-use indexmap::{IndexMap, IndexSet};
-use crate::bucket_interpreter::env::{Env, LibraryAccess};
-use crate::bucket_interpreter::error::{self, BadInterp};
+use compiler::intermediate_representation::{ir_interface::*, new_id, BucketId};
+use index_map_ord::IndexMapOrd;
+use indexmap::IndexMap;
+use observer::{LoopUnrollObserver, LoopUnrollObserverResult};
+use crate::bucket_interpreter::env::LibraryAccess;
+use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
-use crate::bucket_interpreter::observer::Observer;
-use crate::bucket_interpreter::LOOP_LIMIT;
-use crate::{checked_insert, default__get_mem, default__name, default__run_template};
+use crate::bucket_interpreter::value::Value;
+use crate::{checked_insert, default__get_mem, default__name};
 use super::{CircuitTransformationPass, GlobalPassData};
-use self::{body_extractor::LoopBodyExtractor, loop_env_recorder::EnvRecorder};
+use self::body_extractor::LoopBodyExtractor;
 
 const EXTRACT_LOOP_BODY_TO_NEW_FUNC: bool = true;
+const UNROLLED_BUCKET_LABEL: &str = "unrolled_loop";
 
 const DEBUG_LOOP_UNROLL: bool = false;
 
 pub const LOOP_BODY_FN_PREFIX: &str = const_format::concatcp!(GENERATED_FN_PREFIX, "loop.body.");
 
-/// Maps LoopBucket id to the unrolled version.
-// Uses BTreeMap instead of HashMap because this type must implement the Hash trait.
-type UnrolledLoops = BTreeMap<BucketId, BlockBucket>;
-type UnrolledLoopCounts = BTreeMap<BucketId, usize>;
+pub(crate) type FuncArgIdx = usize;
+pub(crate) type AddressOffset = usize;
+pub(crate) type UnrolledIterLvars = BTreeMap<usize, Value>;
+pub(crate) type CompiledMemLocation = (AddressType, AddressOffset);
+pub(crate) type ToOriginalLocation = HashMap<FuncArgIdx, CompiledMemLocation>;
 
+type CallBucketId = BucketId;
+type LoopBucketId = BucketId;
+type BlockBucketId = BucketId;
+/// Table structure indexed first by load/store/call BucketId, then by iteration number
+/// (i.e. the Vec index), containing the compiled memory locations to use as arguments
+/// when calling the extracted body function.
+// NOTE: This collection and several intermediate collections that are used to build it
+// must use IndexMap/IndexSet to preserve insertion order to stabilize lit test output.
+type MemLocsPerIter = IndexMapOrd<BucketId, Vec<Option<CompiledMemLocation>>>;
+/// Extracted function name + compiled memory location mappings for the args.
+type ExtractedNameAndMemLocs = (String, MemLocsPerIter);
+
+// Some fields wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
 pub struct LoopUnrollPass<'d> {
     global_data: &'d RefCell<GlobalPassData>,
     memory: PassMemory,
+    /// Observer creates extracted functions then transformer references and stores them.
     extractor: LoopBodyExtractor,
-    // Wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
-    //
-    /// Track the order that the loops appear during the traversal to stabilize the order
-    /// they appear in the new function names.
-    loop_bucket_order: RefCell<IndexSet<BucketId>>,
-    /// Maps the ID of the CallBucket that is currently on the interpreter's stack to a mapping
-    /// of LoopBucket id to its unrolled replacement body. When not within a function call,
-    /// `loop_replacements_top_level` is used instead. To avoid BorrowMutError, these must be
-    /// in separate RefCell rather than using a single map with Option<BucketId> as the key
-    /// and using the key None to store the top-level entry.
-    loop_replacements_in_calls: RefCell<HashMap<BucketId, UnrolledLoops>>,
-    loop_replacements_top_level: RefCell<UnrolledLoops>,
+    ///
+    observer_result: RefCell<Option<LoopUnrollObserverResult>>,
     /// Maps CallBucket symbol (i.e. target function name) plus a mapping of LoopBucket IDs to
     /// iteration counts to the new function that has loops unrolled according to that mapping.
     /// Uses IndexMap to ensure consistent ordering of functions in the output (for lit tests).
-    new_functions: RefCell<IndexMap<String, IndexMap<UnrolledLoopCounts, FunctionCode>>>,
-    /// Within the CircuitTransformationPass impl below, this holds the unrolled loop bodies for
-    /// when the function is called by the current CallBucket. The None key in this map is for the
-    /// cases that are NOT inside a function. When traversal enters a function, this will change to
-    /// the UnrolledLoops for that CallBucket.
-    caller_context: RefCell<Option<UnrolledLoops>>,
+    transformed_functions: RefCell<IndexMap<String, IndexMap<NodeRef, FunctionCode>>>,
+    /// The chain of CallBucket that compose the current calling context for the transformer.
+    current_ctx_chain: RefCell<Vec<CallBucketId>>,
+    /// Track pending calls to cached_transform_function() to prevent stack overflow.
+    /// The key is original function name plus the context subtree and value is new name.
+    pending_transform_function: RefCell<HashMap<(String, NodeRef), String>>,
 }
 
 impl<'d> LoopUnrollPass<'d> {
@@ -67,198 +76,195 @@ impl<'d> LoopUnrollPass<'d> {
             global_data,
             memory: PassMemory::new(prime),
             extractor: Default::default(),
-            loop_bucket_order: Default::default(),
-            loop_replacements_in_calls: Default::default(),
-            loop_replacements_top_level: Default::default(),
-            new_functions: Default::default(),
-            caller_context: Default::default(),
+            observer_result: Default::default(),
+            transformed_functions: Default::default(),
+            current_ctx_chain: Default::default(),
+            pending_transform_function: Default::default(),
         }
     }
+}
 
-    fn try_unroll_loop(
-        &self,
-        bucket: &LoopBucket,
-        env: &Env,
-    ) -> Result<(Option<InstructionList>, usize), BadInterp> {
-        if DEBUG_LOOP_UNROLL {
-            println!("\n[UNROLL] Try unrolling loop {}:", bucket.id);
-            for (i, s) in bucket.body.iter().enumerate() {
-                println!("[{}/{}]{}", i + 1, bucket.body.len(), s.to_sexp().to_pretty(100));
-            }
-            for (i, s) in bucket.body.iter().enumerate() {
-                println!("[{}/{}]{:?}", i + 1, bucket.body.len(), s);
-            }
-            println!("[UNROLL] LOOP ENTRY env {}", env);
-        }
-        // Compute loop iteration count. If unknown, return immediately.
-        let recorder = EnvRecorder::new(self.global_data, &self.memory, env.get_context_kind());
-        {
-            let interpreter = self.memory.build_interpreter(self.global_data, &recorder);
-            let mut inner_env = env.clone();
-            let mut n_iters = 0;
-            loop {
-                n_iters += 1;
-                if n_iters >= LOOP_LIMIT {
-                    return Result::Err(error::new_compute_err(format!(
-                        "Could not determine loop count within {LOOP_LIMIT} iterations"
-                    )));
-                }
-                recorder.record_header_env(&inner_env);
-                let (cond, new_env) =
-                    interpreter.execute_loop_bucket_once(bucket, inner_env, true)?;
-                if DEBUG_LOOP_UNROLL {
-                    println!(
-                        "[UNROLL][try_unroll_loop] execute_loop_bucket_once() -> cond={:?}, env={:?}",
-                        cond, new_env
-                    );
-                }
-                match cond {
-                    // If the conditional becomes unknown just give up.
-                    None => return Ok((None, 0)),
-                    // When conditional becomes `false`, iteration count is complete.
-                    Some(false) => break,
-                    // Otherwise, continue counting.
-                    Some(true) => recorder.increment_iter(),
-                };
-                inner_env = new_env;
-            }
-            recorder.drop_header_env(); //free Env from the final iteration
-        }
-        if DEBUG_LOOP_UNROLL {
-            println!("[UNROLL] recorder = {:?}", recorder);
-        }
+impl LoopUnrollPass<'_> {
+    #[inline]
+    fn borrow_observer_result(&self) -> Ref<LoopUnrollObserverResult> {
+        Ref::map(self.observer_result.borrow(), |o| {
+            o.as_ref().expect("must have result from running template")
+        })
+    }
 
-        let num_iter = recorder.get_iter();
-        let mut block_body = vec![];
-        if EXTRACT_LOOP_BODY_TO_NEW_FUNC && recorder.is_safe_to_move() && num_iter > 1 {
-            // If the loop body contains more than one instruction, extract it into a
-            // new function and generate 'num_iter' number of calls to that function.
-            // Otherwise, just duplicate the body 'num_iter' number of times.
-            match &bucket.body[..] {
-                [a] => {
-                    if DEBUG_LOOP_UNROLL {
-                        println!(
-                            "[UNROLL][try_unroll_loop] OUTCOME: safe to move, single statement, in-place"
-                        );
-                    }
-                    for _ in 0..num_iter {
-                        let mut copy = a.clone();
-                        copy.update_id();
-                        block_body.push(copy);
-                    }
-                }
-                _ => {
-                    if DEBUG_LOOP_UNROLL {
-                        println!("[UNROLL][try_unroll_loop] OUTCOME: safe to move, extracting");
-                    }
-                    self.extractor.extract(bucket, recorder, &mut block_body)?;
-                }
-            }
+    #[inline]
+    fn get_function(&self, name: &String) -> Ref<FunctionCode> {
+        if name.starts_with(LOOP_BODY_FN_PREFIX) {
+            self.extractor.search_new_functions(name)
         } else {
-            //If the loop body is not safe to move into a new function, just unroll in-place.
-            if DEBUG_LOOP_UNROLL {
-                println!("[UNROLL][try_unroll_loop] OUTCOME: not safe to move, unrolling in-place");
-            }
-            for _ in 0..num_iter {
-                for s in &bucket.body {
-                    let mut copy = s.clone();
-                    copy.update_id();
-                    block_body.push(copy);
-                }
-            }
+            self.memory.get_function(name)
         }
-        Ok((Some(block_body), num_iter))
     }
 
-    // Will interpret the unrolled loop to check for additional loops inside
-    fn continue_inside(&self, bucket: &BlockBucket, env: &Env) -> Result<(), BadInterp> {
-        if DEBUG_LOOP_UNROLL {
-            println!("[UNROLL][continue_inside] with {}", env);
+    fn cached_transform_function(
+        &self,
+        target: &String,
+        key: NodeRef,
+    ) -> Result<String, BadInterp> {
+        // No transformation of built-in functions.
+        if fr::is_builtin_function(target) {
+            return Ok(target.clone());
         }
-        let interpreter = self.memory.build_interpreter(self.global_data, self);
-        let env = Env::new_unroll_block_env(env.clone(), &self.extractor);
-        interpreter.execute_block_bucket(bucket, env, true)?;
-        Ok(())
+        if DEBUG_LOOP_UNROLL {
+            println!("[UNROLL][cached_transform_function] {} + {:?}", target, key);
+        }
+
+        // Although it seems logical to just borrow the map once here and hold until
+        // the end where a new entry may be cached, that could result in BorrowMutError
+        // because transform_function() below can recurse back to here. So just check
+        // for an existing entry and get its name without holding a Ref.
+        let cached_new_target = self
+            .transformed_functions
+            .borrow()
+            .get(target)
+            .and_then(|m| m.get(&key))
+            .map(|f| f.header.clone());
+
+        // Check if cached replacement function exists and return it.
+        if let Some(new_target) = cached_new_target {
+            return Ok(new_target);
+        }
+
+        // Check if processing the given target+key is already on the Rust stack
+        //  (i.e. detect recursion without progress) and return the expected name.
+        {
+            // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
+            let mut bor = self.pending_transform_function.borrow_mut();
+            // If it's already in the stack, just return the expected name.
+            let pending_key = (target.clone(), key.clone());
+            if let Some(name) = bor.get(&pending_key) {
+                return Ok(name.clone());
+            }
+            // Otherwise, generate the new name and push it to the stack.
+            let new_name = format!("{}.{}", target, new_id());
+            bor.insert(pending_key, new_name.clone());
+        }
+
+        // Use self.transform_function(..) on the original function to create a
+        //  new FunctionCode by running this transformer on the existing one.
+        let mut res = self.transform_function(&self.get_function(target))?;
+        // Pop from pending transformation set
+        let new_name = self
+            .pending_transform_function
+            .borrow_mut()
+            .remove(&(target.clone(), key.clone()))
+            .expect("pending_transform_function structure is corrupted");
+
+        // Rename and store the transformed function
+        res.header = new_name.clone();
+        if DEBUG_LOOP_UNROLL {
+            println!("[UNROLL][cached_transform_function] created function {:?}", res);
+        }
+        checked_insert!(
+            RefMut::map(self.transformed_functions.borrow_mut(), |m| {
+                m.entry(target.clone()).or_default()
+            }),
+            key,
+            res
+        );
+
+        Ok(new_name)
+    }
+
+    fn transform_call_bucket_impl(
+        &self,
+        bucket: &CallBucket,
+    ) -> Result<InstructionPointer, BadInterp> {
+        let ctx_node: Option<NodeRef> = {
+            // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
+            let ctx_chain = self.current_ctx_chain.borrow();
+            if DEBUG_LOOP_UNROLL {
+                println!("[UNROLL][transform_call_bucket] ctx_chain = {:?}", ctx_chain);
+            }
+            Node::get_node(&self.borrow_observer_result().replacement_context, ctx_chain.as_slice())
+        };
+        if DEBUG_LOOP_UNROLL {
+            println!("[UNROLL][transform_call_bucket] unroll tree = {:?}", ctx_node);
+        }
+
+        let tgt = self.cached_transform_function(&bucket.symbol, ctx_node.unwrap_or_default())?;
+        let ret = Ok(CallBucket {
+            id: new_id(),
+            source_file_id: bucket.source_file_id,
+            line: bucket.line,
+            message_id: bucket.message_id,
+            symbol: tgt,
+            argument_types: bucket.argument_types.clone(),
+            arguments: self.transform_instructions_fixed_len(&bucket.arguments)?,
+            arena_size: bucket.arena_size,
+            return_info: self.transform_return_type(&bucket.id, &bucket.return_info)?,
+        }
+        .allocate());
+        if DEBUG_LOOP_UNROLL {
+            println!("[UNROLL][transform_call_bucket] replaced with call {:?}", ret);
+        }
+
+        ret
     }
 }
 
-impl Observer<Env<'_>> for LoopUnrollPass<'_> {
-    fn on_loop_bucket(&self, bucket: &LoopBucket, env: &Env) -> Result<bool, BadInterp> {
-        let result = self.try_unroll_loop(bucket, env);
-        if DEBUG_LOOP_UNROLL {
-            println!("[UNROLL][try_unroll_loop] result = {:?}", result);
-        }
-        // Add the loop bucket to the ordering before visiting within via continue_inside()
-        //  so that outer loop iteration counts appear first in the new function name
-        self.loop_bucket_order.borrow_mut().insert(bucket.id);
-        //
-        if let (Some(block_body), n_iters) = result? {
-            let block = BlockBucket {
-                id: new_id(),
-                source_file_id: bucket.source_file_id,
-                line: bucket.line,
-                message_id: bucket.message_id,
-                body: block_body,
-                n_iters,
-                label: String::from("unrolled_loop"),
-            };
-            self.continue_inside(&block, env)?;
-
-            let caller_id = env.get_caller_stack().last().cloned();
-            if DEBUG_LOOP_UNROLL {
-                println!(
-                    "[UNROLL][on_loop_bucket] storing replacement for {} from caller {:?} :: {:?}",
-                    bucket.id, caller_id, block
-                );
-            }
-            // NOTE: 'caller_id' is None when the current loop is NOT located within a function.
-            match caller_id {
-                Some(id) => checked_insert!(
-                    RefMut::map(self.loop_replacements_in_calls.borrow_mut(), |m| {
-                        m.entry(id).or_default()
-                    }),
-                    bucket.id,
-                    block
-                ),
-                None => {
-                    checked_insert!(self.loop_replacements_top_level.borrow_mut(), bucket.id, block)
-                }
-            }
-        }
-        // Do not continue observing within this loop bucket because continue_inside()
-        //  runs a new interpreter inside the unrolled body that is observed instead.
-        Ok(false)
-    }
-
-    fn ignore_function_calls(&self) -> bool {
-        false
-    }
-
-    fn ignore_extracted_function_calls(&self) -> bool {
-        true
-    }
-}
-
-impl CircuitTransformationPass for LoopUnrollPass<'_> {
+impl<'d> CircuitTransformationPass for LoopUnrollPass<'d> {
     default__name!("LoopUnrollPass");
     default__get_mem!();
-    default__run_template!();
 
-    fn post_hook_circuit(&self, cir: &mut Circuit) -> Result<(), BadInterp> {
-        // Transform and add the new body functions from the extractor
-        let new_funcs = self.extractor.take_new_functions();
-        cir.functions.reserve_exact(new_funcs.len());
-        for f in new_funcs {
-            cir.functions.insert(0, self.transform_function(&f)?);
-        }
-        // Add the duplicated versions of functions created by transform_call_bucket()
-        for (_, ev) in self.new_functions.borrow_mut().drain(..) {
-            for f in ev.into_values() {
-                cir.functions.push(f);
-            }
-        }
-        //ASSERT: All call buckets were visited and updated
-        assert!(self.loop_replacements_in_calls.borrow().is_empty());
+    // Custom implementation because this transformer does not transform functions independently,
+    //  but instead only within the specific calling context reachable from a template.
+    fn transform_circuit(&self, circuit: Circuit) -> Result<Circuit, BadInterp> {
+        self.pre_hook_circuit(&circuit)?;
+
+        // Setup the PassMemory from the Circuit
+        let mut llvm_data = circuit.llvm_data;
+        let mem = self.get_mem();
+        mem.fill(circuit.templates, circuit.functions, llvm_data.mem_layout);
+
+        // Transform templates
+        let templates = mem
+            .get_templates()
+            .into_iter()
+            .map(|t| self.transform_template(&t))
+            .collect::<Result<_, _>>()?;
+
+        // Update the LLVMCircuitData for the transformed Circuit
+        llvm_data.mem_layout = mem.clear();
+        self.update_bounded_arrays(&mut llvm_data.bounded_arrays);
+
+        // Generate the list of transformed functions
+        let functions = self
+            .transformed_functions
+            .take()
+            .into_values()
+            .flat_map(IndexMap::into_values)
+            .collect();
+
+        // Create and return the transformed Circuit
+        Ok(Circuit {
+            wasm_producer: circuit.wasm_producer,
+            c_producer: circuit.c_producer,
+            summary_producer: circuit.summary_producer,
+            llvm_data,
+            templates,
+            functions,
+        })
+    }
+
+    fn run_template(&self, template: &TemplateCode) -> Result<(), BadInterp> {
+        // Create a new LoopUnrollObserver to use while interpreting the current template
+        let obs = LoopUnrollObserver::new(self.global_data, &self.memory, &self.extractor);
+        let res = self.get_mem().run_template(self.global_data, &obs, template);
+        // Store the result from the observer
+        self.observer_result.borrow_mut().replace(obs.take_result());
+        res
+    }
+
+    fn post_hook_template(&self, _: &mut TemplateCodeInfo) -> Result<(), BadInterp> {
+        // Clear the observer result
+        let obs_res = self.observer_result.take();
+        debug_assert!(obs_res.is_some());
         Ok(())
     }
 
@@ -266,97 +272,42 @@ impl CircuitTransformationPass for LoopUnrollPass<'_> {
         if DEBUG_LOOP_UNROLL {
             println!("[UNROLL][transform_call_bucket] {:?}", bucket);
         }
-        // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
-        let reps = { self.loop_replacements_in_calls.borrow_mut().remove(&bucket.id) };
-        if let Some(loop_replacements) = reps {
-            assert!(!loop_replacements.is_empty());
 
-            // Check if the needed function exists, else create it.
-            let new_target = {
-                let old_target = &bucket.symbol;
-                let versions_key: UnrolledLoopCounts =
-                    loop_replacements.iter().map(|(k, v)| (*k, v.n_iters)).collect();
-                // Must not use a mutable borrow on `self.new_functions` here because the `transform_function`
-                //  call below can recurse back to here and result in BorrowMutError.
-                let cached_new_target = self
-                    .new_functions
-                    .borrow()
-                    .get(old_target)
-                    .and_then(|m| m.get(&versions_key))
-                    .map(|f| f.header.clone());
-                if let Some(new_target) = cached_new_target {
-                    new_target
-                } else {
-                    // Set the caller context and then use self.transform_function(..) on the existing
-                    //  function to create a new FunctionCode by running this transformer on the existing one.
-                    let old_ctx = self.caller_context.replace(Some(loop_replacements));
-                    if DEBUG_LOOP_UNROLL {
-                        println!(
-                            "[UNROLL][transform_call_bucket] set caller_context = {:?}",
-                            self.caller_context.borrow()
-                        );
-                    }
-                    let mut res = self.transform_function(&self.memory.get_function(old_target))?;
-                    self.caller_context.replace(old_ctx);
-                    if DEBUG_LOOP_UNROLL {
-                        println!(
-                            "[UNROLL][transform_call_bucket] restored caller_context = {:?}",
-                            self.caller_context.borrow()
-                        );
-                    }
-                    // Build the new function name according to the condition values but sorted by 'loop_bucket_order'
-                    let new_name = self
-                        .loop_bucket_order
-                        .borrow()
-                        .iter()
-                        .filter_map(|id| versions_key.get(id))
-                        .fold(old_target.clone(), |acc, c| format!("{}.{}", acc, c));
-                    res.header = new_name.clone();
-                    if DEBUG_LOOP_UNROLL {
-                        println!("[UNROLL][transform_call_bucket] created function {:?}", res);
-                    }
-                    // Store the new function
-                    checked_insert!(
-                        RefMut::map(self.new_functions.borrow_mut(), |m| {
-                            m.entry(old_target.clone()).or_default()
-                        }),
-                        versions_key,
-                        res
-                    );
-                    new_name
-                }
-            };
-            if DEBUG_LOOP_UNROLL {
-                println!(
-                    "[UNROLL][transform_call_bucket] replace call to {} with {}",
-                    bucket.symbol, new_target
-                );
-            }
-            return Ok(CallBucket {
-                id: new_id(),
-                source_file_id: bucket.source_file_id,
-                line: bucket.line,
-                message_id: bucket.message_id,
-                symbol: new_target,
-                argument_types: bucket.argument_types.clone(),
-                arguments: self.transform_instructions_fixed_len(&bucket.arguments)?,
-                arena_size: bucket.arena_size,
-                return_info: self.transform_return_type(&bucket.id, &bucket.return_info)?,
-            }
-            .allocate());
+        // Push the current CallBucket to the context
+        {
+            // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
+            self.current_ctx_chain.borrow_mut().push(bucket.id);
         }
-        self.transform_call_bucket_default(bucket)
+
+        let result = Self::transform_call_bucket_impl(&self, bucket);
+
+        // Pop the current CallBucket from the context
+        {
+            let popped = self.current_ctx_chain.borrow_mut().pop();
+            assert!(popped.is_some_and(|x| x == bucket.id)); // context was not corrupted
+        }
+
+        result
     }
 
     fn transform_loop_bucket(&self, bucket: &LoopBucket) -> Result<InstructionPointer, BadInterp> {
         if DEBUG_LOOP_UNROLL {
             println!("[UNROLL][transform_loop_bucket] {:?}", bucket);
         }
-        // Get from the current 'caller_context' or use 'loop_replacements_top_level'
-        let top_borrow: Ref<UnrolledLoops> = self.loop_replacements_top_level.borrow();
-        let ctx_borrow: Ref<Option<UnrolledLoops>> = self.caller_context.borrow();
-        if let Some(unrolled) = ctx_borrow.as_ref().unwrap_or_else(|| &top_borrow).get(&bucket.id) {
-            return self.transform_block_bucket(unrolled);
+        let node = {
+            // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
+            let ctx_ref = self.current_ctx_chain.borrow();
+            Node::get_node(&self.borrow_observer_result().replacement_context, ctx_ref.as_slice())
+        };
+        if let Some(n) = node {
+            if let Some(bb_id) = Node::get_replacement(&n, &bucket.id) {
+                let bor = self.borrow_observer_result();
+                let bb = bor
+                    .unrolled_block_owner
+                    .get(&bb_id)
+                    .expect("owning storage out of sync with replacement context tree!");
+                return self.transform_block_bucket(bb);
+            }
         }
         self.transform_loop_bucket_default(bucket)
     }
