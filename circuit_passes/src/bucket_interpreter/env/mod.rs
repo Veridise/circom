@@ -218,16 +218,16 @@ impl<'a> Env<'a> {
     }
 
     pub fn new_extracted_func_env(
-        inner: Env<'a>,
+        base: Env<'a>,
         caller: &BucketId,
         remap: ToOriginalLocation,
         arenas: HashSet<FuncArgIdx>,
     ) -> Self {
-        Env::ExtractedFunction(ExtractedFuncEnvData::new(inner, caller, remap, arenas))
+        Env::ExtractedFunction(ExtractedFuncEnvData::new(base, caller, remap, arenas))
     }
 
-    pub fn new_unroll_block_env(inner: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {
-        Env::UnrolledBlock(UnrolledBlockEnvData::new(inner, extractor))
+    pub fn new_unroll_block_env(base: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {
+        Env::UnrolledBlock(UnrolledBlockEnvData::new(base, extractor))
     }
 
     // READ OPERATIONS

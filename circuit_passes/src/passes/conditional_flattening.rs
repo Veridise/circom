@@ -127,14 +127,16 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
             // If there are any conditions that evaluated to a known value, replace the
             //  CallBucket target function with a simplified version of that function.
             if cond_vals.values().any(|e| e.is_some()) {
+                let old_name = &bucket.symbol;
                 // Check if the needed function exists, else create it.
-                let new_target = {
-                    let mut nf = self.new_functions.borrow_mut();
-                    let function_versions = nf.entry(bucket.symbol.clone()).or_default();
-                    if function_versions.contains_key(&cond_vals) {
-                        function_versions[&cond_vals].header.clone()
-                    } else {
-                        let old_name = &bucket.symbol;
+                let cached_name = {
+                    // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
+                    let nf = self.new_functions.borrow();
+                    nf.get(old_name).and_then(|m| m.get(&cond_vals)).map(|e| e.header.clone())
+                };
+                let new_target = match cached_name {
+                    Some(n) => n,
+                    None => {
                         // Set the caller context and then use self.transform_function(..) on the existing
                         //  function to create a new FunctionCode by running this transformer on the existing one.
                         let old_ctx = self.caller_context.replace(Some(cond_vals.clone()));
@@ -154,7 +156,11 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
                             });
                         res.header = new_name.clone();
                         // Store the new function
-                        function_versions.insert(cond_vals, res);
+                        self.new_functions
+                            .borrow_mut()
+                            .entry(old_name.clone())
+                            .or_default()
+                            .insert(cond_vals, res);
                         new_name
                     }
                 };
