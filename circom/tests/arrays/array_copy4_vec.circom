@@ -11,7 +11,7 @@ template Array4(n, m, S) {
 
 component main = Array4(3, 2, [[11,22],[33,44],[55,66]]);
 
-//CHECK-LABEL: define{{.*}} void @..generated..array.param.{{[0-9]+}}([0 x i256]* %lvars){{.*}} {
+//CHECK-LABEL: define{{.*}} void @..generated..array.param.{{[0-9a-zA-Z_\.]+}}([0 x i256]* %lvars){{.*}} {
 //CHECK-NEXT: ..generated..array.param.[[$F_ID_1:[0-9a-zA-Z_\.]+]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY:
