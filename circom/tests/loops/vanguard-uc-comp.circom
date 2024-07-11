@@ -88,7 +88,7 @@ component main = Num2Bits(2);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @Num2Bits_{{[0-9]+}}_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]]){{.*}} {
 //CHECK:      unrolled_loop{{[0-9]+}}:
 //CHECK-NEXT:   %[[T005:[0-9a-zA-Z_\.]+]] = bitcast [4 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %[[T006:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[ARG]], i32 0, i256 0

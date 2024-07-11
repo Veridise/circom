@@ -27,7 +27,7 @@ template KnownFunctionArgs() {
 component main = KnownFunctionArgs();
 
 //CHECK-LABEL: define{{.*}} void @KnownFunctionArgs_{{[0-9]+}}_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]]){{.*}} {
 //// Check storing initial constant values to 'out'
 //CHECK: store{{[0-9]+}}:
 //CHECK:   %[[T1:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %{{.*}}[[ARG]], i32 0, i32 0

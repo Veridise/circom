@@ -68,7 +68,7 @@ component main = UnknownLoopIndex(100);
 
 //// Use the block labels to check that the loop is unrolled
 //CHECK-LABEL: define{{.*}} void @Num2Bits_{{[0-9]+}}_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]]){{.*}} {
 //CHECK-NOT: loop.cond{{.*}}:
 //CHECK-NOT: loop.body{{.*}}:
 //CHECK-NOT: loop.end{{.*}}:
@@ -80,13 +80,13 @@ component main = UnknownLoopIndex(100);
 
 //// Use the block labels to check that no loop related blocks are present
 //CHECK-LABEL: define{{.*}} void @LessThan_{{[0-9]+}}_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]]){{.*}} {
 //CHECK-NOT: {{.*}}loop{{.*}}:
 //CHECK:   }
 
 //// Use the block labels to check that the loop is NOT unrolled
 //CHECK-LABEL: define{{.*}} void @CountDown_{{[0-9]+}}_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]]){{.*}} {
 //CHECK-NOT: unrolled_loop{{.*}}:
 //CHECK: loop.cond{{.*}}:
 //CHECK: loop.body{{.*}}:
@@ -96,6 +96,6 @@ component main = UnknownLoopIndex(100);
 
 //// Use the block labels to check that no loop related blocks are present
 //CHECK-LABEL: define{{.*}} void @UnknownLoopIndex_{{[0-9]+}}_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]]){{.*}} {
 //CHECK-NOT: {{.*}}loop{{.*}}:
 //CHECK:   }

@@ -26,7 +26,7 @@ component main = Fibonacci();
 
 //// Use the block labels to check that the loop is NOT unrolled
 //CHECK-LABEL: define{{.*}} void @Fibonacci_{{[0-9]+}}_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]]){{.*}} {
 //CHECK-NOT: unrolled_loop{{.*}}:
 //CHECK: loop.cond{{.*}}:
 //CHECK: loop.body{{.*}}:
