@@ -29,18 +29,18 @@ component main = CallArgTest();
 //CHECK-NEXT:   br label %branch1
 //CHECK-EMPTY:
 //CHECK-NEXT: branch1:
-//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 0
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T01]], align 4
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T01]], align 4
 //CHECK-NEXT:   %call.fr_lt = call i1 @fr_lt(i256 %[[T02]], i256 7)
 //CHECK-NEXT:   br i1 %call.fr_lt, label %if.then, label %if.else
 //CHECK-EMPTY:
 //CHECK-NEXT: if.then:
-//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
 //CHECK-NEXT:   ret i256* %[[T03]]
 //CHECK-EMPTY:
 //CHECK-NEXT: if.else:
-//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 0
-//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T04]], align 4
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 0
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T04]], align 4
 //CHECK-NEXT:   %call.fr_gt = call i1 @fr_gt(i256 %[[T05]], i256 12)
 //CHECK-NEXT:   br i1 %call.fr_gt, label %if.then1, label %if.else2
 //CHECK-EMPTY:
@@ -48,11 +48,11 @@ component main = CallArgTest();
 //CHECK-NEXT:   unreachable
 //CHECK-EMPTY:
 //CHECK-NEXT: if.then1:
-//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 7
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 7
 //CHECK-NEXT:   ret i256* %[[T06]]
 //CHECK-EMPTY:
 //CHECK-NEXT: if.else2:
-//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 13
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 13
 //CHECK-NEXT:   ret i256* %[[T07]]
 //CHECK-EMPTY:
 //CHECK-NEXT: if.merge3:
@@ -67,12 +67,12 @@ component main = CallArgTest();
 //CHECK-EMPTY:
 //CHECK-NEXT: call1:
 //CHECK-NEXT:   %sum_0_arena = alloca [19 x i256], align 8
-//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = getelementptr [19 x i256], [19 x i256]* %sum_0_arena, i32 0, i32 0
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 6
-//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T02]], align 4
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr [19 x i256], [19 x i256]* %sum_0_arena, i32 0, i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 6
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T02]], align 4
 //CHECK-NEXT:   store i256 %[[T03]], i256* %[[T01]], align 4
-//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_.]+]] = getelementptr [19 x i256], [19 x i256]* %sum_0_arena, i32 0, i32 1
-//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 7
+//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_\.]+]] = getelementptr [19 x i256], [19 x i256]* %sum_0_arena, i32 0, i32 1
+//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 7
 //CHECK-NEXT:   %copy_src_0 = getelementptr i256, i256* %[[SRC_PTR]], i32 0
 //CHECK-NEXT:   %copy_dst_0 = getelementptr i256, i256* %[[DST_PTR]], i32 0
 //CHECK-NEXT:   %copy_val_0 = load i256, i256* %copy_src_0, align 4
@@ -97,8 +97,8 @@ component main = CallArgTest();
 //CHECK-NEXT:   %copy_dst_5 = getelementptr i256, i256* %[[DST_PTR]], i32 5
 //CHECK-NEXT:   %copy_val_5 = load i256, i256* %copy_src_5, align 4
 //CHECK-NEXT:   store i256 %copy_val_5, i256* %copy_dst_5, align 4
-//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_.]+]] = getelementptr [19 x i256], [19 x i256]* %sum_0_arena, i32 0, i32 7
-//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 13
+//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_\.]+]] = getelementptr [19 x i256], [19 x i256]* %sum_0_arena, i32 0, i32 7
+//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 13
 //CHECK-NEXT:   %copy_src_01 = getelementptr i256, i256* %[[SRC_PTR]], i32 0
 //CHECK-NEXT:   %copy_dst_02 = getelementptr i256, i256* %[[DST_PTR]], i32 0
 //CHECK-NEXT:   %copy_val_03 = load i256, i256* %copy_src_01, align 4
@@ -123,8 +123,8 @@ component main = CallArgTest();
 //CHECK-NEXT:   %copy_dst_517 = getelementptr i256, i256* %[[DST_PTR]], i32 5
 //CHECK-NEXT:   %copy_val_518 = load i256, i256* %copy_src_516, align 4
 //CHECK-NEXT:   store i256 %copy_val_518, i256* %copy_dst_517, align 4
-//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_.]+]] = getelementptr [19 x i256], [19 x i256]* %sum_0_arena, i32 0, i32 13
-//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 19
+//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_\.]+]] = getelementptr [19 x i256], [19 x i256]* %sum_0_arena, i32 0, i32 13
+//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 19
 //CHECK-NEXT:   %copy_src_019 = getelementptr i256, i256* %[[SRC_PTR]], i32 0
 //CHECK-NEXT:   %copy_dst_020 = getelementptr i256, i256* %[[DST_PTR]], i32 0
 //CHECK-NEXT:   %copy_val_021 = load i256, i256* %copy_src_019, align 4
@@ -149,9 +149,9 @@ component main = CallArgTest();
 //CHECK-NEXT:   %copy_dst_535 = getelementptr i256, i256* %[[DST_PTR]], i32 5
 //CHECK-NEXT:   %copy_val_536 = load i256, i256* %copy_src_534, align 4
 //CHECK-NEXT:   store i256 %copy_val_536, i256* %copy_dst_535, align 4
-//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_.]+]] = bitcast [19 x i256]* %sum_0_arena to i256*
-//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_.]+]] = call i256* @sum_0(i256* %[[T10]])
-//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = bitcast [19 x i256]* %sum_0_arena to i256*
+//CHECK-NEXT:   %[[SRC_PTR:[0-9a-zA-Z_\.]+]] = call i256* @sum_0(i256* %[[T10]])
+//CHECK-NEXT:   %[[DST_PTR:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT:   %copy_src_037 = getelementptr i256, i256* %[[SRC_PTR]], i32 0
 //CHECK-NEXT:   %copy_dst_038 = getelementptr i256, i256* %[[DST_PTR]], i32 0
 //CHECK-NEXT:   %copy_val_039 = load i256, i256* %copy_src_037, align 4

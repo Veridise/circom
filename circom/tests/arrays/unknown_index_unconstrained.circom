@@ -19,7 +19,7 @@ component main = UnknownIndex();
 //CHECK-LABEL: define{{.*}} i256 @__array_load__0_to_10([0 x i256]* %0, i32 %1) {
 //
 //CHECK-LABEL: define{{.*}} void @UnknownIndex_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
-//CHECK:        %[[T04:[0-9a-zA-Z_.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
-//CHECK:        %[[T03:[0-9a-zA-Z_.]+]] = call i256 @__array_load__0_to_10([0 x i256]* %{{[0-9a-zA-Z_.]+}}, i32 %{{[0-9a-zA-Z_.]+}})
+//CHECK:        %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
+//CHECK:        %[[T03:[0-9a-zA-Z_\.]+]] = call i256 @__array_load__0_to_10([0 x i256]* %{{[0-9a-zA-Z_\.]+}}, i32 %{{[0-9a-zA-Z_\.]+}})
 //CHECK-NEXT:   store i256 %[[T03]], i256* %[[T04]], align 4
 //CHECK-NEXT:   br label %prologue

@@ -77,7 +77,7 @@ component main = Array3(5);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @Array3_0_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9a-zA-Z_.]+]]){{.*}} {
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9a-zA-Z_\.]+]]){{.*}} {
 //CHECK:      unrolled_loop3:
 //CHECK-NEXT:   %3 = bitcast [2 x i256]* %lvars to [0 x i256]*
 //CHECK-NEXT:   %4 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i256 0

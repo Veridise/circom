@@ -34,8 +34,8 @@ template UnknownIndexOverwriteKnown() {
 component main = UnknownIndexOverwriteKnown();
 
 //CHECK-LABEL: define{{.*}} void @UnknownIndexOverwriteKnown_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
-//CHECK:        call void @__assert(i1 %{{[0-9a-zA-Z_.]+}})
-//CHECK:        call void @__assert(i1 %{{[0-9a-zA-Z_.]+}})
+//CHECK:        call void @__assert(i1 %{{[0-9a-zA-Z_\.]+}})
+//CHECK:        call void @__assert(i1 %{{[0-9a-zA-Z_\.]+}})
 //CHECK:        call void @__assert(i1 true)
 //CHECK:        call void @__assert(i1 true)
 //CHECK:        call void @__assert(i1 true)

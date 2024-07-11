@@ -31,4 +31,4 @@ component main = A();
 //CHECK-COUNT-10: call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %{{[0-9]+}}, [0 x i256]* null, i256* %{{[0-9]+}}, i256* %{{[0-9]+}}, i256* %{{[0-9]+}})
 
 //CHECK-LABEL: define{{.*}} void @A_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
-//CHECK: %[[CV_1:[0-9a-zA-Z_.]+]] = call i256* @binop_bool_array_[[$F_ID_2]](i256* %{{[0-9]+}})
+//CHECK: %[[CV_1:[0-9a-zA-Z_\.]+]] = call i256* @binop_bool_array_[[$F_ID_2]](i256* %{{[0-9]+}})
