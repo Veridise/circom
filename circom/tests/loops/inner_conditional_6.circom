@@ -27,7 +27,7 @@ template InnerConditional6(N) {
 component main = InnerConditional6(4);
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]]){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 

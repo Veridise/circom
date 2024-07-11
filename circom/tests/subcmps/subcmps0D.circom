@@ -24,10 +24,10 @@ template SubCmps0D(n) {
 
 component main = SubCmps0D(3);
 
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.F\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.F\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
 //CHECK-SAME: i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %subsig_[[X3:[0-9]+]], i256* %sig_[[X4:[0-9]+]],
 //CHECK-SAME: i256* %sig_[[X5:[0-9]+]], i256* %subsig_[[X6:[0-9]+]], [0 x i256]* %sub_[[X6]], i256* %subc_[[X6]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.F\.T]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9a-zA-Z_\.]+\.F\.T]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:

@@ -44,7 +44,7 @@ component main = EarlyReturn();
 //CHECK-EMPTY: 
 //CHECK-NEXT: unrolled_loop2:
 //CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1:[0-9]+\.F]]([0 x i256]* %[[T02]], [0 x i256]* null)
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1:[0-9a-zA-Z_\.]+\.F]]([0 x i256]* %[[T02]], [0 x i256]* null)
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T03]], [0 x i256]* null)
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*

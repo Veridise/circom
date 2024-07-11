@@ -20,8 +20,8 @@ component main = A(3);
 //	full lines or to remove the "--match-full-lines" option and surround each check with
 //	{{^}} and {{$}} but it gets messy.
 
-//CHECK-LABEL:    define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_{{[0-9]+}}, i256* %sig_{{[0-9]+}}){{.*}} !dbg !4 {
-//CHECK-NEXT:     [[$F_ID_1:..generated..loop.body.[0-9]+]]:
+//CHECK-LABEL:    define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+}}([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_{{[0-9]+}}, i256* %sig_{{[0-9]+}}){{.*}} !dbg !4 {
+//CHECK-NEXT:     [[$F_ID_1:..generated..loop.body.[0-9a-zA-Z_\.]+]]:
 //CHECK-COUNT-01:   {{.*}}, !dbg !7
 //CHECK-EMPTY:
 //CHECK-NEXT:     [[L01:store[0-9]*]]:{{[[:space:]]}}; preds = %[[$F_ID_1]]

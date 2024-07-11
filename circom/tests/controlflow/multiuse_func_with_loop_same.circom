@@ -23,7 +23,7 @@ template MultiUse() {
 component main = MultiUse();
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 

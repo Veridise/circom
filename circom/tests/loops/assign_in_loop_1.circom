@@ -23,10 +23,10 @@ template Num2Bits(n) {
 
 component main = Num2Bits(3);
 
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals, 
 //CHECK-SAME: i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], i256* %subsig_[[X3:[0-9]+]], 
 //CHECK-SAME: [0 x i256]* %sub_[[X3]], i256* %subc_[[X3]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.T]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9a-zA-Z_\.]+\.T]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:

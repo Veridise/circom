@@ -32,8 +32,8 @@ template InnerConditional1(N) {
 
 component main = InnerConditional1(10);
 
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.T([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.T]]:
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9a-zA-Z_\.]+\.T]]:
 //CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true1:
@@ -58,8 +58,8 @@ component main = InnerConditional1(10);
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}.F([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.F]]:
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.F}}([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9a-zA-Z_\.]+\.F]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false1:

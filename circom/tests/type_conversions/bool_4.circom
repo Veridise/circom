@@ -21,7 +21,7 @@ template A() {
 component main = A();
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0, i256* %var_1, i256* %var_2){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0, i256* %var_1, i256* %var_2){{.*}} {
 //CHECK: %call.fr_logic_or = call i1 @fr_logic_or(i1 %{{[0-9]+}}, i1 %{{[0-9]+}})
 //CHECK: %[[VAL:[0-9]+]] = zext i1 %call.fr_logic_or to i256
 //CHECK: store i256 %[[VAL]], i256* %{{[0-9]+}}

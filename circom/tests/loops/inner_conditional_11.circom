@@ -26,9 +26,9 @@ template Poseidon() {
 
 component main = Poseidon();
 
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.T\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %subsig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X2]], i256* %subc_[[X2]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+\.T\.T]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9a-zA-Z_\.]+\.T\.T]]:
 //CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true1:
@@ -58,9 +58,9 @@ component main = Poseidon();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.F\.F}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.F\.F}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %subsig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X2]], i256* %subc_[[X2]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.F\.F]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9a-zA-Z_\.]+\.F\.F]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false1:
@@ -78,9 +78,9 @@ component main = Poseidon();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.F\.T\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.F\.T\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %subsig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X2]], i256* %subc_[[X2]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_3:[0-9]+\.F\.T\.T]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_3:[0-9a-zA-Z_\.]+\.F\.T\.T]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false1:

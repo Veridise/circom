@@ -30,7 +30,7 @@ template runner() {
 component main = runner();
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
+//CHECK-SAME: [[$F_ID_2:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
@@ -57,7 +57,7 @@ component main = runner();
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 

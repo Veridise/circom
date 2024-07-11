@@ -34,9 +34,9 @@ template Caller() {
 
 component main = Caller();
 
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME: i256* %sig_[[X1:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9]+]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9a-zA-Z_\.]+]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
@@ -61,9 +61,9 @@ component main = Caller();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.F}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.F}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME: i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X3:[0-9]+]], i256* %subc_[[X4:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9]+\.F]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9a-zA-Z_\.]+\.F]]:
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
 //CHECK-NEXT: call1:
@@ -103,9 +103,9 @@ component main = Caller();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME: i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X3:[0-9]+]], i256* %subc_[[X4:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_3:[0-9]+\.T]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_3:[0-9a-zA-Z_\.]+\.T]]:
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
 //CHECK-NEXT: call1:

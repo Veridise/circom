@@ -29,7 +29,7 @@ component main = InnerLoops(2);
 //	b[1] = b[1] + a[1];     //extracted function 1; call 2
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_1:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0, i256* %var_1, i256* %sig_2){{.*}} {
+//CHECK-SAME: [[$F_ID_1:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0, i256* %var_1, i256* %sig_2){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK:      loop2:
 //CHECK-NEXT:   br label %loop.cond

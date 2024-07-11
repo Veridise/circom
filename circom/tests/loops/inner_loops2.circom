@@ -35,7 +35,7 @@ template InnerLoops(n) {
 component main = InnerLoops(5);
 
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_5:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
+//CHECK-SAME: [[$F_ID_5:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_5]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
@@ -59,7 +59,7 @@ component main = InnerLoops(5);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_4:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
+//CHECK-SAME: [[$F_ID_4:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_4]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
@@ -83,7 +83,7 @@ component main = InnerLoops(5);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_3:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
+//CHECK-SAME: [[$F_ID_3:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_3]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
@@ -107,7 +107,7 @@ component main = InnerLoops(5);
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME: [[$F_ID_2:[0-9]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
+//CHECK-SAME: [[$F_ID_2:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %sig_0){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
