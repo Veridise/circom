@@ -15,8 +15,9 @@ template Caller() {
 
 component main = Caller();
 
-//CHECK-LABEL: define{{.*}} i256 @factorial_{{[0-9]+}}(i256* %0){{.*}} {
-//CHECK-NEXT: factorial_0:
+//CHECK-LABEL: define{{.*}} i256 @factorial_
+//CHECK-SAME: [[$F_ID_F:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
+//CHECK-NEXT: factorial_[[$F_ID_F]]:
 //CHECK-NEXT:   br label %branch1
 //CHECK-EMPTY: 
 //CHECK-NEXT: branch1:
@@ -46,7 +47,7 @@ component main = Caller();
 //CHECK-NEXT:   %[[T11:[0-9a-zA-Z_\.]+]] = call i256 @fr_sub(i256 %[[T10]], i256 1)
 //CHECK-NEXT:   store i256 %[[T11]], i256* %[[T08]], align 4
 //CHECK-NEXT:   %[[T12:[0-9a-zA-Z_\.]+]] = bitcast [2 x i256]* %[[A01]] to i256*
-//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = call i256 @factorial_0(i256* %[[T12]])
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = call i256 @factorial_[[$F_ID_F]](i256* %[[T12]])
 //CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
 //CHECK-NEXT:   store i256 %[[T13]], i256* %[[T14]], align 4
 //CHECK-NEXT:   br label %return6
@@ -73,7 +74,7 @@ component main = Caller();
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T02]], align 4
 //CHECK-NEXT:   store i256 %[[T03]], i256* %[[T01]], align 4
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = bitcast [2 x i256]* %[[A01]] to i256*
-//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = call i256 @factorial_0(i256* %[[T04]])
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = call i256 @factorial_[[$F_ID_F]](i256* %[[T04]])
 //CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT:   store i256 %[[T05]], i256* %[[T06]], align 4
 //CHECK-NEXT:   br label %prologue

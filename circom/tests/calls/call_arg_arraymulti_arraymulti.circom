@@ -53,9 +53,9 @@ component main = CallArgTest();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} i256 @sum_{{[0-9\.]+}}
+//CHECK-LABEL: define{{.*}} i256 @sum_{{[0-9a-zA-Z_\.]+}}
 //CHECK-SAME: (i256* %[[T00:[0-9a-zA-Z_\.]+]]){{.*}} {
-//CHECK-NEXT: [[$FUN_NAME:sum_[0-9\.]+]]:
+//CHECK-NEXT: [[$FUN_NAME:sum_[0-9a-zA-Z_\.]+]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY:
 //CHECK-NEXT: store1:

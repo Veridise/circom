@@ -15,8 +15,9 @@ template CallArgTest() {
 
 component main = CallArgTest();
 
-//CHECK-LABEL: define{{.*}} i256 @sum_0(i256* %0){{.*}} {
-//CHECK-NEXT: sum_0:
+//CHECK-LABEL: define{{.*}} i256 @sum_
+//CHECK-SAME: [[$F_ID_S:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
+//CHECK-NEXT: sum_[[$F_ID_S]]:
 //CHECK-NEXT:   br label %return1
 //CHECK-EMPTY:
 //CHECK-NEXT: return1:
@@ -67,7 +68,7 @@ component main = CallArgTest();
 //CHECK-NEXT:   %[[Y_PTR:[0-9a-zA-Z_\.]+]] = getelementptr [6 x i256], [6 x i256]* %[[ARENA]], i32 0, i32 5
 //CHECK-NEXT:   store i256 99, i256* %[[Y_PTR]]
 //CHECK-NEXT:   %[[ARENA_PTR:.*]] = bitcast [6 x i256]* %[[ARENA]] to i256*
-//CHECK-NEXT:   %call.[[SUM:sum_[0-9]+]] = call i256 @[[SUM]](i256* %[[ARENA_PTR]])
+//CHECK-NEXT:   %[[C1:[0-9a-zA-Z_\.]+]] = call i256 @sum_[[$F_ID_S]](i256* %[[ARENA_PTR]])
 //CHECK-NEXT:   %[[OUT:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[ARG]], i32 0, i32 0
-//CHECK-NEXT:   store i256 %call.[[SUM]], i256* %[[OUT]]
+//CHECK-NEXT:   store i256 %[[C1]], i256* %[[OUT]]
 //CHECK-NEXT:   br label %prologue

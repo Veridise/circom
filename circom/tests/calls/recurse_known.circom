@@ -18,8 +18,8 @@ template FnAssign() {
 
 component main = FnAssign();
 
-//CHECK-LABEL: define{{.*}} i256 @Recurse_{{[0-9]+}}(i256* %0){{.*}} {
-//CHECK-NEXT: [[$F_ID_1:Recurse_[0-9]+]]:
+//CHECK-LABEL: define{{.*}} i256 @Recurse_{{[0-9a-zA-Z_\.]+}}(i256* %0){{.*}} {
+//CHECK-NEXT: [[$F_ID_1:Recurse_[0-9a-zA-Z_\.]+]]:
 //CHECK-NEXT:   br label %branch1
 //CHECK-EMPTY: 
 //CHECK-NEXT: branch1:
@@ -62,8 +62,8 @@ component main = FnAssign();
 //CHECK-NEXT:   ret i256 %[[T17]]
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} i256 @Recurse_{{[0-9]+\.F}}(i256* %0){{.*}} {
-//CHECK-NEXT: [[$F_ID_2:Recurse_[0-9]+\.F]]:
+//CHECK-LABEL: define{{.*}} i256 @Recurse_{{[0-9a-zA-Z_\.]+\.F}}(i256* %0){{.*}} {
+//CHECK-NEXT: [[$F_ID_2:Recurse_[0-9a-zA-Z_\.]+\.F]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false1:
@@ -107,7 +107,7 @@ component main = FnAssign();
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr [3 x i256], [3 x i256]* %[[A01]], i32 0, i32 1
 //CHECK-NEXT:   store i256 20, i256* %[[T04]], align 4
 //CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = bitcast [3 x i256]* %[[A01]] to i256*
-//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = call i256 @[[$F_ID_1]].F(i256* %[[T05]])
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = call i256 @[[$F_ID_2]](i256* %[[T05]])
 //CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT:   store i256 %[[T06]], i256* %[[T07]], align 4
 //CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T07]], align 4

@@ -33,8 +33,9 @@ template EarlyReturn() {
 
 component main = EarlyReturn();
 
-//CHECK-LABEL: define{{.*}} i256 @noEarlyReturnFn_{{[0-9\.]+}}(i256* %0){{.*}} {
-//CHECK-NEXT: noEarlyReturnFn_[[$F_ID_2:[0-9\.]+]]:
+//CHECK-LABEL: define{{.*}} i256 @noEarlyReturnFn_
+//CHECK-SAME: [[$F_ID_2:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
+//CHECK-NEXT: noEarlyReturnFn_[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
@@ -62,8 +63,9 @@ component main = EarlyReturn();
 //CHECK-NEXT:   ret i256 %[[T08]]
 //CHECK-NEXT: }
 
-//CHECK-LABEL: define{{.*}} i256 @earlyReturnFn_{{[0-9]+\.T}}(i256* %0){{.*}} {
-//CHECK-NEXT: earlyReturnFn_[[$F_ID_3:[0-9]+\.T]]:
+//CHECK-LABEL: define{{.*}} i256 @earlyReturnFn_
+//CHECK-SAME: [[$F_ID_3:[0-9a-zA-Z_\.]+\.T]](i256* %0){{.*}} {
+//CHECK-NEXT: earlyReturnFn_[[$F_ID_3]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:

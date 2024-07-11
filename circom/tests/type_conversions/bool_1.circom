@@ -15,8 +15,8 @@ template A(x) {
 
 component main = A(5);
 
-//CHECK-LABEL: define{{.*}} i256 @binop_comp_{{[0-9]+}}
-//CHECK-SAME: (i256* %0)
+//CHECK-LABEL: define{{.*}} i256 @binop_comp_
+//CHECK-SAME: [[$F_ID:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
 //CHECK: %call.fr_gt = call i1 @fr_gt(i256 %{{[0-9]+}}, i256 %{{[0-9]+}})
 //CHECK: %[[RET:[0-9a-zA-Z_\.]+]] = zext i1 %call.fr_gt to i256
 //CHECK: ret i256 %[[RET]]
