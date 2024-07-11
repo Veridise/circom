@@ -42,8 +42,8 @@ component main = CallArgTest();
 //CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]]){{.*}} {
 //CHECK:      call1:
 //CHECK-NEXT:   %[[ARENA:sum_.*_arena]] = alloca [4 x i256]
-//CHECK-NEXT:   %[[DST:[0-9]+]] = getelementptr [4 x i256], [4 x i256]* %[[ARENA]], i32 0, i32 0
-//CHECK-NEXT:   %[[SRC:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[ARG]], i32 0, i32 1
+//CHECK-NEXT:   %[[DST:[0-9a-zA-Z_\.]+]] = getelementptr [4 x i256], [4 x i256]* %[[ARENA]], i32 0, i32 0
+//CHECK-NEXT:   %[[SRC:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[ARG]], i32 0, i32 1
 //CHECK-NEXT:   %copy_src_0 = getelementptr i256, i256* %[[SRC]], i32 0
 //CHECK-NEXT:   %copy_dst_0 = getelementptr i256, i256* %[[DST]], i32 0
 //CHECK-NEXT:   %copy_val_0 = load i256, i256* %copy_src_0, align 4
@@ -62,6 +62,6 @@ component main = CallArgTest();
 //CHECK-NEXT:   store i256 %copy_val_3, i256* %copy_dst_3, align 4
 //CHECK-NEXT:   %[[ARENA_PTR:.*]] = bitcast [4 x i256]* %[[ARENA]] to i256*
 //CHECK-NEXT:   %call.[[SUM:sum_[0-9]+]] = call i256 @[[SUM]](i256* %[[ARENA_PTR]])
-//CHECK-NEXT:   %[[OUT:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %[[ARG]], i32 0, i32 0
+//CHECK-NEXT:   %[[OUT:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[ARG]], i32 0, i32 0
 //CHECK-NEXT:   store i256 %call.[[SUM]], i256* %[[OUT]]
 //CHECK-NEXT:   br label %prologue

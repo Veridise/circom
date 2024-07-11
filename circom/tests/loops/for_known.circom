@@ -27,6 +27,6 @@ component main = ForKnown(10);
 //CHECK-NOT: loop.end{{.*}}:
 //// Check that final value stored to 'out' is computed correctly via unrolling
 //CHECK: store{{[0-9]+}}:
-//CHECK:   %[[T:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %{{.*}}[[ARG]], i32 0, i32 0
+//CHECK:   %[[T:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %{{.*}}[[ARG]], i32 0, i32 0
 //CHECK:   store i256 55, i256* %{{.*}}[[T]], align 4
 //CHECK:   }
