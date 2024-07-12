@@ -32,9 +32,11 @@ macro_rules! with_updated_base {
 
 impl Display for ExtractedFuncEnvData<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ExtractedFuncEnv{{")?;
-        self.base.fmt(f)?;
-        write!(f, "}}")
+        write!(
+            f,
+            "ExtractedFuncEnv{{\n  caller_stack = {:?}\n  remap = {:?}\n  arenas = {:?}\n  base = {:?}\n}}",
+            self.caller_stack, self.remap, self.arenas, self.base,
+        )
     }
 }
 
@@ -101,8 +103,12 @@ impl<'a> ExtractedFuncEnvData<'a> {
     pub fn get_subcmp_signal(&self, subcmp_idx: usize, signal_idx: usize) -> Value {
         let res = match self.remap.get(&subcmp_idx) {
             None => {
-                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
-                assert!(self.arenas.contains(&subcmp_idx));
+                //ASSERT: All parameters besides ArgIndex::SubCmp 'arena' parameters are in 'self.remap'.
+                assert!(
+                    self.arenas.contains(&subcmp_idx),
+                    "Index not remapped and not an arena parameter: {}",
+                    subcmp_idx
+                );
                 unreachable!();
             }
             Some((loc, idx)) => {
@@ -138,8 +144,12 @@ impl<'a> ExtractedFuncEnvData<'a> {
     pub fn get_subcmp_name(&self, subcmp_idx: usize) -> &String {
         match self.remap.get(&subcmp_idx) {
             None => {
-                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
-                assert!(self.arenas.contains(&subcmp_idx));
+                //ASSERT: All parameters besides ArgIndex::SubCmp 'arena' parameters are in 'self.remap'.
+                assert!(
+                    self.arenas.contains(&subcmp_idx),
+                    "Index not remapped and not an arena parameter: {}",
+                    subcmp_idx
+                );
                 unreachable!();
             }
             Some((loc, idx)) => {
@@ -172,8 +182,12 @@ impl<'a> ExtractedFuncEnvData<'a> {
     pub fn get_subcmp_template_id(&self, subcmp_idx: usize) -> usize {
         match self.remap.get(&subcmp_idx) {
             None => {
-                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
-                assert!(self.arenas.contains(&subcmp_idx));
+                //ASSERT: All parameters besides ArgIndex::SubCmp 'arena' parameters are in 'self.remap'.
+                assert!(
+                    self.arenas.contains(&subcmp_idx),
+                    "Index not remapped and not an arena parameter: {}",
+                    subcmp_idx
+                );
                 unreachable!();
             }
             Some((loc, idx)) => {
@@ -210,8 +224,12 @@ impl<'a> ExtractedFuncEnvData<'a> {
     pub fn subcmp_counter_is_zero(&self, subcmp_idx: usize) -> bool {
         match self.remap.get(&subcmp_idx) {
             None => {
-                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
-                assert!(self.arenas.contains(&subcmp_idx));
+                //ASSERT: All parameters besides ArgIndex::SubCmp 'arena' parameters are in 'self.remap'.
+                assert!(
+                    self.arenas.contains(&subcmp_idx),
+                    "Index not remapped and not an arena parameter: {}",
+                    subcmp_idx
+                );
                 // This will be reached for the StoreBucket that generates a call to the "_run" function.
                 return true; // True to execute the run_subcmp function
             }
@@ -241,8 +259,12 @@ impl<'a> ExtractedFuncEnvData<'a> {
     pub fn subcmp_counter_equal_to(&self, subcmp_idx: usize, value: usize) -> bool {
         let res = match self.remap.get(&subcmp_idx) {
             None => {
-                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
-                assert!(self.arenas.contains(&subcmp_idx));
+                //ASSERT: All parameters besides ArgIndex::SubCmp 'arena' parameters are in 'self.remap'.
+                assert!(
+                    self.arenas.contains(&subcmp_idx),
+                    "Index not remapped and not an arena parameter: {}",
+                    subcmp_idx
+                );
                 unreachable!();
             }
             Some((loc, _)) => {
@@ -314,8 +336,12 @@ impl<'a> ExtractedFuncEnvData<'a> {
         //  into the proper reference (reversing ExtractedFunctionLocationUpdater).
         let new_env = match self.remap.get(&subcmp_idx) {
             None => {
-                //ASSERT: ArgIndex::SubCmp 'arena' parameters are not in 'remap' but all others are.
-                assert!(self.arenas.contains(&subcmp_idx));
+                //ASSERT: All parameters besides ArgIndex::SubCmp 'arena' parameters are in 'self.remap'.
+                assert!(
+                    self.arenas.contains(&subcmp_idx),
+                    "Index not remapped and not an arena parameter: {}",
+                    subcmp_idx
+                );
                 // This will be reached for the StoreBucket that generates a call to the "_run" function.
                 return Ok(self); // Nothing needs to be done.
             }
