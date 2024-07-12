@@ -25,8 +25,8 @@ component main = C();
 //	full lines or to remove the "--match-full-lines" option and surround each check with
 //	{{^}} and {{$}} but it gets messy.
 
-//CHECK-LABEL:    define{{.*}} i256 @negative_0(i256* %{{[[:alnum:]_]+}}){{.*}} !dbg !4 {
-//CHECK-NEXT:     [[L1:[[:alnum:]_]+]]:
+//CHECK-LABEL:    define{{.*}} i256 @negative_{{[[:alnum:]_\.]+}}(i256* %{{[[:alnum:]_]+}}){{.*}} !dbg !4 {
+//CHECK-NEXT:     [[L1:[[:alnum:]_\.]+]]:
 //CHECK-COUNT-01:   {{.*}}, !dbg !7
 //CHECK-EMPTY:
 //CHECK-NEXT:     [[L2:branch[0-9]*]]:{{[[:space:]]}}; preds = %[[L1]]
@@ -62,7 +62,7 @@ component main = C();
 //CHECK-LABEL:    !llvm.dbg.cu = !{!1}
 //CHECK:          !1 = distinct !DICompileUnit({{.*}}file: !2{{.*}})
 //CHECK:          !2 = !DIFile(filename:{{.*}}call_and_return.circom{{.*}})
-//CHECK:          !4 = distinct !DISubprogram(name: "negative", linkageName: "negative_0", scope: null, file: !2, line: 11, {{.*}}unit: !1{{.*}})
+//CHECK:          !4 = distinct !DISubprogram(name: "negative", linkageName: "negative_{{[[:alnum:]_\.]+}}", scope: null, file: !2, line: 11, {{.*}}unit: !1{{.*}})
 //CHECK:          !7 = !DILocation(line: 11, scope: !4)
 //CHECK:          !8 = !DILocation(line: 12, scope: !4)
 //CHECK:          !9 = !DILocation(line: 13, scope: !4)

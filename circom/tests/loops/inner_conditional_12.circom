@@ -28,120 +28,215 @@ template InnerConditional12(N) {
 
 component main = InnerConditional12(4);
 
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.T}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
+//CHECK-SAME:  [[$F_ID_4:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %subsig_[[X2:[0-9]+]]){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_4]]:
+//CHECK-NEXT:   br label %store1
+//CHECK-EMPTY: 
+//CHECK-NEXT: store1:
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subsig_[[X1]], i32 0
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subsig_[[X2]], i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T01]], align 4
+//CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T02]], i256 999)
+//CHECK-NEXT:   store i256 %[[T98]], i256* %[[T00]], align 4
+//CHECK-NEXT:   br label %store2
+//CHECK-EMPTY: 
+//CHECK-NEXT: store2:
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T04]], align 4
+//CHECK-NEXT:   %[[T99:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T05]], i256 1)
+//CHECK-NEXT:   store i256 %[[T99]], i256* %[[T03]], align 4
+//CHECK-NEXT:   br label %return3
+//CHECK-EMPTY: 
+//CHECK-NEXT: return3:
+//CHECK-NEXT:   ret void
+//CHECK-NEXT: }
+//
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
+//CHECK-SAME:  [[$F_ID_5:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-SAME:  i256* %subsig_[[X1:[0-9]+]], i256* %subsig_[[X2:[0-9]+]]){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_5]]:
+//CHECK-NEXT:   br label %store1
+//CHECK-EMPTY: 
+//CHECK-NEXT: store1:
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subsig_[[X1]], i32 0
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subsig_[[X2]], i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T01]], align 4
+//CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T02]], i256 888)
+//CHECK-NEXT:   store i256 %[[T98]], i256* %[[T00]], align 4
+//CHECK-NEXT:   br label %store2
+//CHECK-EMPTY: 
+//CHECK-NEXT: store2:
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T04]], align 4
+//CHECK-NEXT:   %[[T99:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T05]], i256 1)
+//CHECK-NEXT:   store i256 %[[T99]], i256* %[[T03]], align 4
+//CHECK-NEXT:   br label %return3
+//CHECK-EMPTY: 
+//CHECK-NEXT: return3:
+//CHECK-NEXT:   ret void
+//CHECK-NEXT: }
+//
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
+//CHECK-SAME:  [[$F_ID_1:[0-9a-zA-Z_\.]+\.T]]([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME:  i256* %var_[[X1:[0-9]+]], i256* %var_[[X2:[0-9]+]], i256* %var_[[X3:[0-9]+]], i256* %var_[[X4:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1:[0-9a-zA-Z_\.]+\.T]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
 //CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true1:
-//CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
-//CHECK-NEXT:   store i256 0, i256* %0, align 4
-//CHECK-NEXT:   br label %loop.cond
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
+//CHECK-NEXT:   store i256 0, i256* %[[T00]], align 4
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X1]], i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T01]] to [0 x i256]*
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T02]], i32 0, i256 0
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X2]], i32 0
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T04]] to [0 x i256]*
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T05]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_4]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %[[T03]], i256* %[[T06]])
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X1]], i32 0
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T07]] to [0 x i256]*
+//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T08]], i32 0, i256 0
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X2]], i32 0
+//CHECK-NEXT:   %[[T11:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T10]] to [0 x i256]*
+//CHECK-NEXT:   %[[T12:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T11]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_4]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %[[T09]], i256* %[[T12]])
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X1]], i32 0
+//CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T13]] to [0 x i256]*
+//CHECK-NEXT:   %[[T15:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T14]], i32 0, i256 0
+//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X2]], i32 0
+//CHECK-NEXT:   %[[T17:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T16]] to [0 x i256]*
+//CHECK-NEXT:   %[[T18:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T17]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_4]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %[[T15]], i256* %[[T18]])
+//CHECK-NEXT:   %[[T19:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X1]], i32 0
+//CHECK-NEXT:   %[[T20:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T19]] to [0 x i256]*
+//CHECK-NEXT:   %[[T21:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T20]], i32 0, i256 0
+//CHECK-NEXT:   %[[T22:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X2]], i32 0
+//CHECK-NEXT:   %[[T23:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T22]] to [0 x i256]*
+//CHECK-NEXT:   %[[T24:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T23]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_4]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %[[T21]], i256* %[[T24]])
+//CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
-//CHECK-NEXT: loop.cond:
-//CHECK-NEXT:   %1 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
-//CHECK-NEXT:   %2 = load i256, i256* %1, align 4
-//CHECK-NEXT:   %call.fr_lt = call i1 @fr_lt(i256 %2, i256 4)
-//CHECK-NEXT:   br i1 %call.fr_lt, label %loop.body, label %loop.end
+//CHECK-NEXT: store2:
+//CHECK-NEXT:   %[[T25:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
+//CHECK-NEXT:   %[[T26:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
+//CHECK-NEXT:   %[[T27:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T26]], align 4
+//CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T27]], i256 1)
+//CHECK-NEXT:   store i256 %[[T98]], i256* %[[T25]], align 4
+//CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
-//CHECK-NEXT: loop.body:
-//CHECK-NEXT:   %3 = getelementptr i256, i256* %var_[[X1]], i32 0
-//CHECK-NEXT:   %4 = getelementptr i256, i256* %var_[[X2]], i32 0
-//CHECK-NEXT:   %5 = load i256, i256* %4, align 4
-//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %5, i256 999)
-//CHECK-NEXT:   store i256 %call.fr_add, i256* %3, align 4
-//CHECK-NEXT:   %6 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
-//CHECK-NEXT:   %7 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
-//CHECK-NEXT:   %8 = load i256, i256* %7, align 4
-//CHECK-NEXT:   %call.fr_add1 = call i256 @fr_add(i256 %8, i256 1)
-//CHECK-NEXT:   store i256 %call.fr_add1, i256* %6, align 4
-//CHECK-NEXT:   br label %loop.cond
-//CHECK-EMPTY: 
-//CHECK-NEXT: loop.end:
-//CHECK-NEXT:   br label %store5
-//CHECK-EMPTY: 
-//CHECK-NEXT: store5:
-//CHECK-NEXT:   %9 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
-//CHECK-NEXT:   %10 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
-//CHECK-NEXT:   %11 = load i256, i256* %10, align 4
-//CHECK-NEXT:   %call.fr_add2 = call i256 @fr_add(i256 %11, i256 1)
-//CHECK-NEXT:   store i256 %call.fr_add2, i256* %9, align 4
-//CHECK-NEXT:   br label %return6
-//CHECK-EMPTY: 
-//CHECK-NEXT: return6:
+//CHECK-NEXT: return3:
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
-
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.F}}([0 x i256]* %lvars, [0 x i256]* %signals,
+//
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
+//CHECK-SAME:  [[$F_ID_2:[0-9a-zA-Z_\.]+\.F]]([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME:  i256* %var_[[X1:[0-9]+]], i256* %var_[[X2:[0-9]+]], i256* %var_[[X3:[0-9]+]], i256* %var_[[X4:[0-9]+]]){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9a-zA-Z_\.]+\.F]]:
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
 //CHECK-NEXT:   br label %fold_false1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false1:
-//CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
-//CHECK-NEXT:   store i256 0, i256* %0, align 4
-//CHECK-NEXT:   br label %loop.cond
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
+//CHECK-NEXT:   store i256 0, i256* %[[T00]], align 4
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X3]], i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T01]] to [0 x i256]*
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T02]], i32 0, i256 0
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X4]], i32 0
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T04]] to [0 x i256]*
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T05]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_5]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %[[T03]], i256* %[[T06]])
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X3]], i32 0
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T07]] to [0 x i256]*
+//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T08]], i32 0, i256 0
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X4]], i32 0
+//CHECK-NEXT:   %[[T11:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T10]] to [0 x i256]*
+//CHECK-NEXT:   %[[T12:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T11]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_5]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %[[T09]], i256* %[[T12]])
+//CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
-//CHECK-NEXT: loop.cond:
-//CHECK-NEXT:   %1 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
-//CHECK-NEXT:   %2 = load i256, i256* %1, align 4
-//CHECK-NEXT:   %3 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
-//CHECK-NEXT:   %4 = load i256, i256* %3, align 4
-//CHECK-NEXT:   %call.fr_lt = call i1 @fr_lt(i256 %2, i256 %4)
-//CHECK-NEXT:   br i1 %call.fr_lt, label %loop.body, label %loop.end
+//CHECK-NEXT: store2:
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
+//CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
+//CHECK-NEXT:   %[[T15:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T14]], align 4
+//CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T15]], i256 1)
+//CHECK-NEXT:   store i256 %[[T98]], i256* %[[T13]], align 4
+//CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
-//CHECK-NEXT: loop.body:
-//CHECK-NEXT:   %5 = getelementptr i256, i256* %var_[[X3]], i32 0
-//CHECK-NEXT:   %6 = getelementptr i256, i256* %var_[[X4]], i32 0
-//CHECK-NEXT:   %7 = load i256, i256* %6, align 4
-//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %7, i256 888)
-//CHECK-NEXT:   store i256 %call.fr_add, i256* %5, align 4
-//CHECK-NEXT:   %8 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
-//CHECK-NEXT:   %9 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
-//CHECK-NEXT:   %10 = load i256, i256* %9, align 4
-//CHECK-NEXT:   %call.fr_add1 = call i256 @fr_add(i256 %10, i256 1)
-//CHECK-NEXT:   store i256 %call.fr_add1, i256* %8, align 4
-//CHECK-NEXT:   br label %loop.cond
-//CHECK-EMPTY: 
-//CHECK-NEXT: loop.end:
-//CHECK-NEXT:   br label %store5
-//CHECK-EMPTY: 
-//CHECK-NEXT: store5:
-//CHECK-NEXT:   %11 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
-//CHECK-NEXT:   %12 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
-//CHECK-NEXT:   %13 = load i256, i256* %12, align 4
-//CHECK-NEXT:   %call.fr_add2 = call i256 @fr_add(i256 %13, i256 1)
-//CHECK-NEXT:   store i256 %call.fr_add2, i256* %11, align 4
-//CHECK-NEXT:   br label %return6
-//CHECK-EMPTY: 
-//CHECK-NEXT: return6:
+//CHECK-NEXT: return3:
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 
+//
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
+//CHECK-SAME:  [[$F_ID_3:[0-9a-zA-Z_\.]+\.F]]([0 x i256]* %lvars, [0 x i256]* %signals,
+//CHECK-SAME:  i256* %var_[[X1:[0-9]+]], i256* %var_[[X2:[0-9]+]], i256* %var_[[X3:[0-9]+]], i256* %var_[[X4:[0-9]+]]){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_3]]:
+//CHECK-NEXT:   br label %fold_false1
+//CHECK-EMPTY: 
+//CHECK-NEXT: fold_false1:
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 6
+//CHECK-NEXT:   store i256 0, i256* %[[T00]], align 4
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X3]], i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T01]] to [0 x i256]*
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T02]], i32 0, i256 0
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X4]], i32 0
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T04]] to [0 x i256]*
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T05]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_5]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %[[T03]], i256* %[[T06]])
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X3]], i32 0
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T07]] to [0 x i256]*
+//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T08]], i32 0, i256 0
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X4]], i32 0
+//CHECK-NEXT:   %[[T11:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T10]] to [0 x i256]*
+//CHECK-NEXT:   %[[T12:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T11]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_5]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %[[T09]], i256* %[[T12]])
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X3]], i32 0
+//CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T13]] to [0 x i256]*
+//CHECK-NEXT:   %[[T15:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T14]], i32 0, i256 0
+//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_[[X4]], i32 0
+//CHECK-NEXT:   %[[T17:[0-9a-zA-Z_\.]+]] = bitcast i256* %[[T16]] to [0 x i256]*
+//CHECK-NEXT:   %[[T18:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T17]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_5]]([0 x i256]* %lvars, [0 x i256]* %signals, i256* %[[T15]], i256* %[[T18]])
+//CHECK-NEXT:   br label %store2
+//CHECK-EMPTY: 
+//CHECK-NEXT: store2:
+//CHECK-NEXT:   %[[T19:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
+//CHECK-NEXT:   %[[T20:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
+//CHECK-NEXT:   %[[T21:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T20]], align 4
+//CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T21]], i256 1)
+//CHECK-NEXT:   store i256 %[[T98]], i256* %[[T19]], align 4
+//CHECK-NEXT:   br label %return3
+//CHECK-EMPTY: 
+//CHECK-NEXT: return3:
+//CHECK-NEXT:   ret void
+//CHECK-NEXT: }
+//
 //CHECK-LABEL: define{{.*}} void @InnerConditional12_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK:      unrolled_loop7:
-//CHECK-NEXT:   %7 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %8 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %9 = getelementptr [0 x i256], [0 x i256]* %8, i32 0, i256 1
-//CHECK-NEXT:   %10 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %11 = getelementptr [0 x i256], [0 x i256]* %10, i32 0, i256 1
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %7, [0 x i256]* %0, i256* %9, i256* %11, i256* null, i256* null)
-//CHECK-NEXT:   %12 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %13 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %14 = getelementptr [0 x i256], [0 x i256]* %13, i32 0, i256 2
-//CHECK-NEXT:   %15 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %16 = getelementptr [0 x i256], [0 x i256]* %15, i32 0, i256 2
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %12, [0 x i256]* %0, i256* %14, i256* %16, i256* null, i256* null)
-//CHECK-NEXT:   %17 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %18 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %19 = getelementptr [0 x i256], [0 x i256]* %18, i32 0, i256 3
-//CHECK-NEXT:   %20 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %21 = getelementptr [0 x i256], [0 x i256]* %20, i32 0, i256 3
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %17, [0 x i256]* %0, i256* null, i256* null, i256* %19, i256* %21)
-//CHECK-NEXT:   %22 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %23 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %24 = getelementptr [0 x i256], [0 x i256]* %23, i32 0, i256 4
-//CHECK-NEXT:   %25 = bitcast [7 x i256]* %lvars to [0 x i256]*
-//CHECK-NEXT:   %26 = getelementptr [0 x i256], [0 x i256]* %25, i32 0, i256 4
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %22, [0 x i256]* %0, i256* null, i256* null, i256* %24, i256* %26)
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T08]], i32 0, i256 1
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T11:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T10]], i32 0, i256 1
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T07]], [0 x i256]* %0, i256* %[[T09]], i256* %[[T11]], i256* null, i256* null)
+//CHECK-NEXT:   %[[T12:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T13]], i32 0, i256 2
+//CHECK-NEXT:   %[[T15:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T15]], i32 0, i256 2
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T12]], [0 x i256]* %0, i256* %[[T14]], i256* %[[T16]], i256* null, i256* null)
+//CHECK-NEXT:   %[[T17:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T18:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T19:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T18]], i32 0, i256 3
+//CHECK-NEXT:   %[[T20:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T21:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T20]], i32 0, i256 3
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_2]]([0 x i256]* %[[T17]], [0 x i256]* %0, i256* null, i256* null, i256* %[[T19]], i256* %[[T21]])
+//CHECK-NEXT:   %[[T22:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T23:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T24:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T23]], i32 0, i256 4
+//CHECK-NEXT:   %[[T25:[0-9a-zA-Z_\.]+]] = bitcast [7 x i256]* %lvars to [0 x i256]*
+//CHECK-NEXT:   %[[T26:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T25]], i32 0, i256 4
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_3]]([0 x i256]* %[[T22]], [0 x i256]* %0, i256* null, i256* null, i256* %[[T24]], i256* %[[T26]])
 //CHECK-NEXT:   br label %store8

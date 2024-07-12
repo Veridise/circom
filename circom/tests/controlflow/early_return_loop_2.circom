@@ -19,28 +19,29 @@ template EarlyReturn() {
 
 component main = EarlyReturn();
 
-//CHECK-LABEL: define{{.*}} i256 @earlyReturnFn_0(i256* %0){{.*}} {
-//CHECK-NEXT: earlyReturnFn_0:
+//CHECK-LABEL: define{{.*}} i256 @earlyReturnFn_
+//CHECK-SAME: [[$F_ID:[0-9a-zA-Z_\.]+]](i256* %[[ARENA:[0-9a-zA-Z_\.]+]]){{.*}} {
+//CHECK-NEXT: earlyReturnFn_[[$F_ID]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %1 = getelementptr i256, i256* %0, i32 1
-//CHECK-NEXT:   store i256 0, i256* %1, align 4
+//CHECK-NEXT:   %[[T1:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[ARENA]], i32 1
+//CHECK-NEXT:   store i256 0, i256* %[[T1]], align 4
 //CHECK-NEXT:   br label %loop2
 //CHECK-EMPTY: 
 //CHECK-NEXT: loop2:
 //CHECK-NEXT:   br label %loop.cond
 //CHECK-EMPTY: 
 //CHECK-NEXT: loop.cond:
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %0, i32 1
-//CHECK-NEXT:   %3 = load i256, i256* %2, align 4
-//CHECK-NEXT:   %call.fr_lt = call i1 @fr_lt(i256 %3, i256 6)
-//CHECK-NEXT:   br i1 %call.fr_lt, label %loop.body, label %loop.end
+//CHECK-NEXT:   %[[T2:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[ARENA]], i32 1
+//CHECK-NEXT:   %[[T3:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T2]], align 4
+//CHECK-NEXT:   %[[T9:[0-9a-zA-Z_\.]+]] = call i1 @fr_lt(i256 %[[T3]], i256 6)
+//CHECK-NEXT:   br i1 %[[T9]], label %loop.body, label %loop.end
 //CHECK-EMPTY: 
 //CHECK-NEXT: loop.body:
-//CHECK-NEXT:   %4 = getelementptr i256, i256* %0, i32 0
-//CHECK-NEXT:   %5 = load i256, i256* %4, align 4
-//CHECK-NEXT:   ret i256 %5
+//CHECK-NEXT:   %[[T4:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[ARENA]], i32 0
+//CHECK-NEXT:   %[[T5:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T4]], align 4
+//CHECK-NEXT:   ret i256 %[[T5]]
 //CHECK-EMPTY: 
 //CHECK-NEXT: loop.end:
 //CHECK-NEXT:   unreachable
