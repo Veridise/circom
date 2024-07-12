@@ -67,12 +67,12 @@ component main = Caller();
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
 //CHECK-NEXT: call1:
-//CHECK-NEXT:   %nop_0_arena = alloca [1 x i256], align 8
-//CHECK-NEXT:   %[[T000:[0-9a-zA-Z_\.]+]] = getelementptr [1 x i256], [1 x i256]* %nop_0_arena, i32 0, i32 0
+//CHECK-NEXT:   %[[CALL_ARENA:[0-9a-zA-Z_\.]+]] = alloca [1 x i256], align 8
+//CHECK-NEXT:   %[[T000:[0-9a-zA-Z_\.]+]] = getelementptr [1 x i256], [1 x i256]* %[[CALL_ARENA]], i32 0, i32 0
 //CHECK-NEXT:   %[[T001:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %sig_[[X2]], i32 0
 //CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T001]], align 4
 //CHECK-NEXT:   store i256 %[[T002]], i256* %[[T000]], align 4
-//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = bitcast [1 x i256]* %nop_0_arena to i256*
+//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = bitcast [1 x i256]* %[[CALL_ARENA]] to i256*
 //CHECK-NEXT:   %call.nop_0 = call i256 @nop_0(i256* %[[T003]])
 //CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %call.nop_0, i256* %[[T004]], align 4
@@ -109,12 +109,12 @@ component main = Caller();
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
 //CHECK-NEXT: call1:
-//CHECK-NEXT:   %nop_0_arena = alloca [1 x i256], align 8
-//CHECK-NEXT:   %[[T000:[0-9a-zA-Z_\.]+]] = getelementptr [1 x i256], [1 x i256]* %nop_0_arena, i32 0, i32 0
+//CHECK-NEXT:   %[[CALL_ARENA:[0-9a-zA-Z_\.]+]] = alloca [1 x i256], align 8
+//CHECK-NEXT:   %[[T000:[0-9a-zA-Z_\.]+]] = getelementptr [1 x i256], [1 x i256]* %[[CALL_ARENA]], i32 0, i32 0
 //CHECK-NEXT:   %[[T001:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %sig_[[X2]], i32 0
 //CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T001]], align 4
 //CHECK-NEXT:   store i256 %[[T002]], i256* %[[T000]], align 4
-//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = bitcast [1 x i256]* %nop_0_arena to i256*
+//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = bitcast [1 x i256]* %[[CALL_ARENA]] to i256*
 //CHECK-NEXT:   %call.nop_0 = call i256 @nop_0(i256* %[[T003]])
 //CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subsig_[[X1]], i32 0
 //CHECK-NEXT:   store i256 %call.nop_0, i256* %[[T004]], align 4
