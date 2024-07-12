@@ -112,7 +112,9 @@ pub enum EnvContextKind {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CallStackFrame {
+    /// Target function of the call
     name: String,
+    /// Argument values for the call
     args: Vec<Value>,
 }
 

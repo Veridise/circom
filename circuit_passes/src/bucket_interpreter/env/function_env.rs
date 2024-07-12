@@ -15,16 +15,18 @@ use super::{
 #[derive(Clone)]
 pub struct FunctionEnvData<'a> {
     caller_stack: Vec<BucketId>,
-    // Store a snapshot of the CallStack in each Env rather than having each Env store
-    //  only its relevant CallStackFrame and having safe_to_interpret() recursively check
-    //  the base Env because that lookup would further increase the Rust stack height
-    //  while doing the check that is intended to prevent Rust stack exhaustion.
-    call_stack: CallStack,
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
     subcmps: HashMap<usize, SubcmpEnv>,
     subcmp_names: HashMap<usize, String>,
     libs: &'a dyn LibraryAccess,
+    /// This call stack is used to prevent the Rust stack from overflowing due to recursive
+    /// calls in the Circom source where termination cannot be determined by the intepreter.
+    //  Implementation note: Store a snapshot of the CallStack in each Env rather than having
+    //  each store only its relevant CallStackFrame and having safe_to_interpret() recursively
+    //  check the base Env because that lookup would further increase the Rust stack height
+    //  while doing the check that is intended to prevent Rust stack exhaustion.
+    call_stack: CallStack,
 }
 
 impl Display for FunctionEnvData<'_> {
