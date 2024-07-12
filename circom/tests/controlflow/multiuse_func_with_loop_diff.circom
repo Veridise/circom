@@ -28,158 +28,161 @@ component main = MultiUse();
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %0 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 11
-//CHECK-NEXT:   %1 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 11
-//CHECK-NEXT:   %2 = load i256, i256* %1, align 4
-//CHECK-NEXT:   %3 = getelementptr i256, i256* %var_0, i32 0
-//CHECK-NEXT:   %4 = load i256, i256* %3, align 4
-//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %2, i256 %4)
-//CHECK-NEXT:   store i256 %call.fr_add, i256* %0, align 4
+//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 11
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 11
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T01]], align 4
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_0, i32 0
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T03]], align 4
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T02]], i256 %[[T04]])
+//CHECK-NEXT:   store i256 %[[T08]], i256* %[[T00]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %5 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 12
-//CHECK-NEXT:   %6 = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 12
-//CHECK-NEXT:   %7 = load i256, i256* %6, align 4
-//CHECK-NEXT:   %call.fr_add1 = call i256 @fr_add(i256 %7, i256 1)
-//CHECK-NEXT:   store i256 %call.fr_add1, i256* %5, align 4
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 12
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 12
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T06]], align 4
+//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T07]], i256 1)
+//CHECK-NEXT:   store i256 %[[T09]], i256* %[[T05]], align 4
 //CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
 //CHECK-NEXT: return3:
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} i256 @f_0.2(i256* %0){{.*}} {
-//CHECK-NEXT: f_0.2:
+//CHECK-LABEL: define{{.*}} i256 @f_
+//CHECK-SAME: [[$F_ID_2:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
+//CHECK-NEXT: f_[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %1 = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   store i256 0, i256* %1, align 4
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   store i256 0, i256* %[[T01]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %0, i32 12
-//CHECK-NEXT:   store i256 0, i256* %2, align 4
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 12
+//CHECK-NEXT:   store i256 0, i256* %[[T02]], align 4
 //CHECK-NEXT:   br label %unrolled_loop3
 //CHECK-EMPTY: 
 //CHECK-NEXT: unrolled_loop3:
-//CHECK-NEXT:   %3 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %4 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %5 = getelementptr [0 x i256], [0 x i256]* %4, i32 0, i256 0
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %3, [0 x i256]* null, i256* %5)
-//CHECK-NEXT:   %6 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %7 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %8 = getelementptr [0 x i256], [0 x i256]* %7, i32 0, i256 1
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %6, [0 x i256]* null, i256* %8)
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T04]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T03]], [0 x i256]* null, i256* %[[T05]])
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T07]], i32 0, i256 1
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T06]], [0 x i256]* null, i256* %[[T08]])
 //CHECK-NEXT:   br label %return4
 //CHECK-EMPTY: 
 //CHECK-NEXT: return4:
-//CHECK-NEXT:   %9 = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   %10 = load i256, i256* %9, align 4
-//CHECK-NEXT:   ret i256 %10
+//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T09]], align 4
+//CHECK-NEXT:   ret i256 %[[T10]]
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} i256 @f_0.5(i256* %0){{.*}} {
-//CHECK-NEXT: f_0.5:
+//CHECK-LABEL: define{{.*}} i256 @f_
+//CHECK-SAME: [[$F_ID_5:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
+//CHECK-NEXT: f_[[$F_ID_5]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %1 = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   store i256 0, i256* %1, align 4
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   store i256 0, i256* %[[T01]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %0, i32 12
-//CHECK-NEXT:   store i256 0, i256* %2, align 4
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 12
+//CHECK-NEXT:   store i256 0, i256* %[[T02]], align 4
 //CHECK-NEXT:   br label %unrolled_loop3
 //CHECK-EMPTY: 
 //CHECK-NEXT: unrolled_loop3:
-//CHECK-NEXT:   %3 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %4 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %5 = getelementptr [0 x i256], [0 x i256]* %4, i32 0, i256 0
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %3, [0 x i256]* null, i256* %5)
-//CHECK-NEXT:   %6 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %7 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %8 = getelementptr [0 x i256], [0 x i256]* %7, i32 0, i256 1
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %6, [0 x i256]* null, i256* %8)
-//CHECK-NEXT:   %9 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %10 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %11 = getelementptr [0 x i256], [0 x i256]* %10, i32 0, i256 2
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %9, [0 x i256]* null, i256* %11)
-//CHECK-NEXT:   %12 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %13 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %14 = getelementptr [0 x i256], [0 x i256]* %13, i32 0, i256 3
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %12, [0 x i256]* null, i256* %14)
-//CHECK-NEXT:   %15 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %16 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %17 = getelementptr [0 x i256], [0 x i256]* %16, i32 0, i256 4
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %15, [0 x i256]* null, i256* %17)
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T04]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T03]], [0 x i256]* null, i256* %[[T05]])
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T07]], i32 0, i256 1
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T06]], [0 x i256]* null, i256* %[[T08]])
+//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T11:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T10]], i32 0, i256 2
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T09]], [0 x i256]* null, i256* %[[T11]])
+//CHECK-NEXT:   %[[T12:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T13]], i32 0, i256 3
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T12]], [0 x i256]* null, i256* %[[T14]])
+//CHECK-NEXT:   %[[T15:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T17:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T16]], i32 0, i256 4
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T15]], [0 x i256]* null, i256* %[[T17]])
 //CHECK-NEXT:   br label %return4
 //CHECK-EMPTY: 
 //CHECK-NEXT: return4:
-//CHECK-NEXT:   %18 = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   %19 = load i256, i256* %18, align 4
-//CHECK-NEXT:   ret i256 %19
+//CHECK-NEXT:   %[[T18:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   %[[T19:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T18]], align 4
+//CHECK-NEXT:   ret i256 %[[T19]]
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} i256 @f_0.9(i256* %0){{.*}} {
-//CHECK-NEXT: f_0.9:
+//CHECK-LABEL: define{{.*}} i256 @f_
+//CHECK-SAME: [[$F_ID_9:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
+//CHECK-NEXT: f_[[$F_ID_9]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %1 = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   store i256 0, i256* %1, align 4
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   store i256 0, i256* %[[T01]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %2 = getelementptr i256, i256* %0, i32 12
-//CHECK-NEXT:   store i256 0, i256* %2, align 4
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 12
+//CHECK-NEXT:   store i256 0, i256* %[[T02]], align 4
 //CHECK-NEXT:   br label %unrolled_loop3
 //CHECK-EMPTY: 
 //CHECK-NEXT: unrolled_loop3:
-//CHECK-NEXT:   %3 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %4 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %5 = getelementptr [0 x i256], [0 x i256]* %4, i32 0, i256 0
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %3, [0 x i256]* null, i256* %5)
-//CHECK-NEXT:   %6 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %7 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %8 = getelementptr [0 x i256], [0 x i256]* %7, i32 0, i256 1
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %6, [0 x i256]* null, i256* %8)
-//CHECK-NEXT:   %9 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %10 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %11 = getelementptr [0 x i256], [0 x i256]* %10, i32 0, i256 2
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %9, [0 x i256]* null, i256* %11)
-//CHECK-NEXT:   %12 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %13 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %14 = getelementptr [0 x i256], [0 x i256]* %13, i32 0, i256 3
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %12, [0 x i256]* null, i256* %14)
-//CHECK-NEXT:   %15 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %16 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %17 = getelementptr [0 x i256], [0 x i256]* %16, i32 0, i256 4
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %15, [0 x i256]* null, i256* %17)
-//CHECK-NEXT:   %18 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %19 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %20 = getelementptr [0 x i256], [0 x i256]* %19, i32 0, i256 5
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %18, [0 x i256]* null, i256* %20)
-//CHECK-NEXT:   %21 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %22 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %23 = getelementptr [0 x i256], [0 x i256]* %22, i32 0, i256 6
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %21, [0 x i256]* null, i256* %23)
-//CHECK-NEXT:   %24 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %25 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %26 = getelementptr [0 x i256], [0 x i256]* %25, i32 0, i256 7
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %24, [0 x i256]* null, i256* %26)
-//CHECK-NEXT:   %27 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %28 = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %29 = getelementptr [0 x i256], [0 x i256]* %28, i32 0, i256 8
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %27, [0 x i256]* null, i256* %29)
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T04]], i32 0, i256 0
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T03]], [0 x i256]* null, i256* %[[T05]])
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T07]], i32 0, i256 1
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T06]], [0 x i256]* null, i256* %[[T08]])
+//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T11:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T10]], i32 0, i256 2
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T09]], [0 x i256]* null, i256* %[[T11]])
+//CHECK-NEXT:   %[[T12:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T13]], i32 0, i256 3
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T12]], [0 x i256]* null, i256* %[[T14]])
+//CHECK-NEXT:   %[[T15:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T17:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T16]], i32 0, i256 4
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T15]], [0 x i256]* null, i256* %[[T17]])
+//CHECK-NEXT:   %[[T18:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T19:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T20:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T19]], i32 0, i256 5
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T18]], [0 x i256]* null, i256* %[[T20]])
+//CHECK-NEXT:   %[[T21:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T22:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T23:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T22]], i32 0, i256 6
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T21]], [0 x i256]* null, i256* %[[T23]])
+//CHECK-NEXT:   %[[T24:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T25:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T26:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T25]], i32 0, i256 7
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T24]], [0 x i256]* null, i256* %[[T26]])
+//CHECK-NEXT:   %[[T27:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T28:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
+//CHECK-NEXT:   %[[T29:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T28]], i32 0, i256 8
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T27]], [0 x i256]* null, i256* %[[T29]])
 //CHECK-NEXT:   br label %return4
 //CHECK-EMPTY: 
 //CHECK-NEXT: return4:
-//CHECK-NEXT:   %30 = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   %31 = load i256, i256* %30, align 4
-//CHECK-NEXT:   ret i256 %31
+//CHECK-NEXT:   %[[T30:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   %[[T31:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T30]], align 4
+//CHECK-NEXT:   ret i256 %[[T31]]
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @MultiUse_0_run([0 x i256]* %0){{.*}} {
@@ -189,159 +192,159 @@ component main = MultiUse();
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
 //CHECK-NEXT: call1:
-//CHECK-NEXT:   %f_0.2_arena = alloca [13 x i256], align 8
-//CHECK-NEXT:   %1 = getelementptr [13 x i256], [13 x i256]* %f_0.2_arena, i32 0, i32 0
-//CHECK-NEXT:   %2 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 3
-//CHECK-NEXT:   %copy_src_0 = getelementptr i256, i256* %2, i32 0
-//CHECK-NEXT:   %copy_dst_0 = getelementptr i256, i256* %1, i32 0
-//CHECK-NEXT:   %copy_val_0 = load i256, i256* %copy_src_0, align 4
-//CHECK-NEXT:   store i256 %copy_val_0, i256* %copy_dst_0, align 4
-//CHECK-NEXT:   %copy_src_1 = getelementptr i256, i256* %2, i32 1
-//CHECK-NEXT:   %copy_dst_1 = getelementptr i256, i256* %1, i32 1
-//CHECK-NEXT:   %copy_val_1 = load i256, i256* %copy_src_1, align 4
-//CHECK-NEXT:   store i256 %copy_val_1, i256* %copy_dst_1, align 4
-//CHECK-NEXT:   %copy_src_2 = getelementptr i256, i256* %2, i32 2
-//CHECK-NEXT:   %copy_dst_2 = getelementptr i256, i256* %1, i32 2
-//CHECK-NEXT:   %copy_val_2 = load i256, i256* %copy_src_2, align 4
-//CHECK-NEXT:   store i256 %copy_val_2, i256* %copy_dst_2, align 4
-//CHECK-NEXT:   %copy_src_3 = getelementptr i256, i256* %2, i32 3
-//CHECK-NEXT:   %copy_dst_3 = getelementptr i256, i256* %1, i32 3
-//CHECK-NEXT:   %copy_val_3 = load i256, i256* %copy_src_3, align 4
-//CHECK-NEXT:   store i256 %copy_val_3, i256* %copy_dst_3, align 4
-//CHECK-NEXT:   %copy_src_4 = getelementptr i256, i256* %2, i32 4
-//CHECK-NEXT:   %copy_dst_4 = getelementptr i256, i256* %1, i32 4
-//CHECK-NEXT:   %copy_val_4 = load i256, i256* %copy_src_4, align 4
-//CHECK-NEXT:   store i256 %copy_val_4, i256* %copy_dst_4, align 4
-//CHECK-NEXT:   %copy_src_5 = getelementptr i256, i256* %2, i32 5
-//CHECK-NEXT:   %copy_dst_5 = getelementptr i256, i256* %1, i32 5
-//CHECK-NEXT:   %copy_val_5 = load i256, i256* %copy_src_5, align 4
-//CHECK-NEXT:   store i256 %copy_val_5, i256* %copy_dst_5, align 4
-//CHECK-NEXT:   %copy_src_6 = getelementptr i256, i256* %2, i32 6
-//CHECK-NEXT:   %copy_dst_6 = getelementptr i256, i256* %1, i32 6
-//CHECK-NEXT:   %copy_val_6 = load i256, i256* %copy_src_6, align 4
-//CHECK-NEXT:   store i256 %copy_val_6, i256* %copy_dst_6, align 4
-//CHECK-NEXT:   %copy_src_7 = getelementptr i256, i256* %2, i32 7
-//CHECK-NEXT:   %copy_dst_7 = getelementptr i256, i256* %1, i32 7
-//CHECK-NEXT:   %copy_val_7 = load i256, i256* %copy_src_7, align 4
-//CHECK-NEXT:   store i256 %copy_val_7, i256* %copy_dst_7, align 4
-//CHECK-NEXT:   %copy_src_8 = getelementptr i256, i256* %2, i32 8
-//CHECK-NEXT:   %copy_dst_8 = getelementptr i256, i256* %1, i32 8
-//CHECK-NEXT:   %copy_val_8 = load i256, i256* %copy_src_8, align 4
-//CHECK-NEXT:   store i256 %copy_val_8, i256* %copy_dst_8, align 4
-//CHECK-NEXT:   %copy_src_9 = getelementptr i256, i256* %2, i32 9
-//CHECK-NEXT:   %copy_dst_9 = getelementptr i256, i256* %1, i32 9
-//CHECK-NEXT:   %copy_val_9 = load i256, i256* %copy_src_9, align 4
-//CHECK-NEXT:   store i256 %copy_val_9, i256* %copy_dst_9, align 4
-//CHECK-NEXT:   %3 = getelementptr [13 x i256], [13 x i256]* %f_0.2_arena, i32 0, i32 10
-//CHECK-NEXT:   store i256 2, i256* %3, align 4
-//CHECK-NEXT:   %4 = bitcast [13 x i256]* %f_0.2_arena to i256*
-//CHECK-NEXT:   %call.f_0.2 = call i256 @f_0.2(i256* %4)
-//CHECK-NEXT:   %5 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
-//CHECK-NEXT:   store i256 %call.f_0.2, i256* %5, align 4
+//CHECK-NEXT:   %[[CALL_ARENA_2:[0-9a-zA-Z_\.]+]] = alloca [13 x i256], align 8
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr [13 x i256], [13 x i256]* %[[CALL_ARENA_2]], i32 0, i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 3
+//CHECK-NEXT:   %[[CPY_SRC_10:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T02]], i32 0
+//CHECK-NEXT:   %[[CPY_DST_10:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T01]], i32 0
+//CHECK-NEXT:   %[[CPY_VAL_10:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_10]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_10]], i256* %[[CPY_DST_10]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_11:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T02]], i32 1
+//CHECK-NEXT:   %[[CPY_DST_11:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T01]], i32 1
+//CHECK-NEXT:   %[[CPY_VAL_11:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_11]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_11]], i256* %[[CPY_DST_11]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_12:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T02]], i32 2
+//CHECK-NEXT:   %[[CPY_DST_12:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T01]], i32 2
+//CHECK-NEXT:   %[[CPY_VAL_12:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_12]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_12]], i256* %[[CPY_DST_12]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_13:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T02]], i32 3
+//CHECK-NEXT:   %[[CPY_DST_13:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T01]], i32 3
+//CHECK-NEXT:   %[[CPY_VAL_13:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_13]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_13]], i256* %[[CPY_DST_13]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_14:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T02]], i32 4
+//CHECK-NEXT:   %[[CPY_DST_14:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T01]], i32 4
+//CHECK-NEXT:   %[[CPY_VAL_14:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_14]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_14]], i256* %[[CPY_DST_14]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_15:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T02]], i32 5
+//CHECK-NEXT:   %[[CPY_DST_15:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T01]], i32 5
+//CHECK-NEXT:   %[[CPY_VAL_15:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_15]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_15]], i256* %[[CPY_DST_15]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_16:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T02]], i32 6
+//CHECK-NEXT:   %[[CPY_DST_16:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T01]], i32 6
+//CHECK-NEXT:   %[[CPY_VAL_16:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_16]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_16]], i256* %[[CPY_DST_16]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_17:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T02]], i32 7
+//CHECK-NEXT:   %[[CPY_DST_17:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T01]], i32 7
+//CHECK-NEXT:   %[[CPY_VAL_17:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_17]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_17]], i256* %[[CPY_DST_17]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_18:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T02]], i32 8
+//CHECK-NEXT:   %[[CPY_DST_18:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T01]], i32 8
+//CHECK-NEXT:   %[[CPY_VAL_18:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_18]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_18]], i256* %[[CPY_DST_18]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_19:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T02]], i32 9
+//CHECK-NEXT:   %[[CPY_DST_19:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T01]], i32 9
+//CHECK-NEXT:   %[[CPY_VAL_19:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_19]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_19]], i256* %[[CPY_DST_19]], align 4
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = getelementptr [13 x i256], [13 x i256]* %[[CALL_ARENA_2]], i32 0, i32 10
+//CHECK-NEXT:   store i256 2, i256* %[[T03]], align 4
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = bitcast [13 x i256]* %[[CALL_ARENA_2]] to i256*
+//CHECK-NEXT:   %[[T99:[0-9a-zA-Z_\.]+]] = call i256 @f_[[$F_ID_2]](i256* %[[T04]])
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
+//CHECK-NEXT:   store i256 %[[T99]], i256* %[[T05]], align 4
 //CHECK-NEXT:   br label %call2
 //CHECK-EMPTY: 
 //CHECK-NEXT: call2:
-//CHECK-NEXT:   %f_0.5_arena = alloca [13 x i256], align 8
-//CHECK-NEXT:   %6 = getelementptr [13 x i256], [13 x i256]* %f_0.5_arena, i32 0, i32 0
-//CHECK-NEXT:   %7 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 3
-//CHECK-NEXT:   %copy_src_01 = getelementptr i256, i256* %7, i32 0
-//CHECK-NEXT:   %copy_dst_02 = getelementptr i256, i256* %6, i32 0
-//CHECK-NEXT:   %copy_val_03 = load i256, i256* %copy_src_01, align 4
-//CHECK-NEXT:   store i256 %copy_val_03, i256* %copy_dst_02, align 4
-//CHECK-NEXT:   %copy_src_14 = getelementptr i256, i256* %7, i32 1
-//CHECK-NEXT:   %copy_dst_15 = getelementptr i256, i256* %6, i32 1
-//CHECK-NEXT:   %copy_val_16 = load i256, i256* %copy_src_14, align 4
-//CHECK-NEXT:   store i256 %copy_val_16, i256* %copy_dst_15, align 4
-//CHECK-NEXT:   %copy_src_27 = getelementptr i256, i256* %7, i32 2
-//CHECK-NEXT:   %copy_dst_28 = getelementptr i256, i256* %6, i32 2
-//CHECK-NEXT:   %copy_val_29 = load i256, i256* %copy_src_27, align 4
-//CHECK-NEXT:   store i256 %copy_val_29, i256* %copy_dst_28, align 4
-//CHECK-NEXT:   %copy_src_310 = getelementptr i256, i256* %7, i32 3
-//CHECK-NEXT:   %copy_dst_311 = getelementptr i256, i256* %6, i32 3
-//CHECK-NEXT:   %copy_val_312 = load i256, i256* %copy_src_310, align 4
-//CHECK-NEXT:   store i256 %copy_val_312, i256* %copy_dst_311, align 4
-//CHECK-NEXT:   %copy_src_413 = getelementptr i256, i256* %7, i32 4
-//CHECK-NEXT:   %copy_dst_414 = getelementptr i256, i256* %6, i32 4
-//CHECK-NEXT:   %copy_val_415 = load i256, i256* %copy_src_413, align 4
-//CHECK-NEXT:   store i256 %copy_val_415, i256* %copy_dst_414, align 4
-//CHECK-NEXT:   %copy_src_516 = getelementptr i256, i256* %7, i32 5
-//CHECK-NEXT:   %copy_dst_517 = getelementptr i256, i256* %6, i32 5
-//CHECK-NEXT:   %copy_val_518 = load i256, i256* %copy_src_516, align 4
-//CHECK-NEXT:   store i256 %copy_val_518, i256* %copy_dst_517, align 4
-//CHECK-NEXT:   %copy_src_619 = getelementptr i256, i256* %7, i32 6
-//CHECK-NEXT:   %copy_dst_620 = getelementptr i256, i256* %6, i32 6
-//CHECK-NEXT:   %copy_val_621 = load i256, i256* %copy_src_619, align 4
-//CHECK-NEXT:   store i256 %copy_val_621, i256* %copy_dst_620, align 4
-//CHECK-NEXT:   %copy_src_722 = getelementptr i256, i256* %7, i32 7
-//CHECK-NEXT:   %copy_dst_723 = getelementptr i256, i256* %6, i32 7
-//CHECK-NEXT:   %copy_val_724 = load i256, i256* %copy_src_722, align 4
-//CHECK-NEXT:   store i256 %copy_val_724, i256* %copy_dst_723, align 4
-//CHECK-NEXT:   %copy_src_825 = getelementptr i256, i256* %7, i32 8
-//CHECK-NEXT:   %copy_dst_826 = getelementptr i256, i256* %6, i32 8
-//CHECK-NEXT:   %copy_val_827 = load i256, i256* %copy_src_825, align 4
-//CHECK-NEXT:   store i256 %copy_val_827, i256* %copy_dst_826, align 4
-//CHECK-NEXT:   %copy_src_928 = getelementptr i256, i256* %7, i32 9
-//CHECK-NEXT:   %copy_dst_929 = getelementptr i256, i256* %6, i32 9
-//CHECK-NEXT:   %copy_val_930 = load i256, i256* %copy_src_928, align 4
-//CHECK-NEXT:   store i256 %copy_val_930, i256* %copy_dst_929, align 4
-//CHECK-NEXT:   %8 = getelementptr [13 x i256], [13 x i256]* %f_0.5_arena, i32 0, i32 10
-//CHECK-NEXT:   store i256 5, i256* %8, align 4
-//CHECK-NEXT:   %9 = bitcast [13 x i256]* %f_0.5_arena to i256*
-//CHECK-NEXT:   %call.f_0.5 = call i256 @f_0.5(i256* %9)
-//CHECK-NEXT:   %10 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 1
-//CHECK-NEXT:   store i256 %call.f_0.5, i256* %10, align 4
+//CHECK-NEXT:   %[[CALL_ARENA_5:[0-9a-zA-Z_\.]+]] = alloca [13 x i256], align 8
+//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = getelementptr [13 x i256], [13 x i256]* %[[CALL_ARENA_5]], i32 0, i32 0
+//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 3
+//CHECK-NEXT:   %[[CPY_SRC_20:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T07]], i32 0
+//CHECK-NEXT:   %[[CPY_DST_20:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T06]], i32 0
+//CHECK-NEXT:   %[[CPY_VAL_20:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_20]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_20]], i256* %[[CPY_DST_20]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_21:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T07]], i32 1
+//CHECK-NEXT:   %[[CPY_DST_21:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T06]], i32 1
+//CHECK-NEXT:   %[[CPY_VAL_21:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_21]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_21]], i256* %[[CPY_DST_21]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_22:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T07]], i32 2
+//CHECK-NEXT:   %[[CPY_DST_22:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T06]], i32 2
+//CHECK-NEXT:   %[[CPY_VAL_22:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_22]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_22]], i256* %[[CPY_DST_22]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_23:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T07]], i32 3
+//CHECK-NEXT:   %[[CPY_DST_23:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T06]], i32 3
+//CHECK-NEXT:   %[[CPY_VAL_23:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_23]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_23]], i256* %[[CPY_DST_23]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_24:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T07]], i32 4
+//CHECK-NEXT:   %[[CPY_DST_24:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T06]], i32 4
+//CHECK-NEXT:   %[[CPY_VAL_24:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_24]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_24]], i256* %[[CPY_DST_24]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_25:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T07]], i32 5
+//CHECK-NEXT:   %[[CPY_DST_25:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T06]], i32 5
+//CHECK-NEXT:   %[[CPY_VAL_25:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_25]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_25]], i256* %[[CPY_DST_25]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_26:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T07]], i32 6
+//CHECK-NEXT:   %[[CPY_DST_26:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T06]], i32 6
+//CHECK-NEXT:   %[[CPY_VAL_26:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_26]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_26]], i256* %[[CPY_DST_26]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_27:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T07]], i32 7
+//CHECK-NEXT:   %[[CPY_DST_27:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T06]], i32 7
+//CHECK-NEXT:   %[[CPY_VAL_27:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_27]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_27]], i256* %[[CPY_DST_27]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_28:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T07]], i32 8
+//CHECK-NEXT:   %[[CPY_DST_28:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T06]], i32 8
+//CHECK-NEXT:   %[[CPY_VAL_28:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_28]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_28]], i256* %[[CPY_DST_28]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_29:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T07]], i32 9
+//CHECK-NEXT:   %[[CPY_DST_29:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T06]], i32 9
+//CHECK-NEXT:   %[[CPY_VAL_29:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_29]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_29]], i256* %[[CPY_DST_29]], align 4
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr [13 x i256], [13 x i256]* %[[CALL_ARENA_5]], i32 0, i32 10
+//CHECK-NEXT:   store i256 5, i256* %[[T08]], align 4
+//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = bitcast [13 x i256]* %[[CALL_ARENA_5]] to i256*
+//CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @f_[[$F_ID_5]](i256* %[[T09]])
+//CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 1
+//CHECK-NEXT:   store i256 %[[T98]], i256* %[[T10]], align 4
 //CHECK-NEXT:   br label %call3
 //CHECK-EMPTY: 
 //CHECK-NEXT: call3:
-//CHECK-NEXT:   %f_0.9_arena = alloca [13 x i256], align 8
-//CHECK-NEXT:   %11 = getelementptr [13 x i256], [13 x i256]* %f_0.9_arena, i32 0, i32 0
-//CHECK-NEXT:   %12 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 3
-//CHECK-NEXT:   %copy_src_031 = getelementptr i256, i256* %12, i32 0
-//CHECK-NEXT:   %copy_dst_032 = getelementptr i256, i256* %11, i32 0
-//CHECK-NEXT:   %copy_val_033 = load i256, i256* %copy_src_031, align 4
-//CHECK-NEXT:   store i256 %copy_val_033, i256* %copy_dst_032, align 4
-//CHECK-NEXT:   %copy_src_134 = getelementptr i256, i256* %12, i32 1
-//CHECK-NEXT:   %copy_dst_135 = getelementptr i256, i256* %11, i32 1
-//CHECK-NEXT:   %copy_val_136 = load i256, i256* %copy_src_134, align 4
-//CHECK-NEXT:   store i256 %copy_val_136, i256* %copy_dst_135, align 4
-//CHECK-NEXT:   %copy_src_237 = getelementptr i256, i256* %12, i32 2
-//CHECK-NEXT:   %copy_dst_238 = getelementptr i256, i256* %11, i32 2
-//CHECK-NEXT:   %copy_val_239 = load i256, i256* %copy_src_237, align 4
-//CHECK-NEXT:   store i256 %copy_val_239, i256* %copy_dst_238, align 4
-//CHECK-NEXT:   %copy_src_340 = getelementptr i256, i256* %12, i32 3
-//CHECK-NEXT:   %copy_dst_341 = getelementptr i256, i256* %11, i32 3
-//CHECK-NEXT:   %copy_val_342 = load i256, i256* %copy_src_340, align 4
-//CHECK-NEXT:   store i256 %copy_val_342, i256* %copy_dst_341, align 4
-//CHECK-NEXT:   %copy_src_443 = getelementptr i256, i256* %12, i32 4
-//CHECK-NEXT:   %copy_dst_444 = getelementptr i256, i256* %11, i32 4
-//CHECK-NEXT:   %copy_val_445 = load i256, i256* %copy_src_443, align 4
-//CHECK-NEXT:   store i256 %copy_val_445, i256* %copy_dst_444, align 4
-//CHECK-NEXT:   %copy_src_546 = getelementptr i256, i256* %12, i32 5
-//CHECK-NEXT:   %copy_dst_547 = getelementptr i256, i256* %11, i32 5
-//CHECK-NEXT:   %copy_val_548 = load i256, i256* %copy_src_546, align 4
-//CHECK-NEXT:   store i256 %copy_val_548, i256* %copy_dst_547, align 4
-//CHECK-NEXT:   %copy_src_649 = getelementptr i256, i256* %12, i32 6
-//CHECK-NEXT:   %copy_dst_650 = getelementptr i256, i256* %11, i32 6
-//CHECK-NEXT:   %copy_val_651 = load i256, i256* %copy_src_649, align 4
-//CHECK-NEXT:   store i256 %copy_val_651, i256* %copy_dst_650, align 4
-//CHECK-NEXT:   %copy_src_752 = getelementptr i256, i256* %12, i32 7
-//CHECK-NEXT:   %copy_dst_753 = getelementptr i256, i256* %11, i32 7
-//CHECK-NEXT:   %copy_val_754 = load i256, i256* %copy_src_752, align 4
-//CHECK-NEXT:   store i256 %copy_val_754, i256* %copy_dst_753, align 4
-//CHECK-NEXT:   %copy_src_855 = getelementptr i256, i256* %12, i32 8
-//CHECK-NEXT:   %copy_dst_856 = getelementptr i256, i256* %11, i32 8
-//CHECK-NEXT:   %copy_val_857 = load i256, i256* %copy_src_855, align 4
-//CHECK-NEXT:   store i256 %copy_val_857, i256* %copy_dst_856, align 4
-//CHECK-NEXT:   %copy_src_958 = getelementptr i256, i256* %12, i32 9
-//CHECK-NEXT:   %copy_dst_959 = getelementptr i256, i256* %11, i32 9
-//CHECK-NEXT:   %copy_val_960 = load i256, i256* %copy_src_958, align 4
-//CHECK-NEXT:   store i256 %copy_val_960, i256* %copy_dst_959, align 4
-//CHECK-NEXT:   %13 = getelementptr [13 x i256], [13 x i256]* %f_0.9_arena, i32 0, i32 10
-//CHECK-NEXT:   store i256 9, i256* %13, align 4
-//CHECK-NEXT:   %14 = bitcast [13 x i256]* %f_0.9_arena to i256*
-//CHECK-NEXT:   %call.f_0.9 = call i256 @f_0.9(i256* %14)
-//CHECK-NEXT:   %15 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 2
-//CHECK-NEXT:   store i256 %call.f_0.9, i256* %15, align 4
+//CHECK-NEXT:   %[[CALL_ARENA_9:[0-9a-zA-Z_\.]+]] = alloca [13 x i256], align 8
+//CHECK-NEXT:   %[[T11:[0-9a-zA-Z_\.]+]] = getelementptr [13 x i256], [13 x i256]* %[[CALL_ARENA_9]], i32 0, i32 0
+//CHECK-NEXT:   %[[T12:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 3
+//CHECK-NEXT:   %[[CPY_SRC_30:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T12]], i32 0
+//CHECK-NEXT:   %[[CPY_DST_30:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T11]], i32 0
+//CHECK-NEXT:   %[[CPY_VAL_30:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_30]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_30]], i256* %[[CPY_DST_30]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_31:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T12]], i32 1
+//CHECK-NEXT:   %[[CPY_DST_31:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T11]], i32 1
+//CHECK-NEXT:   %[[CPY_VAL_31:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_31]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_31]], i256* %[[CPY_DST_31]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_32:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T12]], i32 2
+//CHECK-NEXT:   %[[CPY_DST_32:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T11]], i32 2
+//CHECK-NEXT:   %[[CPY_VAL_32:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_32]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_32]], i256* %[[CPY_DST_32]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_33:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T12]], i32 3
+//CHECK-NEXT:   %[[CPY_DST_33:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T11]], i32 3
+//CHECK-NEXT:   %[[CPY_VAL_33:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_33]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_33]], i256* %[[CPY_DST_33]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_34:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T12]], i32 4
+//CHECK-NEXT:   %[[CPY_DST_34:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T11]], i32 4
+//CHECK-NEXT:   %[[CPY_VAL_34:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_34]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_34]], i256* %[[CPY_DST_34]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_35:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T12]], i32 5
+//CHECK-NEXT:   %[[CPY_DST_35:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T11]], i32 5
+//CHECK-NEXT:   %[[CPY_VAL_35:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_35]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_35]], i256* %[[CPY_DST_35]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_36:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T12]], i32 6
+//CHECK-NEXT:   %[[CPY_DST_36:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T11]], i32 6
+//CHECK-NEXT:   %[[CPY_VAL_36:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_36]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_36]], i256* %[[CPY_DST_36]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_37:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T12]], i32 7
+//CHECK-NEXT:   %[[CPY_DST_37:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T11]], i32 7
+//CHECK-NEXT:   %[[CPY_VAL_37:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_37]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_37]], i256* %[[CPY_DST_37]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_38:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T12]], i32 8
+//CHECK-NEXT:   %[[CPY_DST_38:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T11]], i32 8
+//CHECK-NEXT:   %[[CPY_VAL_38:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_38]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_38]], i256* %[[CPY_DST_38]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_39:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T12]], i32 9
+//CHECK-NEXT:   %[[CPY_DST_39:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T11]], i32 9
+//CHECK-NEXT:   %[[CPY_VAL_39:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_39]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_39]], i256* %[[CPY_DST_39]], align 4
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = getelementptr [13 x i256], [13 x i256]* %[[CALL_ARENA_9]], i32 0, i32 10
+//CHECK-NEXT:   store i256 9, i256* %[[T13]], align 4
+//CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = bitcast [13 x i256]* %[[CALL_ARENA_9]] to i256*
+//CHECK-NEXT:   %[[T97:[0-9a-zA-Z_\.]+]] = call i256 @f_[[$F_ID_9]](i256* %[[T14]])
+//CHECK-NEXT:   %[[T15:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 2
+//CHECK-NEXT:   store i256 %[[T97]], i256* %[[T15]], align 4
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY: 
 //CHECK-NEXT: prologue:

@@ -49,8 +49,9 @@ component main = MultiUse();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define{{.*}} i256 @f_0.2(i256* %0){{.*}} {
-//CHECK-NEXT: f_0.2:
+//CHECK-LABEL: define{{.*}} i256 @f_
+//CHECK-SAME: [[$F_ID_2:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
+//CHECK-NEXT: f_[[$F_ID_2]]:
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
@@ -133,7 +134,7 @@ component main = MultiUse();
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = getelementptr [13 x i256], [13 x i256]* %[[A01]], i32 0, i32 10
 //CHECK-NEXT:   store i256 2, i256* %[[T03]], align 4
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = bitcast [13 x i256]* %[[A01]] to i256*
-//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_\.]+]] = call i256 @f_0.2(i256* %[[T04]])
+//CHECK-NEXT:   %[[T16:[0-9a-zA-Z_\.]+]] = call i256 @f_[[$F_ID_2]](i256* %[[T04]])
 //CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT:   store i256 %[[T16]], i256* %[[T05]], align 4
 //CHECK-NEXT:   br label %call2
@@ -185,7 +186,7 @@ component main = MultiUse();
 //CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr [13 x i256], [13 x i256]* %[[A02]], i32 0, i32 10
 //CHECK-NEXT:   store i256 2, i256* %[[T08]], align 4
 //CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = bitcast [13 x i256]* %[[A02]] to i256*
-//CHECK-NEXT:   %[[T17:[0-9a-zA-Z_\.]+]] = call i256 @f_0.2(i256* %[[T09]])
+//CHECK-NEXT:   %[[T17:[0-9a-zA-Z_\.]+]] = call i256 @f_[[$F_ID_2]](i256* %[[T09]])
 //CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 1
 //CHECK-NEXT:   store i256 %[[T17]], i256* %[[T10]], align 4
 //CHECK-NEXT:   br label %call3
@@ -237,7 +238,7 @@ component main = MultiUse();
 //CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = getelementptr [13 x i256], [13 x i256]* %[[A03]], i32 0, i32 10
 //CHECK-NEXT:   store i256 2, i256* %[[T13]], align 4
 //CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = bitcast [13 x i256]* %[[A03]] to i256*
-//CHECK-NEXT:   %[[T18:[0-9a-zA-Z_\.]+]] = call i256 @f_0.2(i256* %[[T14]])
+//CHECK-NEXT:   %[[T18:[0-9a-zA-Z_\.]+]] = call i256 @f_[[$F_ID_2]](i256* %[[T14]])
 //CHECK-NEXT:   %[[T15:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 2
 //CHECK-NEXT:   store i256 %[[T18]], i256* %[[T15]], align 4
 //CHECK-NEXT:   br label %prologue
