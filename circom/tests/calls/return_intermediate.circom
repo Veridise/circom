@@ -19,10 +19,13 @@ template Foo() {
 
 component main = Foo();
 
-//CHECK:   %[[V2:[0-9a-zA-Z_\.]+]] = call i256 @Fn_0(i256* %[[V1:[0-9a-zA-Z_\.]+]])
+//CHECK-LABEL: define{{.*}} i256 @Fn_
+//CHECK-SAME: [[$F_ID_1:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
+
+//CHECK:   %[[V2:[0-9a-zA-Z_\.]+]] = call i256 @Fn_[[$F_ID_1]](i256* %[[V1:[0-9a-zA-Z_\.]+]])
 //CHECK:   %[[V3:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK:   store i256 %[[V2]], i256* %[[V3]], align 4
 
-//CHECK:   %[[V5:[0-9a-zA-Z_\.]+]] = call i256 @Fn_0(i256* %[[V4:[0-9a-zA-Z_\.]+]])
+//CHECK:   %[[V5:[0-9a-zA-Z_\.]+]] = call i256 @Fn_[[$F_ID_1]](i256* %[[V4:[0-9a-zA-Z_\.]+]])
 //CHECK:   %[[V6:[0-9a-zA-Z_\.]+]] = call i1 @fr_eq(i256 %10, i256 %[[V5]])
 //CHECK:   call void @__assert(i1 %[[V6]])
