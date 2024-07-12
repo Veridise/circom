@@ -30,7 +30,7 @@ template FibonacciTmpl(N) {
 component main = FibonacciTmpl(5);
 
 //CHECK-LABEL: define{{.*}} void @FibonacciTmpl_{{[0-9]+}}_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]]){{.*}} {
 //// Use the block labels to check that the loop is unrolled
 //CHECK-NOT: loop.cond{{.*}}:
 //CHECK-NOT: loop.body{{.*}}:
@@ -41,6 +41,6 @@ component main = FibonacciTmpl(5);
 //CHECK-NOT: loop.end{{.*}}:
 //// Check that final value stored to 'out' is computed correctly via unrolling
 //CHECK: store{{[0-9]+}}:
-//CHECK:   %[[T:[0-9]+]] = getelementptr [0 x i256], [0 x i256]* %{{.*}}[[ARG]], i32 0, i32 0
+//CHECK:   %[[T:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %{{.*}}[[ARG]], i32 0, i32 0
 //CHECK:   store i256 5, i256* %{{.*}}[[T]], align 4
 //CHECK:   }

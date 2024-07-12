@@ -16,7 +16,7 @@ template Array3(n) {
 component main = Array3(5);
 
 //CHECK-LABEL: define{{.*}} void @Array3_0_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9a-zA-Z_.]+]]){{.*}} {
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9a-zA-Z_\.]+]]){{.*}} {
 //CHECK:      store2:
 //CHECK-NEXT:   %2 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT:   %3 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 25

@@ -32,12 +32,13 @@ template EarlyReturn() {
 
 component main = EarlyReturn();
 
-//CHECK-LABEL: define{{.*}} i256 @earlyReturnFn_0.T(i256* %0){{.*}} {
-//CHECK-NEXT: earlyReturnFn_0.T:
+//CHECK-LABEL: define{{.*}} i256 @earlyReturnFn_
+//CHECK-SAME: [[$F_ID_1:[0-9a-zA-Z_\.]+\.T]](i256* %0){{.*}} {
+//CHECK-NEXT: earlyReturnFn_[[$F_ID_1]]:
 //CHECK-NEXT:   br label %fold_true1
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true1:
-//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_.]+]] = getelementptr i256, i256* %0, i32 0
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_.]+]] = load i256, i256* %[[T01]], align 4
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T01]], align 4
 //CHECK-NEXT:   ret i256 %[[T02]]
 //CHECK-NEXT: }

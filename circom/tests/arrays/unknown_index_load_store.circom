@@ -24,5 +24,5 @@ component main = UnknownIndexLoadStore();
 // CHECK-NOT: define{{.*}} @__array_store__20_to_31
 //
 // CHECK-LABEL: define{{.*}} void @UnknownIndexLoadStore_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
-// CHECK: %[[TEMP:[0-9a-zA-Z_.]+]] = call i256 @__array_load__9_to_19([0 x i256]* %{{[0-9a-zA-Z_.]+}}, i32 %{{[0-9a-zA-Z_.]+}})
-// CHECK: call void @__array_store__0_to_8([0 x i256]* %0, i32 %{{[0-9a-zA-Z_.]+}}, i256 %[[TEMP]])
+// CHECK: %[[TEMP:[0-9a-zA-Z_\.]+]] = call i256 @__array_load__9_to_19([0 x i256]* %{{[0-9a-zA-Z_\.]+}}, i32 %{{[0-9a-zA-Z_\.]+}})
+// CHECK: call void @__array_store__0_to_8([0 x i256]* %0, i32 %{{[0-9a-zA-Z_\.]+}}, i256 %[[TEMP]])

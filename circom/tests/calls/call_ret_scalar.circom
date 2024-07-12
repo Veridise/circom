@@ -15,14 +15,15 @@ template CallRetTest() {
 
 component main = CallRetTest();
 
-//CHECK-LABEL: define{{.*}} i256 @sum_0(i256* %0){{.*}} {
-//CHECK-NEXT: sum_0:
+//CHECK-LABEL: define{{.*}} i256 @sum_
+//CHECK-SAME: [[$F_ID_1:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
+//CHECK-NEXT: sum_[[$F_ID_1]]:
 //CHECK-NEXT:   br label %return1
 //CHECK-EMPTY:
 //CHECK-NEXT: return1:
-//CHECK-NEXT:   %1 = getelementptr i256, i256* %0, i32 0
-//CHECK-NEXT:   %2 = load i256, i256* %1, align 4
-//CHECK-NEXT:   ret i256 %2
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T01]], align 4
+//CHECK-NEXT:   ret i256 %[[T02]]
 //CHECK-NEXT: }
 //
 //CHECK-LABEL: define{{.*}} void @CallRetTest_0_run([0 x i256]* %0){{.*}} {
@@ -32,15 +33,15 @@ component main = CallRetTest();
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY:
 //CHECK-NEXT: call1:
-//CHECK-NEXT:   %sum_0_arena = alloca [1 x i256], align 8
-//CHECK-NEXT:   %1 = getelementptr [1 x i256], [1 x i256]* %sum_0_arena, i32 0, i32 0
-//CHECK-NEXT:   %2 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 1
-//CHECK-NEXT:   %3 = load i256, i256* %2, align 4
-//CHECK-NEXT:   store i256 %3, i256* %1, align 4
-//CHECK-NEXT:   %4 = bitcast [1 x i256]* %sum_0_arena to i256*
-//CHECK-NEXT:   %call.sum_0 = call i256 @sum_0(i256* %4)
-//CHECK-NEXT:   %5 = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
-//CHECK-NEXT:   store i256 %call.sum_0, i256* %5, align 4
+//CHECK-NEXT:   %[[CALL_ARENA:[0-9a-zA-Z_\.]+]] = alloca [1 x i256], align 8
+//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = getelementptr [1 x i256], [1 x i256]* %[[CALL_ARENA]], i32 0, i32 0
+//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 1
+//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T02]], align 4
+//CHECK-NEXT:   store i256 %[[T03]], i256* %[[T01]], align 4
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = bitcast [1 x i256]* %[[CALL_ARENA]] to i256*
+//CHECK-NEXT:   %[[T99:[0-9a-zA-Z_\.]+]] = call i256 @sum_[[$F_ID_1]](i256* %[[T04]])
+//CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
+//CHECK-NEXT:   store i256 %[[T99]], i256* %[[T05]], align 4
 //CHECK-NEXT:   br label %prologue
 //CHECK-EMPTY:
 //CHECK-NEXT: prologue:

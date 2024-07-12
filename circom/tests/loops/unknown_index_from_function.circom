@@ -27,7 +27,7 @@ template Example(n) {
 component main = Example(3);
 
 //CHECK-LABEL: define{{.*}} void @Example_{{[0-9]+}}_run
-//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]])
+//CHECK-SAME: ([0 x i256]* %[[ARG:[0-9]+]]){{.*}} {
 //CHECK: unrolled_loop{{[0-9]+}}:
 //CHECK-NOT: call void @..generated..loop.body.{{.*}}
 //
