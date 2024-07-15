@@ -155,7 +155,7 @@ impl<'a> FunctionEnvData<'a> {
         unreachable!()
     }
 
-    pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+    pub fn set_vars_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         let mut copy = self;
         if let Some(idxs) = idxs {
             for idx in idxs {
@@ -177,7 +177,7 @@ impl<'a> FunctionEnvData<'a> {
         self
     }
 
-    pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
+    pub fn set_subcmps_to_unknown<T: IntoIterator<Item = usize>>(
         self,
         idxs: Option<T>,
     ) -> Result<Self, BadInterp> {

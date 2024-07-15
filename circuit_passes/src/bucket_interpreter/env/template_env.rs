@@ -131,7 +131,7 @@ impl<'a> TemplateEnvData<'a> {
                 collector.signals.as_mut().map(|s| s.insert(idx));
             }
             AddressType::SubcmpSignal { .. } => {
-                //TODO: The current implementations of write_collector.rs and Env::set_subcmps_to_unk(..)
+                //TODO: The current implementations of write_collector.rs and Env::set_subcmps_to_unknown(..)
                 //  reset entire subcomponents but an analysis of the fields within this SubcmpSignal
                 //  can provide the necessary information to restrict that to specific signals within.
                 collector.subcmps.as_mut().map(|s| s.insert(idx));
@@ -152,7 +152,7 @@ impl<'a> TemplateEnvData<'a> {
         copy
     }
 
-    pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+    pub fn set_vars_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         let mut copy = self;
         if let Some(idxs) = idxs {
             for idx in idxs {
@@ -180,7 +180,7 @@ impl<'a> TemplateEnvData<'a> {
         copy
     }
 
-    pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
+    pub fn set_subcmps_to_unknown<T: IntoIterator<Item = usize>>(
         self,
         subcmp_idxs: Option<T>,
     ) -> Result<Self, BadInterp> {

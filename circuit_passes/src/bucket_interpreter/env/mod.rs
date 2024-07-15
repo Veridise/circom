@@ -326,8 +326,8 @@ impl<'a> Env<'a> {
     }
 
     /// Sets the given variables to Value::Unknown, for all signals if None.
-    pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
-        switch_impl_write!(self, set_vars_to_unk, idxs)
+    pub fn set_vars_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        switch_impl_write!(self, set_vars_to_unknown, idxs)
     }
 
     /// Sets the given signals to Value::Unknown, for all signals if None.
@@ -339,11 +339,11 @@ impl<'a> Env<'a> {
     /// subcomponents if the Option is None, to Value::Unknown.
     /// NOTE: The ExtractedFuncEnvData implementation for this function
     /// assumes it is only called from within 'write_collector.rs'.
-    pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
+    pub fn set_subcmps_to_unknown<T: IntoIterator<Item = usize>>(
         self,
         subcmp_idxs: Option<T>,
     ) -> Result<Self, BadInterp> {
-        switch_impl_write!(self, try set_subcmps_to_unk, subcmp_idxs)
+        switch_impl_write!(self, try set_subcmps_to_unknown, subcmp_idxs)
     }
 
     pub fn set_subcmp_signal(

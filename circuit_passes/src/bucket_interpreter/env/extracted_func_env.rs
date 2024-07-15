@@ -317,9 +317,9 @@ impl<'a> ExtractedFuncEnvData<'a> {
         with_updated_base!(self, self.base.set_signal(idx, value))
     }
 
-    pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+    pub fn set_vars_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         // Local variables are referenced in the normal way
-        with_updated_base!(self, self.base.set_vars_to_unk(idxs))
+        with_updated_base!(self, self.base.set_vars_to_unknown(idxs))
     }
 
     pub fn set_signals_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
@@ -327,14 +327,14 @@ impl<'a> ExtractedFuncEnvData<'a> {
         with_updated_base!(self, self.base.set_signals_to_unknown(idxs))
     }
 
-    pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
+    pub fn set_subcmps_to_unknown<T: IntoIterator<Item = usize>>(
         self,
         subcmp_idxs: Option<T>,
     ) -> Result<Self, BadInterp> {
         // The indexes passed in here are already converted within 'write_collector.rs' via
         //  interpreting the LocationRule and performing the PassMemory lookup on the
         //  unchanged scope (per comment in BucketInterpreter::_execute_function_extracted).
-        Ok(with_updated_base!(self, self.base.set_subcmps_to_unk(subcmp_idxs)?))
+        Ok(with_updated_base!(self, self.base.set_subcmps_to_unknown(subcmp_idxs)?))
     }
 
     pub fn set_subcmp_signal(
