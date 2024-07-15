@@ -31,10 +31,9 @@ impl<'d> DeterministicSubCmpInvokePass<'d> {
         address_type: &AddressType,
         env: &Env,
     ) -> Result<(), BadInterp> {
-        // If the address of the subcomponent input information is unknown, then
-        // If executing this instruction would result in calling the subcomponent we replace it with Last
-        //    Will result in calling if the counter is at one because after the execution it will be 0
-        // If not replace with NoLast
+        // Resolve "Unknown" input status. If this store/call instruction initializes the last input signal
+        //  within a subcomponent (indicated by counter value of 1 because it will become 0 after execution
+        //  of this statement), then replace the input status with Last. Otherwise, with NoLast.
         if let AddressType::SubcmpSignal {
             input_information: InputInformation::Input { status: StatusInput::Unknown },
             cmp_address,
@@ -70,6 +69,8 @@ impl Observer<Env<'_>> for DeterministicSubCmpInvokePass<'_> {
     }
 
     fn ignore_function_calls(&self) -> bool {
+        // A Circom source function cannot contain components so
+        // AddressType::SubcmpSignal cannot appear within the body.
         true
     }
 
