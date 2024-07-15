@@ -13,6 +13,7 @@ use super::{
     sort, CallStack, CallStackFrame, EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED,
 };
 
+/// This Env is used for Circom source templates.
 #[derive(Clone)]
 pub struct TemplateEnvData<'a> {
     vars: HashMap<usize, Value>,

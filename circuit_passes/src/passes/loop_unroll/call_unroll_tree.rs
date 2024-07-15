@@ -83,7 +83,8 @@ impl Node {
         checked_insert!(&mut search.0.borrow_mut().unrolling, *loop_id, unrolled_block_id);
     }
 
-    ///
+    /// Get the ID of the BlockBucket that was generated containing
+    /// the unrolling of LoopBucket with the given ID.
     pub fn get_replacement<'a>(
         node: &'a NodeRef,
         loop_bucket_id: &LoopBucketId,

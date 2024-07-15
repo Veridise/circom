@@ -14,6 +14,7 @@ use super::{
     PRINT_ENV_SORTED,
 };
 
+/// This Env is used for Circom source functions.
 #[derive(Clone)]
 pub struct FunctionEnvData<'a> {
     caller_stack: Vec<BucketId>,
