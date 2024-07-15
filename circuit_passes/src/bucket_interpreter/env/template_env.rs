@@ -165,7 +165,7 @@ impl<'a> TemplateEnvData<'a> {
         copy
     }
 
-    pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+    pub fn set_signals_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         let mut copy = self;
         if let Some(idxs) = idxs {
             for idx in idxs {

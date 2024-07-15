@@ -331,8 +331,8 @@ impl<'a> Env<'a> {
     }
 
     /// Sets the given signals to Value::Unknown, for all signals if None.
-    pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
-        switch_impl_write!(self, set_signals_to_unk, idxs)
+    pub fn set_signals_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        switch_impl_write!(self, set_signals_to_unknown, idxs)
     }
 
     /// Sets all the signals of the given subcomponent(s), or for all

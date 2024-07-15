@@ -472,7 +472,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 ));
                 if idx.is_unknown() {
                     // All signals in the range must be marked as unknown if the index is unknown
-                    return InterpRes::Continue(env.set_signals_to_unk(possible_range));
+                    return InterpRes::Continue(env.set_signals_to_unknown(possible_range));
                 } else {
                     let idx = check_std_res!(idx.as_u32());
                     assert!(possible_range.is_none() || possible_range.unwrap().contains(&idx));

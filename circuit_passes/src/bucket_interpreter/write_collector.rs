@@ -39,7 +39,7 @@ impl Default for Writes {
 impl Writes {
     fn set_unknowns<'e>(self, env: Env<'e>) -> Result<Env<'e>, BadInterp> {
         env.set_vars_to_unk(self.vars)
-            .set_signals_to_unk(self.signals)
+            .set_signals_to_unknown(self.signals)
             .set_subcmps_to_unk(self.subcmps)
     }
 

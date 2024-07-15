@@ -128,8 +128,8 @@ impl<'a> UnrolledBlockEnvData<'a> {
         new_env!(self.base.set_vars_to_unk(idxs), self.extractor)
     }
 
-    pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
-        new_env!(self.base.set_signals_to_unk(idxs), self.extractor)
+    pub fn set_signals_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        new_env!(self.base.set_signals_to_unknown(idxs), self.extractor)
     }
 
     pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(

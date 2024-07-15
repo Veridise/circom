@@ -322,9 +322,9 @@ impl<'a> ExtractedFuncEnvData<'a> {
         with_updated_base!(self, self.base.set_vars_to_unk(idxs))
     }
 
-    pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+    pub fn set_signals_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         // Signals are referenced in the normal way
-        with_updated_base!(self, self.base.set_signals_to_unk(idxs))
+        with_updated_base!(self, self.base.set_signals_to_unknown(idxs))
     }
 
     pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
