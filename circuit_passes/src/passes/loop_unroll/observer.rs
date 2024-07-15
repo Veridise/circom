@@ -7,7 +7,7 @@ use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::error::{self, BadInterp};
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
-use crate::bucket_interpreter::LOOP_LIMIT;
+use crate::bucket_interpreter::{InterpreterFlags, LOOP_LIMIT};
 use crate::checked_insert;
 use crate::passes::{builders, GlobalPassData};
 use super::body_extractor::LoopBodyExtractor;
@@ -161,7 +161,11 @@ impl LoopUnrollObserver<'_> {
         // Compute loop iteration count. If unknown, return immediately.
         let recorder = EnvRecorder::new(self.global_data, &self.memory, env.get_context_kind());
         {
-            let interpreter = self.memory.build_interpreter(self.global_data, &recorder);
+            let interpreter = self.memory.build_interpreter_with_flags(
+                self.global_data,
+                &recorder,
+                InterpreterFlags { visit_unknown_condition_branches: true, ..Default::default() },
+            );
             let mut inner_env = env.clone();
             let mut n_iters = 0;
             loop {

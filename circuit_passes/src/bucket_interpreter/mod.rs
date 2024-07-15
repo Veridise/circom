@@ -673,8 +673,8 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 Env::new_extracted_func_env(env, &bucket.id, Default::default(), Default::default())
             }
         });
-        //NOTE: Do not change scope for the new interpreter because the mem lookups within
-        //  `get_write_operations_in_store_bucket` need to use the original function context.
+        //NOTE: Do not change scope for the new interpreter because the mem lookups
+        //  within 'write_collector.rs' need to use the original function context.
         let interp = self.mem.build_interpreter_with_flags(
             self.global_data,
             self.observer,

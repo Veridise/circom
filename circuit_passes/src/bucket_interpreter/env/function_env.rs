@@ -3,8 +3,10 @@ use std::collections::{BTreeMap, HashMap, hash_map::Entry};
 use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::ir_interface::AddressType;
 use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::error::{new_inconsistency_err, BadInterp};
+use crate::bucket_interpreter::write_collector::Writes;
 use crate::bucket_interpreter::{BucketInterpreter, CALL_STACK_LIMIT};
 use crate::bucket_interpreter::value::Value;
 use super::{
@@ -132,6 +134,19 @@ impl<'a> FunctionEnvData<'a> {
 
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
         sort(&self.vars, Clone::clone)
+    }
+
+    pub fn collect_write(
+        &self,
+        dest_address_type: &AddressType,
+        idx: usize,
+        collector: &mut Writes,
+    ) {
+        match dest_address_type {
+            AddressType::Variable => collector.vars.as_mut().map(|s| s.insert(idx)),
+            AddressType::Signal => collector.signals.as_mut().map(|s| s.insert(idx)),
+            AddressType::SubcmpSignal { .. } => unreachable!("Source function cannot have subcmp"),
+        };
     }
 
     // WRITE OPERATIONS

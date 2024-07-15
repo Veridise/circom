@@ -3,8 +3,10 @@ use std::collections::{BTreeMap, HashMap, hash_map::Entry};
 use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::ir_interface::AddressType;
 use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::error::{new_inconsistency_err, BadInterp};
+use crate::bucket_interpreter::write_collector::Writes;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
 use super::{
@@ -109,6 +111,28 @@ impl<'a> TemplateEnvData<'a> {
 
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
         sort(&self.vars, Clone::clone)
+    }
+
+    pub fn collect_write(
+        &self,
+        dest_address_type: &AddressType,
+        idx: usize,
+        collector: &mut Writes,
+    ) {
+        match dest_address_type {
+            AddressType::Variable => {
+                collector.vars.as_mut().map(|s| s.insert(idx));
+            }
+            AddressType::Signal => {
+                collector.signals.as_mut().map(|s| s.insert(idx));
+            }
+            AddressType::SubcmpSignal { .. } => {
+                //TODO: The current implementations of write_collector.rs and Env::set_subcmps_to_unk(..)
+                //  reset entire subcomponents but an analysis of the fields within this SubcmpSignal
+                //  can provide the necessary information to restrict that to specific signals within.
+                collector.subcmps.as_mut().map(|s| s.insert(idx));
+            }
+        }
     }
 
     // WRITE OPERATIONS

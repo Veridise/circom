@@ -3,6 +3,7 @@ use std::collections::{HashMap, BTreeMap, HashSet};
 use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::ir_interface::AddressType;
 use compiler::intermediate_representation::BucketId;
 use function_env::FunctionEnvData;
 use indexmap::IndexSet;
@@ -11,6 +12,7 @@ use crate::passes::loop_unroll::{ToOriginalLocation, FuncArgIdx};
 use self::extracted_func_env::ExtractedFuncEnvData;
 use self::template_env::TemplateEnvData;
 use self::unrolled_block_env::UnrolledBlockEnvData;
+use super::write_collector::Writes;
 use super::BucketInterpreter;
 use super::error::BadInterp;
 use super::value::Value;
@@ -302,6 +304,15 @@ impl<'a> Env<'a> {
         switch_impl_read!(self, get_vars_sort)
     }
 
+    pub fn collect_write(
+        &self,
+        dest_address_type: &AddressType,
+        idx: usize,
+        collector: &mut Writes,
+    ) {
+        switch_impl_read!(self, collect_write, dest_address_type, idx, collector)
+    }
+
     // WRITE OPERATIONS
     pub fn set_var(self, idx: usize, value: Value) -> Self {
         switch_impl_write!(self, set_var, idx, value)
@@ -321,7 +332,10 @@ impl<'a> Env<'a> {
         switch_impl_write!(self, set_signals_to_unk, idxs)
     }
 
-    /// Sets all the signals of the given subcomponent(s) to Value::Unknown, for all subcomponents if None.
+    /// Sets all the signals of the given subcomponent(s), or for all
+    /// subcomponents if the Option is None, to Value::Unknown.
+    /// NOTE: The ExtractedFuncEnvData implementation for this function
+    /// assumes it is only called from within 'write_collector.rs'.
     pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
         self,
         subcmp_idxs: Option<T>,

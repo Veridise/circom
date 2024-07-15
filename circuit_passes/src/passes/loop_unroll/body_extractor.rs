@@ -8,7 +8,7 @@ use compiler::circuit_design::function::{FunctionCodeInfo, FunctionCode};
 use compiler::hir::very_concrete_program::Param;
 use compiler::intermediate_representation::{BucketId, new_id, UpdateId};
 use compiler::intermediate_representation::ir_interface::*;
-use crate::bucket_interpreter::env::EnvContextKind;
+use crate::bucket_interpreter::env::{sort, EnvContextKind};
 use crate::bucket_interpreter::error::BadInterp;
 use crate::checked_insert;
 use crate::passes::{builders, checks};
@@ -209,6 +209,26 @@ impl LoopBodyExtractor {
             println!("[extract]   arg_info = {:?}", arg_info);
             println!("[extract]   mem_refs = {:?}", mem_refs);
         }
+        // Assert internal consistency of the ArgInfo structure
+        debug_assert_eq!(
+            arg_info.num_args,
+            // Count unique parameter indexes and add 2 for the lvars and signals params.
+            2 + arg_info
+                .loc_to_args
+                .values()
+                .fold(HashSet::<usize>::default(), |mut acc, v| {
+                    match v {
+                        ArgIndex::Signal(signal, _) => acc.insert(*signal),
+                        ArgIndex::SubCmp { signal, arena, counter } => {
+                            acc.insert(*signal);
+                            acc.insert(*arena);
+                            acc.insert(*counter)
+                        }
+                    };
+                    acc
+                })
+                .len()
+        );
 
         // Store the parameter information for the function to GlobalPassData based on current Env
         {
@@ -220,8 +240,11 @@ impl LoopBodyExtractor {
                 let mapping = arg_info.get_reverse_passing_refs_for_itr(&mem_refs, iter_num);
                 if DEBUG_LOOP_UNROLL {
                     println!(
-                        "[extract] storing orig loc data for: {}+{:?} -> {:?}",
-                        extracted_name, iter_env, mapping
+                        "[extract] storing orig loc data for: {}+{:?} -> (origloc={:?}, arenas={:?})",
+                        extracted_name,
+                        iter_env,
+                        sort(&mapping.0, std::convert::identity),
+                        mapping.1
                     );
                 }
                 // NOTE: Encountering different iteration counts for the same loop will produce
@@ -728,7 +751,7 @@ impl LoopBodyExtractor {
 
         //Keep only the table columns where extra parameters are necessary
         loc_to_itr_to_ref.retain(|k, _| loc_to_args.contains_key(k));
-        Ok((ArgInfo { loc_to_args, num_args: next_idx }, loc_to_itr_to_ref.into_iter().collect()))
+        Ok((ArgInfo { loc_to_args, num_args: next_idx }, loc_to_itr_to_ref))
     }
 
     #[inline]

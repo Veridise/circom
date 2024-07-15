@@ -3,7 +3,9 @@ use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::ir_interface::AddressType;
 use compiler::intermediate_representation::BucketId;
+use crate::bucket_interpreter::write_collector::Writes;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
@@ -100,6 +102,15 @@ impl<'a> UnrolledBlockEnvData<'a> {
 
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
         self.base.get_vars_sort()
+    }
+
+    pub fn collect_write(
+        &self,
+        dest_address_type: &AddressType,
+        idx: usize,
+        collector: &mut Writes,
+    ) {
+        self.base.collect_write(dest_address_type, idx, collector)
     }
 
     pub fn set_var(self, idx: usize, value: Value) -> Self {
