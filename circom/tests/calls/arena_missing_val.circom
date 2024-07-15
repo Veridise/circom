@@ -38,35 +38,14 @@ template BigMod() {
 
 component main = BigMod();
 
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME:  [[$F_ID_1:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %var_0, i256* %var_1){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_1]]:
-//CHECK-NEXT:   br label %store1
-//CHECK-EMPTY: 
-//CHECK-NEXT: store1:
-//CHECK-NEXT:   %[[T000:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_0, i32 0
-//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_1, i32 0
-//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T001]], align 4
-//CHECK-NEXT:   store i256 %[[T002]], i256* %[[T000]], align 4
-//CHECK-NEXT:   br label %store2
-//CHECK-EMPTY: 
-//CHECK-NEXT: store2:
-//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 29
-//CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 29
-//CHECK-NEXT:   %[[T005:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T004]], align 4
-//CHECK-NEXT:   %[[T993:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T005]], i256 1)
-//CHECK-NEXT:   store i256 %[[T993]], i256* %[[T003]], align 4
-//CHECK-NEXT:   br label %return3
-//CHECK-EMPTY: 
-//CHECK-NEXT: return3:
-//CHECK-NEXT:   ret void
-//CHECK-NEXT: }
+//NOTE: There is some instability in where [[$F_ID_1]] will be generated, possibly due to
+//  the LLVM "add_merge_functions_pass" in which case there's no obvious way to address it.
+//  Instead, the definition of [[$F_ID_1]] is elided and the name is first defined within
+//  the 'long_div_' function. Also, the entire header of this first generated function must
+//  be matched on one line.
 //
-//CHECK-LABEL: define{{.*}} void @..generated..loop.body.
-//CHECK-SAME:  [[$F_ID_2:[0-9a-zA-Z_\.]+]]([0 x i256]* %lvars, [0 x i256]* %signals,
-//CHECK-SAME:  i256* %var_0, i256* %var_1, i256* %var_2, i256* %var_3, i256* %var_4){{.*}} {
-//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2]]:
+//CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+}}([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0, i256* %var_1, i256* %var_2, i256* %var_3, i256* %var_4){{.*}} {
+//CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9a-zA-Z_\.]+]]:
 //CHECK-NEXT:   br label %branch1
 //CHECK-EMPTY: 
 //CHECK-NEXT: branch1:
@@ -325,7 +304,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[T027:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T026]], i32 0, i256 15
 //CHECK-NEXT:   %[[T028:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T029:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T028]], i32 0, i256 20
-//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T025]], [0 x i256]* null, i256* %[[T027]], i256* %[[T029]])
+//CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1:[0-9a-zA-Z_\.]+]]([0 x i256]* %[[T025]], [0 x i256]* null, i256* %[[T027]], i256* %[[T029]])
 //CHECK-NEXT:   %[[T030:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T031:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T032:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T031]], i32 0, i256 16
@@ -1326,7 +1305,7 @@ component main = BigMod();
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
 //CHECK-NEXT: call1:
-//CHECK-NEXT:   %[[CALL_ARENA]] = alloca [30 x i256], align 8
+//CHECK-NEXT:   %[[CALL_ARENA:[0-9a-zA-Z_\.]+]] = alloca [30 x i256], align 8
 //CHECK-NEXT:   %[[T001:[0-9a-zA-Z_\.]+]] = getelementptr [30 x i256], [30 x i256]* %[[CALL_ARENA]], i32 0, i32 0
 //CHECK-NEXT:   store i256 4, i256* %[[T001]], align 4
 //CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = bitcast [30 x i256]* %[[CALL_ARENA]] to i256*
