@@ -259,8 +259,11 @@ impl<'a> Env<'a> {
     /// This should be used to prevent the interpreter from getting stuck due
     /// to recursive calls or an excessively large call stack in circom source.
     /// Returns None when the interpreter should not continue any further.
-    pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
-        switch_impl_read!(self, safe_to_interpret, new_frame)
+    pub fn append_stack_if_safe_to_interpret(
+        &self,
+        new_frame: CallStackFrame,
+    ) -> Option<CallStack> {
+        switch_impl_read!(self, append_stack_if_safe_to_interpret, new_frame)
     }
 
     /// Return the stack of ID's from the CallBuckets on the stack

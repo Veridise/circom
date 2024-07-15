@@ -25,7 +25,7 @@ pub struct FunctionEnvData<'a> {
     /// This call stack is used to prevent the Rust stack from overflowing due to recursive
     /// calls in the Circom source where termination cannot be determined by the intepreter.
     //  Implementation note: Store a snapshot of the CallStack in each Env rather than having
-    //  each store only its relevant CallStackFrame and having safe_to_interpret() recursively
+    //  each store only its relevant CallStackFrame and having append_stack_if_safe_to_interpret() recursively
     //  check the base Env because that lookup would further increase the Rust stack height
     //  while doing the check that is intended to prevent Rust stack exhaustion.
     call_stack: CallStack,
@@ -88,7 +88,10 @@ impl<'a> FunctionEnvData<'a> {
         EnvContextKind::SourceFunction
     }
 
-    pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
+    pub fn append_stack_if_safe_to_interpret(
+        &self,
+        new_frame: CallStackFrame,
+    ) -> Option<CallStack> {
         if !self.call_stack.contains(&new_frame) && self.call_stack.depth() <= CALL_STACK_LIMIT {
             Some(self.call_stack.clone().push(new_frame))
         } else {

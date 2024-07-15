@@ -69,7 +69,10 @@ impl<'a> TemplateEnvData<'a> {
         EnvContextKind::Template
     }
 
-    pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
+    pub fn append_stack_if_safe_to_interpret(
+        &self,
+        new_frame: CallStackFrame,
+    ) -> Option<CallStack> {
         Some(CallStack::new(new_frame))
     }
 

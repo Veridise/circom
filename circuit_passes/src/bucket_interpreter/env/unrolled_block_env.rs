@@ -60,8 +60,11 @@ impl<'a> UnrolledBlockEnvData<'a> {
         self.base.get_context_kind()
     }
 
-    pub fn safe_to_interpret(&self, new_frame: CallStackFrame) -> Option<CallStack> {
-        self.base.safe_to_interpret(new_frame)
+    pub fn append_stack_if_safe_to_interpret(
+        &self,
+        new_frame: CallStackFrame,
+    ) -> Option<CallStack> {
+        self.base.append_stack_if_safe_to_interpret(new_frame)
     }
 
     pub fn get_caller_stack(&self) -> &[BucketId] {

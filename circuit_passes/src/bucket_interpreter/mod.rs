@@ -699,9 +699,10 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         args: Vec<Value>,
         observe: bool,
     ) -> RE<'env> {
-        if let Some(new_call_stack) =
-            env.safe_to_interpret(CallStackFrame::new(bucket.symbol.clone(), args.clone()))
-        {
+        if let Some(new_call_stack) = env.append_stack_if_safe_to_interpret(CallStackFrame::new(
+            bucket.symbol.clone(),
+            args.clone(),
+        )) {
             if cfg!(debug_assertions) {
                 println!("Running function {}", bucket.symbol);
             }
