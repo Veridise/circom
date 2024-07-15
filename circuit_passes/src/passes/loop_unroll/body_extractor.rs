@@ -141,7 +141,7 @@ struct UniqueFuncKey {
 
 #[derive(Debug, Default)]
 pub struct LoopBodyExtractor {
-    ///
+    /// Cache of extracted loop body functions.
     new_body_functions: RefCell<BTreeMap<UniqueFuncKey, FunctionCode>>,
     /// Exists only to stabilize function order for lit test output.
     func_creation_order: RefCell<Vec<String>>,
@@ -160,16 +160,6 @@ impl LoopBodyExtractor {
                 .find(|f| f.header.eq(name))
                 .expect("Cannot find extracted function definition!")
         })
-    }
-
-    pub fn take_new_functions(&self) -> impl ExactSizeIterator<Item = FunctionCode> {
-        // NOTE: Ordering is only to stabilize lit test output. Otherwise, this could
-        // be implemented as `self.new_body_functions.take().into_values()`.
-        let mut ret: Vec<FunctionCode> = self.new_body_functions.take().into_values().collect();
-        let index_map: HashMap<String, usize> =
-            self.func_creation_order.take().into_iter().enumerate().map(|(i, t)| (t, i)).collect();
-        ret.sort_by_key(|f| index_map[&f.header]);
-        ret.into_iter()
     }
 
     pub(super) fn extract<'a>(
