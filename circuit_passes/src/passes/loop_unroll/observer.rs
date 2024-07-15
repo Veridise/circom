@@ -43,10 +43,7 @@ impl LoopUnrollObserverResult {
     where
         K: std::fmt::Debug,
     {
-        let id = {
-            // NOTE: This borrow is inside brackets to prevent runtime double borrow error.
-            cache.borrow().get(&key).cloned()
-        };
+        let id = cache.borrow().get(&key).cloned();
         let id = match id {
             Some(id) => id,
             None => {
