@@ -164,7 +164,7 @@ pub enum Env<'a> {
     ExtractedFunction(ExtractedFuncEnvData<'a>),
 }
 
-macro_rules! switch_impl_read {
+macro_rules! switch_impl_get {
     ($self: ident, $func: ident $(, $args:tt)*) => {
         match $self {
             Env::Template(d) => d.$func($($args),*),
@@ -175,7 +175,7 @@ macro_rules! switch_impl_read {
     };
 }
 
-macro_rules! switch_impl_write {
+macro_rules! switch_impl_update {
     ($self: ident, $func: ident $(, $args:tt)*) => {
         match $self {
             Env::Template(d) => Env::Template(d.$func($($args),*)),
@@ -197,23 +197,23 @@ macro_rules! switch_impl_write {
 
 impl Display for Env<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        switch_impl_read!(self, fmt, f)
+        switch_impl_get!(self, fmt, f)
     }
 }
 
 impl std::fmt::Debug for Env<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        switch_impl_read!(self, fmt, f)
+        switch_impl_get!(self, fmt, f)
     }
 }
 
 impl LibraryAccess for Env<'_> {
     fn get_function(&self, name: &String) -> Ref<FunctionCode> {
-        switch_impl_read!(self, get_function, name)
+        switch_impl_get!(self, get_function, name)
     }
 
     fn get_template(&self, name: &String) -> Ref<TemplateCode> {
-        switch_impl_read!(self, get_template, name)
+        switch_impl_get!(self, get_template, name)
     }
 }
 
@@ -253,7 +253,7 @@ impl<'a> Env<'a> {
     }
 
     pub fn get_context_kind(&self) -> EnvContextKind {
-        switch_impl_read!(self, get_context_kind)
+        switch_impl_get!(self, get_context_kind)
     }
 
     /// This should be used to prevent the interpreter from getting stuck due
@@ -263,48 +263,48 @@ impl<'a> Env<'a> {
         &self,
         new_frame: CallStackFrame,
     ) -> Option<CallStack> {
-        switch_impl_read!(self, append_stack_if_safe_to_interpret, new_frame)
+        switch_impl_get!(self, append_stack_if_safe_to_interpret, new_frame)
     }
 
     /// Return the stack of ID's from the CallBuckets on the stack
     pub fn get_caller_stack(&self) -> &[BucketId] {
-        switch_impl_read!(self, get_caller_stack)
+        switch_impl_get!(self, get_caller_stack)
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
-        switch_impl_read!(self, get_var, idx)
+        switch_impl_get!(self, get_var, idx)
     }
 
     pub fn get_signal(&self, idx: usize) -> Value {
-        switch_impl_read!(self, get_signal, idx)
+        switch_impl_get!(self, get_signal, idx)
     }
 
     pub fn get_subcmp_signal(&self, subcmp_idx: usize, signal_idx: usize) -> Value {
-        switch_impl_read!(self, get_subcmp_signal, subcmp_idx, signal_idx)
+        switch_impl_get!(self, get_subcmp_signal, subcmp_idx, signal_idx)
     }
 
     pub fn get_subcmp_name(&self, subcmp_idx: usize) -> &String {
-        switch_impl_read!(self, get_subcmp_name, subcmp_idx)
+        switch_impl_get!(self, get_subcmp_name, subcmp_idx)
     }
 
     pub fn get_subcmp_template_id(&self, subcmp_idx: usize) -> usize {
-        switch_impl_read!(self, get_subcmp_template_id, subcmp_idx)
+        switch_impl_get!(self, get_subcmp_template_id, subcmp_idx)
     }
 
     pub fn get_subcmp_counter(&self, subcmp_idx: usize) -> Value {
-        switch_impl_read!(self, get_subcmp_counter, subcmp_idx)
+        switch_impl_get!(self, get_subcmp_counter, subcmp_idx)
     }
 
     pub fn subcmp_counter_is_zero(&self, subcmp_idx: usize) -> bool {
-        switch_impl_read!(self, subcmp_counter_is_zero, subcmp_idx)
+        switch_impl_get!(self, subcmp_counter_is_zero, subcmp_idx)
     }
 
     pub fn subcmp_counter_equal_to(&self, subcmp_idx: usize, value: usize) -> bool {
-        switch_impl_read!(self, subcmp_counter_equal_to, subcmp_idx, value)
+        switch_impl_get!(self, subcmp_counter_equal_to, subcmp_idx, value)
     }
 
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
-        switch_impl_read!(self, get_vars_sort)
+        switch_impl_get!(self, get_vars_sort)
     }
 
     pub fn collect_write(
@@ -313,26 +313,26 @@ impl<'a> Env<'a> {
         idx: usize,
         collector: &mut Writes,
     ) {
-        switch_impl_read!(self, collect_write, dest_address_type, idx, collector)
+        switch_impl_get!(self, collect_write, dest_address_type, idx, collector)
     }
 
     // WRITE OPERATIONS
     pub fn set_var(self, idx: usize, value: Value) -> Self {
-        switch_impl_write!(self, set_var, idx, value)
+        switch_impl_update!(self, set_var, idx, value)
     }
 
     pub fn set_signal(self, idx: usize, value: Value) -> Self {
-        switch_impl_write!(self, set_signal, idx, value)
+        switch_impl_update!(self, set_signal, idx, value)
     }
 
     /// Sets the given variables to Value::Unknown, for all signals if None.
     pub fn set_vars_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
-        switch_impl_write!(self, set_vars_to_unknown, idxs)
+        switch_impl_update!(self, set_vars_to_unknown, idxs)
     }
 
     /// Sets the given signals to Value::Unknown, for all signals if None.
     pub fn set_signals_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
-        switch_impl_write!(self, set_signals_to_unknown, idxs)
+        switch_impl_update!(self, set_signals_to_unknown, idxs)
     }
 
     /// Sets all the signals of the given subcomponent(s), or for all
@@ -343,7 +343,7 @@ impl<'a> Env<'a> {
         self,
         subcmp_idxs: Option<T>,
     ) -> Result<Self, BadInterp> {
-        switch_impl_write!(self, try set_subcmps_to_unknown, subcmp_idxs)
+        switch_impl_update!(self, try set_subcmps_to_unknown, subcmp_idxs)
     }
 
     pub fn set_subcmp_signal(
@@ -352,15 +352,15 @@ impl<'a> Env<'a> {
         signal_idx: usize,
         value: Value,
     ) -> Result<Self, BadInterp> {
-        switch_impl_write!(self, try set_subcmp_signal, subcmp_idx, signal_idx, value)
+        switch_impl_update!(self, try set_subcmp_signal, subcmp_idx, signal_idx, value)
     }
 
     pub fn set_subcmp_counter(self, subcmp_idx: usize, new_val: usize) -> Result<Self, BadInterp> {
-        switch_impl_write!(self, try set_subcmp_counter, subcmp_idx, new_val)
+        switch_impl_update!(self, try set_subcmp_counter, subcmp_idx, new_val)
     }
 
     pub fn decrease_subcmp_counter(self, subcmp_idx: usize) -> Result<Self, BadInterp> {
-        switch_impl_write!(self, try decrease_subcmp_counter, subcmp_idx)
+        switch_impl_update!(self, try decrease_subcmp_counter, subcmp_idx)
     }
 
     pub fn run_subcmp(
@@ -369,7 +369,7 @@ impl<'a> Env<'a> {
         name: &String,
         interpreter: &BucketInterpreter,
     ) -> Self {
-        switch_impl_write!(self, run_subcmp, subcmp_idx, name, interpreter)
+        switch_impl_update!(self, run_subcmp, subcmp_idx, name, interpreter)
     }
 
     pub fn create_subcmp(
@@ -379,6 +379,6 @@ impl<'a> Env<'a> {
         count: usize,
         template_id: usize,
     ) -> Self {
-        switch_impl_write!(self, create_subcmp, name, base_index, count, template_id)
+        switch_impl_update!(self, create_subcmp, name, base_index, count, template_id)
     }
 }
