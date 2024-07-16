@@ -92,38 +92,31 @@ impl<'a> FunctionEnvData<'a> {
     }
 
     pub fn get_signal(&self, _idx: usize) -> Value {
-        // There are no signals in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain signals")
     }
 
     pub fn get_subcmp_signal(&self, _subcmp_idx: usize, _signal_idx: usize) -> Value {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 
     pub fn get_subcmp_name(&self, _subcmp_idx: usize) -> &String {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 
     pub fn get_subcmp_template_id(&self, _subcmp_idx: usize) -> usize {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 
     pub fn get_subcmp_counter(&self, _subcmp_idx: usize) -> Value {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 
     pub fn subcmp_counter_is_zero(&self, _subcmp_idx: usize) -> bool {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 
     pub fn subcmp_counter_equal_to(&self, _subcmp_idx: usize, _value: usize) -> bool {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 
     pub fn get_vars_sort(&self) -> BTreeMap<usize, Value> {
@@ -138,8 +131,10 @@ impl<'a> FunctionEnvData<'a> {
     ) {
         match dest_address_type {
             AddressType::Variable => collector.vars.as_mut().map(|s| s.insert(idx)),
-            AddressType::Signal => collector.signals.as_mut().map(|s| s.insert(idx)),
-            AddressType::SubcmpSignal { .. } => unreachable!("Source function cannot have subcmp"),
+            AddressType::Signal => unreachable!("Source function cannot contain signals"),
+            AddressType::SubcmpSignal { .. } => {
+                unreachable!("Source function cannot contain components")
+            }
         };
     }
 
@@ -151,8 +146,7 @@ impl<'a> FunctionEnvData<'a> {
     }
 
     pub fn set_signal(self, _idx: usize, _value: Value) -> Self {
-        // There are no signals in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain signals")
     }
 
     pub fn set_vars_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
@@ -171,7 +165,7 @@ impl<'a> FunctionEnvData<'a> {
 
     pub fn set_signals_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         // There are no signals in source functions.
-        // This function is not unreachable because it may be called without actually
+        // However, this function is not unreachable because it may be called without actually
         //  encountering any signal references, thus the input must be None or empty.
         assert!(idxs.is_none() || idxs.is_some_and(|e| e.into_iter().next().is_none()));
         self
@@ -182,7 +176,7 @@ impl<'a> FunctionEnvData<'a> {
         idxs: Option<T>,
     ) -> Result<Self, BadInterp> {
         // There are no components in source functions.
-        // This function is not unreachable because it may be called without actually
+        // However, this function is not unreachable because it may be called without actually
         //  encountering any signal references, thus the input must be None or empty.
         assert!(idxs.is_none() || idxs.is_some_and(|e| e.into_iter().next().is_none()));
         Ok(self)
@@ -194,8 +188,7 @@ impl<'a> FunctionEnvData<'a> {
         _signal_idx: usize,
         _value: Value,
     ) -> Result<Self, BadInterp> {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 
     pub fn set_subcmp_counter(
@@ -203,13 +196,11 @@ impl<'a> FunctionEnvData<'a> {
         _subcmp_idx: usize,
         _new_val: usize,
     ) -> Result<Self, BadInterp> {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 
     pub fn decrease_subcmp_counter(self, _subcmp_idx: usize) -> Result<Self, BadInterp> {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 
     pub fn run_subcmp(
@@ -218,8 +209,7 @@ impl<'a> FunctionEnvData<'a> {
         _name: &String,
         _interpreter: &BucketInterpreter,
     ) -> Self {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 
     pub fn create_subcmp(
@@ -229,7 +219,6 @@ impl<'a> FunctionEnvData<'a> {
         _count: usize,
         _template_id: usize,
     ) -> Self {
-        // There are no components in source functions.
-        unreachable!()
+        unreachable!("Source function cannot contain components")
     }
 }
