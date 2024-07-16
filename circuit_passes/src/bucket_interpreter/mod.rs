@@ -25,7 +25,7 @@ use program_structure::error_code::ReportCode;
 use crate::passes::builders::{build_compute, build_u32_value};
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::GlobalPassData;
-use self::env::{CallStack, CallStackFrame, Env, LibraryAccess};
+use self::env::{CallStackFrame, Env, LibraryAccess};
 use self::error::BadInterp;
 use self::memory::PassMemory;
 use self::operations::compute_offset;
@@ -455,7 +455,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 ));
                 if idx.is_unknown() {
                     // All variables in the range must be marked as unknown if the index is unknown
-                    return InterpRes::Continue(env.set_vars_to_unk(possible_range));
+                    return InterpRes::Continue(env.set_vars_to_unknown(possible_range));
                 } else {
                     let idx = check_std_res!(idx.as_u32());
                     assert!(possible_range.is_none() || possible_range.unwrap().contains(&idx));
@@ -472,7 +472,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 ));
                 if idx.is_unknown() {
                     // All signals in the range must be marked as unknown if the index is unknown
-                    return InterpRes::Continue(env.set_signals_to_unk(possible_range));
+                    return InterpRes::Continue(env.set_signals_to_unknown(possible_range));
                 } else {
                     let idx = check_std_res!(idx.as_u32());
                     assert!(possible_range.is_none() || possible_range.unwrap().contains(&idx));
@@ -673,8 +673,8 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 Env::new_extracted_func_env(env, &bucket.id, Default::default(), Default::default())
             }
         });
-        //NOTE: Do not change scope for the new interpreter because the mem lookups within
-        //  `get_write_operations_in_store_bucket` need to use the original function context.
+        //NOTE: Do not change scope for the new interpreter because the mem lookups
+        //  within 'write_collector.rs' need to use the original function context.
         let interp = self.mem.build_interpreter_with_flags(
             self.global_data,
             self.observer,
@@ -692,24 +692,24 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         Result::Ok((res.0, res.1.peel_extracted_func()))
     }
 
-    fn _execute_function_basic(
+    fn _execute_function_basic<'env>(
         &self,
         bucket: &CallBucket,
+        env: Env<'env>,
         args: Vec<Value>,
-        call_stack: &CallStack,
         observe: bool,
-    ) -> Result<Value, BadInterp> {
-        let new_frame = CallStackFrame { name: bucket.symbol.clone(), args: args.clone() };
-        if call_stack.contains(&new_frame) || call_stack.depth() > CALL_STACK_LIMIT {
-            Ok(Value::Unknown)
-        } else {
+    ) -> RE<'env> {
+        if let Some(new_call_stack) = env.append_stack_if_safe_to_interpret(CallStackFrame::new(
+            bucket.symbol.clone(),
+            args.clone(),
+        )) {
             if cfg!(debug_assertions) {
                 println!("Running function {}", bucket.symbol);
             }
             let mut new_env =
-                Env::new_source_func_env(&bucket.id, call_stack.push(new_frame), self.mem);
-            let mut args_copy = args;
-            for (id, arg) in args_copy.drain(..).enumerate() {
+                Env::new_source_func_env(env.clone(), &bucket.id, new_call_stack, self.mem);
+            let mut args_mut = args;
+            for (id, arg) in args_mut.drain(..).enumerate() {
                 new_env = new_env.set_var(id, arg);
             }
             let interp = self.mem.build_interpreter_with_scope(
@@ -724,8 +724,11 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 new_env,
                 observe && !interp.observer.ignore_function_calls(),
             ))?;
-            //ASSERT: all Circom source functions must return a value
-            opt_as_result(v, "value returned from function")
+            // CHECK: all Circom source functions must return a value
+            // Return the original Env, not the new one that is internal to the function.
+            opt_as_result(v, "value returned from function").map(|v| (Some(v), env))
+        } else {
+            Ok((Some(Value::Unknown), env))
         }
     }
 
@@ -809,13 +812,9 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 let val = check_res!(self._compute_instruction(a, &env, observe), |v| (v, env));
                 args.push(check_std_res!(opt_as_result(val, "function argument")));
             }
-            check_res!(InterpRes::try_continue(self._execute_function_basic(
-                &bucket,
-                args,
-                env.get_call_stack(),
-                observe
+            check_res!(InterpRes::try_continue(
+                self._execute_function_basic(&bucket, env, args, observe)
             ))
-            .map(|v| (Some(v), env)))
         };
 
         // Write the result in the destination according to the ReturnType

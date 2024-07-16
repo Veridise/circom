@@ -1,12 +1,16 @@
-use compiler::intermediate_representation::InstructionList;
-use super::{env::Env, error::BadInterp, BucketInterpreter};
+use std::collections::HashSet;
+use compiler::intermediate_representation::{
+    ir_interface::{AddressType, FinalData, LocationRule, LogBucketArg, ReturnType, StoreBucket},
+    Instruction, InstructionList, InstructionPointer,
+};
+use super::{env::Env, error::BadInterp, value::Value, BucketInterpreter, InterpRes};
 
 pub(crate) fn set_writes_to_unknown<'e>(
     interp: &BucketInterpreter,
     body: &InstructionList,
     env: Env<'e>,
 ) -> Result<Env<'e>, BadInterp> {
-    let mut checker = write_checker::Writes::default();
+    let mut checker = Writes::default();
     Result::from(checker.collect_writes(interp, body, env.clone())).map_or_else(
         |b| Result::Err(b),
         // For the Ok case, ignore the Env computed within the body
@@ -15,263 +19,237 @@ pub(crate) fn set_writes_to_unknown<'e>(
     )
 }
 
-mod write_checker {
-    use std::collections::HashSet;
+#[derive(Debug, PartialEq, Eq)]
+pub struct Writes {
+    pub vars: Option<HashSet<usize>>,
+    pub signals: Option<HashSet<usize>>,
+    pub subcmps: Option<HashSet<usize>>,
+}
 
-    use compiler::intermediate_representation::{
-        ir_interface::{
-            AddressType, FinalData, LocationRule, LogBucketArg, ReturnType, StoreBucket,
-        },
-        Instruction, InstructionList, InstructionPointer,
-    };
+impl Default for Writes {
+    fn default() -> Self {
+        Self {
+            vars: Some(Default::default()),
+            signals: Some(Default::default()),
+            subcmps: Some(Default::default()),
+        }
+    }
+}
 
-    use crate::bucket_interpreter::{
-        env::Env, error::BadInterp, value::Value, BucketInterpreter, InterpRes,
-    };
-
-    #[derive(Debug, PartialEq, Eq)]
-    pub(super) struct Writes {
-        vars: Option<HashSet<usize>>,
-        signals: Option<HashSet<usize>>,
-        subcmps: Option<HashSet<usize>>,
+impl Writes {
+    fn set_unknowns<'e>(self, env: Env<'e>) -> Result<Env<'e>, BadInterp> {
+        env.set_vars_to_unknown(self.vars)
+            .set_signals_to_unknown(self.signals)
+            .set_subcmps_to_unknown(self.subcmps)
     }
 
-    impl Default for Writes {
-        fn default() -> Self {
-            Self {
-                vars: Some(Default::default()),
-                signals: Some(Default::default()),
-                subcmps: Some(Default::default()),
+    fn collect_writes<'e>(
+        &mut self,
+        interp: &BucketInterpreter,
+        body: &InstructionList,
+        env: Env<'e>,
+    ) -> InterpRes<Env<'e>> {
+        let mut env = env;
+        for inst in body {
+            env = check_res!(self.check_inst(interp, inst, env));
+        }
+        InterpRes::Continue(env)
+    }
+
+    fn check_inst<'e>(
+        &mut self,
+        interp: &BucketInterpreter,
+        inst: &Instruction,
+        env: Env<'e>,
+    ) -> InterpRes<Env<'e>> {
+        match inst {
+            Instruction::Store(b) => self.check_store_bucket(interp, b, env),
+            Instruction::Constraint(b) => self.check_inst(interp, b.unwrap(), env),
+            Instruction::Block(b) => self.collect_writes(interp, &b.body, env),
+            Instruction::Branch(b) => {
+                self.check_branch(interp, &b.cond, &b.if_branch, &b.else_branch, env)
+            }
+            Instruction::Loop(b) => {
+                self.check_branch(interp, &b.continue_condition, &b.body, &vec![], env)
+            }
+            i => {
+                debug_assert!(!ContainsStore::contains_store(i));
+                InterpRes::Continue(env)
             }
         }
     }
 
-    impl Writes {
-        pub(super) fn set_unknowns<'e>(self, env: Env<'e>) -> Result<Env<'e>, BadInterp> {
-            env.set_vars_to_unk(self.vars)
-                .set_signals_to_unk(self.signals)
-                .set_subcmps_to_unk(self.subcmps)
-        }
-
-        pub(super) fn collect_writes<'e>(
-            &mut self,
-            interp: &BucketInterpreter,
-            body: &InstructionList,
-            env: Env<'e>,
-        ) -> InterpRes<Env<'e>> {
-            let mut env = env;
-            for inst in body {
-                env = check_res!(self.check_inst(interp, inst, env));
+    fn check_branch<'e>(
+        &mut self,
+        interp: &BucketInterpreter,
+        cond: &InstructionPointer,
+        true_branch: &InstructionList,
+        false_branch: &InstructionList,
+        env: Env<'e>,
+    ) -> InterpRes<Env<'e>> {
+        match interp.compute_condition(cond, &env, false) {
+            Err(e) => return InterpRes::Err(e),
+            Ok(None) => {
+                // If the condition is unknown, collect all writes from both branches (even if
+                //  there is a return in either, hence an InterpRes::Return result is ignored
+                //  in both cases) and produce InterpRes::Continue with the original Env.
+                if let InterpRes::Err(e) = self.collect_writes(interp, true_branch, env.clone()) {
+                    return InterpRes::Err(e);
+                }
+                if let InterpRes::Err(e) = self.collect_writes(interp, false_branch, env.clone()) {
+                    return InterpRes::Err(e);
+                }
+                InterpRes::Continue(env)
             }
-            InterpRes::Continue(env)
-        }
-
-        fn check_inst<'e>(
-            &mut self,
-            interp: &BucketInterpreter,
-            inst: &Instruction,
-            env: Env<'e>,
-        ) -> InterpRes<Env<'e>> {
-            match inst {
-                Instruction::Store(b) => self.check_store_bucket(interp, b, env),
-                Instruction::Constraint(b) => self.check_inst(interp, b.unwrap(), env),
-                Instruction::Block(b) => self.collect_writes(interp, &b.body, env),
-                Instruction::Branch(b) => {
-                    self.check_branch(interp, &b.cond, &b.if_branch, &b.else_branch, env)
+            Ok(Some(true)) => {
+                // If the condition is true, collect all writes from the false branch
+                //  (ignoring an InterpRes::Return result as above) and then analyze
+                //  and return the result from the true branch.
+                if let InterpRes::Err(e) = self.collect_writes(interp, false_branch, env.clone()) {
+                    return InterpRes::Err(e);
                 }
-                Instruction::Loop(b) => {
-                    self.check_branch(interp, &b.continue_condition, &b.body, &vec![], env)
-                }
-                i => {
-                    debug_assert!(!ContainsStore::contains_store(i));
-                    InterpRes::Continue(env)
-                }
+                self.collect_writes(interp, true_branch, env)
             }
-        }
-
-        fn check_branch<'e>(
-            &mut self,
-            interp: &BucketInterpreter,
-            cond: &InstructionPointer,
-            true_branch: &InstructionList,
-            false_branch: &InstructionList,
-            env: Env<'e>,
-        ) -> InterpRes<Env<'e>> {
-            match interp.compute_condition(cond, &env, false) {
-                Err(e) => return InterpRes::Err(e),
-                Ok(None) => {
-                    // If the condition is unknown, collect all writes from both branches (even if
-                    //  there is a return in either, hence an InterpRes::Return result is ignored
-                    //  in both cases) and produce InterpRes::Continue with the original Env.
-                    if let InterpRes::Err(e) = self.collect_writes(interp, true_branch, env.clone())
-                    {
-                        return InterpRes::Err(e);
-                    }
-                    if let InterpRes::Err(e) =
-                        self.collect_writes(interp, false_branch, env.clone())
-                    {
-                        return InterpRes::Err(e);
-                    }
-                    InterpRes::Continue(env)
+            Ok(Some(false)) => {
+                // Reverse of the true case.
+                if let InterpRes::Err(e) = self.collect_writes(interp, true_branch, env.clone()) {
+                    return InterpRes::Err(e);
                 }
-                Ok(Some(true)) => {
-                    // If the condition is true, collect all writes from the false branch
-                    //  (ignoring an InterpRes::Return result as above) and then analyze
-                    //  and return the result from the true branch.
-                    if let InterpRes::Err(e) =
-                        self.collect_writes(interp, false_branch, env.clone())
-                    {
-                        return InterpRes::Err(e);
-                    }
-                    self.collect_writes(interp, true_branch, env)
-                }
-                Ok(Some(false)) => {
-                    // Reverse of the true case.
-                    if let InterpRes::Err(e) = self.collect_writes(interp, true_branch, env.clone())
-                    {
-                        return InterpRes::Err(e);
-                    }
-                    self.collect_writes(interp, false_branch, env)
-                }
-            }
-        }
-
-        fn check_store_bucket<'e>(
-            &mut self,
-            interp: &BucketInterpreter,
-            bucket: &StoreBucket,
-            env: Env<'e>,
-        ) -> InterpRes<Env<'e>> {
-            let idx = interp.compute_location_index(
-                &bucket.dest,
-                &bucket.id,
-                &env,
-                false,
-                "store destination index",
-            );
-            let idx = check_std_res!(idx);
-            if let Value::Unknown = idx {
-                // For an unknown index, all memory of the specified type must be marked as Unknown
-                // TODO: FUTURE: Setting the entire area of the specific memory type as Unknown is
-                //  pretty aggressive and could be relaxed some if information about the base local
-                //  used in the store can be determined and then PassMemory::get_*_index_mapping()
-                //  can be used to get only the memory range pertaining to that specific base local.
-                match bucket.dest_address_type {
-                    AddressType::Variable => self.vars = None,
-                    AddressType::Signal => self.signals = None,
-                    AddressType::SubcmpSignal { .. } => self.subcmps = None,
-                };
-            } else {
-                // For a known index, just add the specific index to the Unknown set
-                let idx = check_std_res!(idx.as_u32());
-                match bucket.dest_address_type {
-                    AddressType::Variable => self.vars.as_mut(),
-                    AddressType::Signal => self.signals.as_mut(),
-                    AddressType::SubcmpSignal { .. } => self.subcmps.as_mut(),
-                }
-                .map(|s| s.insert(idx));
-            }
-
-            //Reflect the store into the Env
-            InterpRes::try_continue(interp.execute_store_bucket(bucket, env, false).map(|(_, e)| e))
-        }
-
-        #[cfg(test)]
-        pub(super) fn init<T>(vars: Option<T>, signals: Option<T>, subcmps: Option<T>) -> Writes
-        where
-            T: IntoIterator<Item = usize>,
-        {
-            Writes {
-                vars: vars.map(|x| HashSet::from_iter(x.into_iter())),
-                signals: signals.map(|x| HashSet::from_iter(x.into_iter())),
-                subcmps: subcmps.map(|x| HashSet::from_iter(x.into_iter())),
+                self.collect_writes(interp, false_branch, env)
             }
         }
     }
 
-    trait ContainsStore {
-        fn contains_store(&self) -> bool;
+    fn check_store_bucket<'e>(
+        &mut self,
+        interp: &BucketInterpreter,
+        bucket: &StoreBucket,
+        env: Env<'e>,
+    ) -> InterpRes<Env<'e>> {
+        let idx = interp.compute_location_index(
+            &bucket.dest,
+            &bucket.id,
+            &env,
+            false,
+            "store destination index",
+        );
+        let idx = check_std_res!(idx);
+        if let Value::Unknown = idx {
+            // For an unknown index, all memory of the specified type must be marked as Unknown
+            // TODO: FUTURE: Setting the entire area of the specific memory type as Unknown is
+            //  pretty aggressive and could be relaxed some if information about the base local
+            //  used in the store can be determined and then PassMemory::get_*_index_mapping()
+            //  can be used to get only the memory range pertaining to that specific base local.
+            match bucket.dest_address_type {
+                AddressType::Variable => self.vars = None,
+                AddressType::Signal => self.signals = None,
+                AddressType::SubcmpSignal { .. } => self.subcmps = None,
+            };
+        } else {
+            // For a known index, just add the specific index to the Unknown set
+            let idx = check_std_res!(idx.as_u32());
+            env.collect_write(&bucket.dest_address_type, idx, self);
+        }
+
+        //Reflect the store into the Env
+        InterpRes::try_continue(interp.execute_store_bucket(bucket, env, false).map(|(_, e)| e))
     }
 
-    impl ContainsStore for Instruction {
-        fn contains_store(&self) -> bool {
-            match self {
-                Instruction::Nop(_) => false,
-                Instruction::Value(_) => false,
-                Instruction::Store(_) => true,
-                Instruction::Load(b) => b.address_type.contains_store() || b.src.contains_store(),
-                Instruction::Compute(b) => b.stack.contains_store(),
-                Instruction::Call(b) => {
-                    //TODO: what about extracted body functions? They should be treated as the
-                    // same function so shouldn't I check within the callee body?
-                    //  I need to write a test to properly exercise this case.
-                    b.arguments.contains_store() || b.return_info.contains_store()
-                }
-                Instruction::Branch(b) => {
-                    b.cond.contains_store()
-                        || b.if_branch.contains_store()
-                        || b.else_branch.contains_store()
-                }
-                Instruction::Return(b) => b.value.contains_store(),
-                Instruction::Assert(b) => b.evaluate.contains_store(),
-                Instruction::Log(b) => b.argsprint.contains_store(),
-                Instruction::Loop(b) => {
-                    b.continue_condition.contains_store() || b.body.contains_store()
-                }
-                Instruction::CreateCmp(b) => b.sub_cmp_id.contains_store(),
-                Instruction::Constraint(b) => b.unwrap().contains_store(),
-                Instruction::Block(b) => b.body.contains_store(),
+    #[cfg(test)]
+    pub(super) fn init<T>(vars: Option<T>, signals: Option<T>, subcmps: Option<T>) -> Writes
+    where
+        T: IntoIterator<Item = usize>,
+    {
+        Writes {
+            vars: vars.map(|x| HashSet::from_iter(x.into_iter())),
+            signals: signals.map(|x| HashSet::from_iter(x.into_iter())),
+            subcmps: subcmps.map(|x| HashSet::from_iter(x.into_iter())),
+        }
+    }
+}
+
+trait ContainsStore {
+    fn contains_store(&self) -> bool;
+}
+
+impl ContainsStore for Instruction {
+    fn contains_store(&self) -> bool {
+        match self {
+            Instruction::Nop(_) => false,
+            Instruction::Value(_) => false,
+            Instruction::Store(_) => true,
+            Instruction::Load(b) => b.address_type.contains_store() || b.src.contains_store(),
+            Instruction::Compute(b) => b.stack.contains_store(),
+            Instruction::Call(b) => {
+                //TODO: what about extracted body functions? They should be treated as the
+                // same function so shouldn't I check within the callee body?
+                //  I need to write a test to properly exercise this case.
+                b.arguments.contains_store() || b.return_info.contains_store()
             }
-        }
-    }
-
-    impl ContainsStore for InstructionPointer {
-        fn contains_store(&self) -> bool {
-            self.as_ref().contains_store()
-        }
-    }
-
-    impl<T: ContainsStore> ContainsStore for Vec<T> {
-        fn contains_store(&self) -> bool {
-            self.iter().any(ContainsStore::contains_store)
-        }
-    }
-
-    impl ContainsStore for LocationRule {
-        fn contains_store(&self) -> bool {
-            match self {
-                LocationRule::Indexed { location, .. } => location.contains_store(),
-                LocationRule::Mapped { indexes, .. } => indexes.contains_store(),
+            Instruction::Branch(b) => {
+                b.cond.contains_store()
+                    || b.if_branch.contains_store()
+                    || b.else_branch.contains_store()
             }
-        }
-    }
-
-    impl ContainsStore for AddressType {
-        fn contains_store(&self) -> bool {
-            match self {
-                AddressType::Variable => false,
-                AddressType::Signal => false,
-                AddressType::SubcmpSignal { cmp_address, .. } => cmp_address.contains_store(),
+            Instruction::Return(b) => b.value.contains_store(),
+            Instruction::Assert(b) => b.evaluate.contains_store(),
+            Instruction::Log(b) => b.argsprint.contains_store(),
+            Instruction::Loop(b) => {
+                b.continue_condition.contains_store() || b.body.contains_store()
             }
+            Instruction::CreateCmp(b) => b.sub_cmp_id.contains_store(),
+            Instruction::Constraint(b) => b.unwrap().contains_store(),
+            Instruction::Block(b) => b.body.contains_store(),
         }
     }
+}
 
-    impl ContainsStore for LogBucketArg {
-        fn contains_store(&self) -> bool {
-            match self {
-                LogBucketArg::LogStr(_) => false,
-                LogBucketArg::LogExp(i) => i.contains_store(),
-            }
+impl ContainsStore for InstructionPointer {
+    fn contains_store(&self) -> bool {
+        self.as_ref().contains_store()
+    }
+}
+
+impl<T: ContainsStore> ContainsStore for Vec<T> {
+    fn contains_store(&self) -> bool {
+        self.iter().any(ContainsStore::contains_store)
+    }
+}
+
+impl ContainsStore for LocationRule {
+    fn contains_store(&self) -> bool {
+        match self {
+            LocationRule::Indexed { location, .. } => location.contains_store(),
+            LocationRule::Mapped { indexes, .. } => indexes.contains_store(),
         }
     }
+}
 
-    impl ContainsStore for ReturnType {
-        fn contains_store(&self) -> bool {
-            match self {
-                ReturnType::Intermediate { .. } => false,
-                ReturnType::Final(FinalData { dest_address_type, dest, .. }) => {
-                    dest_address_type.contains_store() || dest.contains_store()
-                }
+impl ContainsStore for AddressType {
+    fn contains_store(&self) -> bool {
+        match self {
+            AddressType::Variable => false,
+            AddressType::Signal => false,
+            AddressType::SubcmpSignal { cmp_address, .. } => cmp_address.contains_store(),
+        }
+    }
+}
+
+impl ContainsStore for LogBucketArg {
+    fn contains_store(&self) -> bool {
+        match self {
+            LogBucketArg::LogStr(_) => false,
+            LogBucketArg::LogExp(i) => i.contains_store(),
+        }
+    }
+}
+
+impl ContainsStore for ReturnType {
+    fn contains_store(&self) -> bool {
+        match self {
+            ReturnType::Intermediate { .. } => false,
+            ReturnType::Final(FinalData { dest_address_type, dest, .. }) => {
+                dest_address_type.contains_store() || dest.contains_store()
             }
         }
     }
@@ -283,8 +261,8 @@ mod tests {
     use compiler::intermediate_representation::{ir_interface::*, new_id};
     use crate::{
         bucket_interpreter::{
-            env::Env, memory::PassMemory, observer::Observer,
-            write_collector::write_checker::Writes, BucketInterpreter, InterpRes,
+            env::Env, memory::PassMemory, observer::Observer, write_collector::Writes,
+            BucketInterpreter, InterpRes,
         },
         passes::{
             builders::{build_bigint_value, build_compute, build_u32_value},

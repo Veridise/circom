@@ -110,6 +110,8 @@ impl Observer<Env<'_>> for MappedToIndexedPass<'_> {
     }
 
     fn ignore_function_calls(&self) -> bool {
+        // A Circom source function cannot contain components so
+        // LocationRule::Mapped cannot appear within the body.
         true
     }
 

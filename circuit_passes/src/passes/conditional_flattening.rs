@@ -11,7 +11,7 @@ use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::{default__name, default__run_template, default__get_mem};
-use super::{CircuitTransformationPass, GlobalPassData};
+use super::{builders, CircuitTransformationPass, GlobalPassData};
 
 // Uses BTreeMap instead of HashMap because this type must implement the Hash trait.
 type BranchValues = BTreeMap<BucketId, Option<bool>>;
@@ -71,7 +71,7 @@ impl Observer<Env<'_>> for ConditionalFlatteningPass<'_> {
         // NOTE: Store 'cond_result' even when it is None (meaning the BranchBucket
         //  condition could not be determined) so that it will fully differentiate the
         //  branching behavior of functions called at multiple sites.
-        let caller_id = env.function_caller().cloned();
+        let caller_id = env.get_caller_stack().last().cloned();
         // NOTE: 'caller_id' is None when the current branch is NOT located within a function.
         self.evaluated_conditions
             .borrow_mut()
@@ -187,15 +187,8 @@ impl CircuitTransformationPass for ConditionalFlatteningPass<'_> {
     ) -> Result<InstructionPointer, BadInterp> {
         if let Some(side) = self.get_known_condition_in_context(&bucket.id) {
             let code = if side { &bucket.if_branch } else { &bucket.else_branch };
-            let block = BlockBucket {
-                id: new_id(),
-                source_file_id: bucket.source_file_id,
-                line: bucket.line,
-                message_id: bucket.message_id,
-                body: code.clone(),
-                n_iters: 1,
-                label: format!("fold_{}", side),
-            };
+            let block =
+                builders::build_block_bucket(bucket, code.clone(), 1, format!("fold_{}", side));
             return self.transform_block_bucket(&block);
         }
         self.transform_branch_bucket_default(bucket)

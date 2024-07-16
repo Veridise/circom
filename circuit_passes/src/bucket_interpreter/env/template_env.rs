@@ -3,17 +3,19 @@ use std::collections::{BTreeMap, HashMap, hash_map::Entry};
 use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::ir_interface::AddressType;
 use compiler::intermediate_representation::BucketId;
 use crate::bucket_interpreter::error::{new_inconsistency_err, BadInterp};
+use crate::bucket_interpreter::write_collector::Writes;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::value::Value;
-use super::{sort, CallStack, EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED};
+use super::{
+    sort, CallStack, CallStackFrame, EnvContextKind, LibraryAccess, SubcmpEnv, PRINT_ENV_SORTED,
+};
 
+/// This Env is used for Circom source templates.
 #[derive(Clone)]
-pub struct StandardEnvData<'a> {
-    context_kind: EnvContextKind,
-    caller: Option<BucketId>,
-    call_stack: CallStack,
+pub struct TemplateEnvData<'a> {
     vars: HashMap<usize, Value>,
     signals: HashMap<usize, Value>,
     subcmps: HashMap<usize, SubcmpEnv>,
@@ -21,13 +23,12 @@ pub struct StandardEnvData<'a> {
     libs: &'a dyn LibraryAccess,
 }
 
-impl Display for StandardEnvData<'_> {
+impl Display for TemplateEnvData<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if PRINT_ENV_SORTED {
             write!(
                 f,
-                "StandardEnv{{\n  kind = {:?}\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
-                self.get_context_kind(),
+                "TemplateEnv{{\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
                 sort(&self.vars, std::convert::identity),
                 sort(&self.signals, std::convert::identity),
                 sort(&self.subcmp_names, std::convert::identity),
@@ -36,14 +37,14 @@ impl Display for StandardEnvData<'_> {
         } else {
             write!(
                 f,
-                "StandardEnv{{\n  kind = {:?}\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
-                self.get_context_kind(), self.vars, self.signals, self.subcmp_names, self.subcmps
+                "TemplateEnv{{\n  vars = {:?}\n  signals = {:?}\n  names = {:?}\n  subcmps = {:?}\n}}",
+                self.vars, self.signals, self.subcmp_names, self.subcmps
             )
         }
     }
 }
 
-impl LibraryAccess for StandardEnvData<'_> {
+impl LibraryAccess for TemplateEnvData<'_> {
     fn get_function(&self, name: &String) -> Ref<FunctionCode> {
         self.libs.get_function(name)
     }
@@ -53,17 +54,9 @@ impl LibraryAccess for StandardEnvData<'_> {
     }
 }
 
-impl<'a> StandardEnvData<'a> {
-    pub fn new(
-        context_kind: EnvContextKind,
-        caller: Option<&BucketId>,
-        call_stack: CallStack,
-        libs: &'a dyn LibraryAccess,
-    ) -> Self {
-        StandardEnvData {
-            context_kind,
-            caller: caller.cloned(),
-            call_stack,
+impl<'a> TemplateEnvData<'a> {
+    pub fn new(libs: &'a dyn LibraryAccess) -> Self {
+        TemplateEnvData {
             vars: Default::default(),
             signals: Default::default(),
             subcmps: Default::default(),
@@ -73,16 +66,19 @@ impl<'a> StandardEnvData<'a> {
     }
 
     // READ OPERATIONS
-    pub fn function_caller(&self) -> Option<&BucketId> {
-        self.caller.as_ref()
-    }
-
     pub fn get_context_kind(&self) -> EnvContextKind {
-        self.context_kind
+        EnvContextKind::Template
     }
 
-    pub fn get_call_stack(&self) -> &CallStack {
-        &self.call_stack
+    pub fn append_stack_if_safe_to_interpret(
+        &self,
+        new_frame: CallStackFrame,
+    ) -> Option<CallStack> {
+        Some(CallStack::new(new_frame))
+    }
+
+    pub fn get_caller_stack(&self) -> &[BucketId] {
+        &[]
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
@@ -121,6 +117,28 @@ impl<'a> StandardEnvData<'a> {
         sort(&self.vars, Clone::clone)
     }
 
+    pub fn collect_write(
+        &self,
+        dest_address_type: &AddressType,
+        idx: usize,
+        collector: &mut Writes,
+    ) {
+        match dest_address_type {
+            AddressType::Variable => {
+                collector.vars.as_mut().map(|s| s.insert(idx));
+            }
+            AddressType::Signal => {
+                collector.signals.as_mut().map(|s| s.insert(idx));
+            }
+            AddressType::SubcmpSignal { .. } => {
+                //TODO: The current implementations of write_collector.rs and Env::set_subcmps_to_unknown(..)
+                //  reset entire subcomponents but an analysis of the fields within this SubcmpSignal
+                //  can provide the necessary information to restrict that to specific signals within.
+                collector.subcmps.as_mut().map(|s| s.insert(idx));
+            }
+        }
+    }
+
     // WRITE OPERATIONS
     pub fn set_var(self, idx: usize, value: Value) -> Self {
         let mut copy = self;
@@ -134,7 +152,7 @@ impl<'a> StandardEnvData<'a> {
         copy
     }
 
-    pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+    pub fn set_vars_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         let mut copy = self;
         if let Some(idxs) = idxs {
             for idx in idxs {
@@ -148,7 +166,7 @@ impl<'a> StandardEnvData<'a> {
         copy
     }
 
-    pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+    pub fn set_signals_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
         let mut copy = self;
         if let Some(idxs) = idxs {
             for idx in idxs {
@@ -162,7 +180,7 @@ impl<'a> StandardEnvData<'a> {
         copy
     }
 
-    pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
+    pub fn set_subcmps_to_unknown<T: IntoIterator<Item = usize>>(
         self,
         subcmp_idxs: Option<T>,
     ) -> Result<Self, BadInterp> {

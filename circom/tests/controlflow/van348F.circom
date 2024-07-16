@@ -26,6 +26,10 @@ template BigModOld(n) {
 
 component main = BigModOld(2);
 
+//CHECK-LABEL: define{{.*}} i256 @identity_
+//CHECK-SAME: [[$F_ID_I:[0-9a-zA-Z_\.]+]](i256* %[[ARENA:.*]]){{.*}} {
+//CHECK: }
+//
 //CHECK-LABEL: define{{.*}} i256 @long_div_
 //CHECK-SAME: [[$F_ID_L:[0-9a-zA-Z_\.]+]](i256* %[[ARENA:.*]]){{.*}} {
 //CHECK: %[[TEMP1:.*]] = call i256 @short_div_[[$F_ID_S:[0-9a-zA-Z_\.]+]](i256* %{{[0-9a-zA-Z_\.]+}})
@@ -35,11 +39,7 @@ component main = BigModOld(2);
 //CHECK: %[[TEMP4:.*]] = load i256, i256* %{{.*}}[[TEMP3]]
 //CHECK: ret i256 %{{.*}}[[TEMP4]]
 //CHECK: }
-
-//CHECK-LABEL: define{{.*}} i256 @identity_
-//CHECK-SAME: [[$F_ID_I:[0-9a-zA-Z_\.]+]](i256* %[[ARENA:.*]]){{.*}} {
-//CHECK: }
-
+//
 //CHECK-LABEL: define{{.*}} i256 @short_div_
 //CHECK-SAME: [[$F_ID_S]](i256* %[[ARENA:.*]]){{.*}} {
 //CHECK: %[[TEMP1:.*]] = call i256 @identity_[[$F_ID_I]](i256* %{{[0-9a-zA-Z_\.]+}})

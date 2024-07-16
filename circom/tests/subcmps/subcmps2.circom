@@ -61,6 +61,17 @@ component main = Caller();
 //CHECK-NEXT:   ret void
 //CHECK-NEXT: }
 //
+//CHECK-LABEL: define{{.*}} i256 @nop_
+//CHECK-SAME: [[$F_ID_N:[0-9a-zA-Z_\.]+]](i256* %0){{.*}} {
+//CHECK-NEXT: nop_[[$F_ID_N]]:
+//CHECK-NEXT:   br label %return1
+//CHECK-EMPTY: 
+//CHECK-NEXT: return1:
+//CHECK-NEXT:   %[[T1:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 0
+//CHECK-NEXT:   %[[T2:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T1]], align 4
+//CHECK-NEXT:   ret i256 %[[T2]]
+//CHECK-NEXT: }
+//
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+\.F}}([0 x i256]* %lvars, [0 x i256]* %signals,
 //CHECK-SAME: i256* %subsig_[[X1:[0-9]+]], i256* %sig_[[X2:[0-9]+]], [0 x i256]* %sub_[[X3:[0-9]+]], i256* %subc_[[X4:[0-9]+]]){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9a-zA-Z_\.]+\.F]]:
@@ -73,12 +84,12 @@ component main = Caller();
 //CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T001]], align 4
 //CHECK-NEXT:   store i256 %[[T002]], i256* %[[T000]], align 4
 //CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = bitcast [1 x i256]* %[[CALL_ARENA]] to i256*
-//CHECK-NEXT:   %call.nop_0 = call i256 @nop_0(i256* %[[T003]])
+//CHECK-NEXT:   %[[C100:[0-9a-zA-Z_\.]+]] = call i256 @nop_[[$F_ID_N]](i256* %[[T003]])
 //CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subsig_[[X1]], i32 0
-//CHECK-NEXT:   store i256 %call.nop_0, i256* %[[T004]], align 4
+//CHECK-NEXT:   store i256 %[[C100]], i256* %[[T004]], align 4
 //CHECK-NEXT:   %[[T005:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T004]], align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %call.nop_0, i256 %[[T005]], i1* %constraint)
+//CHECK-NEXT:   call void @__constraint_values(i256 %[[C100]], i256 %[[T005]], i1* %constraint)
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
@@ -115,12 +126,12 @@ component main = Caller();
 //CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T001]], align 4
 //CHECK-NEXT:   store i256 %[[T002]], i256* %[[T000]], align 4
 //CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = bitcast [1 x i256]* %[[CALL_ARENA]] to i256*
-//CHECK-NEXT:   %call.nop_0 = call i256 @nop_0(i256* %[[T003]])
+//CHECK-NEXT:   %[[C100:[0-9a-zA-Z_\.]+]] = call i256 @nop_[[$F_ID_N]](i256* %[[T003]])
 //CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subsig_[[X1]], i32 0
-//CHECK-NEXT:   store i256 %call.nop_0, i256* %[[T004]], align 4
+//CHECK-NEXT:   store i256 %[[C100]], i256* %[[T004]], align 4
 //CHECK-NEXT:   %[[T005:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T004]], align 4
 //CHECK-NEXT:   %constraint = alloca i1, align 1
-//CHECK-NEXT:   call void @__constraint_values(i256 %call.nop_0, i256 %[[T005]], i1* %constraint)
+//CHECK-NEXT:   call void @__constraint_values(i256 %[[C100]], i256 %[[T005]], i1* %constraint)
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:

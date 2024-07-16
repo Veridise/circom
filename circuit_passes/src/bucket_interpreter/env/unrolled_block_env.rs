@@ -3,13 +3,15 @@ use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
 use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::TemplateCode;
+use compiler::intermediate_representation::ir_interface::AddressType;
 use compiler::intermediate_representation::BucketId;
+use crate::bucket_interpreter::write_collector::Writes;
 use crate::bucket_interpreter::BucketInterpreter;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::loop_unroll::body_extractor::LoopBodyExtractor;
-use super::{CallStack, Env, EnvContextKind, LibraryAccess};
+use super::{CallStack, CallStackFrame, Env, EnvContextKind, LibraryAccess};
 
 /// This Env is used by the loop unroller to process the BlockBucket containing a
 /// unrolled loop specifically handling the case where the LibraryAccess does not
@@ -54,16 +56,19 @@ impl<'a> UnrolledBlockEnvData<'a> {
         new_env!(base, extractor)
     }
 
-    pub fn function_caller(&self) -> Option<&BucketId> {
-        self.base.function_caller()
-    }
-
     pub fn get_context_kind(&self) -> EnvContextKind {
         self.base.get_context_kind()
     }
 
-    pub fn get_call_stack(&self) -> &CallStack {
-        self.base.get_call_stack()
+    pub fn append_stack_if_safe_to_interpret(
+        &self,
+        new_frame: CallStackFrame,
+    ) -> Option<CallStack> {
+        self.base.append_stack_if_safe_to_interpret(new_frame)
+    }
+
+    pub fn get_caller_stack(&self) -> &[BucketId] {
+        self.base.get_caller_stack()
     }
 
     pub fn get_var(&self, idx: usize) -> Value {
@@ -102,6 +107,15 @@ impl<'a> UnrolledBlockEnvData<'a> {
         self.base.get_vars_sort()
     }
 
+    pub fn collect_write(
+        &self,
+        dest_address_type: &AddressType,
+        idx: usize,
+        collector: &mut Writes,
+    ) {
+        self.base.collect_write(dest_address_type, idx, collector)
+    }
+
     pub fn set_var(self, idx: usize, value: Value) -> Self {
         new_env!(self.base.set_var(idx, value), self.extractor)
     }
@@ -110,19 +124,19 @@ impl<'a> UnrolledBlockEnvData<'a> {
         new_env!(self.base.set_signal(idx, value), self.extractor)
     }
 
-    pub fn set_vars_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
-        new_env!(self.base.set_vars_to_unk(idxs), self.extractor)
+    pub fn set_vars_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        new_env!(self.base.set_vars_to_unknown(idxs), self.extractor)
     }
 
-    pub fn set_signals_to_unk<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
-        new_env!(self.base.set_signals_to_unk(idxs), self.extractor)
+    pub fn set_signals_to_unknown<T: IntoIterator<Item = usize>>(self, idxs: Option<T>) -> Self {
+        new_env!(self.base.set_signals_to_unknown(idxs), self.extractor)
     }
 
-    pub fn set_subcmps_to_unk<T: IntoIterator<Item = usize>>(
+    pub fn set_subcmps_to_unknown<T: IntoIterator<Item = usize>>(
         self,
         subcmp_idxs: Option<T>,
     ) -> Result<Self, BadInterp> {
-        Ok(new_env!(self.base.set_subcmps_to_unk(subcmp_idxs)?, self.extractor))
+        Ok(new_env!(self.base.set_subcmps_to_unknown(subcmp_idxs)?, self.extractor))
     }
 
     pub fn set_subcmp_signal(
