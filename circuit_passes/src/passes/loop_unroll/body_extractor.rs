@@ -13,20 +13,22 @@ use crate::bucket_interpreter::error::BadInterp;
 use crate::checked_insert;
 use crate::passes::{builders, checks};
 use super::{
-    DEBUG_LOOP_UNROLL, LOOP_BODY_FN_PREFIX, UNROLLED_BUCKET_LABEL, BlockBucketId,
-    CompiledMemLocation, FuncArgIdx, LoopBucketId, ToOriginalLocation,
+    AddressOffset, BlockBucketId, FuncArgIdx, LoopBucketId, ToOriginalLocation, DEBUG_LOOP_UNROLL,
+    LOOP_BODY_FN_PREFIX, UNROLLED_BUCKET_LABEL,
 };
 use super::extracted_location_updater::ExtractedFunctionLocationUpdater;
 use super::index_map_ord::IndexMapOrd;
 use super::loop_env_recorder::EnvRecorder;
 use super::observer::LoopUnrollObserverResult;
 
+/// Based on super::CompiledMemLocation but uses AddressTypeForCaching instead of AddressType.
+type CompiledMemLocationForCaching = (AddressTypeForCaching, AddressOffset);
 /// Table structure indexed first by load/store/call BucketId, then by iteration number
 /// (i.e. the Vec index), containing the compiled memory locations to use as arguments
 /// when calling the extracted body function.
 // NOTE: This collection and several intermediate collections that are used to build it
 // must use IndexMap/IndexSet to preserve insertion order to stabilize lit test output.
-type MemLocsPerIter = IndexMapOrd<BucketId, Vec<Option<CompiledMemLocation>>>;
+type MemLocsPerIter = IndexMapOrd<BucketId, Vec<Option<CompiledMemLocationForCaching>>>;
 /// Extracted function name + compiled memory location mappings for the args.
 type ExtractedNameAndMemLocs = (String, MemLocsPerIter);
 
@@ -49,7 +51,7 @@ impl ArgIndex {
 /// Also, the input/output stuff doesn't matter while grouping references since the extra
 /// arguments that are added based on the grouping are only used to trigger generation of
 /// the run function after all of the inputs have been assigned.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct SubcmpSignalForGroupCompare {
     cmp_address_parse_as: ValueType,
     cmp_address_op_aux_no: usize,
@@ -58,9 +60,10 @@ struct SubcmpSignalForGroupCompare {
     counter_override: bool,
 }
 
-impl SubcmpSignalForGroupCompare {
-    /// Create a `SubcmpSignalForGroupCompare` instance for the given `AddressType::SubcmpSignal`
-    fn convert(addr: &AddressType) -> SubcmpSignalForGroupCompare {
+impl TryFrom<&AddressType> for SubcmpSignalForGroupCompare {
+    type Error = String;
+
+    fn try_from(addr: &AddressType) -> Result<Self, Self::Error> {
         if let AddressType::SubcmpSignal {
             cmp_address,
             uniform_parallel_value,
@@ -71,16 +74,82 @@ impl SubcmpSignalForGroupCompare {
             if let Instruction::Value(ValueBucket { parse_as, op_aux_no, value, .. }) =
                 **cmp_address
             {
-                return SubcmpSignalForGroupCompare {
+                Ok(Self {
                     cmp_address_parse_as: parse_as,
                     cmp_address_op_aux_no: op_aux_no,
                     cmp_address_value: value,
-                    uniform_parallel_value: uniform_parallel_value.clone(),
-                    counter_override: counter_override.clone(),
-                };
+                    uniform_parallel_value: *uniform_parallel_value,
+                    counter_override: *counter_override,
+                })
+            } else {
+                Err(String::from("Expected Instruction::Value"))
+            }
+        } else {
+            Err(String::from("Expected AddressType::SubcmpSignal"))
+        }
+    }
+}
+
+impl From<&SubcmpSignalForGroupCompare> for InstructionPointer {
+    fn from(value: &SubcmpSignalForGroupCompare) -> InstructionPointer {
+        ValueBucket {
+            id: new_id(),
+            source_file_id: None,
+            line: 0,
+            message_id: 0,
+            parse_as: value.cmp_address_parse_as,
+            op_aux_no: value.cmp_address_op_aux_no,
+            value: value.cmp_address_value,
+        }
+        .allocate()
+    }
+}
+
+/// A simplified version of AddressType that does not include the unique BucketId
+/// so the 'replace_cache' can combine like entries that simply have different Ids.
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+enum AddressTypeForCaching {
+    Variable,
+    Signal,
+    SubcmpSignal {
+        base: SubcmpSignalForGroupCompare,
+        input_information: InputInformation,
+        is_output: bool,
+    },
+}
+
+impl From<AddressType> for AddressTypeForCaching {
+    fn from(addr: AddressType) -> Self {
+        match addr {
+            AddressType::Variable => AddressTypeForCaching::Variable,
+            AddressType::Signal => AddressTypeForCaching::Signal,
+            addr => {
+                let base = SubcmpSignalForGroupCompare::try_from(&addr).unwrap();
+                if let AddressType::SubcmpSignal { is_output, input_information, .. } = addr {
+                    AddressTypeForCaching::SubcmpSignal { base, is_output, input_information }
+                } else {
+                    unreachable!()
+                }
             }
         }
-        panic!("improper AddressType given")
+    }
+}
+
+impl From<&AddressTypeForCaching> for AddressType {
+    fn from(addr: &AddressTypeForCaching) -> AddressType {
+        match addr {
+            AddressTypeForCaching::Variable => AddressType::Variable,
+            AddressTypeForCaching::Signal => AddressType::Signal,
+            AddressTypeForCaching::SubcmpSignal { base, input_information, is_output } => {
+                AddressType::SubcmpSignal {
+                    cmp_address: base.into(),
+                    uniform_parallel_value: base.uniform_parallel_value,
+                    counter_override: base.counter_override,
+                    input_information: input_information.clone(),
+                    is_output: *is_output,
+                }
+            }
+        }
     }
 }
 
@@ -98,7 +167,7 @@ impl ArgInfo {
         &self,
         mem_refs: &'a MemLocsPerIter,
         iter_num: usize,
-    ) -> Vec<(&'a Option<CompiledMemLocation>, ArgIndex)> {
+    ) -> Vec<(&'a Option<CompiledMemLocationForCaching>, ArgIndex)> {
         mem_refs.iter().map(|(k, v)| (&v[iter_num], self.loc_to_args[k])).collect()
     }
 
@@ -110,14 +179,14 @@ impl ArgInfo {
         mem_refs.iter().fold((ToOriginalLocation::new(), HashSet::new()), |mut acc, (k, v)| {
             if let Some((addr_ty, addr_offset)) = v[iter_num].as_ref() {
                 let ai = self.loc_to_args[k];
-                acc.0.insert(ai.get_signal_idx(), (addr_ty.clone(), *addr_offset));
+                acc.0.insert(ai.get_signal_idx(), (addr_ty.into(), *addr_offset));
                 // If applicable, insert the index for the subcmp counter and arena parameters
                 if let ArgIndex::SubCmp { counter, arena, .. } = ai {
                     match addr_ty {
-                        AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
-                            assert_eq!(*counter_override, false); //there's no counter for a counter
+                        AddressTypeForCaching::SubcmpSignal { base, .. } => {
+                            assert_eq!(base.counter_override, false); //there's no counter for a counter
                             let counter_addr_ty = AddressType::SubcmpSignal {
-                                cmp_address: cmp_address.clone(),
+                                cmp_address: base.into(),
                                 uniform_parallel_value: None,
                                 is_output: false,
                                 input_information: InputInformation::NoInput,
@@ -309,7 +378,7 @@ impl LoopBodyExtractor {
                                 ArgIndex::Signal(signal, _) => {
                                     args[signal] = builders::build_indexed_storage_ptr_ref(
                                         bucket,
-                                        at.clone(),
+                                        at.into(),
                                         *val,
                                     )
                                 }
@@ -317,19 +386,19 @@ impl LoopBodyExtractor {
                                     // Pass specific signal referenced
                                     args[signal] = builders::build_indexed_storage_ptr_ref(
                                         bucket,
-                                        at.clone(),
+                                        at.into(),
                                         *val,
                                     );
                                     // Pass entire subcomponent arena for calling the 'template_run' function
                                     args[arena] =
-                                        builders::build_storage_ptr_ref(bucket, at.clone());
+                                        builders::build_storage_ptr_ref(bucket, at.into());
                                     // Pass subcomponent counter reference
-                                    if let AddressType::SubcmpSignal { cmp_address, .. } = &at {
+                                    if let AddressTypeForCaching::SubcmpSignal { base, .. } = at {
                                         //TODO: may only need to add this when is_output=true but have to skip adding the Param too in that case.
                                         args[counter] =
                                             builders::build_subcmp_counter_storage_ptr_ref(
                                                 bucket,
-                                                cmp_address.clone(),
+                                                base.into(),
                                             );
                                     } else {
                                         unreachable!()
@@ -625,7 +694,7 @@ impl LoopBodyExtractor {
                     Some((a, v)) => {
                         // ASSERT: index values are known in every available iteration
                         assert!(!v.is_unknown());
-                        Some((a, v.as_u32()?))
+                        Some((a.into(), v.as_u32()?))
                     }
                 });
             }
@@ -642,16 +711,16 @@ impl LoopBodyExtractor {
                 //  iterations (i.e. where it is not None, see earlier comment) or if the AddressType
                 //  is SubcmpSignal, then an extra function argument is needed for it.
                 if Self::filter_map_any(column, |(x, _)| {
-                    matches!(x, AddressType::SubcmpSignal { .. })
+                    matches!(x, AddressTypeForCaching::SubcmpSignal { .. })
                 }) || !checks::all_same(Self::filter_map(column, |(_, y)| *y))
                 {
                     // column.iter().find(Option::is_some);
                     let kind = column.iter().find_map(|x| x.as_ref().map(|(a, _)| a));
                     debug_assert!(kind.is_some(), "Condition above implies there's at least one.");
                     let prefix = match kind.unwrap() {
-                        AddressType::Variable => "var",
-                        AddressType::Signal => "sig",
-                        AddressType::SubcmpSignal { .. } => "subsig",
+                        AddressTypeForCaching::Variable => "var",
+                        AddressTypeForCaching::Signal => "sig",
+                        AddressTypeForCaching::SubcmpSignal { .. } => "subsig",
                     };
                     loc_to_args.insert(*id, ArgIndex::Signal(next_idx, prefix));
                     next_idx += 1;
@@ -684,23 +753,22 @@ impl LoopBodyExtractor {
             let x: Vec<(BucketId, Vec<Option<SubcmpSignalForGroupCompare>>)> = loc_to_itr_to_ref
                 .iter()
                 .filter_map(|(b, col)| {
-                    //if the iteration does not contain any Some(SubCmp), then we return None
-                    //otherwise, return a new Some(Vec<Option<SubcmpSignalForGroupCompare>>)
+                    // If the iteration does not contain any Some(SubCmp), then we return None.
+                    // Otherwise, return a new Some(Vec<Option<SubcmpSignalForGroupCompare>>).
                     let conv: Vec<Option<SubcmpSignalForGroupCompare>> = col
                         .iter()
-                        .map(|o| match o {
-                            // Ignore the offset here since the parameters pass the
-                            //  counter and the entire array for the subcomponent.
-                            Some((at, _)) => match at {
-                                AddressType::SubcmpSignal { .. } => {
-                                    Some(SubcmpSignalForGroupCompare::convert(&at))
+                        .map(|o| {
+                            match o {
+                                // Collect only SubcmpSignla. Ignore the offset here since the parameters
+                                //  pass the counter and the entire array for the subcomponent.
+                                Some((AddressTypeForCaching::SubcmpSignal { base, .. }, _)) => {
+                                    Some(base.clone())
                                 }
                                 _ => None,
-                            },
-                            None => None,
+                            }
                         })
                         .collect();
-                    //If the converted column is all None, return None, otherwise return some
+                    // If the converted column is all None, return None, otherwise return Some.
                     if conv.iter().all(Option::is_none) {
                         None
                     } else {
@@ -716,7 +784,9 @@ impl LoopBodyExtractor {
             debug_assert!(loc_to_itr_to_ref
                 .iter()
                 .filter_map(|(k, v)| {
-                    if v.iter().any(|e| matches!(e, Some((AddressType::SubcmpSignal { .. }, _)))) {
+                    if v.iter()
+                        .any(|e| matches!(e, Some((AddressTypeForCaching::SubcmpSignal { .. }, _))))
+                    {
                         Some(k)
                     } else {
                         None
