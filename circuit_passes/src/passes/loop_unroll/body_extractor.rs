@@ -14,13 +14,21 @@ use crate::checked_insert;
 use crate::passes::{builders, checks};
 use super::{
     DEBUG_LOOP_UNROLL, LOOP_BODY_FN_PREFIX, UNROLLED_BUCKET_LABEL, BlockBucketId,
-    CompiledMemLocation, ExtractedNameAndMemLocs, FuncArgIdx, LoopBucketId, MemLocsPerIter,
-    ToOriginalLocation,
+    CompiledMemLocation, FuncArgIdx, LoopBucketId, ToOriginalLocation,
 };
 use super::extracted_location_updater::ExtractedFunctionLocationUpdater;
 use super::index_map_ord::IndexMapOrd;
 use super::loop_env_recorder::EnvRecorder;
 use super::observer::LoopUnrollObserverResult;
+
+/// Table structure indexed first by load/store/call BucketId, then by iteration number
+/// (i.e. the Vec index), containing the compiled memory locations to use as arguments
+/// when calling the extracted body function.
+// NOTE: This collection and several intermediate collections that are used to build it
+// must use IndexMap/IndexSet to preserve insertion order to stabilize lit test output.
+type MemLocsPerIter = IndexMapOrd<BucketId, Vec<Option<CompiledMemLocation>>>;
+/// Extracted function name + compiled memory location mappings for the args.
+type ExtractedNameAndMemLocs = (String, MemLocsPerIter);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ArgIndex {
