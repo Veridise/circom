@@ -706,24 +706,31 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             if cfg!(debug_assertions) {
                 println!("Running function {}", bucket.symbol);
             }
+            let callee = self.mem.get_function(&bucket.symbol);
+            // Set PassMemory scope based on the function being executed
+            let parent_scope = self.mem.set_scope(callee.as_ref().into());
+
+            // Create inner Env for the function with the function arg values set from the call
             let mut new_env =
                 Env::new_source_func_env(env.clone(), &bucket.id, new_call_stack, self.mem);
             let mut args_mut = args;
             for (id, arg) in args_mut.drain(..).enumerate() {
                 new_env = new_env.set_var(id, arg);
             }
+            // Interpret all instructions in the body of the callee function
             let interp = self.mem.build_interpreter_with_scope(
                 self.global_data,
                 self.observer,
                 self.flags.clone(),
                 bucket.symbol.clone(),
             );
-
             let (v, _) = Result::from(interp._execute_instructions(
-                &self.mem.get_function(&bucket.symbol).body,
+                &callee.body,
                 new_env,
                 observe && !interp.observer.ignore_function_calls(),
             ))?;
+            // Restore the parent scope
+            self.mem.set_scope(parent_scope);
             // CHECK: all Circom source functions must return a value
             // Return the original Env, not the new one that is internal to the function.
             opt_as_result(v, "value returned from function").map(|v| (Some(v), env))
