@@ -46,11 +46,11 @@ impl ArgIndex {
 }
 
 /// Need this structure to skip id/metadata fields in ValueBucket when using as map key.
-/// Also, the input/output stuff doesn't matter since the extra arguments that are added
-/// based on this are only used to trigger generation of the run function after all of
-/// the inputs have been assigned.
+/// Also, the input/output stuff doesn't matter while grouping references since the extra
+/// arguments that are added based on the grouping are only used to trigger generation of
+/// the run function after all of the inputs have been assigned.
 #[derive(Debug, Eq, PartialEq)]
-struct SubcmpSignalCompare {
+struct SubcmpSignalForGroupCompare {
     cmp_address_parse_as: ValueType,
     cmp_address_op_aux_no: usize,
     cmp_address_value: usize,
@@ -58,9 +58,9 @@ struct SubcmpSignalCompare {
     counter_override: bool,
 }
 
-impl SubcmpSignalCompare {
-    /// Create a `SubcmpSignalCompare` instance for the given `AddressType::SubcmpSignal`
-    fn convert(addr: &AddressType) -> SubcmpSignalCompare {
+impl SubcmpSignalForGroupCompare {
+    /// Create a `SubcmpSignalForGroupCompare` instance for the given `AddressType::SubcmpSignal`
+    fn convert(addr: &AddressType) -> SubcmpSignalForGroupCompare {
         if let AddressType::SubcmpSignal {
             cmp_address,
             uniform_parallel_value,
@@ -71,7 +71,7 @@ impl SubcmpSignalCompare {
             if let Instruction::Value(ValueBucket { parse_as, op_aux_no, value, .. }) =
                 **cmp_address
             {
-                return SubcmpSignalCompare {
+                return SubcmpSignalForGroupCompare {
                     cmp_address_parse_as: parse_as,
                     cmp_address_op_aux_no: op_aux_no,
                     cmp_address_value: value,
@@ -681,19 +681,19 @@ impl LoopBodyExtractor {
         //  group if they are part of that same group in all iterations where present.
         // However, this should not be done if already within an extracted function body.
         if recorder.ctx_kind != EnvContextKind::ExtractedFunction {
-            let x: Vec<(BucketId, Vec<Option<SubcmpSignalCompare>>)> = loc_to_itr_to_ref
+            let x: Vec<(BucketId, Vec<Option<SubcmpSignalForGroupCompare>>)> = loc_to_itr_to_ref
                 .iter()
                 .filter_map(|(b, col)| {
                     //if the iteration does not contain any Some(SubCmp), then we return None
-                    //otherwise, return a new Some(Vec<Option<SubcmpSignalCompare>>)
-                    let conv: Vec<Option<SubcmpSignalCompare>> = col
+                    //otherwise, return a new Some(Vec<Option<SubcmpSignalForGroupCompare>>)
+                    let conv: Vec<Option<SubcmpSignalForGroupCompare>> = col
                         .iter()
                         .map(|o| match o {
                             // Ignore the offset here since the parameters pass the
                             //  counter and the entire array for the subcomponent.
                             Some((at, _)) => match at {
                                 AddressType::SubcmpSignal { .. } => {
-                                    Some(SubcmpSignalCompare::convert(&at))
+                                    Some(SubcmpSignalForGroupCompare::convert(&at))
                                 }
                                 _ => None,
                             },
