@@ -97,11 +97,12 @@ impl WriteLLVMIR for Circuit {
             } else {
                 vec![bigint_type(producer).ptr_type(Default::default()).into()]
             };
+            let function_name = &f.name;
             let function = create_function(
                 producer,
                 f.get_source_file_id(),
                 f.get_line(),
-                f.name.as_str(),
+                function_name.as_str(),
                 name,
                 match &f.returns[..] {
                     [] => {
@@ -127,7 +128,6 @@ impl WriteLLVMIR for Circuit {
                     }
                 },
             );
-            function.set_section(Some(&f.name));
 
             if name.starts_with(GENERATED_FN_PREFIX) {
                 // Preserve names (only for generated b/c source functions use only 1 argument)
@@ -142,6 +142,8 @@ impl WriteLLVMIR for Circuit {
                     "src-loc",
                     &format!("{:?}:{:?}", f.get_source_file_id(), f.get_line()),
                 );
+            } else {
+                function.set_section(Some(function_name));
             }
 
             funcs.insert(name, function);
