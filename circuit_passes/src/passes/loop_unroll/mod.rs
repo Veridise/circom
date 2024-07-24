@@ -15,7 +15,6 @@ use compiler::circuit_design::function::FunctionCode;
 use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::compiler_interface::Circuit;
 use compiler::intermediate_representation::{ir_interface::*, new_id, BucketId};
-use index_map_ord::IndexMapOrd;
 use indexmap::IndexMap;
 use observer::{LoopUnrollObserver, LoopUnrollObserverResult};
 use crate::bucket_interpreter::env::LibraryAccess;
@@ -42,14 +41,6 @@ pub(crate) type ToOriginalLocation = HashMap<FuncArgIdx, CompiledMemLocation>;
 type CallBucketId = BucketId;
 type LoopBucketId = BucketId;
 type BlockBucketId = BucketId;
-/// Table structure indexed first by load/store/call BucketId, then by iteration number
-/// (i.e. the Vec index), containing the compiled memory locations to use as arguments
-/// when calling the extracted body function.
-// NOTE: This collection and several intermediate collections that are used to build it
-// must use IndexMap/IndexSet to preserve insertion order to stabilize lit test output.
-type MemLocsPerIter = IndexMapOrd<BucketId, Vec<Option<CompiledMemLocation>>>;
-/// Extracted function name + compiled memory location mappings for the args.
-type ExtractedNameAndMemLocs = (String, MemLocsPerIter);
 
 // Some fields wrapped in a RefCell because the reference to the static analysis is immutable but we need mutability
 pub struct LoopUnrollPass<'d> {
