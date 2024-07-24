@@ -703,7 +703,7 @@ pub trait CircuitTransformationPass {
     }
 
     fn pre_hook_template(&self, template: &TemplateCode) -> Result<(), BadInterp> {
-        self.get_mem().set_scope(template.into());
+        self.get_mem().set_scope(template.as_ref().into());
         self.run_template(template)
     }
 
@@ -712,7 +712,7 @@ pub trait CircuitTransformationPass {
     }
 
     fn pre_hook_function(&self, function: &FunctionCode) -> Result<(), BadInterp> {
-        self.get_mem().set_scope(function.into());
+        self.get_mem().set_scope(function.as_ref().into());
         Ok(())
     }
 

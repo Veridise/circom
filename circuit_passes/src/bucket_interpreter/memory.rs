@@ -2,8 +2,8 @@ use std::cell::{RefCell, Ref};
 use std::ops::{Deref, Range};
 use code_producers::components::IODef;
 use code_producers::llvm_elements::MemoryLayout;
-use compiler::circuit_design::function::FunctionCode;
-use compiler::circuit_design::template::TemplateCode;
+use compiler::circuit_design::function::{FunctionCode, FunctionCodeInfo};
+use compiler::circuit_design::template::{TemplateCode, TemplateCodeInfo};
 use compiler::num_bigint::BigInt;
 use indexmap::IndexMap;
 use program_structure::constants::UsefulConstants;
@@ -17,18 +17,18 @@ use super::observer::Observer;
 pub struct Scope {
     /// Circom source name from which the template/function was generated
     pub name: String,
-    ///  Unique name of the generated template/function (i.e. 'name' with unique suffix)
+    /// Unique name of the generated template/function (i.e. 'name' with unique suffix)
     pub header: String,
 }
 
-impl From<&TemplateCode> for Scope {
-    fn from(t: &TemplateCode) -> Self {
+impl From<&TemplateCodeInfo> for Scope {
+    fn from(t: &TemplateCodeInfo) -> Self {
         Scope { name: t.name.clone(), header: t.header.clone() }
     }
 }
 
-impl From<&FunctionCode> for Scope {
-    fn from(f: &FunctionCode) -> Self {
+impl From<&FunctionCodeInfo> for Scope {
+    fn from(f: &FunctionCodeInfo) -> Self {
         Scope { name: f.name.clone(), header: f.header.clone() }
     }
 }
@@ -170,8 +170,8 @@ impl PassMemory {
         self.mem_layout.take()
     }
 
-    pub fn set_scope(&self, s: Scope) {
-        self.current_scope.replace(s);
+    pub fn set_scope(&self, s: Scope) -> Scope {
+        self.current_scope.replace(s)
     }
 
     pub fn get_current_scope_name(&self) -> Ref<String> {
