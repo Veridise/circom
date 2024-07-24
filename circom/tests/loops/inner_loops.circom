@@ -37,18 +37,8 @@ component main = InnerLoops(2);
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 3
-//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T00]], align 4
-//CHECK-NEXT:   %[[C01:[0-9a-zA-Z_\.]+]] = call i32 @fr_cast_to_addr(i256 %[[T01]])
-//CHECK-NEXT:   %[[A01:[0-9a-zA-Z_\.]+]] = mul i32 1, %[[C01]]
-//CHECK-NEXT:   %[[A02:[0-9a-zA-Z_\.]+]] = add i32 %[[A01]], 1
-//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 %[[A02]]
-//CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 3
-//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T02]], align 4
-//CHECK-NEXT:   %[[C01:[0-9a-zA-Z_\.]+]] = call i32 @fr_cast_to_addr(i256 %[[T03]])
-//CHECK-NEXT:   %[[A03:[0-9a-zA-Z_\.]+]] = mul i32 1, %[[C01]]
-//CHECK-NEXT:   %[[A04:[0-9a-zA-Z_\.]+]] = add i32 %[[A03]], 1
-//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 %[[A04]]
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
 //CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T04]], align 4
 //CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T06]], align 4

@@ -43,9 +43,7 @@ component main = Good(2);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
 //CHECK-NEXT:   %[[T005:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subc_[[X1]], i32 0
-//CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = load i256, i256* %subc_[[X1]], align 4
-//CHECK-NEXT:   %call.fr_sub = call i256 @fr_sub(i256 %[[T004]], i256 1)
-//CHECK-NEXT:   store i256 %call.fr_sub, i256* %[[T005]], align 4
+//CHECK-NEXT:   store i256 1, i256* %[[T005]], align 4
 //CHECK-NEXT:   br label %fold_false3
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false3:
@@ -53,10 +51,7 @@ component main = Good(2);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store4:
 //CHECK-NEXT:   %[[T008:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
-//CHECK-NEXT:   %[[T006:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
-//CHECK-NEXT:   %[[T007:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T006]], align 4
-//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %[[T007]], i256 1)
-//CHECK-NEXT:   store i256 %call.fr_add, i256* %[[T008]], align 4
+//CHECK-NEXT:   store i256 1, i256* %[[T008]], align 4
 //CHECK-NEXT:   br label %return5
 //CHECK-EMPTY: 
 //CHECK-NEXT: return5:
@@ -80,9 +75,7 @@ component main = Good(2);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
 //CHECK-NEXT:   %[[T005:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subc_[[X1]], i32 0
-//CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = load i256, i256* %subc_[[X1]], align 4
-//CHECK-NEXT:   %call.fr_sub = call i256 @fr_sub(i256 %[[T004]], i256 1)
-//CHECK-NEXT:   store i256 %call.fr_sub, i256* %[[T005]], align 4
+//CHECK-NEXT:   store i256 0, i256* %[[T005]], align 4
 //CHECK-NEXT:   br label %fold_true3
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true3:
@@ -91,10 +84,7 @@ component main = Good(2);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store4:
 //CHECK-NEXT:   %[[T008:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
-//CHECK-NEXT:   %[[T006:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
-//CHECK-NEXT:   %[[T007:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T006]], align 4
-//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %[[T007]], i256 1)
-//CHECK-NEXT:   store i256 %call.fr_add, i256* %[[T008]], align 4
+//CHECK-NEXT:   store i256 2, i256* %[[T008]], align 4
 //CHECK-NEXT:   br label %return5
 //CHECK-EMPTY: 
 //CHECK-NEXT: return5:

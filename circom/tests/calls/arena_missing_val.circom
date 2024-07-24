@@ -8,7 +8,7 @@ pragma circom 2.0.0;
 function long_sub(k, a, b) {
     var d[9];
     for (var i = 1; i < k; i++) { // 3 iterations b/c k=4
-        if (a[i] >= b[i] ) {
+        if (a[i] >= b[i]) {
             d[i] = a[i] - b[i];
         }
     }
@@ -49,21 +49,11 @@ component main = BigMod();
 //CHECK-NEXT:   br label %branch1
 //CHECK-EMPTY: 
 //CHECK-NEXT: branch1:
-//CHECK-NEXT:   %[[T000:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_0, i32 0
-//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T000]], align 4
-//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_1, i32 0
-//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T002]], align 4
-//CHECK-NEXT:   %[[T991:[0-9a-zA-Z_\.]+]] = call i1 @fr_ge(i256 %[[T001]], i256 %[[T003]])
-//CHECK-NEXT:   br i1 %[[T991]], label %if.then, label %if.else
+//CHECK-NEXT:   br i1 true, label %if.then, label %if.else
 //CHECK-EMPTY: 
 //CHECK-NEXT: if.then:
 //CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_2, i32 0
-//CHECK-NEXT:   %[[T005:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_3, i32 0
-//CHECK-NEXT:   %[[T006:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T005]], align 4
-//CHECK-NEXT:   %[[T007:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_4, i32 0
-//CHECK-NEXT:   %[[T008:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T007]], align 4
-//CHECK-NEXT:   %[[T992:[0-9a-zA-Z_\.]+]] = call i256 @fr_sub(i256 %[[T006]], i256 %[[T008]])
-//CHECK-NEXT:   store i256 %[[T992]], i256* %[[T004]], align 4
+//CHECK-NEXT:   store i256 0, i256* %[[T004]], align 4
 //CHECK-NEXT:   br label %if.merge
 //CHECK-EMPTY: 
 //CHECK-NEXT: if.else:

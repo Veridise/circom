@@ -38,12 +38,7 @@ component main = InnerLoops(2);
 //CHECK-NEXT:   br label %store{{[0-9]+}}
 //CHECK-EMPTY: 
 //CHECK-NEXT: store{{[0-9]+}}:
-//CHECK-NEXT:   %[[T00:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 4
-//CHECK-NEXT:   %[[T01:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T00]], align 4
-//CHECK-NEXT:   %[[C01:[0-9a-zA-Z_\.]+]] = call i32 @fr_cast_to_addr(i256 %[[T01]])
-//CHECK-NEXT:   %[[A05:[0-9a-zA-Z_\.]+]] = mul i32 1, %[[C01]]
-//CHECK-NEXT:   %[[A06:[0-9a-zA-Z_\.]+]] = add i32 %[[A05]], 1
-//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 %[[A06]]
+//CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 2
 //CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %sig_0, i32 0
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T02]], align 4
 //CHECK-NEXT:   store i256 %[[T03]], i256* %[[T04]], align 4

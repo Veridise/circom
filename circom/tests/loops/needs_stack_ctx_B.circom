@@ -79,20 +79,12 @@ component main = NeedsStackContext(3, 2);
 //CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 3
 //CHECK-NEXT:   %[[T04:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 3
 //CHECK-NEXT:   %[[T05:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T04]], align 4
-//CHECK-NEXT:   %[[T06:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 4
-//CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T06]], align 4
-//CHECK-NEXT:   %[[T96:[0-9a-zA-Z_\.]+]] = call i32 @fr_cast_to_addr(i256 %[[T07]])
-//CHECK-NEXT:   %[[T95:[0-9a-zA-Z_\.]+]] = mul i32 1, %[[T96]]
-//CHECK-NEXT:   %[[T94:[0-9a-zA-Z_\.]+]] = add i32 %[[T95]], 0
-//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 %[[T94]]
+//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 0
 //CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T08]], align 4
 //CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T05]], i256 %[[T09]])
 //CHECK-NEXT:   store i256 %[[T98]], i256* %[[T03]], align 4
 //CHECK-NEXT:   %[[T10:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 4
-//CHECK-NEXT:   %[[T11:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 4
-//CHECK-NEXT:   %[[T12:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T11]], align 4
-//CHECK-NEXT:   %[[T99:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T12]], i256 1)
-//CHECK-NEXT:   store i256 %[[T99]], i256* %[[T10]], align 4
+//CHECK-NEXT:   store i256 1, i256* %[[T10]], align 4
 //CHECK-NEXT:   br label %return4
 //CHECK-EMPTY: 
 //CHECK-NEXT: return4:
@@ -130,10 +122,7 @@ component main = NeedsStackContext(3, 2);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
 //CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T08]], align 4
-//CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T09]], i256 1)
-//CHECK-NEXT:   store i256 %[[T98]], i256* %[[T07]], align 4
+//CHECK-NEXT:   store i256 1, i256* %[[T07]], align 4
 //CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
 //CHECK-NEXT: return3:
@@ -169,10 +158,7 @@ component main = NeedsStackContext(3, 2);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
 //CHECK-NEXT:   %[[T07:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   %[[T08:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
-//CHECK-NEXT:   %[[T09:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T08]], align 4
-//CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T09]], i256 1)
-//CHECK-NEXT:   store i256 %[[T98]], i256* %[[T07]], align 4
+//CHECK-NEXT:   store i256 2, i256* %[[T07]], align 4
 //CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
 //CHECK-NEXT: return3:
@@ -229,9 +215,7 @@ component main = NeedsStackContext(3, 2);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
 //CHECK-NEXT:   %[[T02:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subc_0, i32 0
-//CHECK-NEXT:   %[[T03:[0-9a-zA-Z_\.]+]] = load i256, i256* %subc_0, align 4
-//CHECK-NEXT:   %[[T97:[0-9a-zA-Z_\.]+]] = call i256 @fr_sub(i256 %[[T03]], i256 1)
-//CHECK-NEXT:   store i256 %[[T97]], i256* %[[T02]], align 4
+//CHECK-NEXT:   store i256 1, i256* %[[T02]], align 4
 //CHECK-NEXT:   br label %fold_false3
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_false3:
