@@ -38,9 +38,7 @@ component main = Num2Bits(3);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
 //CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %subc_[[X3]], i32 0
-//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = load i256, i256* %subc_[[X3]], align 4
-//CHECK-NEXT:   %call.fr_sub = call i256 @fr_sub(i256 %[[T003]], i256 1)
-//CHECK-NEXT:   store i256 %call.fr_sub, i256* %[[T004]], align 4
+//CHECK-NEXT:   store i256 0, i256* %[[T004]], align 4
 //CHECK-NEXT:   br label %fold_true3
 //CHECK-EMPTY: 
 //CHECK-NEXT: fold_true3:
@@ -58,8 +56,8 @@ component main = Num2Bits(3);
 //CHECK-NEXT:   %[[T010:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
 //CHECK-NEXT:   %[[T008:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 1
 //CHECK-NEXT:   %[[T009:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T008]], align 4
-//CHECK-NEXT:   %call.fr_add = call i256 @fr_add(i256 %[[T009]], i256 1)
-//CHECK-NEXT:   store i256 %call.fr_add, i256* %[[T010]], align 4
+//CHECK-NEXT:   %[[T999:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T009]], i256 1)
+//CHECK-NEXT:   store i256 %[[T999]], i256* %[[T010]], align 4
 //CHECK-NEXT:   br label %return6
 //CHECK-EMPTY: 
 //CHECK-NEXT: return6:

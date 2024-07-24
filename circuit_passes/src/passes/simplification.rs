@@ -10,7 +10,7 @@ use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::builders::build_compute;
-use crate::{checked_insert, default__get_mem, default__name, default__run_template};
+use crate::{default__get_mem, default__name, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
 
 pub struct SimplificationPass<'d> {
@@ -18,10 +18,10 @@ pub struct SimplificationPass<'d> {
     global_data: &'d RefCell<GlobalPassData>,
     memory: PassMemory,
     within_constraint: RefCell<bool>,
-    compute_replacements: RefCell<HashMap<BucketId, Value>>,
-    call_replacements: RefCell<HashMap<BucketId, Value>>,
-    constraint_eq_replacements: RefCell<HashMap<BucketId, Vec<Value>>>,
-    constraint_sub_replacements: RefCell<HashMap<BucketId, (Value, Value, Value)>>,
+    compute_replacements: RefCell<HashMap<BucketId, Option<Value>>>,
+    call_replacements: RefCell<HashMap<BucketId, Option<Value>>>,
+    constraint_eq_replacements: RefCell<HashMap<BucketId, Option<Vec<Value>>>>,
+    constraint_sub_replacements: RefCell<HashMap<BucketId, Option<(Value, Value, Value)>>>,
 }
 
 impl<'d> SimplificationPass<'d> {
@@ -48,6 +48,7 @@ impl<'d> SimplificationPass<'d> {
         )
     }
 
+    #[inline]
     fn compute_known(&self, bucket: &ComputeBucket, stack: &Vec<Value>) -> Option<Value> {
         if let Ok(Some(v)) = operations::compute_operation(bucket, stack, self.memory.get_prime()) {
             if v.is_known() {
@@ -55,6 +56,26 @@ impl<'d> SimplificationPass<'d> {
             }
         }
         None
+    }
+
+    #[inline]
+    fn insert<V: PartialEq>(
+        map: &RefCell<HashMap<BucketId, Option<V>>>,
+        bucket_id: BucketId,
+        v: V,
+    ) {
+        map.borrow_mut()
+            .entry(bucket_id)
+            // If the entry exists and it's not the same as the new value, set to None.
+            .and_modify(|old| {
+                if let Some(old_val) = old {
+                    if *old_val != v {
+                        *old = None
+                    }
+                }
+            })
+            // If no entry exists, store the new value.
+            .or_insert(Some(v));
     }
 }
 
@@ -64,7 +85,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
         let v = interp.compute_compute_bucket(bucket, env, false)?;
         let v = v.expect("Compute bucket must produce a value!");
         if !v.is_unknown() {
-            checked_insert!(self.compute_replacements.borrow_mut(), bucket.id, v);
+            Self::insert(&self.compute_replacements, bucket.id, v);
             Ok(false)
         } else {
             Ok(true)
@@ -76,7 +97,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
         if let Some(v) = interp.compute_call_bucket(bucket, env, false)? {
             // Call buckets may not return a value directly
             if !v.is_unknown() {
-                checked_insert!(self.call_replacements.borrow_mut(), bucket.id, v);
+                Self::insert(&self.call_replacements, bucket.id, v);
                 return Ok(false);
             }
         }
@@ -106,11 +127,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                         }
                         // If at least one is a known value, then we can (likely) simplify
                         if values.iter().any(Value::is_known) {
-                            checked_insert!(
-                                self.constraint_eq_replacements.borrow_mut(),
-                                e.get_id(),
-                                values
-                            );
+                            Self::insert(&self.constraint_eq_replacements, e.get_id(), values);
                         }
                     }
                 }
@@ -149,10 +166,10 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
 
                         // If at least one is a known value, then we can (likely) simplify
                         if src.is_known() || dest.is_known() || dest_address_type.is_known() {
-                            checked_insert!(
-                                self.constraint_sub_replacements.borrow_mut(),
+                            Self::insert(
+                                &self.constraint_sub_replacements,
                                 e.get_id(),
-                                (src, dest, dest_address_type)
+                                (src, dest, dest_address_type),
                             );
                         }
                     }
@@ -168,7 +185,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
     }
 
     fn ignore_extracted_function_calls(&self) -> bool {
-        true
+        false
     }
 }
 
@@ -181,14 +198,14 @@ impl CircuitTransformationPass for SimplificationPass<'_> {
         &self,
         bucket: &ComputeBucket,
     ) -> Result<InstructionPointer, BadInterp> {
-        if let Some(value) = self.compute_replacements.borrow().get(&bucket.id) {
+        if let Some(Some(value)) = self.compute_replacements.borrow().get(&bucket.id) {
             return value.to_value_bucket(&self.memory).map(Allocate::allocate);
         }
         self.transform_compute_bucket_default(bucket)
     }
 
     fn transform_call_bucket(&self, bucket: &CallBucket) -> Result<InstructionPointer, BadInterp> {
-        if let Some(value) = self.call_replacements.borrow().get(&bucket.id) {
+        if let Some(Some(value)) = self.call_replacements.borrow().get(&bucket.id) {
             return value.to_value_bucket(&self.memory).map(Allocate::allocate);
         }
         self.transform_call_bucket_default(bucket)
@@ -198,7 +215,8 @@ impl CircuitTransformationPass for SimplificationPass<'_> {
         &self,
         i: &InstructionPointer,
     ) -> Result<InstructionPointer, BadInterp> {
-        if let Some((s, d, cmp)) = self.constraint_sub_replacements.borrow().get(&i.get_id()) {
+        if let Some(Some((s, d, cmp))) = self.constraint_sub_replacements.borrow().get(&i.get_id())
+        {
             if let Instruction::Store(store_bucket) = i.as_ref() {
                 let dest_address_type = if cmp.is_unknown() {
                     //implementation from 'transform_store_bucket_default'
@@ -268,7 +286,7 @@ impl CircuitTransformationPass for SimplificationPass<'_> {
         &self,
         i: &InstructionPointer,
     ) -> Result<InstructionPointer, BadInterp> {
-        if let Some(ops) = self.constraint_eq_replacements.borrow().get(&i.get_id()) {
+        if let Some(Some(ops)) = self.constraint_eq_replacements.borrow().get(&i.get_id()) {
             if let Instruction::Assert(assert_bucket) = i.as_ref() {
                 if let Instruction::Compute(compute_bucket) = assert_bucket.evaluate.as_ref() {
                     // If the compute operator with the stack of Values computes to a single

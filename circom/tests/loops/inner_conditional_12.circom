@@ -158,10 +158,7 @@ component main = InnerConditional12(4);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
 //CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
-//CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
-//CHECK-NEXT:   %[[T15:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T14]], align 4
-//CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T15]], i256 1)
-//CHECK-NEXT:   store i256 %[[T98]], i256* %[[T13]], align 4
+//CHECK-NEXT:   store i256 3, i256* %[[T13]], align 4
 //CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
 //CHECK-NEXT: return3:
@@ -203,10 +200,7 @@ component main = InnerConditional12(4);
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
 //CHECK-NEXT:   %[[T19:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
-//CHECK-NEXT:   %[[T20:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %lvars, i32 0, i32 5
-//CHECK-NEXT:   %[[T21:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T20]], align 4
-//CHECK-NEXT:   %[[T98:[0-9a-zA-Z_\.]+]] = call i256 @fr_add(i256 %[[T21]], i256 1)
-//CHECK-NEXT:   store i256 %[[T98]], i256* %[[T19]], align 4
+//CHECK-NEXT:   store i256 4, i256* %[[T19]], align 4
 //CHECK-NEXT:   br label %return3
 //CHECK-EMPTY: 
 //CHECK-NEXT: return3:
