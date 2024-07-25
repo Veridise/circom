@@ -107,7 +107,11 @@ impl CircuitTransformationPass for UnreachableRemovalPass<'_> {
             self.global_data,
             self,
             template,
-            InterpreterFlags { visit_unknown_condition_branches: true, ..Default::default() },
+            InterpreterFlags {
+                visit_unknown_condition_branches: true,
+                propagate_only_known_returns: true,
+                ..Default::default()
+            },
         )
     }
 

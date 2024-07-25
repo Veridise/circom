@@ -37,8 +37,19 @@ pub const CALL_STACK_LIMIT: usize = 400;
 
 #[derive(Default, Debug, Clone)]
 pub struct InterpreterFlags {
+    /// If 'true', the interpreter will consider the value of all
+    /// signals to always be Unknown.
     pub all_signals_unknown: bool,
+    /// If 'true', the interpreter will visit both branches of a
+    /// conditional bucket when the condition computes to Unknown.
+    /// Otherwise, neither branch will be visited in that case.
     pub visit_unknown_condition_branches: bool,
+    /// Only applies if 'visit_unknown_condition_branches == true'.
+    /// Conditional buckets that contain a ReturnBucket in either
+    /// branch and whose condition computes to Unknown will produce
+    /// an InterpRes::Continue result if this is 'true' and only
+    /// produce an InterpRes::Return result if this is 'false'.
+    pub propagate_only_known_returns: bool,
 }
 
 pub struct BucketInterpreter<'a, 'd> {
@@ -1004,19 +1015,23 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             |_| unreachable!() // Cannot contain InterpRes::Return
         );
         match val {
-            None => {
-                if self.flags.visit_unknown_condition_branches {
-                    process_body(&self, &true_branch, env.clone(), observe);
-                    process_body(&self, &false_branch, env.clone(), observe);
+            Some(c) => {
+                let active_branch = if c { true_branch } else { false_branch };
+                process_body(&self, active_branch, env, observe).map(|(r, e)| (r, Some(c), e))
+            }
+            None if self.flags.visit_unknown_condition_branches => {
+                // Must visit both branch bodies, ignore the result but if either
+                //   had an early return the result must reflect that early return.
+                let a = process_body(&self, &true_branch, env.clone(), observe);
+                let b = process_body(&self, &false_branch, env.clone(), observe);
+                let res = (Some(Value::Unknown), None, env);
+                if !self.flags.propagate_only_known_returns && (a.is_return() || b.is_return()) {
+                    InterpRes::Return(res)
+                } else {
+                    InterpRes::Continue(res)
                 }
-                InterpRes::Continue((Some(Value::Unknown), None, env))
             }
-            Some(true) => {
-                process_body(&self, &true_branch, env, observe).map(|(r, e)| (r, Some(true), e))
-            }
-            Some(false) => {
-                process_body(&self, &false_branch, env, observe).map(|(r, e)| (r, Some(false), e))
-            }
+            None => InterpRes::Continue((Some(Value::Unknown), None, env)),
         }
     }
 
