@@ -1079,7 +1079,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         let mut n_iters = 0;
         loop {
             n_iters += 1;
-            if n_iters >= LOOP_LIMIT {
+            if n_iters > LOOP_LIMIT {
                 return error::new_compute_err_result(format!(
                     "Could not compute value of loop within {LOOP_LIMIT} iterations"
                 ));
