@@ -612,8 +612,10 @@ pub fn create_return<'a, V: BasicValue<'a>>(
     val: V,
 ) -> LLVMInstruction<'a> {
     let f = get_insert_block(producer).get_parent().expect("no current function!");
-    let ret_ty =
-        f.get_type().get_return_type().expect("non-void function should have a return type!");
+    let ret_ty = f
+        .get_type()
+        .get_return_type()
+        .expect("function with non-void return should have a return type!");
     let ret_val = if ret_ty.is_int_type() {
         ensure_int_type_match(
             producer,
