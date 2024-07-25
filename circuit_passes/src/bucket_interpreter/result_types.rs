@@ -39,6 +39,13 @@ impl<T> InterpRes<T> {
     }
 
     #[must_use]
+    #[inline]
+    pub fn is_return(&self) -> bool {
+        matches!(self, InterpRes::Return(_))
+    }
+
+    #[must_use]
+    #[inline]
     pub fn map<U, F: FnOnce(T) -> U>(self, op: F) -> InterpRes<U> {
         match self {
             InterpRes::Continue(t) => InterpRes::Continue(op(t)),
