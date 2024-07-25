@@ -989,7 +989,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         self._compute_condition(cond, &env, observe).map(|r| (r, env))
     }
 
-    fn _impl_conditional_bucket<'s, 'i, E: Clone>(
+    fn _impl_conditional_bucket<'s, 'i, E: Clone + std::fmt::Debug>(
         &'s self,
         cond: &'i InstructionPointer,
         true_branch: &'i [InstructionPointer],
@@ -1059,7 +1059,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         )
     }
 
-    fn _impl_loop_bucket<E>(
+    fn _impl_loop_bucket<E: std::fmt::Debug>(
         &self,
         bucket: &LoopBucket,
         env: E,
