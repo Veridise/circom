@@ -52,6 +52,13 @@ pub struct InterpreterFlags {
     pub propagate_only_known_returns: bool,
 }
 
+impl InterpreterFlags {
+    #[inline]
+    fn allow_nondetermined_return(&self) -> bool {
+        self.visit_unknown_condition_branches && !self.propagate_only_known_returns
+    }
+}
+
 pub struct BucketInterpreter<'a, 'd> {
     global_data: &'d RefCell<GlobalPassData>,
     observer: &'a dyn for<'e> Observer<Env<'e>>,
@@ -736,16 +743,24 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
                 self.flags.clone(),
                 bucket.symbol.clone(),
             );
-            let (v, _) = Result::from(interp._execute_instructions(
+            let (body_val, _) = Result::from(interp._execute_instructions(
                 &callee.body,
                 new_env,
                 observe && !interp.observer.ignore_function_calls(),
             ))?;
             // Restore the parent scope
             self.mem.set_scope(parent_scope);
-            // CHECK: all Circom source functions must return a value
+
+            // CHECK: All Circom source functions must return a value, unless
+            //  self.flags.allow_nondetermined_return() == false because that
+            //  case could result in no return statements being observed.
+            let func_val = if body_val.is_none() && !self.flags.allow_nondetermined_return() {
+                Some(Value::Unknown)
+            } else {
+                body_val
+            };
             // Return the original Env, not the new one that is internal to the function.
-            opt_as_result(v, "value returned from function").map(|v| (Some(v), env))
+            opt_as_result(func_val, "value returned from function").map(|v| (Some(v), env))
         } else {
             Ok((Some(Value::Unknown), env))
         }
@@ -1011,28 +1026,39 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
         process_cond: impl Fn(&'s Self, &'i InstructionPointer, E, bool) -> InterpRes<(Option<bool>, E)>,
         process_body: impl Fn(&'s Self, &'i [InstructionPointer], E, bool) -> RGI<E>,
     ) -> RBI<E> {
-        let (val, env) = check_res!(
+        let (cond_val, env) = check_res!(
             process_cond(&self, cond, env, observe),
             |_| unreachable!() // Cannot contain InterpRes::Return
         );
-        match val {
+        match cond_val {
             Some(c) => {
                 let active_branch = if c { true_branch } else { false_branch };
                 process_body(&self, active_branch, env, observe).map(|(r, e)| (r, Some(c), e))
             }
-            None if self.flags.visit_unknown_condition_branches => {
+            None => {
                 // Must visit both branch bodies, ignore the result but if either
-                //   had an early return the result must reflect that early return.
-                let a = process_body(&self, &true_branch, env.clone(), observe);
-                let b = process_body(&self, &false_branch, env.clone(), observe);
-                let res = (Some(Value::Unknown), None, env);
-                if !self.flags.propagate_only_known_returns && (a.is_return() || b.is_return()) {
-                    InterpRes::Return(res)
+                //   had an early return the result must reflect that if requested.
+                let observe_inside = observe & self.flags.visit_unknown_condition_branches;
+                let tb_res = process_body(&self, &true_branch, env.clone(), observe_inside);
+                let fb_res = process_body(&self, &false_branch, env.clone(), observe_inside);
+                // Circom semantics do NOT allow a conditional statement to produce a value like this:
+                //  var x = if (a < 7) { 0 } else { 1 }
+                // Thus, only an `InterpRes::Return` result can contain `Some(Value)` and that case can
+                //  occur when there is a return statement within the body of the branch.
+                //
+                // ASSERT: `InterpRes::Continue`` must have `None`` for the value!
+                assert!(!matches!(tb_res, InterpRes::Continue((Some(_), _))), "{:?}", tb_res);
+                assert!(!matches!(fb_res, InterpRes::Continue((Some(_), _))), "{:?}", fb_res);
+                if self.flags.allow_nondetermined_return()
+                    && (tb_res.is_return() || fb_res.is_return())
+                {
+                    // When the condition is Unknown, the actual value returned is Unknown
+                    InterpRes::Return((Some(Value::Unknown), None, env))
                 } else {
-                    InterpRes::Continue(res)
+                    // As stated above, Continue must return None for the value
+                    InterpRes::Continue((None, None, env))
                 }
             }
-            None => InterpRes::Continue((Some(Value::Unknown), None, env)),
         }
     }
 
