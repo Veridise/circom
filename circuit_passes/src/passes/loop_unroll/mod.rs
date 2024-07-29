@@ -366,7 +366,7 @@ mod tests {
                         source_file_id: None,
                         line: 0,
                         message_id: 0,
-                        context: InstrContext { size: 0 },
+                        context: InstrContext { size: 1 },
                         dest_is_output: false,
                         dest_address_type: AddressType::Variable,
                         dest: LocationRule::Indexed {
@@ -383,7 +383,7 @@ mod tests {
                         source_file_id: None,
                         line: 0,
                         message_id: 0,
-                        context: InstrContext { size: 0 },
+                        context: InstrContext { size: 1 },
                         dest_is_output: false,
                         dest_address_type: AddressType::Variable,
                         dest: LocationRule::Indexed {
@@ -415,7 +415,7 @@ mod tests {
                                         location: build_u32_value(&ObtainMetaImpl::default(), 1),
                                         template_header: None,
                                     },
-                                    context: InstrContext { size: 0 },
+                                    context: InstrContext { size: 1 },
                                     bounded_fn: None,
                                 }
                                 .allocate(),
@@ -429,7 +429,7 @@ mod tests {
                                 source_file_id: None,
                                 line: 0,
                                 message_id: 0,
-                                context: InstrContext { size: 0 },
+                                context: InstrContext { size: 1 },
                                 dest_is_output: false,
                                 dest_address_type: AddressType::Variable,
                                 dest: LocationRule::Indexed {
@@ -454,7 +454,7 @@ mod tests {
                                                 ),
                                                 template_header: None,
                                             },
-                                            context: InstrContext { size: 0 },
+                                            context: InstrContext { size: 1 },
                                             bounded_fn: None,
                                         }
                                         .allocate(),
@@ -470,7 +470,7 @@ mod tests {
                                 source_file_id: None,
                                 line: 0,
                                 message_id: 0,
-                                context: InstrContext { size: 0 },
+                                context: InstrContext { size: 1 },
                                 dest_is_output: false,
                                 dest_address_type: AddressType::Variable,
                                 dest: LocationRule::Indexed {
@@ -495,7 +495,7 @@ mod tests {
                                                 ),
                                                 template_header: None,
                                             },
-                                            context: InstrContext { size: 0 },
+                                            context: InstrContext { size: 1 },
                                             bounded_fn: None,
                                         }
                                         .allocate(),

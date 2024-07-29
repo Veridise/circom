@@ -340,6 +340,7 @@ impl<'a: 'd, 'd> BucketInterpreter<'a, 'd> {
             //  a known value so take the conservative approach to always return Unknown.
             return InterpRes::Continue(Some(Unknown));
         }
+        assert!(bucket.context.size > 0);
         match &bucket.address_type {
             AddressType::Variable => {
                 let idx = check_std_res!(self.compute_location_index(
