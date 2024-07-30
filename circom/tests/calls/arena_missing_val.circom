@@ -15,13 +15,14 @@ function long_sub(k, a, b) {
     return d;
 }
 
-// %0 (i.e. arena) = [  k, out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8],
-//                      i, sub[0], sub[1], sub[2], sub[3], sub[4], sub[5], sub[6], sub[7], sub[8],
-//                      mul[0], mul[1], mul[2], mul[3], mul[4], mul[5], mul[6], mul[7], mul[8], j ]
-function long_div(k) {
+// %0 (i.e. arena) = [  k, in[0], in[1], in[2], in[3], in[4], in[5], in[6], in[7], in[8],
+//                      out[0], out[1], out[2], out[3], out[4], out[5], out[6], out[7], out[8], i,
+//                      sub[0], sub[1], sub[2], sub[3], sub[4], sub[5], sub[6], sub[7], sub[8], mul[0],
+//                      mul[1], mul[2], mul[3], mul[4], mul[5], mul[6], mul[7], mul[8], j ]
+function long_div(k, in) {
     var out[9];
     for (var i = k; i >= 0; i--) { // 5 iterations b/c k=4
-        var sub[9];
+        var sub[9] = in;
         var mul[9] = out;
         for (var j = 0; j <= k; j++) { // 5 iterations b/c k=4
             sub[i + j] = mul[j];
@@ -32,28 +33,40 @@ function long_div(k) {
 }
 
 template BigMod() {
+  signal input in[9];
   signal output out[9];
-  out <-- long_div(4);
+  out <-- long_div(4, in);
 }
 
 component main = BigMod();
 
 //NOTE: There is some instability in where [[$F_ID_1]] will be generated, possibly due to
 //  the LLVM "add_merge_functions_pass" in which case there's no obvious way to address it.
-//  Instead, the definition of [[$F_ID_1]] is elided and the name is first defined within
-//  the 'long_div_' function. Also, the entire header of this first generated function must
-//  be matched on one line.
+//  Sometimes it appears as the very first function and sometimes between the definitions
+//  of long_sub() and long_div(). Instead, the definition of [[$F_ID_1]] is elided and the
+//  name is first defined within the 'long_div_' function. Also, the entire header of this
+//  first generated function must be matched on one line.
 //
 //CHECK-LABEL: define{{.*}} void @..generated..loop.body.{{[0-9a-zA-Z_\.]+}}([0 x i256]* %lvars, [0 x i256]* %signals, i256* %var_0, i256* %var_1, i256* %var_2, i256* %var_3, i256* %var_4){{.*}} {
 //CHECK-NEXT: ..generated..loop.body.[[$F_ID_2:[0-9a-zA-Z_\.]+]]:
 //CHECK-NEXT:   br label %branch1
 //CHECK-EMPTY: 
 //CHECK-NEXT: branch1:
-//CHECK-NEXT:   br i1 true, label %if.then, label %if.else
+//CHECK-NEXT:   %[[T000:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_0, i32 0
+//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T000]], align 4
+//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_1, i32 0
+//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T002]], align 4
+//CHECK-NEXT:   %[[T999:[0-9a-zA-Z_\.]+]] = call i1 @fr_ge(i256 %[[T001]], i256 %[[T003]])
+//CHECK-NEXT:   br i1 %[[T999]], label %if.then, label %if.else
 //CHECK-EMPTY: 
 //CHECK-NEXT: if.then:
 //CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_2, i32 0
-//CHECK-NEXT:   store i256 0, i256* %[[T004]], align 4
+//CHECK-NEXT:   %[[T005:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_3, i32 0
+//CHECK-NEXT:   %[[T006:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T005]], align 4
+//CHECK-NEXT:   %[[T007:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %var_4, i32 0
+//CHECK-NEXT:   %[[T008:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T007]], align 4
+//CHECK-NEXT:   %[[T998:[0-9a-zA-Z_\.]+]] = call i256 @fr_sub(i256 %[[T006]], i256 %[[T008]])
+//CHECK-NEXT:   store i256 %[[T998]], i256* %[[T004]], align 4
 //CHECK-NEXT:   br label %if.merge
 //CHECK-EMPTY: 
 //CHECK-NEXT: if.else:
@@ -179,78 +192,98 @@ component main = BigMod();
 //CHECK-NEXT:   br label %store1
 //CHECK-EMPTY: 
 //CHECK-NEXT: store1:
-//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   store i256 0, i256* %[[T001]], align 4
 //CHECK-NEXT:   br label %store2
 //CHECK-EMPTY: 
 //CHECK-NEXT: store2:
-//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 2
+//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
 //CHECK-NEXT:   store i256 0, i256* %[[T002]], align 4
 //CHECK-NEXT:   br label %store3
 //CHECK-EMPTY: 
 //CHECK-NEXT: store3:
-//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 3
+//CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 12
 //CHECK-NEXT:   store i256 0, i256* %[[T003]], align 4
 //CHECK-NEXT:   br label %store4
 //CHECK-EMPTY: 
 //CHECK-NEXT: store4:
-//CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 4
+//CHECK-NEXT:   %[[T004:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 13
 //CHECK-NEXT:   store i256 0, i256* %[[T004]], align 4
 //CHECK-NEXT:   br label %store5
 //CHECK-EMPTY: 
 //CHECK-NEXT: store5:
-//CHECK-NEXT:   %[[T005:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 5
+//CHECK-NEXT:   %[[T005:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 14
 //CHECK-NEXT:   store i256 0, i256* %[[T005]], align 4
 //CHECK-NEXT:   br label %store6
 //CHECK-EMPTY: 
 //CHECK-NEXT: store6:
-//CHECK-NEXT:   %[[T006:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 6
+//CHECK-NEXT:   %[[T006:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 15
 //CHECK-NEXT:   store i256 0, i256* %[[T006]], align 4
 //CHECK-NEXT:   br label %store7
 //CHECK-EMPTY: 
 //CHECK-NEXT: store7:
-//CHECK-NEXT:   %[[T007:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 7
+//CHECK-NEXT:   %[[T007:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 16
 //CHECK-NEXT:   store i256 0, i256* %[[T007]], align 4
 //CHECK-NEXT:   br label %store8
 //CHECK-EMPTY: 
 //CHECK-NEXT: store8:
-//CHECK-NEXT:   %[[T008:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 8
+//CHECK-NEXT:   %[[T008:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 17
 //CHECK-NEXT:   store i256 0, i256* %[[T008]], align 4
 //CHECK-NEXT:   br label %store9
 //CHECK-EMPTY: 
 //CHECK-NEXT: store9:
-//CHECK-NEXT:   %[[T009:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 9
+//CHECK-NEXT:   %[[T009:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 18
 //CHECK-NEXT:   store i256 0, i256* %[[T009]], align 4
 //CHECK-NEXT:   br label %store10
 //CHECK-EMPTY: 
 //CHECK-NEXT: store10:
-//CHECK-NEXT:   %[[T010:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
+//CHECK-NEXT:   %[[T010:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
 //CHECK-NEXT:   %[[T011:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 0
 //CHECK-NEXT:   %[[T012:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T011]], align 4
 //CHECK-NEXT:   store i256 %[[T012]], i256* %[[T010]], align 4
 //CHECK-NEXT:   br label %unrolled_loop11
 //CHECK-EMPTY: 
 //CHECK-NEXT: unrolled_loop11:
-//CHECK-NEXT:   %[[T013:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   store i256 0, i256* %[[T013]], align 4
-//CHECK-NEXT:   %[[T014:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 12
-//CHECK-NEXT:   store i256 0, i256* %[[T014]], align 4
-//CHECK-NEXT:   %[[T015:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 13
-//CHECK-NEXT:   store i256 0, i256* %[[T015]], align 4
-//CHECK-NEXT:   %[[T016:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 14
-//CHECK-NEXT:   store i256 0, i256* %[[T016]], align 4
-//CHECK-NEXT:   %[[T017:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 15
-//CHECK-NEXT:   store i256 0, i256* %[[T017]], align 4
-//CHECK-NEXT:   %[[T018:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 16
-//CHECK-NEXT:   store i256 0, i256* %[[T018]], align 4
-//CHECK-NEXT:   %[[T019:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 17
-//CHECK-NEXT:   store i256 0, i256* %[[T019]], align 4
-//CHECK-NEXT:   %[[T020:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 18
-//CHECK-NEXT:   store i256 0, i256* %[[T020]], align 4
-//CHECK-NEXT:   %[[T021:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
-//CHECK-NEXT:   store i256 0, i256* %[[T021]], align 4
-//CHECK-NEXT:   %[[T022:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
-//CHECK-NEXT:   %[[T023:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T13:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
+//CHECK-NEXT:   %[[T14:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[CPY_SRC_100:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T14]], i32 0
+//CHECK-NEXT:   %[[CPY_DST_100:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T13]], i32 0
+//CHECK-NEXT:   %[[CPY_VAL_100:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_100]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_100]], i256* %[[CPY_DST_100]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_101:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T14]], i32 1
+//CHECK-NEXT:   %[[CPY_DST_101:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T13]], i32 1
+//CHECK-NEXT:   %[[CPY_VAL_101:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_101]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_101]], i256* %[[CPY_DST_101]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_102:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T14]], i32 2
+//CHECK-NEXT:   %[[CPY_DST_102:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T13]], i32 2
+//CHECK-NEXT:   %[[CPY_VAL_102:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_102]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_102]], i256* %[[CPY_DST_102]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_103:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T14]], i32 3
+//CHECK-NEXT:   %[[CPY_DST_103:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T13]], i32 3
+//CHECK-NEXT:   %[[CPY_VAL_103:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_103]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_103]], i256* %[[CPY_DST_103]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_104:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T14]], i32 4
+//CHECK-NEXT:   %[[CPY_DST_104:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T13]], i32 4
+//CHECK-NEXT:   %[[CPY_VAL_104:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_104]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_104]], i256* %[[CPY_DST_104]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_105:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T14]], i32 5
+//CHECK-NEXT:   %[[CPY_DST_105:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T13]], i32 5
+//CHECK-NEXT:   %[[CPY_VAL_105:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_105]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_105]], i256* %[[CPY_DST_105]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_106:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T14]], i32 6
+//CHECK-NEXT:   %[[CPY_DST_106:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T13]], i32 6
+//CHECK-NEXT:   %[[CPY_VAL_106:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_106]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_106]], i256* %[[CPY_DST_106]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_107:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T14]], i32 7
+//CHECK-NEXT:   %[[CPY_DST_107:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T13]], i32 7
+//CHECK-NEXT:   %[[CPY_VAL_107:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_107]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_107]], i256* %[[CPY_DST_107]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_108:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T14]], i32 8
+//CHECK-NEXT:   %[[CPY_DST_108:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T13]], i32 8
+//CHECK-NEXT:   %[[CPY_VAL_108:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_108]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_108]], i256* %[[CPY_DST_108]], align 4
+//CHECK-NEXT:   %[[T022:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 29
+//CHECK-NEXT:   %[[T023:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T023]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T022]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0]], align 4
@@ -287,37 +320,37 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_DST_8:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T022]], i32 8
 //CHECK-NEXT:   %[[CPY_VAL_8:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8]], i256* %[[CPY_DST_8]], align 4
-//CHECK-NEXT:   %[[T024:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 29
+//CHECK-NEXT:   %[[T024:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 38
 //CHECK-NEXT:   store i256 0, i256* %[[T024]], align 4
 //CHECK-NEXT:   %[[T025:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T026:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T027:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T026]], i32 0, i256 15
+//CHECK-NEXT:   %[[T027:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T026]], i32 0, i256 24
 //CHECK-NEXT:   %[[T028:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T029:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T028]], i32 0, i256 20
+//CHECK-NEXT:   %[[T029:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T028]], i32 0, i256 29
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1:[0-9a-zA-Z_\.]+]]([0 x i256]* %[[T025]], [0 x i256]* null, i256* %[[T027]], i256* %[[T029]])
 //CHECK-NEXT:   %[[T030:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T031:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T032:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T031]], i32 0, i256 16
+//CHECK-NEXT:   %[[T032:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T031]], i32 0, i256 25
 //CHECK-NEXT:   %[[T033:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T034:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T033]], i32 0, i256 21
+//CHECK-NEXT:   %[[T034:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T033]], i32 0, i256 30
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T030]], [0 x i256]* null, i256* %[[T032]], i256* %[[T034]])
 //CHECK-NEXT:   %[[T035:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T036:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T037:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T036]], i32 0, i256 17
+//CHECK-NEXT:   %[[T037:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T036]], i32 0, i256 26
 //CHECK-NEXT:   %[[T038:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T039:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T038]], i32 0, i256 22
+//CHECK-NEXT:   %[[T039:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T038]], i32 0, i256 31
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T035]], [0 x i256]* null, i256* %[[T037]], i256* %[[T039]])
 //CHECK-NEXT:   %[[T040:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T041:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T042:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T041]], i32 0, i256 18
+//CHECK-NEXT:   %[[T042:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T041]], i32 0, i256 27
 //CHECK-NEXT:   %[[T043:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T044:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T043]], i32 0, i256 23
+//CHECK-NEXT:   %[[T044:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T043]], i32 0, i256 32
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T040]], [0 x i256]* null, i256* %[[T042]], i256* %[[T044]])
 //CHECK-NEXT:   %[[T045:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T046:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T047:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T046]], i32 0, i256 19
+//CHECK-NEXT:   %[[T047:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T046]], i32 0, i256 28
 //CHECK-NEXT:   %[[T048:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T049:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T048]], i32 0, i256 24
+//CHECK-NEXT:   %[[T049:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T048]], i32 0, i256 33
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T045]], [0 x i256]* null, i256* %[[T047]], i256* %[[T049]])
 //CHECK-NEXT:   %[[CALL_ARENA:[0-9a-zA-Z_\.]+]] = alloca [29 x i256], align 8
 //CHECK-NEXT:   %[[T050:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA]], i32 0, i32 0
@@ -325,7 +358,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[T052:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T051]], align 4
 //CHECK-NEXT:   store i256 %[[T052]], i256* %[[T050]], align 4
 //CHECK-NEXT:   %[[T053:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA]], i32 0, i32 1
-//CHECK-NEXT:   %[[T054:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T054:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_018:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T054]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_019:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T053]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_020:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_018]], align 4
@@ -363,7 +396,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_VAL_844:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_842]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_844]], i256* %[[CPY_DST_843]], align 4
 //CHECK-NEXT:   %[[T055:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA]], i32 0, i32 10
-//CHECK-NEXT:   %[[T056:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   %[[T056:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
 //CHECK-NEXT:   %[[CPY_SRC_045:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T056]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_046:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T055]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_047:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_045]], align 4
@@ -402,7 +435,7 @@ component main = BigMod();
 //CHECK-NEXT:   store i256 %[[CPY_VAL_871]], i256* %[[CPY_DST_870]], align 4
 //CHECK-NEXT:   %[[T057:[0-9a-zA-Z_\.]+]] = bitcast [29 x i256]* %[[CALL_ARENA]] to i256*
 //CHECK-NEXT:   %[[T994:[0-9a-zA-Z_\.]+]] = call i256* @long_sub_[[$F_ID_3]](i256* %[[T057]])
-//CHECK-NEXT:   %[[T058:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T058:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_072:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T994]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_073:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T058]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_074:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_072]], align 4
@@ -439,28 +472,48 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_DST_897:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T058]], i32 8
 //CHECK-NEXT:   %[[CPY_VAL_898:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_896]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_898]], i256* %[[CPY_DST_897]], align 4
-//CHECK-NEXT:   %[[T059:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
+//CHECK-NEXT:   %[[T059:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
 //CHECK-NEXT:   store i256 3, i256* %[[T059]], align 4
-//CHECK-NEXT:   %[[T060:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   store i256 0, i256* %[[T060]], align 4
-//CHECK-NEXT:   %[[T061:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 12
-//CHECK-NEXT:   store i256 0, i256* %[[T061]], align 4
-//CHECK-NEXT:   %[[T062:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 13
-//CHECK-NEXT:   store i256 0, i256* %[[T062]], align 4
-//CHECK-NEXT:   %[[T063:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 14
-//CHECK-NEXT:   store i256 0, i256* %[[T063]], align 4
-//CHECK-NEXT:   %[[T064:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 15
-//CHECK-NEXT:   store i256 0, i256* %[[T064]], align 4
-//CHECK-NEXT:   %[[T065:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 16
-//CHECK-NEXT:   store i256 0, i256* %[[T065]], align 4
-//CHECK-NEXT:   %[[T066:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 17
-//CHECK-NEXT:   store i256 0, i256* %[[T066]], align 4
-//CHECK-NEXT:   %[[T067:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 18
-//CHECK-NEXT:   store i256 0, i256* %[[T067]], align 4
-//CHECK-NEXT:   %[[T068:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
-//CHECK-NEXT:   store i256 0, i256* %[[T068]], align 4
-//CHECK-NEXT:   %[[T069:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
-//CHECK-NEXT:   %[[T070:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T253:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
+//CHECK-NEXT:   %[[T254:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[CPY_SRC_0126:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T254]], i32 0
+//CHECK-NEXT:   %[[CPY_DST_0127:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T253]], i32 0
+//CHECK-NEXT:   %[[CPY_VAL_0128:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0126]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_0128]], i256* %[[CPY_DST_0127]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_1129:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T254]], i32 1
+//CHECK-NEXT:   %[[CPY_DST_1130:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T253]], i32 1
+//CHECK-NEXT:   %[[CPY_VAL_1131:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_1129]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_1131]], i256* %[[CPY_DST_1130]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_2132:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T254]], i32 2
+//CHECK-NEXT:   %[[CPY_DST_2133:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T253]], i32 2
+//CHECK-NEXT:   %[[CPY_VAL_2134:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_2132]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_2134]], i256* %[[CPY_DST_2133]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_3135:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T254]], i32 3
+//CHECK-NEXT:   %[[CPY_DST_3136:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T253]], i32 3
+//CHECK-NEXT:   %[[CPY_VAL_3137:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_3135]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_3137]], i256* %[[CPY_DST_3136]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_4138:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T254]], i32 4
+//CHECK-NEXT:   %[[CPY_DST_4139:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T253]], i32 4
+//CHECK-NEXT:   %[[CPY_VAL_4140:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_4138]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_4140]], i256* %[[CPY_DST_4139]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_5141:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T254]], i32 5
+//CHECK-NEXT:   %[[CPY_DST_5142:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T253]], i32 5
+//CHECK-NEXT:   %[[CPY_VAL_5143:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_5141]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_5143]], i256* %[[CPY_DST_5142]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_6144:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T254]], i32 6
+//CHECK-NEXT:   %[[CPY_DST_6145:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T253]], i32 6
+//CHECK-NEXT:   %[[CPY_VAL_6146:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_6144]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_6146]], i256* %[[CPY_DST_6145]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_7147:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T254]], i32 7
+//CHECK-NEXT:   %[[CPY_DST_7148:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T253]], i32 7
+//CHECK-NEXT:   %[[CPY_VAL_7149:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_7147]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_7149]], i256* %[[CPY_DST_7148]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_8150:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T254]], i32 8
+//CHECK-NEXT:   %[[CPY_DST_8151:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T253]], i32 8
+//CHECK-NEXT:   %[[CPY_VAL_8152:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8150]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_8152]], i256* %[[CPY_DST_8151]], align 4
+//CHECK-NEXT:   %[[T069:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 29
+//CHECK-NEXT:   %[[T070:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_099:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T070]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0100:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T069]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0101:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_099]], align 4
@@ -497,37 +550,37 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_DST_8124:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T069]], i32 8
 //CHECK-NEXT:   %[[CPY_VAL_8125:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8123]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8125]], i256* %[[CPY_DST_8124]], align 4
-//CHECK-NEXT:   %[[T071:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 29
+//CHECK-NEXT:   %[[T071:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 38
 //CHECK-NEXT:   store i256 0, i256* %[[T071]], align 4
 //CHECK-NEXT:   %[[T072:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T073:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T074:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T073]], i32 0, i256 14
+//CHECK-NEXT:   %[[T074:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T073]], i32 0, i256 23
 //CHECK-NEXT:   %[[T075:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T076:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T075]], i32 0, i256 20
+//CHECK-NEXT:   %[[T076:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T075]], i32 0, i256 29
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T072]], [0 x i256]* null, i256* %[[T074]], i256* %[[T076]])
 //CHECK-NEXT:   %[[T077:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T078:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T079:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T078]], i32 0, i256 15
+//CHECK-NEXT:   %[[T079:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T078]], i32 0, i256 24
 //CHECK-NEXT:   %[[T080:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T081:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T080]], i32 0, i256 21
+//CHECK-NEXT:   %[[T081:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T080]], i32 0, i256 30
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T077]], [0 x i256]* null, i256* %[[T079]], i256* %[[T081]])
 //CHECK-NEXT:   %[[T082:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T083:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T084:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T083]], i32 0, i256 16
+//CHECK-NEXT:   %[[T084:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T083]], i32 0, i256 25
 //CHECK-NEXT:   %[[T085:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T086:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T085]], i32 0, i256 22
+//CHECK-NEXT:   %[[T086:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T085]], i32 0, i256 31
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T082]], [0 x i256]* null, i256* %[[T084]], i256* %[[T086]])
 //CHECK-NEXT:   %[[T087:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T088:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T089:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T088]], i32 0, i256 17
+//CHECK-NEXT:   %[[T089:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T088]], i32 0, i256 26
 //CHECK-NEXT:   %[[T090:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T091:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T090]], i32 0, i256 23
+//CHECK-NEXT:   %[[T091:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T090]], i32 0, i256 32
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T087]], [0 x i256]* null, i256* %[[T089]], i256* %[[T091]])
 //CHECK-NEXT:   %[[T092:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T093:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T094:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T093]], i32 0, i256 18
+//CHECK-NEXT:   %[[T094:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T093]], i32 0, i256 27
 //CHECK-NEXT:   %[[T095:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T096:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T095]], i32 0, i256 24
+//CHECK-NEXT:   %[[T096:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T095]], i32 0, i256 33
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T092]], [0 x i256]* null, i256* %[[T094]], i256* %[[T096]])
 //CHECK-NEXT:   %[[CALL_ARENA146:[0-9a-zA-Z_\.]+]] = alloca [29 x i256], align 8
 //CHECK-NEXT:   %[[T097:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA146]], i32 0, i32 0
@@ -535,7 +588,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[T099:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T098]], align 4
 //CHECK-NEXT:   store i256 %[[T099]], i256* %[[T097]], align 4
 //CHECK-NEXT:   %[[T100:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA146]], i32 0, i32 1
-//CHECK-NEXT:   %[[T101:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T101:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0147:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T101]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0148:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T100]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0149:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0147]], align 4
@@ -573,7 +626,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_VAL_8173:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8171]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8173]], i256* %[[CPY_DST_8172]], align 4
 //CHECK-NEXT:   %[[T102:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA146]], i32 0, i32 10
-//CHECK-NEXT:   %[[T103:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   %[[T103:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
 //CHECK-NEXT:   %[[CPY_SRC_0174:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T103]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0175:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T102]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0176:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0174]], align 4
@@ -612,7 +665,7 @@ component main = BigMod();
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8200]], i256* %[[CPY_DST_8199]], align 4
 //CHECK-NEXT:   %[[T104:[0-9a-zA-Z_\.]+]] = bitcast [29 x i256]* %[[CALL_ARENA146]] to i256*
 //CHECK-NEXT:   %[[T995:[0-9a-zA-Z_\.]+]] = call i256* @long_sub_[[$F_ID_3]](i256* %[[T104]])
-//CHECK-NEXT:   %[[T105:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T105:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0202:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T995]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0203:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T105]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0204:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0202]], align 4
@@ -649,28 +702,48 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_DST_8227:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T105]], i32 8
 //CHECK-NEXT:   %[[CPY_VAL_8228:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8226]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8228]], i256* %[[CPY_DST_8227]], align 4
-//CHECK-NEXT:   %[[T106:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
+//CHECK-NEXT:   %[[T106:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
 //CHECK-NEXT:   store i256 2, i256* %[[T106]], align 4
-//CHECK-NEXT:   %[[T107:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   store i256 0, i256* %[[T107]], align 4
-//CHECK-NEXT:   %[[T108:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 12
-//CHECK-NEXT:   store i256 0, i256* %[[T108]], align 4
-//CHECK-NEXT:   %[[T109:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 13
-//CHECK-NEXT:   store i256 0, i256* %[[T109]], align 4
-//CHECK-NEXT:   %[[T110:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 14
-//CHECK-NEXT:   store i256 0, i256* %[[T110]], align 4
-//CHECK-NEXT:   %[[T111:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 15
-//CHECK-NEXT:   store i256 0, i256* %[[T111]], align 4
-//CHECK-NEXT:   %[[T112:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 16
-//CHECK-NEXT:   store i256 0, i256* %[[T112]], align 4
-//CHECK-NEXT:   %[[T113:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 17
-//CHECK-NEXT:   store i256 0, i256* %[[T113]], align 4
-//CHECK-NEXT:   %[[T114:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 18
-//CHECK-NEXT:   store i256 0, i256* %[[T114]], align 4
-//CHECK-NEXT:   %[[T115:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
-//CHECK-NEXT:   store i256 0, i256* %[[T115]], align 4
-//CHECK-NEXT:   %[[T116:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
-//CHECK-NEXT:   %[[T117:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T293:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
+//CHECK-NEXT:   %[[T294:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[CPY_SRC_0283:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T294]], i32 0
+//CHECK-NEXT:   %[[CPY_DST_0284:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T293]], i32 0
+//CHECK-NEXT:   %[[CPY_VAL_0285:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0283]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_0285]], i256* %[[CPY_DST_0284]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_1286:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T294]], i32 1
+//CHECK-NEXT:   %[[CPY_DST_1287:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T293]], i32 1
+//CHECK-NEXT:   %[[CPY_VAL_1288:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_1286]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_1288]], i256* %[[CPY_DST_1287]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_2289:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T294]], i32 2
+//CHECK-NEXT:   %[[CPY_DST_2290:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T293]], i32 2
+//CHECK-NEXT:   %[[CPY_VAL_2291:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_2289]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_2291]], i256* %[[CPY_DST_2290]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_3292:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T294]], i32 3
+//CHECK-NEXT:   %[[CPY_DST_3293:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T293]], i32 3
+//CHECK-NEXT:   %[[CPY_VAL_3294:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_3292]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_3294]], i256* %[[CPY_DST_3293]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_4295:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T294]], i32 4
+//CHECK-NEXT:   %[[CPY_DST_4296:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T293]], i32 4
+//CHECK-NEXT:   %[[CPY_VAL_4297:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_4295]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_4297]], i256* %[[CPY_DST_4296]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_5298:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T294]], i32 5
+//CHECK-NEXT:   %[[CPY_DST_5299:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T293]], i32 5
+//CHECK-NEXT:   %[[CPY_VAL_5300:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_5298]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_5300]], i256* %[[CPY_DST_5299]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_6301:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T294]], i32 6
+//CHECK-NEXT:   %[[CPY_DST_6302:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T293]], i32 6
+//CHECK-NEXT:   %[[CPY_VAL_6303:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_6301]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_6303]], i256* %[[CPY_DST_6302]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_7304:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T294]], i32 7
+//CHECK-NEXT:   %[[CPY_DST_7305:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T293]], i32 7
+//CHECK-NEXT:   %[[CPY_VAL_7306:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_7304]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_7306]], i256* %[[CPY_DST_7305]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_8307:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T294]], i32 8
+//CHECK-NEXT:   %[[CPY_DST_8308:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T293]], i32 8
+//CHECK-NEXT:   %[[CPY_VAL_8309:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8307]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_8309]], i256* %[[CPY_DST_8308]], align 4
+//CHECK-NEXT:   %[[T116:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 29
+//CHECK-NEXT:   %[[T117:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0229:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T117]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0230:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T116]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0231:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0229]], align 4
@@ -707,37 +780,37 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_DST_8254:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T116]], i32 8
 //CHECK-NEXT:   %[[CPY_VAL_8255:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8253]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8255]], i256* %[[CPY_DST_8254]], align 4
-//CHECK-NEXT:   %[[T118:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 29
+//CHECK-NEXT:   %[[T118:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 38
 //CHECK-NEXT:   store i256 0, i256* %[[T118]], align 4
 //CHECK-NEXT:   %[[T119:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T120:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T121:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T120]], i32 0, i256 13
+//CHECK-NEXT:   %[[T121:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T120]], i32 0, i256 22
 //CHECK-NEXT:   %[[T122:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T123:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T122]], i32 0, i256 20
+//CHECK-NEXT:   %[[T123:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T122]], i32 0, i256 29
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T119]], [0 x i256]* null, i256* %[[T121]], i256* %[[T123]])
 //CHECK-NEXT:   %[[T124:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T125:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T126:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T125]], i32 0, i256 14
+//CHECK-NEXT:   %[[T126:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T125]], i32 0, i256 23
 //CHECK-NEXT:   %[[T127:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T128:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T127]], i32 0, i256 21
+//CHECK-NEXT:   %[[T128:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T127]], i32 0, i256 30
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T124]], [0 x i256]* null, i256* %[[T126]], i256* %[[T128]])
 //CHECK-NEXT:   %[[T129:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T130:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T131:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T130]], i32 0, i256 15
+//CHECK-NEXT:   %[[T131:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T130]], i32 0, i256 24
 //CHECK-NEXT:   %[[T132:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T133:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T132]], i32 0, i256 22
+//CHECK-NEXT:   %[[T133:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T132]], i32 0, i256 31
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T129]], [0 x i256]* null, i256* %[[T131]], i256* %[[T133]])
 //CHECK-NEXT:   %[[T134:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T135:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T136:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T135]], i32 0, i256 16
+//CHECK-NEXT:   %[[T136:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T135]], i32 0, i256 25
 //CHECK-NEXT:   %[[T137:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T138:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T137]], i32 0, i256 23
+//CHECK-NEXT:   %[[T138:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T137]], i32 0, i256 32
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T134]], [0 x i256]* null, i256* %[[T136]], i256* %[[T138]])
 //CHECK-NEXT:   %[[T139:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T140:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T141:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T140]], i32 0, i256 17
+//CHECK-NEXT:   %[[T141:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T140]], i32 0, i256 26
 //CHECK-NEXT:   %[[T142:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T143:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T142]], i32 0, i256 24
+//CHECK-NEXT:   %[[T143:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T142]], i32 0, i256 33
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T139]], [0 x i256]* null, i256* %[[T141]], i256* %[[T143]])
 //CHECK-NEXT:   %[[CALL_ARENA276:[0-9a-zA-Z_\.]+]] = alloca [29 x i256], align 8
 //CHECK-NEXT:   %[[T144:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA276]], i32 0, i32 0
@@ -745,7 +818,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[T146:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T145]], align 4
 //CHECK-NEXT:   store i256 %[[T146]], i256* %[[T144]], align 4
 //CHECK-NEXT:   %[[T147:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA276]], i32 0, i32 1
-//CHECK-NEXT:   %[[T148:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T148:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0277:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T148]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0278:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T147]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0279:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0277]], align 4
@@ -783,7 +856,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_VAL_8303:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8301]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8303]], i256* %[[CPY_DST_8302]], align 4
 //CHECK-NEXT:   %[[T149:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA276]], i32 0, i32 10
-//CHECK-NEXT:   %[[T150:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   %[[T150:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
 //CHECK-NEXT:   %[[CPY_SRC_0304:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T150]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0305:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T149]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0306:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0304]], align 4
@@ -822,7 +895,7 @@ component main = BigMod();
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8330]], i256* %[[CPY_DST_8329]], align 4
 //CHECK-NEXT:   %[[T151:[0-9a-zA-Z_\.]+]] = bitcast [29 x i256]* %[[CALL_ARENA276]] to i256*
 //CHECK-NEXT:   %[[T996:[0-9a-zA-Z_\.]+]] = call i256* @long_sub_[[$F_ID_3]](i256* %[[T151]])
-//CHECK-NEXT:   %[[T152:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T152:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0332:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T996]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0333:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T152]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0334:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0332]], align 4
@@ -859,28 +932,48 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_DST_8357:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T152]], i32 8
 //CHECK-NEXT:   %[[CPY_VAL_8358:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8356]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8358]], i256* %[[CPY_DST_8357]], align 4
-//CHECK-NEXT:   %[[T153:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
+//CHECK-NEXT:   %[[T153:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
 //CHECK-NEXT:   store i256 1, i256* %[[T153]], align 4
-//CHECK-NEXT:   %[[T154:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   store i256 0, i256* %[[T154]], align 4
-//CHECK-NEXT:   %[[T155:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 12
-//CHECK-NEXT:   store i256 0, i256* %[[T155]], align 4
-//CHECK-NEXT:   %[[T156:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 13
-//CHECK-NEXT:   store i256 0, i256* %[[T156]], align 4
-//CHECK-NEXT:   %[[T157:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 14
-//CHECK-NEXT:   store i256 0, i256* %[[T157]], align 4
-//CHECK-NEXT:   %[[T158:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 15
-//CHECK-NEXT:   store i256 0, i256* %[[T158]], align 4
-//CHECK-NEXT:   %[[T159:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 16
-//CHECK-NEXT:   store i256 0, i256* %[[T159]], align 4
-//CHECK-NEXT:   %[[T160:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 17
-//CHECK-NEXT:   store i256 0, i256* %[[T160]], align 4
-//CHECK-NEXT:   %[[T161:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 18
-//CHECK-NEXT:   store i256 0, i256* %[[T161]], align 4
-//CHECK-NEXT:   %[[T162:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
-//CHECK-NEXT:   store i256 0, i256* %[[T162]], align 4
-//CHECK-NEXT:   %[[T163:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
-//CHECK-NEXT:   %[[T164:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T333:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
+//CHECK-NEXT:   %[[T334:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[CPY_SRC_0440:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T334]], i32 0
+//CHECK-NEXT:   %[[CPY_DST_0441:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T333]], i32 0
+//CHECK-NEXT:   %[[CPY_VAL_0442:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0440]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_0442]], i256* %[[CPY_DST_0441]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_1443:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T334]], i32 1
+//CHECK-NEXT:   %[[CPY_DST_1444:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T333]], i32 1
+//CHECK-NEXT:   %[[CPY_VAL_1445:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_1443]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_1445]], i256* %[[CPY_DST_1444]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_2446:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T334]], i32 2
+//CHECK-NEXT:   %[[CPY_DST_2447:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T333]], i32 2
+//CHECK-NEXT:   %[[CPY_VAL_2448:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_2446]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_2448]], i256* %[[CPY_DST_2447]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_3449:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T334]], i32 3
+//CHECK-NEXT:   %[[CPY_DST_3450:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T333]], i32 3
+//CHECK-NEXT:   %[[CPY_VAL_3451:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_3449]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_3451]], i256* %[[CPY_DST_3450]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_4452:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T334]], i32 4
+//CHECK-NEXT:   %[[CPY_DST_4453:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T333]], i32 4
+//CHECK-NEXT:   %[[CPY_VAL_4454:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_4452]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_4454]], i256* %[[CPY_DST_4453]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_5455:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T334]], i32 5
+//CHECK-NEXT:   %[[CPY_DST_5456:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T333]], i32 5
+//CHECK-NEXT:   %[[CPY_VAL_5457:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_5455]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_5457]], i256* %[[CPY_DST_5456]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_6458:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T334]], i32 6
+//CHECK-NEXT:   %[[CPY_DST_6459:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T333]], i32 6
+//CHECK-NEXT:   %[[CPY_VAL_6460:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_6458]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_6460]], i256* %[[CPY_DST_6459]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_7461:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T334]], i32 7
+//CHECK-NEXT:   %[[CPY_DST_7462:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T333]], i32 7
+//CHECK-NEXT:   %[[CPY_VAL_7463:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_7461]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_7463]], i256* %[[CPY_DST_7462]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_8464:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T334]], i32 8
+//CHECK-NEXT:   %[[CPY_DST_8465:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T333]], i32 8
+//CHECK-NEXT:   %[[CPY_VAL_8466:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8464]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_8466]], i256* %[[CPY_DST_8465]], align 4
+//CHECK-NEXT:   %[[T163:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 29
+//CHECK-NEXT:   %[[T164:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0359:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T164]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0360:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T163]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0361:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0359]], align 4
@@ -917,37 +1010,37 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_DST_8384:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T163]], i32 8
 //CHECK-NEXT:   %[[CPY_VAL_8385:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8383]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8385]], i256* %[[CPY_DST_8384]], align 4
-//CHECK-NEXT:   %[[T165:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 29
+//CHECK-NEXT:   %[[T165:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 38
 //CHECK-NEXT:   store i256 0, i256* %[[T165]], align 4
 //CHECK-NEXT:   %[[T166:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T167:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T168:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T167]], i32 0, i256 12
+//CHECK-NEXT:   %[[T168:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T167]], i32 0, i256 21
 //CHECK-NEXT:   %[[T169:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T170:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T169]], i32 0, i256 20
+//CHECK-NEXT:   %[[T170:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T169]], i32 0, i256 29
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T166]], [0 x i256]* null, i256* %[[T168]], i256* %[[T170]])
 //CHECK-NEXT:   %[[T171:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T172:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T173:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T172]], i32 0, i256 13
+//CHECK-NEXT:   %[[T173:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T172]], i32 0, i256 22
 //CHECK-NEXT:   %[[T174:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T175:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T174]], i32 0, i256 21
+//CHECK-NEXT:   %[[T175:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T174]], i32 0, i256 30
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T171]], [0 x i256]* null, i256* %[[T173]], i256* %[[T175]])
 //CHECK-NEXT:   %[[T176:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T177:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T178:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T177]], i32 0, i256 14
+//CHECK-NEXT:   %[[T178:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T177]], i32 0, i256 23
 //CHECK-NEXT:   %[[T179:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T180:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T179]], i32 0, i256 22
+//CHECK-NEXT:   %[[T180:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T179]], i32 0, i256 31
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T176]], [0 x i256]* null, i256* %[[T178]], i256* %[[T180]])
 //CHECK-NEXT:   %[[T181:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T182:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T183:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T182]], i32 0, i256 15
+//CHECK-NEXT:   %[[T183:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T182]], i32 0, i256 24
 //CHECK-NEXT:   %[[T184:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T185:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T184]], i32 0, i256 23
+//CHECK-NEXT:   %[[T185:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T184]], i32 0, i256 32
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T181]], [0 x i256]* null, i256* %[[T183]], i256* %[[T185]])
 //CHECK-NEXT:   %[[T186:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T187:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T188:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T187]], i32 0, i256 16
+//CHECK-NEXT:   %[[T188:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T187]], i32 0, i256 25
 //CHECK-NEXT:   %[[T189:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T190:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T189]], i32 0, i256 24
+//CHECK-NEXT:   %[[T190:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T189]], i32 0, i256 33
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T186]], [0 x i256]* null, i256* %[[T188]], i256* %[[T190]])
 //CHECK-NEXT:   %[[CALL_ARENA406:[0-9a-zA-Z_\.]+]] = alloca [29 x i256], align 8
 //CHECK-NEXT:   %[[T191:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA406]], i32 0, i32 0
@@ -955,7 +1048,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[T193:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T192]], align 4
 //CHECK-NEXT:   store i256 %[[T193]], i256* %[[T191]], align 4
 //CHECK-NEXT:   %[[T194:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA406]], i32 0, i32 1
-//CHECK-NEXT:   %[[T195:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T195:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0407:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T195]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0408:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T194]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0409:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0407]], align 4
@@ -993,7 +1086,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_VAL_8433:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8431]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8433]], i256* %[[CPY_DST_8432]], align 4
 //CHECK-NEXT:   %[[T196:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA406]], i32 0, i32 10
-//CHECK-NEXT:   %[[T197:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   %[[T197:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
 //CHECK-NEXT:   %[[CPY_SRC_0434:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T197]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0435:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T196]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0436:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0434]], align 4
@@ -1032,7 +1125,7 @@ component main = BigMod();
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8460]], i256* %[[CPY_DST_8459]], align 4
 //CHECK-NEXT:   %[[T198:[0-9a-zA-Z_\.]+]] = bitcast [29 x i256]* %[[CALL_ARENA406]] to i256*
 //CHECK-NEXT:   %[[T997:[0-9a-zA-Z_\.]+]] = call i256* @long_sub_[[$F_ID_3]](i256* %[[T198]])
-//CHECK-NEXT:   %[[T199:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T199:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0462:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T997]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0463:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T199]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0464:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0462]], align 4
@@ -1069,28 +1162,48 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_DST_8487:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T199]], i32 8
 //CHECK-NEXT:   %[[CPY_VAL_8488:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8486]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8488]], i256* %[[CPY_DST_8487]], align 4
-//CHECK-NEXT:   %[[T200:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
+//CHECK-NEXT:   %[[T200:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
 //CHECK-NEXT:   store i256 0, i256* %[[T200]], align 4
-//CHECK-NEXT:   %[[T201:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
-//CHECK-NEXT:   store i256 0, i256* %[[T201]], align 4
-//CHECK-NEXT:   %[[T202:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 12
-//CHECK-NEXT:   store i256 0, i256* %[[T202]], align 4
-//CHECK-NEXT:   %[[T203:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 13
-//CHECK-NEXT:   store i256 0, i256* %[[T203]], align 4
-//CHECK-NEXT:   %[[T204:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 14
-//CHECK-NEXT:   store i256 0, i256* %[[T204]], align 4
-//CHECK-NEXT:   %[[T205:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 15
-//CHECK-NEXT:   store i256 0, i256* %[[T205]], align 4
-//CHECK-NEXT:   %[[T206:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 16
-//CHECK-NEXT:   store i256 0, i256* %[[T206]], align 4
-//CHECK-NEXT:   %[[T207:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 17
-//CHECK-NEXT:   store i256 0, i256* %[[T207]], align 4
-//CHECK-NEXT:   %[[T208:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 18
-//CHECK-NEXT:   store i256 0, i256* %[[T208]], align 4
-//CHECK-NEXT:   %[[T209:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
-//CHECK-NEXT:   store i256 0, i256* %[[T209]], align 4
-//CHECK-NEXT:   %[[T210:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
-//CHECK-NEXT:   %[[T211:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T373:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
+//CHECK-NEXT:   %[[T374:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[CPY_SRC_0597:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T374]], i32 0
+//CHECK-NEXT:   %[[CPY_DST_0598:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T373]], i32 0
+//CHECK-NEXT:   %[[CPY_VAL_0599:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0597]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_0599]], i256* %[[CPY_DST_0598]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_1600:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T374]], i32 1
+//CHECK-NEXT:   %[[CPY_DST_1601:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T373]], i32 1
+//CHECK-NEXT:   %[[CPY_VAL_1602:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_1600]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_1602]], i256* %[[CPY_DST_1601]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_2603:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T374]], i32 2
+//CHECK-NEXT:   %[[CPY_DST_2604:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T373]], i32 2
+//CHECK-NEXT:   %[[CPY_VAL_2605:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_2603]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_2605]], i256* %[[CPY_DST_2604]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_3606:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T374]], i32 3
+//CHECK-NEXT:   %[[CPY_DST_3607:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T373]], i32 3
+//CHECK-NEXT:   %[[CPY_VAL_3608:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_3606]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_3608]], i256* %[[CPY_DST_3607]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_4609:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T374]], i32 4
+//CHECK-NEXT:   %[[CPY_DST_4610:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T373]], i32 4
+//CHECK-NEXT:   %[[CPY_VAL_4611:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_4609]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_4611]], i256* %[[CPY_DST_4610]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_5612:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T374]], i32 5
+//CHECK-NEXT:   %[[CPY_DST_5613:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T373]], i32 5
+//CHECK-NEXT:   %[[CPY_VAL_5614:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_5612]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_5614]], i256* %[[CPY_DST_5613]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_6615:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T374]], i32 6
+//CHECK-NEXT:   %[[CPY_DST_6616:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T373]], i32 6
+//CHECK-NEXT:   %[[CPY_VAL_6617:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_6615]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_6617]], i256* %[[CPY_DST_6616]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_7618:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T374]], i32 7
+//CHECK-NEXT:   %[[CPY_DST_7619:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T373]], i32 7
+//CHECK-NEXT:   %[[CPY_VAL_7620:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_7618]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_7620]], i256* %[[CPY_DST_7619]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_8621:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T374]], i32 8
+//CHECK-NEXT:   %[[CPY_DST_8622:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T373]], i32 8
+//CHECK-NEXT:   %[[CPY_VAL_8623:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8621]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_8623]], i256* %[[CPY_DST_8622]], align 4
+//CHECK-NEXT:   %[[T210:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 29
+//CHECK-NEXT:   %[[T211:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0489:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T211]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0490:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T210]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0491:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0489]], align 4
@@ -1127,37 +1240,37 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_DST_8514:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T210]], i32 8
 //CHECK-NEXT:   %[[CPY_VAL_8515:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8513]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8515]], i256* %[[CPY_DST_8514]], align 4
-//CHECK-NEXT:   %[[T212:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 29
+//CHECK-NEXT:   %[[T212:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 38
 //CHECK-NEXT:   store i256 0, i256* %[[T212]], align 4
 //CHECK-NEXT:   %[[T213:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T214:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T215:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T214]], i32 0, i256 11
+//CHECK-NEXT:   %[[T215:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T214]], i32 0, i256 20
 //CHECK-NEXT:   %[[T216:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T217:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T216]], i32 0, i256 20
+//CHECK-NEXT:   %[[T217:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T216]], i32 0, i256 29
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T213]], [0 x i256]* null, i256* %[[T215]], i256* %[[T217]])
 //CHECK-NEXT:   %[[T218:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T219:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T220:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T219]], i32 0, i256 12
+//CHECK-NEXT:   %[[T220:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T219]], i32 0, i256 21
 //CHECK-NEXT:   %[[T221:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T222:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T221]], i32 0, i256 21
+//CHECK-NEXT:   %[[T222:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T221]], i32 0, i256 30
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T218]], [0 x i256]* null, i256* %[[T220]], i256* %[[T222]])
 //CHECK-NEXT:   %[[T223:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T224:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T225:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T224]], i32 0, i256 13
+//CHECK-NEXT:   %[[T225:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T224]], i32 0, i256 22
 //CHECK-NEXT:   %[[T226:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T227:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T226]], i32 0, i256 22
+//CHECK-NEXT:   %[[T227:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T226]], i32 0, i256 31
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T223]], [0 x i256]* null, i256* %[[T225]], i256* %[[T227]])
 //CHECK-NEXT:   %[[T228:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T229:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T230:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T229]], i32 0, i256 14
+//CHECK-NEXT:   %[[T230:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T229]], i32 0, i256 23
 //CHECK-NEXT:   %[[T231:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T232:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T231]], i32 0, i256 23
+//CHECK-NEXT:   %[[T232:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T231]], i32 0, i256 32
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T228]], [0 x i256]* null, i256* %[[T230]], i256* %[[T232]])
 //CHECK-NEXT:   %[[T233:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
 //CHECK-NEXT:   %[[T234:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T235:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T234]], i32 0, i256 15
+//CHECK-NEXT:   %[[T235:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T234]], i32 0, i256 24
 //CHECK-NEXT:   %[[T236:[0-9a-zA-Z_\.]+]] = bitcast i256* %0 to [0 x i256]*
-//CHECK-NEXT:   %[[T237:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T236]], i32 0, i256 24
+//CHECK-NEXT:   %[[T237:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %[[T236]], i32 0, i256 33
 //CHECK-NEXT:   call void @..generated..loop.body.[[$F_ID_1]]([0 x i256]* %[[T233]], [0 x i256]* null, i256* %[[T235]], i256* %[[T237]])
 //CHECK-NEXT:   %[[CALL_ARENA536:[0-9a-zA-Z_\.]+]] = alloca [29 x i256], align 8
 //CHECK-NEXT:   %[[T238:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA536]], i32 0, i32 0
@@ -1165,7 +1278,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[T240:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[T239]], align 4
 //CHECK-NEXT:   store i256 %[[T240]], i256* %[[T238]], align 4
 //CHECK-NEXT:   %[[T241:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA536]], i32 0, i32 1
-//CHECK-NEXT:   %[[T242:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T242:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0537:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T242]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0538:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T241]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0539:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0537]], align 4
@@ -1203,7 +1316,7 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_VAL_8563:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8561]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8563]], i256* %[[CPY_DST_8562]], align 4
 //CHECK-NEXT:   %[[T243:[0-9a-zA-Z_\.]+]] = getelementptr [29 x i256], [29 x i256]* %[[CALL_ARENA536]], i32 0, i32 10
-//CHECK-NEXT:   %[[T244:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 11
+//CHECK-NEXT:   %[[T244:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 20
 //CHECK-NEXT:   %[[CPY_SRC_0564:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T244]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0565:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T243]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0566:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0564]], align 4
@@ -1242,7 +1355,7 @@ component main = BigMod();
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8590]], i256* %[[CPY_DST_8589]], align 4
 //CHECK-NEXT:   %[[T245:[0-9a-zA-Z_\.]+]] = bitcast [29 x i256]* %[[CALL_ARENA536]] to i256*
 //CHECK-NEXT:   %[[T998:[0-9a-zA-Z_\.]+]] = call i256* @long_sub_[[$F_ID_3]](i256* %[[T245]])
-//CHECK-NEXT:   %[[T246:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T246:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   %[[CPY_SRC_0592:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T998]], i32 0
 //CHECK-NEXT:   %[[CPY_DST_0593:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T246]], i32 0
 //CHECK-NEXT:   %[[CPY_VAL_0594:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_0592]], align 4
@@ -1279,26 +1392,64 @@ component main = BigMod();
 //CHECK-NEXT:   %[[CPY_DST_8617:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T246]], i32 8
 //CHECK-NEXT:   %[[CPY_VAL_8618:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_8616]], align 4
 //CHECK-NEXT:   store i256 %[[CPY_VAL_8618]], i256* %[[CPY_DST_8617]], align 4
-//CHECK-NEXT:   %[[T247:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
+//CHECK-NEXT:   %[[T247:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 19
 //CHECK-NEXT:   store i256 21888242871839275222246405745257275088548364400416034343698204186575808495616, i256* %[[T247]], align 4
 //CHECK-NEXT:   br label %return12
 //CHECK-EMPTY: 
 //CHECK-NEXT: return12:
-//CHECK-NEXT:   %[[T248:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 1
+//CHECK-NEXT:   %[[T248:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %0, i32 10
 //CHECK-NEXT:   ret i256* %[[T248]]
 //CHECK-NEXT: }
 //
-//CHECK-LABEL: define dso_local void @BigMod_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
+//CHECK-LABEL: define{{.*}} void @BigMod_{{[0-9]+}}_run([0 x i256]* %0){{.*}} {
 //CHECK-NEXT: prelude:
 //CHECK-NEXT:   %lvars = alloca [0 x i256], align 8
 //CHECK-NEXT:   %subcmps = alloca [0 x { [0 x i256]*, i32 }], align 8
 //CHECK-NEXT:   br label %call1
 //CHECK-EMPTY: 
 //CHECK-NEXT: call1:
-//CHECK-NEXT:   %[[CALL_ARENA:[0-9a-zA-Z_\.]+]] = alloca [30 x i256], align 8
-//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_\.]+]] = getelementptr [30 x i256], [30 x i256]* %[[CALL_ARENA]], i32 0, i32 0
+//CHECK-NEXT:   %[[CALL_ARENA:[0-9a-zA-Z_\.]+]] = alloca [39 x i256], align 8
+//CHECK-NEXT:   %[[T001:[0-9a-zA-Z_\.]+]] = getelementptr [39 x i256], [39 x i256]* %[[CALL_ARENA]], i32 0, i32 0
 //CHECK-NEXT:   store i256 4, i256* %[[T001]], align 4
-//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = bitcast [30 x i256]* %[[CALL_ARENA]] to i256*
+//CHECK-NEXT:   %[[T102:[0-9a-zA-Z_\.]+]] = getelementptr [39 x i256], [39 x i256]* %[[CALL_ARENA]], i32 0, i32 1
+//CHECK-NEXT:   %[[T103:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 9
+//CHECK-NEXT:   %[[CPY_SRC_10:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T103]], i32 0
+//CHECK-NEXT:   %[[CPY_DST_10:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T102]], i32 0
+//CHECK-NEXT:   %[[CPY_VAL_10:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_10]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_10]], i256* %[[CPY_DST_10]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_11:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T103]], i32 1
+//CHECK-NEXT:   %[[CPY_DST_11:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T102]], i32 1
+//CHECK-NEXT:   %[[CPY_VAL_11:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_11]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_11]], i256* %[[CPY_DST_11]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_12:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T103]], i32 2
+//CHECK-NEXT:   %[[CPY_DST_12:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T102]], i32 2
+//CHECK-NEXT:   %[[CPY_VAL_12:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_12]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_12]], i256* %[[CPY_DST_12]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_13:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T103]], i32 3
+//CHECK-NEXT:   %[[CPY_DST_13:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T102]], i32 3
+//CHECK-NEXT:   %[[CPY_VAL_13:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_13]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_13]], i256* %[[CPY_DST_13]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_14:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T103]], i32 4
+//CHECK-NEXT:   %[[CPY_DST_14:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T102]], i32 4
+//CHECK-NEXT:   %[[CPY_VAL_14:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_14]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_14]], i256* %[[CPY_DST_14]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_15:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T103]], i32 5
+//CHECK-NEXT:   %[[CPY_DST_15:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T102]], i32 5
+//CHECK-NEXT:   %[[CPY_VAL_15:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_15]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_15]], i256* %[[CPY_DST_15]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_16:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T103]], i32 6
+//CHECK-NEXT:   %[[CPY_DST_16:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T102]], i32 6
+//CHECK-NEXT:   %[[CPY_VAL_16:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_16]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_16]], i256* %[[CPY_DST_16]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_17:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T103]], i32 7
+//CHECK-NEXT:   %[[CPY_DST_17:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T102]], i32 7
+//CHECK-NEXT:   %[[CPY_VAL_17:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_17]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_17]], i256* %[[CPY_DST_17]], align 4
+//CHECK-NEXT:   %[[CPY_SRC_18:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T103]], i32 8
+//CHECK-NEXT:   %[[CPY_DST_18:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T102]], i32 8
+//CHECK-NEXT:   %[[CPY_VAL_18:[0-9a-zA-Z_\.]+]] = load i256, i256* %[[CPY_SRC_18]], align 4
+//CHECK-NEXT:   store i256 %[[CPY_VAL_18]], i256* %[[CPY_DST_18]], align 4
+//CHECK-NEXT:   %[[T002:[0-9a-zA-Z_\.]+]] = bitcast [39 x i256]* %[[CALL_ARENA]] to i256*
 //CHECK-NEXT:   %[[T999:[0-9a-zA-Z_\.]+]] = call i256* @long_div_[[$F_ID_4]](i256* %[[T002]])
 //CHECK-NEXT:   %[[T003:[0-9a-zA-Z_\.]+]] = getelementptr [0 x i256], [0 x i256]* %0, i32 0, i32 0
 //CHECK-NEXT:   %[[CPY_SRC_0:[0-9a-zA-Z_\.]+]] = getelementptr i256, i256* %[[T999]], i32 0

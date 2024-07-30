@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use compiler::circuit_design::template::TemplateCode;
 use compiler::intermediate_representation::{new_id, BucketId, InstructionPointer};
 use compiler::intermediate_representation::ir_interface::*;
-use crate::bucket_interpreter::{InterpreterFlags, BucketInterpreter, operations};
+use crate::bucket_interpreter::{operations, result_types, BucketInterpreter, InterpreterFlags};
 use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
@@ -83,7 +83,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
     fn on_compute_bucket(&self, bucket: &ComputeBucket, env: &Env) -> Result<bool, BadInterp> {
         let interp = self.build_interpreter();
         let v = interp.compute_compute_bucket(bucket, env, false)?;
-        let v = v.expect("Compute bucket must produce a value!");
+        let v = result_types::into_single_result(v, "ComputeBucket")?;
         if !v.is_unknown() {
             Self::insert(&self.compute_replacements, bucket.id, v);
             Ok(false)
@@ -94,8 +94,11 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
 
     fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> Result<bool, BadInterp> {
         let interp = self.build_interpreter();
-        if let Some(v) = interp.compute_call_bucket(bucket, env, false)? {
-            // Call buckets may not return a value directly
+        let v = interp.compute_call_bucket(bucket, env, false)?;
+        // CallBucket may not return a value directly so use 'into_single_option()'
+        //  rather than 'into_single_result()' and return 'true' in the None case
+        //  so buckets nested within this bucket will be observed.
+        if let Some(v) = result_types::into_single_option(v) {
             if !v.is_unknown() {
                 Self::insert(&self.call_replacements, bucket.id, v);
                 return Ok(false);
@@ -122,7 +125,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                             // Leave this Observer enabled so that ComputeBucket w/in the RHS expression
                             //  could be simplified even if the entire expression will not be simplified.
                             let v = interp.compute_instruction(inst, env, true)?;
-                            let v = v.expect("Compute bucket operand must produce a value!");
+                            let v = result_types::into_single_result(v, "operand of compute")?;
                             values.push(v);
                         }
                         // If at least one is a known value, then we can (likely) simplify
@@ -142,7 +145,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                             // Leave this Observer enabled so that ComputeBucket w/in the RHS expression
                             //  could be simplified even if the entire expression will not be simplified.
                             let v = interp.compute_instruction(&bucket.src, env, true)?;
-                            v.expect("Store bucket source must produce a value!")
+                            result_types::into_single_result(v, "source of store")?
                         };
 
                         // Interpret the LHS memory reference
@@ -159,7 +162,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                                 &bucket.dest_address_type
                             {
                                 let v = interp.compute_instruction(cmp_address, env, false)?;
-                                v.expect("Store bucket source must produce a value!")
+                                result_types::into_single_result(v, "source of store")?
                             } else {
                                 Value::Unknown
                             };

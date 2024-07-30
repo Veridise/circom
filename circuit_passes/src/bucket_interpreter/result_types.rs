@@ -11,13 +11,13 @@ pub(crate) enum InterpRes<T> {
 }
 
 /// Like 'super::RE' but internally uses InterpRes instead of Result
-pub(crate) type REI<'e> = InterpRes<(Option<Value>, Env<'e>)>;
+pub(crate) type REI<'e> = InterpRes<(Vec<Value>, Env<'e>)>;
 /// Like 'super::RC' but internally uses InterpRes instead of Result
-pub(crate) type RCI = InterpRes<Option<Value>>;
+pub(crate) type RCI = InterpRes<Vec<Value>>;
 /// Like 'super::RG' but internally uses InterpRes instead of Result
-pub(crate) type RGI<E> = InterpRes<(Option<Value>, E)>;
+pub(crate) type RGI<E> = InterpRes<(Vec<Value>, E)>;
 /// Like 'RGI' but the value of a condition is also needed
-pub(crate) type RBI<E> = InterpRes<(Option<Value>, Option<bool>, E)>;
+pub(crate) type RBI<E> = InterpRes<(Vec<Value>, Option<bool>, E)>;
 
 impl<T> InterpRes<T> {
     #[inline]
@@ -36,12 +36,6 @@ impl<T> InterpRes<T> {
             Err(e) => InterpRes::Err(e),
             Ok(t) => InterpRes::Return(t),
         }
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn is_return(&self) -> bool {
-        matches!(self, InterpRes::Return(_))
     }
 
     #[must_use]
@@ -78,17 +72,12 @@ impl<T> InterpRes<Result<T, BadInterp>> {
     }
 }
 
-impl<T> InterpRes<Option<T>> {
-    /// NOTE: It is safe to use [Option::unwrap] on the Continue/Return variants of the return value
+impl<T: std::fmt::Display> InterpRes<Vec<T>> {
     #[must_use]
-    pub fn expect_some<S: std::fmt::Display>(self, label: S) -> Self {
+    pub fn expect_single<S: std::fmt::Display>(self, label: S) -> InterpRes<T> {
         match self {
-            InterpRes::Continue(v) => {
-                InterpRes::try_continue(opt_as_result(v, label).map(Option::Some))
-            }
-            InterpRes::Return(v) => {
-                InterpRes::try_return(opt_as_result(v, label).map(Option::Some))
-            }
+            InterpRes::Continue(v) => InterpRes::try_continue(into_single_result(v, label)),
+            InterpRes::Return(v) => InterpRes::try_return(into_single_result(v, label)),
             InterpRes::Err(e) => InterpRes::Err(e),
         }
     }
@@ -138,18 +127,54 @@ macro_rules! check_std_res {
     }};
 }
 
+#[inline]
 #[must_use]
-pub fn opt_as_result<D, S: std::fmt::Display>(value: Option<D>, label: S) -> Result<D, BadInterp> {
+pub fn into_singleton_vec<D>(value: Option<D>) -> Vec<D> {
     match value {
-        Some(v) => Result::Ok(v),
-        None => Result::Err(new_compute_err(format!("Could not compute {}!", label))),
+        Some(v) => vec![v],
+        None => vec![],
+    }
+}
+
+#[inline]
+#[must_use]
+pub fn into_single_option<D>(values: Vec<D>) -> Option<D> {
+    let mut values = values;
+    match values.len() {
+        1 => values.pop(),
+        _ => None,
+    }
+}
+
+#[inline]
+#[must_use]
+pub fn into_single_result_u32<S: std::fmt::Display>(
+    values: Vec<Value>,
+    label: S,
+) -> Result<usize, BadInterp> {
+    into_single_result(values, label).and_then(Value::as_u32)
+}
+
+#[must_use]
+pub fn into_single_result<D: std::fmt::Display, S: std::fmt::Display>(
+    values: Vec<D>,
+    label: S,
+) -> Result<D, BadInterp> {
+    let mut values = values;
+    match &values[..] {
+        [] => Result::Err(new_compute_err(format!("Could not compute {}!", label))),
+        [_] => Result::Ok(values.remove(0)),
+        [head, tail @ ..] => {
+            let s = tail.iter().fold(format!("{}", head), |acc, nxt| format!("{},{}", acc, nxt));
+            Result::Err(new_compute_err(format!("Non-scalar value for {}: [{}]", label, s)))
+        }
     }
 }
 
 #[must_use]
-pub fn opt_as_result_u32<S: std::fmt::Display>(
-    value: Option<Value>,
-    label: S,
-) -> Result<usize, BadInterp> {
-    opt_as_result(value, label).and_then(Value::as_u32)
+pub fn into_result<D, S: std::fmt::Display>(values: Vec<D>, label: S) -> Result<Vec<D>, BadInterp> {
+    match &values[..] {
+        [] => Result::Err(new_compute_err(format!("Could not compute {}!", label))),
+        _ => Result::Ok(values),
+    }
 }
