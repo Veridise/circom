@@ -2,6 +2,7 @@ pragma circom 2.0.3;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
+// %0 (i.e. arena) = [ a[0], a[1], b[0], b[1], i ]
 function long_gt(a, b) {
     for (var i = 1; i >= 0; i--) {
         if (a[i] > b[i]) {
@@ -14,17 +15,22 @@ function long_gt(a, b) {
     return 0;
 }
 
+// %0 (i.e. arena) = [ in[0], in[1], out[0], out[1] ]
 function long_scalar_mult(in) {
     var out[2] = in;
     return out;
 }
 
+// %0 (i.e. arena) = [ in[0], in[1], norm[0], norm[1], out[0], RETURN(long_gt) ]
 function long_div2(in){
     var norm[2] = long_scalar_mult(in);
     var out[1] = [long_gt(norm, norm)];
     return out;
 }
 
+// %0 (i.e. signal arena) = [ in[0], in[1] ]
+// %lvars = [ out[0] ]
+// %subcmps = []
 template Test() {
     signal input in[2];
 	var out[1] = long_div2(in);

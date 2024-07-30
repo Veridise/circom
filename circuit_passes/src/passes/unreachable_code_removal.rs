@@ -109,6 +109,9 @@ impl CircuitTransformationPass for UnreachableRemovalPass<'_> {
             template,
             InterpreterFlags {
                 visit_unknown_condition_branches: true,
+                // Set `propagate_only_known_returns` so the BucketInterpreter will visit
+                //  all code that ~might~ be reachable and only skip that which occurs after
+                //  a return statement that is ~guaranteed~ to be reached during execution.
                 propagate_only_known_returns: true,
                 ..Default::default()
             },
