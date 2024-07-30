@@ -8,6 +8,7 @@ use crate::bucket_interpreter::env::{Env, EnvContextKind};
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
+use crate::bucket_interpreter::result_types;
 use crate::bucket_interpreter::value::Value;
 use crate::passes::GlobalPassData;
 use super::DEBUG_LOOP_UNROLL;
@@ -144,14 +145,15 @@ impl<'a, 'd> EnvRecorder<'a, 'd> {
         //  not safe to move the loop body to another function because the index computation may
         //  not give the same result when done at the call site, outside of the new function.
         let interp = self.mem.build_interpreter(self.global_data, self);
-        if let Some(idx_loc) = interp.compute_instruction(location, env, false)? {
+        let computed_idx = interp.compute_instruction(location, env, false)?;
+        if let Some(idx_loc) = result_types::into_single_option(computed_idx) {
             // NOTE: It's possible for the interpreter to run into problems evaluating the location
             //  using the header Env. For example, a value may not have been defined yet so address
             //  computations on that value could give out of range results for the 'usize' type.
             //  Thus, these errors should be ignored and fall through into the Ok(Unknown) case.
             let env_ref = self.env_at_header.borrow();
             let header_res = interp.compute_instruction(location, env_ref.as_ref().unwrap(), false);
-            if let Ok(Some(idx_header)) = header_res {
+            if let Ok(Some(idx_header)) = header_res.map(result_types::into_single_option) {
                 if Value::eq(&idx_header, &idx_loc) {
                     return Ok(idx_loc);
                 }

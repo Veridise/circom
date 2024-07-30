@@ -11,7 +11,7 @@ use crate::bucket_interpreter::env::Env;
 use crate::bucket_interpreter::error::BadInterp;
 use crate::bucket_interpreter::memory::PassMemory;
 use crate::bucket_interpreter::observer::Observer;
-use crate::bucket_interpreter::result_types::{InterpRes, RCI};
+use crate::bucket_interpreter::result_types::{self, InterpRes, RCI};
 use crate::bucket_interpreter::value::Value::{self, KnownBigInt, KnownU32};
 use crate::{check_res, checked_insert, default__get_mem, default__name, default__run_template};
 use super::{CircuitTransformationPass, GlobalPassData};
@@ -27,33 +27,34 @@ impl<'a> ZeroingInterpreter<'a> {
 
     pub fn compute_value_bucket(&self, bucket: &ValueBucket, _env: &Env) -> RCI {
         match bucket.parse_as {
-            ValueType::U32 => InterpRes::Continue(Some(KnownU32(bucket.value))),
+            ValueType::U32 => InterpRes::Continue(vec![KnownU32(bucket.value)]),
             ValueType::BigInt => {
                 let constant = &self.mem.get_ff_constant(bucket.value);
-                to_bigint(constant).add_loc_if_err(bucket).map(|r| Some(KnownBigInt(r)))
+                to_bigint(constant).add_loc_if_err(bucket).map(|r| vec![KnownBigInt(r)])
             }
         }
     }
 
     pub fn compute_load_bucket(&self, _bucket: &LoadBucket, _env: &Env) -> RCI {
-        InterpRes::Continue(Some(KnownU32(0)))
+        InterpRes::Continue(vec![KnownU32(0)])
     }
 
     pub fn compute_compute_bucket(&self, bucket: &ComputeBucket, env: &Env) -> RCI {
         let mut stack: Vec<Value> = Vec::with_capacity(bucket.stack.len());
         for i in &bucket.stack {
-            let value = check_res!(self.compute_instruction(i, env).expect_some("operand"));
-            stack.push(value.unwrap());
+            stack.push(check_res!(
+                self.compute_instruction(i, env).expect_single("operand"),
+                |e| vec![e]
+            ));
         }
         // If any value of the stack is unknown we just return 0
         if stack.iter().any(|v| v.is_unknown()) {
-            InterpRes::Continue(Some(KnownU32(0)))
+            InterpRes::Continue(vec![KnownU32(0)])
         } else {
-            InterpRes::try_continue(operations::compute_operation(
-                bucket,
-                &stack,
-                self.mem.get_prime(),
-            ))
+            InterpRes::try_continue(
+                operations::compute_operation(bucket, &stack, self.mem.get_prime())
+                    .map(result_types::into_singleton_vec),
+            )
         }
     }
 
@@ -111,7 +112,7 @@ impl<'d> UnknownIndexSanitizationPass<'d> {
                 let mem = &self.memory;
                 let interpreter = ZeroingInterpreter::init(mem);
                 let res = Result::from(interpreter.compute_instruction(location, env))?;
-                let offset = match res {
+                let offset = match result_types::into_single_option(res) {
                     Some(KnownU32(base)) => base,
                     _ => unreachable!(),
                 };

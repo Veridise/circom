@@ -140,20 +140,18 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 unreachable!();
             }
             Some((loc, idx)) => {
-                //ASSERT: ExtractedFunctionLocationUpdater will always assign 0 in
-                //  the LocationRule that 'signal_idx' is computed from.
-                assert_eq!(signal_idx, 0);
+                let idx = signal_idx + idx;
                 match loc {
-                    AddressType::Variable => self.base.get_var(*idx),
-                    AddressType::Signal => self.base.get_signal(*idx),
+                    AddressType::Variable => self.base.get_var(idx),
+                    AddressType::Signal => self.base.get_signal(idx),
                     AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
                         let subcmp_idx = Self::unwrap_subcmp_idx(cmp_address);
                         if *counter_override {
                             // ASSERT: always 0 from 'get_reverse_passing_refs_for_itr' in 'body_extractor.rs'
-                            assert_eq!(*idx, 0);
+                            assert_eq!(idx, 0);
                             self.base.get_subcmp_counter(subcmp_idx)
                         } else {
-                            self.base.get_subcmp_signal(subcmp_idx, *idx)
+                            self.base.get_subcmp_signal(subcmp_idx, idx)
                         }
                     }
                 }
@@ -343,7 +341,7 @@ impl<'a> ExtractedFuncEnvData<'a> {
         signal_idx: usize,
         new_value: Value,
     ) -> Result<Self, BadInterp> {
-        //NOTE: This is only called by BucketInterpreter::store_value_in_address.
+        //NOTE: This is only called by BucketInterpreter::store_value_at_address().
         //Use the map from loop unrolling to convert the SubcmpSignal reference back
         //  into the proper reference (reversing ExtractedFunctionLocationUpdater).
         let new_env = match self.remap.get(&subcmp_idx) {
@@ -358,21 +356,19 @@ impl<'a> ExtractedFuncEnvData<'a> {
                 return Ok(self); // Nothing needs to be done.
             }
             Some((loc, idx)) => {
-                //ASSERT: ExtractedFunctionLocationUpdater will always assign 0 in
-                //  the LocationRule that 'signal_idx' is computed from.
-                assert_eq!(signal_idx, 0);
+                let idx = signal_idx + idx;
                 match loc {
-                    AddressType::Variable => self.base.set_var(*idx, new_value),
-                    AddressType::Signal => self.base.set_signal(*idx, new_value),
+                    AddressType::Variable => self.base.set_var(idx, new_value),
+                    AddressType::Signal => self.base.set_signal(idx, new_value),
                     AddressType::SubcmpSignal { counter_override, cmp_address, .. } => {
                         let subcmp = Self::unwrap_subcmp_idx(cmp_address);
                         if *counter_override {
                             // ASSERT: always 0 from 'get_reverse_passing_refs_for_itr' in 'body_extractor.rs'
-                            assert_eq!(*idx, 0);
+                            assert_eq!(idx, 0);
                             // NOTE: If unwrapping to u32 directly causes a panic, then need to allow Value as the parameter.
                             self.base.set_subcmp_counter(subcmp, new_value.as_u32()?)?
                         } else {
-                            self.base.set_subcmp_signal(subcmp, *idx, new_value)?
+                            self.base.set_subcmp_signal(subcmp, idx, new_value)?
                         }
                     }
                 }
