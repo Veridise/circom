@@ -8,7 +8,8 @@ use compiler::intermediate_representation::BucketId;
 use function_env::FunctionEnvData;
 use indexmap::IndexSet;
 use crate::passes::loop_unroll::body_extractor::LoopBodyExtractor;
-use crate::passes::loop_unroll::{ToOriginalLocation, FuncArgIdx};
+use crate::passes::loop_unroll::{FuncArgIdx, ToOriginalLocation, LOOP_BODY_FN_PREFIX};
+use crate::passes::GlobalPassData;
 use self::extracted_func_env::ExtractedFuncEnvData;
 use self::template_env::TemplateEnvData;
 use self::unrolled_block_env::UnrolledBlockEnvData;
@@ -22,6 +23,7 @@ mod function_env;
 mod unrolled_block_env;
 mod extracted_func_env;
 
+const DEBUG_INTERPRETER: bool = false;
 const PRINT_ENV_SORTED: bool = true;
 
 #[inline]
@@ -222,6 +224,10 @@ impl<'a> Env<'a> {
         Env::Template(TemplateEnvData::new(libs))
     }
 
+    pub fn new_unroll_block_env(base: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {
+        Env::UnrolledBlock(UnrolledBlockEnvData::new(base, extractor))
+    }
+
     pub fn new_source_func_env(
         base: Env<'a>,
         caller: &BucketId,
@@ -231,7 +237,7 @@ impl<'a> Env<'a> {
         Env::Function(FunctionEnvData::new(base, caller, call_stack, libs))
     }
 
-    pub fn new_extracted_func_env(
+    fn _new_extracted_func_env(
         base: Env<'a>,
         caller: &BucketId,
         remap: ToOriginalLocation,
@@ -240,10 +246,28 @@ impl<'a> Env<'a> {
         Env::ExtractedFunction(ExtractedFuncEnvData::new(base, caller, remap, arenas))
     }
 
-    pub fn new_unroll_block_env(base: Env<'a>, extractor: &'a LoopBodyExtractor) -> Self {
-        Env::UnrolledBlock(UnrolledBlockEnvData::new(base, extractor))
+    pub fn new_extracted_func_env(
+        base: Env<'a>,
+        caller: &BucketId,
+        callee_name: &str,
+        gdat: Ref<GlobalPassData>,
+    ) -> Self {
+        if callee_name.starts_with(LOOP_BODY_FN_PREFIX) {
+            if DEBUG_INTERPRETER {
+                println!("\ncurrent env = {}", base);
+                println!("callee_name = {}", callee_name);
+                println!("base.get_vars_sort() = {:?}", base.get_vars_sort());
+                println!("callee function data = {:?}", gdat.get_data_for_func(callee_name));
+            }
+            let fdat = &gdat.get_data_for_func(callee_name)[&base.get_vars_sort()];
+            Self::_new_extracted_func_env(base, caller, fdat.0.clone(), fdat.1.clone())
+        } else {
+            Self::_new_extracted_func_env(base, caller, Default::default(), Default::default())
+        }
     }
+}
 
+impl Env<'_> {
     // READ OPERATIONS
     pub fn peel_extracted_func(self) -> Self {
         match self {

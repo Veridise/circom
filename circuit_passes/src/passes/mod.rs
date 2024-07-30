@@ -786,7 +786,7 @@ impl GlobalPassData {
 
     pub fn get_data_for_func(
         &self,
-        name: &String,
+        name: &str,
     ) -> &BTreeMap<UnrolledIterLvars, (ToOriginalLocation, HashSet<FuncArgIdx>)> {
         match self.extract_func_orig_loc.get(name) {
             Some(x) => x,
