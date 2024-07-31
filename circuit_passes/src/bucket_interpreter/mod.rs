@@ -121,8 +121,8 @@ macro_rules! compute_or_execute_part_2 {
     };
 }
 
-/// Generate private "execute_with_loc_*" function for the given bucket type
-/// and public "execute_*" wrapper that simply converts the return to Result.
+/// Generate private `execute_with_loc_*` function for the given bucket type
+/// and public `execute_*` wrapper that simply converts the return to Result.
 macro_rules! gen_execute_wrapers {
     ($(#[$($attrss:meta)*])* $bucket_ty: ty) => {
         paste! {
@@ -147,8 +147,8 @@ macro_rules! gen_execute_wrapers {
     };
 }
 
-/// Generate private "compute_with_loc_*" function for the given bucket type
-/// and public "compute_*" wrapper that simply converts the return to Result.
+/// Generate private `compute_with_loc_*` function for the given bucket type
+/// and public `compute_*` wrapper that simply converts the return to Result.
 macro_rules! gen_compute_wrapers {
     ($(#[$($attrss:meta)*])* $bucket_ty: ty) => {
         paste! {

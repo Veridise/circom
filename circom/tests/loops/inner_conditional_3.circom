@@ -2,14 +2,18 @@ pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --llvm -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --enable-var-scope
 
-// if condition is NOT known
+// Test: BranchBucket with unknown condition
+//
+// %0 (i.e. signal arena) = [ out, in ]
+// %lvars =  [ N, acc, i ]
+// %subcmps = []
 template InnerConditional3(N) {
     signal output out;
     signal input in;
 
     var acc = 0;
     for (var i = 1; i <= N; i++) {
-        if (in == 0) {
+        if (in == 0) { // unknown condition
             acc += i;
         } else {
             acc -= i;
