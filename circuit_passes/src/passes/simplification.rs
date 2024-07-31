@@ -62,20 +62,45 @@ impl<'d> SimplificationPass<'d> {
     fn insert<V: PartialEq>(
         map: &RefCell<HashMap<BucketId, Option<V>>>,
         bucket_id: BucketId,
-        v: V,
+        new_val: Option<V>,
     ) {
         map.borrow_mut()
             .entry(bucket_id)
-            // If the entry exists and it's not the same as the new value, set to None.
+            // If the entry exists and it's not the same as the new value,
+            //  or the new value itself is None, then set to result to None
+            //  to indicate that no replacement should be made.
             .and_modify(|old| {
                 if let Some(old_val) = old {
-                    if *old_val != v {
-                        *old = None
+                    match &new_val {
+                        None => *old = None,
+                        Some(x) => {
+                            if *x != *old_val {
+                                *old = None
+                            }
+                        }
                     }
                 }
             })
             // If no entry exists, store the new value.
-            .or_insert(Some(v));
+            .or_insert(new_val);
+    }
+
+    fn store_computed_value(
+        map: &RefCell<HashMap<BucketId, Option<Value>>>,
+        bucket_id: BucketId,
+        computed_value: Value,
+    ) -> Result<bool, BadInterp> {
+        if computed_value.is_unknown() {
+            // When the bucket's value is Unknown from any execution, add None to the map so
+            //  the bucket will not be replaced (even if known at an execution found later),
+            //  return 'true' so buckets nested within this bucket will be observed.
+            Self::insert(map, bucket_id, None);
+            Ok(true)
+        } else {
+            // Add known value to the map, return 'false' so observation will not continue within.
+            Self::insert(map, bucket_id, Some(computed_value));
+            Ok(false)
+        }
     }
 }
 
@@ -84,12 +109,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
         let interp = self.build_interpreter();
         let v = interp.compute_compute_bucket(bucket, env, false)?;
         let v = result_types::into_single_result(v, "ComputeBucket")?;
-        if !v.is_unknown() {
-            Self::insert(&self.compute_replacements, bucket.id, v);
-            Ok(false)
-        } else {
-            Ok(true)
-        }
+        Self::store_computed_value(&self.compute_replacements, bucket.id, v)
     }
 
     fn on_call_bucket(&self, bucket: &CallBucket, env: &Env) -> Result<bool, BadInterp> {
@@ -99,12 +119,10 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
         //  rather than 'into_single_result()' and return 'true' in the None case
         //  so buckets nested within this bucket will be observed.
         if let Some(v) = result_types::into_single_option(v) {
-            if !v.is_unknown() {
-                Self::insert(&self.call_replacements, bucket.id, v);
-                return Ok(false);
-            }
+            Self::store_computed_value(&self.call_replacements, bucket.id, v)
+        } else {
+            Ok(true)
         }
-        Ok(true)
     }
 
     fn on_constraint_bucket(
@@ -113,7 +131,8 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
         env: &Env,
     ) -> Result<bool, BadInterp> {
         self.within_constraint.replace(true);
-        // Match the expected structure of ConstraintBucket instances but don't fail if there's something different.
+        // Match the expected structure of ConstraintBucket instances
+        //  but don't fail if there's something different.
         match bucket {
             ConstraintBucket::Equality(e) => {
                 if let Instruction::Assert(AssertBucket { evaluate, .. }) = e.as_ref() {
@@ -130,7 +149,11 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                         }
                         // If at least one is a known value, then we can (likely) simplify
                         if values.iter().any(Value::is_known) {
-                            Self::insert(&self.constraint_eq_replacements, e.get_id(), values);
+                            Self::insert(
+                                &self.constraint_eq_replacements,
+                                e.get_id(),
+                                Some(values),
+                            );
                         }
                     }
                 }
@@ -172,7 +195,7 @@ impl Observer<Env<'_>> for SimplificationPass<'_> {
                             Self::insert(
                                 &self.constraint_sub_replacements,
                                 e.get_id(),
-                                (src, dest, dest_address_type),
+                                Some((src, dest, dest_address_type)),
                             );
                         }
                     }

@@ -1,21 +1,27 @@
 use std::collections::HashSet;
+use code_producers::llvm_elements::stdlib::GENERATED_FN_PREFIX;
 use compiler::intermediate_representation::{
     ir_interface::{AddressType, FinalData, LocationRule, LogBucketArg, ReturnType, StoreBucket},
     Instruction, InstructionList, InstructionPointer,
 };
-use super::{env::Env, error::BadInterp, value::Value, BucketInterpreter, InterpRes};
+use super::{
+    env::{Env, LibraryAccess},
+    error::BadInterp,
+    value::Value,
+    BucketInterpreter, InterpRes,
+};
 
 pub(crate) fn set_writes_to_unknown<'e>(
     interp: &BucketInterpreter,
     body: &InstructionList,
     env: Env<'e>,
 ) -> Result<Env<'e>, BadInterp> {
-    let mut checker = Writes::default();
-    Result::from(checker.collect_writes(interp, body, env.clone())).map_or_else(
+    let mut collector = Writes::default();
+    Result::from(collector.check_body(interp, body, env.clone())).map_or_else(
         |b| Result::Err(b),
         // For the Ok case, ignore the Env computed within the body
         //  and just set Unknown to all writes that were found.
-        |_| checker.set_unknowns(env),
+        |_| collector.set_unknowns(env),
     )
 }
 
@@ -43,7 +49,7 @@ impl Writes {
             .set_subcmps_to_unknown(self.subcmps)
     }
 
-    fn collect_writes<'e>(
+    fn check_body<'e>(
         &mut self,
         interp: &BucketInterpreter,
         body: &InstructionList,
@@ -65,12 +71,26 @@ impl Writes {
         match inst {
             Instruction::Store(b) => self.check_store_bucket(interp, b, env),
             Instruction::Constraint(b) => self.check_inst(interp, b.unwrap(), env),
-            Instruction::Block(b) => self.collect_writes(interp, &b.body, env),
+            Instruction::Block(b) => self.check_body(interp, &b.body, env),
             Instruction::Branch(b) => {
                 self.check_branch(interp, &b.cond, &b.if_branch, &b.else_branch, env)
             }
             Instruction::Loop(b) => {
                 self.check_branch(interp, &b.continue_condition, &b.body, &vec![], env)
+            }
+            Instruction::Call(b) if b.symbol.starts_with(GENERATED_FN_PREFIX) => {
+                let callee_name = &b.symbol;
+                let callee_body = env.get_function(callee_name).body.clone();
+                self.check_body(
+                    interp,
+                    &callee_body,
+                    Env::new_extracted_func_env(
+                        env,
+                        &b.id,
+                        callee_name,
+                        interp.global_data.borrow(),
+                    ),
+                )
             }
             i => {
                 debug_assert!(!ContainsStore::contains_store(i));
@@ -93,10 +113,10 @@ impl Writes {
                 // If the condition is unknown, collect all writes from both branches (even if
                 //  there is a return in either, hence an InterpRes::Return result is ignored
                 //  in both cases) and produce InterpRes::Continue with the original Env.
-                if let InterpRes::Err(e) = self.collect_writes(interp, true_branch, env.clone()) {
+                if let InterpRes::Err(e) = self.check_body(interp, true_branch, env.clone()) {
                     return InterpRes::Err(e);
                 }
-                if let InterpRes::Err(e) = self.collect_writes(interp, false_branch, env.clone()) {
+                if let InterpRes::Err(e) = self.check_body(interp, false_branch, env.clone()) {
                     return InterpRes::Err(e);
                 }
                 InterpRes::Continue(env)
@@ -105,17 +125,17 @@ impl Writes {
                 // If the condition is true, collect all writes from the false branch
                 //  (ignoring an InterpRes::Return result as above) and then analyze
                 //  and return the result from the true branch.
-                if let InterpRes::Err(e) = self.collect_writes(interp, false_branch, env.clone()) {
+                if let InterpRes::Err(e) = self.check_body(interp, false_branch, env.clone()) {
                     return InterpRes::Err(e);
                 }
-                self.collect_writes(interp, true_branch, env)
+                self.check_body(interp, true_branch, env)
             }
             Ok(Some(false)) => {
                 // Reverse of the true case.
-                if let InterpRes::Err(e) = self.collect_writes(interp, true_branch, env.clone()) {
+                if let InterpRes::Err(e) = self.check_body(interp, true_branch, env.clone()) {
                     return InterpRes::Err(e);
                 }
-                self.collect_writes(interp, false_branch, env)
+                self.check_body(interp, false_branch, env)
             }
         }
     }
@@ -366,7 +386,7 @@ mod tests {
         ];
 
         let mut checker = Writes::default();
-        let collect_res = checker.collect_writes(&interp, &body, env);
+        let collect_res = checker.check_body(&interp, &body, env);
         assert!(!matches!(collect_res, InterpRes::Err(_)));
         // EXPECT:
         //  - variables A, B (only index 0 in the vector), and C are written
@@ -434,7 +454,7 @@ mod tests {
         ];
 
         let mut checker = Writes::default();
-        let collect_res = checker.collect_writes(&interp, &body, env);
+        let collect_res = checker.check_body(&interp, &body, env);
         assert!(!matches!(collect_res, InterpRes::Err(_)));
         // EXPECT:
         //  - no variables are written

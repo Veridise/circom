@@ -24,7 +24,6 @@ use compiler::num_bigint::BigInt;
 use observer::Observer;
 use program_structure::error_code::ReportCode;
 use crate::passes::builders::{build_compute, build_u32_value};
-use crate::passes::loop_unroll::LOOP_BODY_FN_PREFIX;
 use crate::passes::GlobalPassData;
 use self::env::{CallStackFrame, Env, LibraryAccess};
 use self::error::BadInterp;
@@ -745,15 +744,8 @@ impl BucketInterpreter<'_, '_> {
         //  calls below (that give ownership of the 'env' object into the new Env instance)
         //  to avoid copying the entire 'env' instance (which is likely more expensive).
         let instructions = env.get_function(name).body.clone();
-        let mut res = (vec![], {
-            if name.starts_with(LOOP_BODY_FN_PREFIX) {
-                let gdat = self.global_data.borrow();
-                let fdat = &gdat.get_data_for_func(name)[&env.get_vars_sort()];
-                Env::new_extracted_func_env(env, &bucket.id, fdat.0.clone(), fdat.1.clone())
-            } else {
-                Env::new_extracted_func_env(env, &bucket.id, Default::default(), Default::default())
-            }
-        });
+        let mut res =
+            (vec![], Env::new_extracted_func_env(env, &bucket.id, name, self.global_data.borrow()));
         //NOTE: Do not change scope for the new interpreter because the mem lookups
         //  within 'write_collector.rs' need to use the original function context.
         let interp = self.mem.build_interpreter_with_flags(
@@ -820,7 +812,6 @@ impl BucketInterpreter<'_, '_> {
             //  unless self.flags.allow_nondetermined_return() == false because
             //  that case could result in no return statements being observed.
             let func_val = if body_val.is_empty() && !self.flags.allow_nondetermined_return() {
-                // Some(Value::Unknown) // TODO: return the correct number of Unknowns
                 Result::Ok(vec![Value::Unknown; callee.returns.iter().product::<usize>()])
             } else {
                 let vals = into_result(body_val, "value returned from function");

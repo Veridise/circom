@@ -183,7 +183,12 @@ impl LoopUnrollObserver<'_> {
                 }
                 match cond {
                     // If the conditional becomes unknown just give up.
-                    None => return Ok(None),
+                    None => {
+                        if DEBUG_LOOP_UNROLL {
+                            println!("[UNROLL][try_unroll_loop] OUTCOME: not safe to move or unroll, condition unknown");
+                        }
+                        return Ok(None);
+                    }
                     // When conditional becomes `false`, iteration count is complete.
                     Some(false) => break,
                     // Otherwise, continue counting.
