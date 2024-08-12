@@ -754,12 +754,8 @@ impl BucketInterpreter<'_, '_> {
             self.flags.clone(),
         );
         let observe = observe && !interp.observer.ignore_extracted_function_calls();
-        unsafe {
-            let ptr = instructions.as_ptr();
-            for i in 0..instructions.len() {
-                let inst = ptr.add(i).as_ref().unwrap();
-                res = Result::from(interp._execute_instruction(inst, res.1, observe))?;
-            }
+        for inst in instructions {
+            res = Result::from(interp._execute_instruction(&inst, res.1, observe))?;
         }
         // ASSERT: All generated functions have void return type, thus produce no value(s)
         assert!(res.0.is_empty());
