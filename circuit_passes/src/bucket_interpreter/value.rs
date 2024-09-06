@@ -319,7 +319,7 @@ pub fn complement(v: &Value, field: &BigInt) -> Result<Value, BadInterp> {
     match v {
         Unknown => Ok(Unknown),
         KnownU32(n) => Ok(KnownU32(!(*n))),
-        KnownBigInt(n) => Ok(KnownBigInt(modular_arithmetic::complement_256(n, field))),
+        KnownBigInt(n) => Ok(KnownBigInt(modular_arithmetic::complement_254(n, field))),
     }
 }
 
