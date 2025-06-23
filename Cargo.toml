@@ -13,3 +13,11 @@ members = [
     "code_producers",
     "dag"
 ]
+
+[patch.crates-io]
+mlir-sys = { git = "https://github.com/Veridise/mlir-sys" }
+melior = { git = "https://github.com/Veridise/melior" }
+
+[workspace.dependencies]
+melior = "0.24.0"
+mlir-sys = "0.5.0"
