@@ -24,3 +24,7 @@ clap = "2.33.0"
 ansi_term = "0.12.1"
 wast = "39.0.0"
 exitcode = "1.1.2"
+melior = { workspace = true }
+mlir-sys = { workspace = true }
+llzk = { git = "https://github.com/Veridise/llzk-rs.git" }
+llzk-sys = { git = "https://github.com/Veridise/llzk-rs.git" }

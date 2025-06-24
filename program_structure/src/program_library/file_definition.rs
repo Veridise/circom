@@ -7,7 +7,7 @@ pub type FileID = usize;
 pub type FileLocation = Range<usize>;
 type FileStorage = SimpleFiles<FilePath, FileSource>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FileLibrary {
     files: FileStorage,
 }
