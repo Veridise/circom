@@ -6,6 +6,12 @@ mod type_analysis_user;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
+use std::fs::File;
+use std::io::Write;
+use std::os::raw::c_void;
+use llzk;
+use melior;
+use mlir_sys;
 
 use ansi_term::Colour;
 use input_user::Input;
@@ -26,6 +32,33 @@ fn start() -> Result<(), ()> {
     let user_input = Input::new()?;
     let mut program_archive = parser_user::parse_project(&user_input)?;
     type_analysis_user::analyse_project(&mut program_archive)?;
+
+    {
+        //TODO: if LLZK output flag, do this block (and probably return w/o doing below)
+        println!("{:#?}", program_archive); //TODO:TEMP
+
+        let registry = melior::dialect::DialectRegistry::new();
+        llzk::register_all_llzk_dialects(&registry);
+        let context = melior::Context::new();
+        let location = melior::ir::Location::unknown(&context);
+        let module = llzk::dialect::module::llzk_module(location);
+
+        let mut file = File::create("bytecode.llzk").unwrap();
+        unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
+            let file = &mut *(user_data as *mut File);
+            let slice = std::slice::from_raw_parts(string_ref.data as *const u8, string_ref.length);
+            let _ = file.write_all(slice); // TODO: handle error
+        }
+
+        unsafe {
+            // mlir_sys::mlirOperationWriteBytecode(
+            mlir_sys::mlirOperationPrint(
+                module.as_operation().to_raw(),
+                Some(callback),
+                &mut file as *mut File as *mut c_void,
+            );
+        }
+    }
 
     let config = ExecutionConfig {
         no_rounds: user_input.no_rounds(),
