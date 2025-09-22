@@ -1388,6 +1388,7 @@ pub fn normalize(c: Constraint<usize>, _field: &BigInt) -> Constraint<usize> {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 mod test {
     use crate::algebra::{ArithmeticExpression, Constraint, Substitution};
     use crate::modular_arithmetic;
