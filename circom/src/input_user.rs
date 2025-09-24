@@ -5,6 +5,7 @@ pub struct Input {
     pub out_r1cs: PathBuf,
     pub out_json_constraints: PathBuf,
     pub out_json_substitutions: PathBuf,
+    pub out_llzk_code: PathBuf,
     pub out_wat_code: PathBuf,
     pub out_wasm_code: PathBuf,
     pub out_wasm_name: String,
@@ -16,6 +17,7 @@ pub struct Input {
     pub out_sym: PathBuf,
     //pub field: &'static str,
     pub c_flag: bool,
+    pub llzk_flag: bool,
     pub wasm_flag: bool,
     pub wat_flag: bool,
     pub no_asm_flag: bool,
@@ -43,6 +45,7 @@ const R1CS: &'static str = "r1cs";
 const WAT: &'static str = "wat";
 const WASM: &'static str = "wasm";
 const CPP: &'static str = "cpp";
+const LLZK: &'static str = "llzk";
 const JS: &'static str = "js";
 const DAT: &'static str = "dat";
 const SYM: &'static str = "sym";
@@ -65,6 +68,7 @@ impl Input {
             file_name = format!("{}_c", file_name)
         };
         let output_c_path = Input::build_folder(&output_path, &file_name, CPP);
+        let output_llzk_path = Input::build_folder(&output_path, &file_name, LLZK);
         let output_js_path = Input::build_folder(&output_path, &file_name, JS);
         let o_style = input_processing::get_simplification_style(&matches)?;
         let link_libraries = input_processing::get_link_libraries(&matches);
@@ -80,6 +84,7 @@ impl Input {
 	        out_c_run_name: file_name.clone(),
             out_c_code: Input::build_output(&output_c_path, &file_name, CPP),
             out_c_dat: Input::build_output(&output_c_path, &file_name, DAT),
+            out_llzk_code: Input::build_output(&output_llzk_path, &file_name, LLZK),
             out_sym: Input::build_output(&output_path, &file_name, SYM),
             out_json_constraints: Input::build_output(
                 &output_path,
@@ -94,6 +99,7 @@ impl Input {
             wat_flag:input_processing::get_wat(&matches),
             wasm_flag: input_processing::get_wasm(&matches),
             c_flag: c_flag,
+            llzk_flag: input_processing::get_llzk(&matches),
             no_asm_flag:input_processing::get_no_asm(&matches),
             r1cs_flag: input_processing::get_r1cs(&matches),
             sym_flag: input_processing::get_sym(&matches),
@@ -167,6 +173,9 @@ impl Input {
     pub fn dat_file(&self) -> &str {
         self.out_c_dat.to_str().unwrap()
     }
+    pub fn llzk_file(&self) -> &str {
+        self.out_llzk_code.to_str().unwrap()
+    }
     pub fn json_constraints_file(&self) -> &str {
         self.out_json_constraints.to_str().unwrap()
     }
@@ -181,6 +190,9 @@ impl Input {
     }
     pub fn c_flag(&self) -> bool {
         self.c_flag
+    }
+    pub fn llzk_flag(&self) -> bool {
+        self.llzk_flag
     }
     pub fn no_asm_flag(&self) -> bool {
         self.no_asm_flag
@@ -313,6 +325,10 @@ mod input_processing {
 
     pub fn get_c(matches: &ArgMatches) -> bool {
         matches.is_present("print_c")
+    }
+
+    pub fn get_llzk(matches: &ArgMatches) -> bool {
+        matches.is_present("print_llzk_ir")
     }
 
     pub fn get_main_inputs_log(matches: &ArgMatches) -> bool {
@@ -503,6 +519,13 @@ mod input_processing {
                     .takes_value(false)
                     .display_order(150)
                     .help("Compiles the circuit to C++"),
+            )
+            .arg(
+                Arg::with_name("print_llzk_ir")
+                    .long("llzk")
+                    .takes_value(false)
+                    .display_order(91)
+                    .help("Compiles the circuit to LLZK-IR"),
             )
             .arg(
                 Arg::with_name("parallel_simplification")
