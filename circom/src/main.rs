@@ -3,6 +3,7 @@ mod execution_user;
 mod input_user;
 mod parser_user;
 mod type_analysis_user;
+mod llzk_backend;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -26,6 +27,10 @@ fn start() -> Result<(), ()> {
     let user_input = Input::new()?;
     let mut program_archive = parser_user::parse_project(&user_input)?;
     type_analysis_user::analyse_project(&mut program_archive)?;
+
+    if user_input.llzk_flag() {
+        return llzk_backend::generate_llzk(&program_archive, user_input.llzk_file());
+    }
 
     let config = ExecutionConfig {
         no_rounds: user_input.no_rounds(),
