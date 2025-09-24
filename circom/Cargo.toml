@@ -24,3 +24,8 @@ clap = "2.33.0"
 ansi_term = "0.12.1"
 wast = "39.0.0"
 exitcode = "1.1.2"
+mlir-sys = "0.5.0"
+melior = "0.25.0"
+melior-macro = "0.18.0"
+llzk = { git = "https://github.com/Veridise/llzk-rs", package = "llzk" }
+llzk-sys = { git = "https://github.com/Veridise/llzk-rs", package = "llzk-sys" }
