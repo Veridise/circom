@@ -207,6 +207,7 @@ name = "circom"
 version = "2.2.2"
 dependencies = [
  "ansi_term",
+ "anyhow",
  "assert_cmd",
  "assert_fs",
  "clap",
@@ -214,7 +215,6 @@ dependencies = [
  "constraint_generation",
  "constraint_writers",
  "dag",
- "exitcode",
  "glob",
  "lazy_static",
  "llzk",
@@ -525,12 +525,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "exitcode"
-version = "1.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de853764b47027c2e862a995c34978ffa63c1501f2e15f987ba11bd4f9bba193"
-
-[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -799,11 +793,12 @@ checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 [[package]]
 name = "llzk"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs#245c3d816c5fc2127ffa2221e79a6ad0894cadd5"
+source = "git+https://github.com/Veridise/llzk-rs#683d360a46cc07a2557fdcba5d5ef61009c7788b"
 dependencies = [
  "llzk-sys",
  "log",
  "melior",
+ "melior-macro",
  "mlir-sys",
  "paste",
 ]
@@ -811,14 +806,23 @@ dependencies = [
 [[package]]
 name = "llzk-sys"
 version = "0.1.0"
-source = "git+https://github.com/Veridise/llzk-rs#245c3d816c5fc2127ffa2221e79a6ad0894cadd5"
+source = "git+https://github.com/Veridise/llzk-rs#683d360a46cc07a2557fdcba5d5ef61009c7788b"
+dependencies = [
+ "anyhow",
+ "llzk-sys-build-support",
+ "mlir-sys",
+]
+
+[[package]]
+name = "llzk-sys-build-support"
+version = "0.1.0"
+source = "git+https://github.com/Veridise/llzk-rs#683d360a46cc07a2557fdcba5d5ef61009c7788b"
 dependencies = [
  "anyhow",
  "bindgen",
  "cc",
  "cmake",
  "glob",
- "mlir-sys",
  "tempfile",
 ]
 
