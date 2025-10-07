@@ -63,7 +63,7 @@ impl<'a> LitTest<'a> {
         })
     }
 
-    fn execute_normally(&self, cmd: &mut Command) -> LitResult<()> {
+    fn execute_expecting_success(&self, cmd: &mut Command) -> LitResult<()> {
         cmd.assert().success();
         Ok(())
     }
@@ -109,7 +109,7 @@ impl<'a> LitTest<'a> {
         if self.expected_failure {
             self.execute_expecting_failure(&mut sh)
         } else {
-            self.execute_normally(&mut sh)
+            self.execute_expecting_success(&mut sh)
         }?;
         self.cleanup_test(&tmp_file)
     }

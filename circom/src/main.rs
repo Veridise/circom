@@ -28,9 +28,11 @@ fn start() -> Result<(), ()> {
     let mut program_archive = parser_user::parse_project(&user_input)?;
     type_analysis_user::analyse_project(&mut program_archive)?;
 
+    // Dump the ProgramArchive if requested
     if user_input.dump_parse_flag() {
         write_to_file(format!("{:#?}", program_archive), user_input.dump_parse_file())?;
     }
+    // Generate LLZK IR output if requested
     if user_input.llzk_flag() {
         return llzk_backend::generate_llzk(&program_archive, user_input.llzk_file());
     }

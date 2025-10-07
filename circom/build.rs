@@ -5,6 +5,10 @@ use std::io::Write;
 use std::fs::{copy, create_dir_all};
 use glob::glob;
 
+/// Generates the file `discovered_tests.in` in the output directory, containing
+/// test functions for each `.circom` file found in the `tests/` directory.
+/// Each test function is named based on the file path, with slashes replaced
+/// by underscores, and is set up to call `lit_test` with the file's contents.
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("discovered_tests.in");
