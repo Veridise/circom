@@ -1,6 +1,7 @@
-pragma circom 2.0.0;
 // REQUIRES: circom
 // RUN: rm -rf %t && mkdir %t && %circom --dump_parse -o %t %s | sed -n 's/.*Written successfully:.* \(.*\)/\1/p' | xargs cat | FileCheck %s --match-full-lines
+
+pragma circom 2.0.0;
 
 template HelloWorld() {
     signal input a;
