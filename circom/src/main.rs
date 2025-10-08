@@ -3,7 +3,6 @@ mod execution_user;
 mod input_user;
 mod parser_user;
 mod type_analysis_user;
-mod llzk_backend;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 

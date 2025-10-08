@@ -10,16 +10,13 @@ use program_structure::{
     file_definition::{FileID, FileLibrary, FileLocation},
     program_archive::ProgramArchive,
 };
-use melior::{
-    self,
-    ir::{operation::OperationLike as _, Location, Module, ValueLike},
-};
+use melior::ir::{operation::OperationLike as _, Location, Module, ValueLike};
 use llzk::prelude::LlzkContext;
 
 /// Stores necessary context for generating LLZK IR along with the generated `Module`.
 /// 'ast: lifetime of the circom AST element
 /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
-pub struct LlzkCodegen<'ast, 'llzk> {
+struct LlzkCodegen<'ast, 'llzk> {
     files: &'ast FileLibrary,
     context: &'llzk LlzkContext,
     module: Module<'llzk>,
@@ -79,7 +76,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
 }
 
 /// A trait to produce LLZK IR from the `ProgramArchive` nodes.
-pub trait ProduceLLZK {
+trait ProduceLLZK {
     /// Produces LLZK IR from the circom `ProgramArchive` AST element.
     /// 'ret: lifetime of the returned `ValueLike` object
     /// 'ast: lifetime of the circom AST element

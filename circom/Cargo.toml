@@ -20,14 +20,10 @@ constraint_generation = { path = "../constraint_generation" }
 constraint_writers = { path = "../constraint_writers" }
 compiler = { path = "../compiler" }
 dag = { path = "../dag" }
+llzk_backend = { path = "../llzk_backend" }
 clap = "2.33.0"
 ansi_term = "0.12.1"
-anyhow = "1"
 wast = "39.0.0"
-mlir-sys = "0.5.0"
-melior = "0.25.0"
-melior-macro = "0.18.0"
-llzk = { git = "https://github.com/Veridise/llzk-rs", package = "llzk" }
 
 [dev-dependencies]
 assert_cmd = "2.0"
