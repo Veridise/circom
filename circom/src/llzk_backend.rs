@@ -16,6 +16,7 @@ use melior::{
 };
 use llzk::prelude::LlzkContext;
 
+/// Stores necessary context for generating LLZK IR along with the generated Module.
 pub struct LlzkCodegen<'c, 'a> {
     files: &'a FileLibrary,
     context: &'c LlzkContext,
@@ -23,6 +24,7 @@ pub struct LlzkCodegen<'c, 'a> {
 }
 
 impl<'c, 'a> LlzkCodegen<'c, 'a> {
+    /// Creates a new LLZK code generator to generate code for the given ProgramArchive.
     pub fn new(context: &'c LlzkContext, program_archive: &'a ProgramArchive) -> Self {
         let files = &program_archive.file_library;
         let filename = files.get_filename_or_default(program_archive.get_file_id_main());
@@ -31,6 +33,7 @@ impl<'c, 'a> LlzkCodegen<'c, 'a> {
         Self { files, context, module }
     }
 
+    /// Convert circom location information to MLIR location.
     pub fn get_location(&self, file_id: FileID, file_location: FileLocation) -> Location<'c> {
         let filename = self.files.get_filename_or_default(&file_id);
         let line = self.files.get_line(file_location.start, file_id).unwrap_or(0);
@@ -38,10 +41,12 @@ impl<'c, 'a> LlzkCodegen<'c, 'a> {
         Location::new(&self.context, &filename, line, column)
     }
 
+    /// Verify the generated module.
     pub fn verify(&self) -> bool {
         self.module.as_operation().verify()
     }
 
+    /// Write the generated module to a file.
     pub fn write_to_file(&self, filename: &str) -> Result<(), ()> {
         let out_path = Path::new(filename);
         // Ensure parent directories exist
@@ -70,6 +75,7 @@ impl<'c, 'a> LlzkCodegen<'c, 'a> {
     }
 }
 
+/// A trait to produce LLZK IR from the ProgramArchive nodes.
 pub trait ProduceLLZK {
     fn produce_llzk_ir<'b, 'a: 'b>(
         &'a self,
@@ -86,6 +92,7 @@ impl ProduceLLZK for ProgramArchive {
     }
 }
 
+/// Generate LLZK IR from the given ProgramArchive and write it to a file with the given filename.
 pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result<(), ()> {
     let ctx = LlzkContext::new();
     let codegen = LlzkCodegen::new(&ctx, program_archive);
