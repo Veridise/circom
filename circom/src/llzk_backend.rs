@@ -17,15 +17,18 @@ use melior::{
 use llzk::prelude::LlzkContext;
 
 /// Stores necessary context for generating LLZK IR along with the generated Module.
-pub struct LlzkCodegen<'c, 'a> {
-    files: &'a FileLibrary,
-    context: &'c LlzkContext,
-    module: Module<'c>,
+/// 'ast: lifetime of the circom AST element
+/// 'llzk: lifetime of the LlzkContext and generated Module
+pub struct LlzkCodegen<'ast, 'llzk> {
+    files: &'ast FileLibrary,
+    context: &'llzk LlzkContext,
+    module: Module<'llzk>,
 }
 
-impl<'c, 'a> LlzkCodegen<'c, 'a> {
+/// Helper for generating LLZK IR from a circom ProgramArchive.
+impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     /// Creates a new LLZK code generator to generate code for the given ProgramArchive.
-    pub fn new(context: &'c LlzkContext, program_archive: &'a ProgramArchive) -> Self {
+    pub fn new(context: &'llzk LlzkContext, program_archive: &'ast ProgramArchive) -> Self {
         let files = &program_archive.file_library;
         let filename = files.get_filename_or_default(program_archive.get_file_id_main());
         let main_file_location = Location::new(&context, &filename, 0, 0);
@@ -34,7 +37,7 @@ impl<'c, 'a> LlzkCodegen<'c, 'a> {
     }
 
     /// Convert circom location information to MLIR location.
-    pub fn get_location(&self, file_id: FileID, file_location: FileLocation) -> Location<'c> {
+    pub fn get_location(&self, file_id: FileID, file_location: FileLocation) -> Location<'llzk> {
         let filename = self.files.get_filename_or_default(&file_id);
         let line = self.files.get_line(file_location.start, file_id).unwrap_or(0);
         let column = self.files.get_column(file_location.start, file_id).unwrap_or(0);
@@ -77,17 +80,21 @@ impl<'c, 'a> LlzkCodegen<'c, 'a> {
 
 /// A trait to produce LLZK IR from the ProgramArchive nodes.
 pub trait ProduceLLZK {
-    fn produce_llzk_ir<'b, 'a: 'b>(
-        &'a self,
-        codegen: &LlzkCodegen<'a, 'a>,
-    ) -> Result<Box<dyn ValueLike<'a> + 'b>>;
+    /// Produces LLZK IR from the circom ProgramArchive AST element.
+    /// 'ret: lifetime of the returned ValueLike object
+    /// 'ast: lifetime of the circom AST element
+    /// 'llzk: lifetime of the LlzkContext and generated Module
+    fn produce_llzk_ir<'ret, 'ast: 'ret, 'llzk: 'ret>(
+        &'ast self,
+        codegen: &LlzkCodegen<'ast, 'llzk>,
+    ) -> Result<Box<dyn ValueLike<'llzk> + 'ret>>;
 }
 
 impl ProduceLLZK for ProgramArchive {
-    fn produce_llzk_ir<'b, 'a: 'b>(
-        &'a self,
-        codegen: &LlzkCodegen<'a, 'a>,
-    ) -> Result<Box<dyn ValueLike<'a> + 'b>> {
+    fn produce_llzk_ir<'ret, 'ast: 'ret, 'llzk: 'ret>(
+        &'ast self,
+        codegen: &LlzkCodegen<'ast, 'llzk>,
+    ) -> Result<Box<dyn ValueLike<'llzk> + 'ret>> {
         todo!("Not yet implemented")
     }
 }
