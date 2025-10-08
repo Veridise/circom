@@ -16,18 +16,18 @@ use melior::{
 };
 use llzk::prelude::LlzkContext;
 
-/// Stores necessary context for generating LLZK IR along with the generated Module.
+/// Stores necessary context for generating LLZK IR along with the generated `Module`.
 /// 'ast: lifetime of the circom AST element
-/// 'llzk: lifetime of the LlzkContext and generated Module
+/// 'llzk: lifetime of the `LlzkContext` and generated `Module`
 pub struct LlzkCodegen<'ast, 'llzk> {
     files: &'ast FileLibrary,
     context: &'llzk LlzkContext,
     module: Module<'llzk>,
 }
 
-/// Helper for generating LLZK IR from a circom ProgramArchive.
+/// Helper for generating LLZK IR from a circom `ProgramArchive`.
 impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
-    /// Creates a new LLZK code generator to generate code for the given ProgramArchive.
+    /// Creates a new LLZK code generator to generate code for the given `ProgramArchive`.
     pub fn new(context: &'llzk LlzkContext, program_archive: &'ast ProgramArchive) -> Self {
         let files = &program_archive.file_library;
         let filename = files.get_filename_or_default(program_archive.get_file_id_main());
@@ -44,12 +44,12 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
         Location::new(&self.context, &filename, line, column)
     }
 
-    /// Verify the generated module.
+    /// Verify the generated `Module`.
     pub fn verify(&self) -> bool {
         self.module.as_operation().verify()
     }
 
-    /// Write the generated module to a file.
+    /// Write the generated `Module` to a file.
     pub fn write_to_file(&self, filename: &str) -> Result<(), ()> {
         let out_path = Path::new(filename);
         // Ensure parent directories exist
@@ -78,12 +78,12 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     }
 }
 
-/// A trait to produce LLZK IR from the ProgramArchive nodes.
+/// A trait to produce LLZK IR from the `ProgramArchive` nodes.
 pub trait ProduceLLZK {
-    /// Produces LLZK IR from the circom ProgramArchive AST element.
-    /// 'ret: lifetime of the returned ValueLike object
+    /// Produces LLZK IR from the circom `ProgramArchive` AST element.
+    /// 'ret: lifetime of the returned `ValueLike` object
     /// 'ast: lifetime of the circom AST element
-    /// 'llzk: lifetime of the LlzkContext and generated Module
+    /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
     fn produce_llzk_ir<'ret, 'ast: 'ret, 'llzk: 'ret>(
         &'ast self,
         codegen: &LlzkCodegen<'ast, 'llzk>,
@@ -99,7 +99,7 @@ impl ProduceLLZK for ProgramArchive {
     }
 }
 
-/// Generate LLZK IR from the given ProgramArchive and write it to a file with the given filename.
+/// Generate LLZK IR from the given `ProgramArchive` and write it to a file with the given filename.
 pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result<(), ()> {
     let ctx = LlzkContext::new();
     let codegen = LlzkCodegen::new(&ctx, program_archive);
