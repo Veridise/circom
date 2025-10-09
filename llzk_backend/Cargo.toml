@@ -1,0 +1,14 @@
+[package]
+name = "llzk_backend"
+version = "0.1.0"
+authors = ["Veridise"]
+edition = "2018"
+
+[dependencies]
+program_structure = { path = "../program_structure" }
+ansi_term = "0.12.1"
+anyhow = "1"
+mlir-sys = "0.5.0"
+melior = "0.25.0"
+melior-macro = "0.18.0"
+llzk = { git = "https://github.com/Veridise/llzk-rs", package = "llzk" }

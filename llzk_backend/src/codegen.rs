@@ -10,18 +10,18 @@ use program_structure::{
     file_definition::{FileID, FileLibrary, FileLocation},
     program_archive::ProgramArchive,
 };
-use melior::{
-    self,
-    ir::{operation::OperationLike as _, Location, Module, ValueLike},
-};
+use melior::ir::{operation::OperationLike as _, Location, Module, ValueLike};
 use llzk::prelude::LlzkContext;
 
 /// Stores necessary context for generating LLZK IR along with the generated `Module`.
 /// 'ast: lifetime of the circom AST element
 /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
-pub struct LlzkCodegen<'ast, 'llzk> {
+struct LlzkCodegen<'ast, 'llzk> {
+    /// The circom file library for looking up filenames and line/column information.
     files: &'ast FileLibrary,
+    /// The LLZK (and MLIR) context.
     context: &'llzk LlzkContext,
+    /// The generated LLZK `Module`.
     module: Module<'llzk>,
 }
 
@@ -31,7 +31,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     pub fn new(context: &'llzk LlzkContext, program_archive: &'ast ProgramArchive) -> Self {
         let files = &program_archive.file_library;
         let filename = files.get_filename_or_default(program_archive.get_file_id_main());
-        let main_file_location = Location::new(&context, &filename, 0, 0);
+        let main_file_location = Location::new(context, &filename, 0, 0);
         let module = llzk::dialect::module::llzk_module(main_file_location);
         Self { files, context, module }
     }
@@ -41,7 +41,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
         let filename = self.files.get_filename_or_default(&file_id);
         let line = self.files.get_line(file_location.start, file_id).unwrap_or(0);
         let column = self.files.get_column(file_location.start, file_id).unwrap_or(0);
-        Location::new(&self.context, &filename, line, column)
+        Location::new(self.context, &filename, line, column)
     }
 
     /// Verify the generated `Module`.
@@ -61,7 +61,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
         unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
             let file = &mut *(user_data as *mut File);
             let slice = std::slice::from_raw_parts(string_ref.data as *const u8, string_ref.length);
-            let _ = file.write_all(slice).unwrap();
+            file.write_all(slice).unwrap();
         }
 
         unsafe {
@@ -74,12 +74,12 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
             );
         }
         println!("{} {}", Color::Green.paint("Written successfully:"), filename);
-        Result::Ok(())
+        Ok(())
     }
 }
 
 /// A trait to produce LLZK IR from the `ProgramArchive` nodes.
-pub trait ProduceLLZK {
+trait ProduceLLZK {
     /// Produces LLZK IR from the circom `ProgramArchive` AST element.
     /// 'ret: lifetime of the returned `ValueLike` object
     /// 'ast: lifetime of the circom AST element
@@ -111,5 +111,5 @@ pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result
     assert!(codegen.verify());
     codegen.write_to_file(filename).expect("Failed to write LLZK code");
 
-    return Result::Ok(());
+    Ok(())
 }
