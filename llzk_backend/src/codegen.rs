@@ -17,8 +17,11 @@ use llzk::prelude::LlzkContext;
 /// 'ast: lifetime of the circom AST element
 /// 'llzk: lifetime of the `LlzkContext` and generated `Module`
 struct LlzkCodegen<'ast, 'llzk> {
+    /// The circom file library for looking up filenames and line/column information.
     files: &'ast FileLibrary,
+    /// The LLZK (and MLIR) context.
     context: &'llzk LlzkContext,
+    /// The generated LLZK `Module`.
     module: Module<'llzk>,
 }
 
@@ -28,7 +31,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
     pub fn new(context: &'llzk LlzkContext, program_archive: &'ast ProgramArchive) -> Self {
         let files = &program_archive.file_library;
         let filename = files.get_filename_or_default(program_archive.get_file_id_main());
-        let main_file_location = Location::new(&context, &filename, 0, 0);
+        let main_file_location = Location::new(context, &filename, 0, 0);
         let module = llzk::dialect::module::llzk_module(main_file_location);
         Self { files, context, module }
     }
@@ -38,7 +41,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
         let filename = self.files.get_filename_or_default(&file_id);
         let line = self.files.get_line(file_location.start, file_id).unwrap_or(0);
         let column = self.files.get_column(file_location.start, file_id).unwrap_or(0);
-        Location::new(&self.context, &filename, line, column)
+        Location::new(self.context, &filename, line, column)
     }
 
     /// Verify the generated `Module`.
@@ -58,7 +61,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
         unsafe extern "C" fn callback(string_ref: mlir_sys::MlirStringRef, user_data: *mut c_void) {
             let file = &mut *(user_data as *mut File);
             let slice = std::slice::from_raw_parts(string_ref.data as *const u8, string_ref.length);
-            let _ = file.write_all(slice).unwrap();
+            file.write_all(slice).unwrap();
         }
 
         unsafe {
@@ -71,7 +74,7 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
             );
         }
         println!("{} {}", Color::Green.paint("Written successfully:"), filename);
-        Result::Ok(())
+        Ok(())
     }
 }
 
@@ -108,5 +111,5 @@ pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result
     assert!(codegen.verify());
     codegen.write_to_file(filename).expect("Failed to write LLZK code");
 
-    return Result::Ok(());
+    Ok(())
 }
