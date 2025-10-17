@@ -349,7 +349,7 @@ pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result
     let module = new_llzk_module(&ctx, program_archive);
     let codegen = LlzkCodegen { program_archive, context: &ctx, module: &module };
 
-    program_archive.produce_llzk_ir(&codegen).expect("Failed to generate LLZK IR");
+    program_archive.produce_llzk_ir(&codegen).map_err(|err| {eprintln!("Failed to generate LLZK IR: {err}");})?;
 
     // Verify the module and write it to file
     assert!(codegen.verify());

@@ -50,12 +50,6 @@
           ];
         };
 
-        circomBuildInputs = with pkgs; [
-          # TODO: not actually sure if I need either of these 2.
-          libffi
-          libiconv
-        ];
-
         # Lit tests need FileCheck but directly adding the LLVM `bin` dir to the path causes
         # linking problems in `llzk-sys`. Instead, create a symlink in a new directory for the path.
         createFileCheckSymlink = ''
@@ -67,13 +61,13 @@
       {
         packages = flake-utils.lib.flattenTree {
           default = pkgs.rustPlatform.buildRustPackage (
-            rec {
+            {
               pname = "circom-to-llzk";
               version = "0.1.0";
               src = ./.;
 
               nativeBuildInputs = pkgs.llzkSharedEnvironment.nativeBuildInputs;
-              buildInputs = pkgs.llzkSharedEnvironment.devBuildInputs ++ circomBuildInputs;
+              buildInputs = pkgs.llzkSharedEnvironment.devBuildInputs;
               cargoLock = {
                 lockFile = ./Cargo.lock;
                 allowBuiltinFetchGit = true;
@@ -98,7 +92,7 @@
           default = pkgs.mkShell (
             {
               nativeBuildInputs = pkgs.llzkSharedEnvironment.nativeBuildInputs;
-              buildInputs = pkgs.llzkSharedEnvironment.devBuildInputs ++ circomBuildInputs;
+              buildInputs = pkgs.llzkSharedEnvironment.devBuildInputs;
 
               shellHook = ''
                 ## Bail out of pipes where any command fails
