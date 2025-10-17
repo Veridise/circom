@@ -14,4 +14,4 @@ template IsZero() {
 }
 
 component main {public [in]}= IsZero();
-// CHECK: TODO
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

@@ -29,4 +29,4 @@ template Multiplier3() {
 }
 
 component main = Multiplier3();
-// CHECK: TODO
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

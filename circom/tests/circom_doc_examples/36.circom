@@ -10,4 +10,4 @@ template Translate(n) {
 }
 
 component main = Translate(1);
-// CHECK: TODO
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

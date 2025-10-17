@@ -21,4 +21,4 @@ template mult4(){
 }
 
 component main = mult4();
-// CHECK: TODO
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

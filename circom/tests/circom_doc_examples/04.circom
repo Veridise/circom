@@ -40,4 +40,4 @@ template MultiAND(n) {
 }
 
 component main = MultiAND(5);
-// CHECK: TODO
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

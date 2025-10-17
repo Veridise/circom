@@ -14,4 +14,4 @@ template B(n){
    signal out <== A(n)(b <== in[1], a <== in[0]);
 }
 component main = B(2);
-// CHECK: TODO
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

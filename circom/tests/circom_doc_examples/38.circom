@@ -52,4 +52,4 @@ template MultiplierN(N){
 }
 
 component main {public [in]} = MultiplierN(3);
-// CHECK: TODO
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

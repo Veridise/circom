@@ -14,4 +14,4 @@ template right(N){
 }
 
 component main = right(10);
-// CHECK: TODO
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

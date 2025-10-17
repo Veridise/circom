@@ -16,4 +16,4 @@ template T16() {
 }
 
 component main = T16();
-// CHECK: TODO
+//CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
