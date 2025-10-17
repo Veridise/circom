@@ -63,8 +63,6 @@
           ln -sf "${pkgs.llzk-llvmPackages.llvm}/bin/FileCheck" $PWD/build-tools/FileCheck
           export PATH="$PWD/build-tools:$PATH"
         '';
-
-        inheritedDevEnv = pkgs.llzkSharedEnvironment.env // pkgs.llzkSharedEnvironment.devSettings;
       in
       {
         packages = flake-utils.lib.flattenTree {
@@ -109,11 +107,8 @@
                 echo "Welcome to the circom-to-llzk devshell!"
               '';
             }
-            // inheritedDevEnv
-            // {
-              NIX_CFLAGS_COMPILE =
-                (inheritedDevEnv.NIX_CFLAGS_COMPILE or "") + " -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0";
-            }
+            // pkgs.llzkSharedEnvironment.env
+            // pkgs.llzkSharedEnvironment.devSettings
           );
         };
       }
