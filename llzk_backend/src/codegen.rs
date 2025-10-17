@@ -104,8 +104,7 @@ pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result
     let ctx = LlzkContext::new();
     let codegen = LlzkCodegen::new(&ctx, program_archive);
 
-    // TODO: uncomment when implemented
-    // program_archive.produce_llzk_ir(&codegen).expect("Failed to generate LLZK IR");
+    program_archive.produce_llzk_ir(&codegen).expect("Failed to generate LLZK IR");
 
     // Verify the module and write it to file
     assert!(codegen.verify());
