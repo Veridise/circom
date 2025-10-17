@@ -4,7 +4,18 @@
 
 pragma circom 2.0.0;
 
-template EmptyTemplate() {
+template T14() {
+    signal output out;
+    var x = 0;
+    var y = 1;
+    if (x >= 0) {
+        x = y + 1;
+        y += 1;
+    } else {
+        y = x;
+    }
+    out <== x + y;
 }
-component main = EmptyTemplate();
+
+component main = T14();
 //CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

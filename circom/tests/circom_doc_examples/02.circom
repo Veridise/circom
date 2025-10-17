@@ -4,7 +4,12 @@
 
 pragma circom 2.0.0;
 
-template EmptyTemplate() {
+template Multiplier2(){
+   //Declaration of signals
+   signal input in1;
+   signal input in2;
+   signal output out <== in1 * in2;
 }
-component main = EmptyTemplate();
+
+component main {public [in1,in2]} = Multiplier2();
 //CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
