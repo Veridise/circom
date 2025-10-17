@@ -4,7 +4,10 @@
 
 pragma circom 2.0.0;
 
-template EmptyTemplate() {
+template Translate(n) {
+  signal input in;  
+  assert(in<=254);
 }
-component main = EmptyTemplate();
+
+component main = Translate(1);
 //CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

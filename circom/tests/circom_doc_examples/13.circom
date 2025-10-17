@@ -4,7 +4,14 @@
 
 pragma circom 2.0.0;
 
-template EmptyTemplate() {
+template right(N){
+    signal input in;
+    var x = 2;
+    var t = 5;
+    if(in > N){
+      t = 2;
+    }
 }
-component main = EmptyTemplate();
+
+component main = right(10);
 //CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

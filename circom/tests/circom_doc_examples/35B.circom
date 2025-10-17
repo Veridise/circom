@@ -4,7 +4,11 @@
 
 pragma circom 2.0.0;
 
-template EmptyTemplate() {
+template A(n) {
+  signal input in;
+  assert(n>0);
+  in * in === n;
 }
-component main = EmptyTemplate();
+
+component main = A(1);
 //CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

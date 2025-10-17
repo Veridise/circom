@@ -4,7 +4,16 @@
 
 pragma circom 2.0.0;
 
-template EmptyTemplate() {
+template T16() {
+    signal output out;
+    var y = 0;
+    var i = 0;
+    while(i < 100){
+        i++;
+        y += y;
+    }
+    out <== y;
 }
-component main = EmptyTemplate();
+
+component main = T16();
 //CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {

@@ -4,7 +4,17 @@
 
 pragma circom 2.0.0;
 
-template EmptyTemplate() {
+template fun(N){
+  signal output out;
+  out <== N;
 }
-component main = EmptyTemplate();
+
+template all(N){
+  component c[N];
+  for(var i = 0; i < N; i++){
+     c[i] = fun(i);
+  }
+}
+
+component main = all(5);
 //CHECK-LABEL:  module attributes {veridise.lang = "llzk"} {
