@@ -49,5 +49,9 @@ jobs:
         with:
           name: veridise-public
           authToken: '${{ secrets.CACHIX_PUBLIC_TOKEN }}'
+      - name: Set nix environment
+        uses: nicknovitski/nix-develop@v1
+        env:
+          CI_BOT_PAT: "${{ secrets.CI_BUILD_TOKEN }}"
       - name: Run clippy
-        run: nix develop --command bash -c "cargo clippy -p llzk_backend -- --no-deps"
+        run: cargo clippy -p llzk_backend -- --no-deps
