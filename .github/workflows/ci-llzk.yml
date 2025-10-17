@@ -27,5 +27,5 @@ jobs:
         with:
           name: veridise-public
           authToken: '${{ secrets.CACHIX_PUBLIC_TOKEN }}'
-      - name: Build and test ${{ matrix.derivation }}
+      - name: Build and test
         run: nix --print-build-logs build
