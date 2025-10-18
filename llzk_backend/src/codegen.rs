@@ -1,6 +1,5 @@
-#![allow(unused)] // TODO: TEMP
 use std::{
-    convert::{TryFrom as _, TryInto as _},
+    convert::TryInto as _,
     fs::{self, File},
     io::Write,
     os::raw::c_void,
@@ -15,22 +14,19 @@ use program_structure::{
     program_archive::ProgramArchive,
     template_data::TemplateData,
 };
-use melior::{
-    dialect::func,
-    ir::{
-        attribute::TypeAttribute, operation::OperationLike as _, AttributeLike as _, BlockLike,
-        Location, Module, Operation, Type, TypeLike, ValueLike,
-    },
+use melior::ir::{
+    operation::OperationLike as _, Attribute, BlockLike, Identifier, Location, Module, Operation,
+    Type, ValueLike,
 };
 use llzk::{
     error::Error,
     prelude::{
         r#struct::{
-            self, field,
+            self,
             helpers::{compute_fn, constrain_fn},
         },
-        FeltType, FieldDefOp, FuncDefOpRef, FuncDefOpRefMut, FunctionType, LlzkContext,
-        StructDefOp, StructDefOpLike, StructDefOpRef, StructDefOpRefMut,
+        FeltType, FuncDefOpRef, FuncDefOpRefMut, LlzkContext, PublicAttribute, StructDefOp,
+        StructDefOpLike, StructDefOpRef, StructDefOpRefMut,
     },
 };
 
@@ -98,19 +94,17 @@ impl<'ast, 'llzk> LlzkCodegen<'ast, 'llzk> {
 
 /// Information collected from Declaration statements within a template that
 /// is used to setup LLZK struct fields and function parameters.
+#[derive(Default)]
 struct DeclarationInfo<'llzk> {
     /// Input declarations to use as function parameters
     func_inputs: Vec<(Type<'llzk>, Location<'llzk>)>,
+    /// Function parameter attributes. Same length as `func_inputs`.
+    func_input_attrs: Vec<Vec<(Identifier<'llzk>, Attribute<'llzk>)>>,
     /// Output and Intermediate declarations to use as struct fields
     struct_fields: Vec<Result<Operation<'llzk>, Error>>,
 }
 
 impl<'llzk> DeclarationInfo<'llzk> {
-    /// Create an empty `DeclarationInfo`.
-    fn new() -> Self {
-        Self { func_inputs: Vec::new(), struct_fields: Vec::new() }
-    }
-
     /// Visit a statement and populate this `DeclarationInfo` with any declarations found.
     fn visit<'ast>(&mut self, stmt: &'ast Statement, codegen: &LlzkCodegen<'ast, 'llzk>) {
         match stmt {
@@ -139,6 +133,16 @@ impl<'llzk> DeclarationInfo<'llzk> {
                         };
                         if SignalType::Input == *signal_type {
                             self.func_inputs.push((decl_type, location));
+                            if codegen
+                                .program_archive
+                                .get_public_inputs_main_component()
+                                .contains(name)
+                            {
+                                self.func_input_attrs
+                                    .push(vec![PublicAttribute::named_attr_pair(codegen.context)]);
+                            } else {
+                                self.func_input_attrs.push(vec![]);
+                            }
                         } else {
                             let new = r#struct::field(
                                 location,
@@ -223,7 +227,7 @@ impl ProduceLLZKTop for TemplateData {
         codegen: &LlzkCodegen<'ast, 'llzk>,
     ) -> Result<()> {
         // Collect declarations first to determine struct fields and function parameters.
-        let mut declarations = DeclarationInfo::new();
+        let mut declarations = DeclarationInfo::default();
         for s in self.get_body_as_vec() {
             declarations.visit(s, codegen);
         }
@@ -238,14 +242,27 @@ impl ProduceLLZKTop for TemplateData {
         // Generate the compute and constrain functions.
         let new_struct_type = new_struct.r#type();
         let struct_body = new_struct.body();
+        let arg_attrs: Vec<_> = declarations.func_input_attrs.iter().map(Vec::as_slice).collect();
         let compute_func: FuncDefOpRef = struct_body
             .append_operation(
-                compute_fn(struct_loc, new_struct_type, &declarations.func_inputs, None)?.into(),
+                compute_fn(
+                    struct_loc,
+                    new_struct_type,
+                    &declarations.func_inputs,
+                    Some(&arg_attrs),
+                )?
+                .into(),
             )
             .try_into()?;
         let constrain_func: FuncDefOpRef = struct_body
             .append_operation(
-                constrain_fn(struct_loc, new_struct_type, &declarations.func_inputs, None)?.into(),
+                constrain_fn(
+                    struct_loc,
+                    new_struct_type,
+                    &declarations.func_inputs,
+                    Some(&arg_attrs),
+                )?
+                .into(),
             )
             .try_into()?;
 
@@ -349,7 +366,9 @@ pub fn generate_llzk(program_archive: &ProgramArchive, filename: &str) -> Result
     let module = new_llzk_module(&ctx, program_archive);
     let codegen = LlzkCodegen { program_archive, context: &ctx, module: &module };
 
-    program_archive.produce_llzk_ir(&codegen).map_err(|err| {eprintln!("Failed to generate LLZK IR: {err}");})?;
+    program_archive.produce_llzk_ir(&codegen).map_err(|err| {
+        eprintln!("Failed to generate LLZK IR: {err}");
+    })?;
 
     // Verify the module and write it to file
     assert!(codegen.verify());
